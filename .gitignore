@@ -1,0 +1,7 @@
+# ROM images are SNK copyrighted: never commit them
+*.bin
+*.sp1
+*.rom
+*.zip
+build/
+__pycache__/

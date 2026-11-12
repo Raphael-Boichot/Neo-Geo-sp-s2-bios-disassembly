@@ -108,7 +108,9 @@ class Gen:
             new = set()
             for a in self.labels:
                 srcs = [x for x, k in self.t.refs.get(a, ()) if x in self.t.insn and k == 'code']
-                others = [x for x, k in self.t.refs.get(a, ()) if k != 'code']
+                refs = self.t.refs.get(a, set())
+                # a jsr/jmp (label,pc) is also recorded as a data reference: ignore that one
+                others = [x for x, k in refs if k != 'code' and (x, 'code') not in refs]
                 if srcs and not others and all(x in known for x in srcs):
                     new.add(a)
             if new <= seeds:

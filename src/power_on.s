@@ -338,21 +338,21 @@ loc_C11F14:
 	move.b	d0,(REG_SWPBIOS).l	| C11F52
 	rts	| C11F58
 sub_C11F5A:
-	move.b	#0xFF,-0x7FA8(a4)	| C11F5A
+	move.b	#0xFF,(bram_D00058-A4_BASE,a4)	| C11F5A
 	moveq	#0x0,d6	| C11F60
 loc_C11F62:
 	move.w	d6,d5	| C11F62
 	lsr.w	#0x2,d5	| C11F64
-	move.b	d5,-0x7EF8(a4)	| C11F66
+	move.b	d5,(bram_D00108-A4_BASE,a4)	| C11F66
 	move.b	d5,(REG_SLOT).l	| C11F6A
 	jsr	(sub_C12FFA,pc)	| C11F70
 	bne.b	loc_C11F8C	| C11F74
 	move.w	(CART_NGH).w,(a3,d6.w)	| C11F76
 	tst.b	(CART_EYECATCH_FLAG).w	| C11F7C
 	bne.b	loc_C11F8C	| C11F80
-	tst.b	-0x7FA8(a4)	| C11F82
+	tst.b	(bram_D00058-A4_BASE,a4)	| C11F82
 	bpl.b	loc_C11F8C	| C11F86
-	move.b	d5,-0x7FA8(a4)	| C11F88
+	move.b	d5,(bram_D00058-A4_BASE,a4)	| C11F88
 loc_C11F8C:
 	addq.w	#0x4,d6	| C11F8C
 	cmp.b	d6,d4	| C11F8E
@@ -411,7 +411,7 @@ loc_C1203E:
 	bsr.w	sub_C184EC	| C1203E
 	rts	| C12042
 sub_C12044:
-	tst.w	-0x7FA0(a4)	| C12044
+	tst.w	(bram_D00060-A4_BASE,a4)	| C12044
 	bne.w	loc_C12072	| C12048
 	moveq	#0x0,d7	| C1204C
 	move.w	d4,d2	| C1204E
@@ -435,13 +435,13 @@ loc_C1206C:
 loc_C12072:
 	rts	| C12072
 sub_C12074:
-	lea.l	-0x7E9C(a4),a0	| C12074
+	lea.l	(bram_D00164-A4_BASE,a4),a0	| C12074
 	moveq	#0x7,d7	| C12078
 loc_C1207A:
 	move.l	#0xFFFF,(a0)+	| C1207A
 	clr.l	(a0)+	| C12080
 	dbra	d7,loc_C1207A	| C12082
-	lea.l	-0x7E9C(a4),a0	| C12086
+	lea.l	(bram_D00164-A4_BASE,a4),a0	| C12086
 	moveq	#0x0,d7	| C1208A
 loc_C1208C:
 	move.w	(a2,d7.w),d0	| C1208C
@@ -527,7 +527,7 @@ loc_C12144:
 	beq.b	loc_C12158	| C12148
 	cmpi.w	#0xFFFF,0x2(a2,d6.w)	| C1214A
 	bne.b	loc_C12158	| C12150
-	move.l	-0x7EFC(a4),0x20(a2,d6.w)	| C12152
+	move.l	(bram_D00104-A4_BASE,a4),0x20(a2,d6.w)	| C12152
 loc_C12158:
 	addq.w	#0x4,d6	| C12158
 	cmp.w	d4,d6	| C1215A
@@ -535,9 +535,9 @@ loc_C12158:
 	rts	| C1215E
 sub_C12160:
 	moveq	#0x0,d6	| C12160
-	move.b	d6,-0x7EF7(a4)	| C12162
+	move.b	d6,(bram_D00109-A4_BASE,a4)	| C12162
 loc_C12166:
-	lea.l	-0x7EDC(a4),a2	| C12166
+	lea.l	(bram_D00124-A4_BASE,a4),a2	| C12166
 	tst.w	(a2,d6.w)	| C1216A
 	beq.w	loc_C121B0	| C1216E
 	tst.w	0x2(a2,d6.w)	| C12172
@@ -546,7 +546,7 @@ loc_C12166:
 	bne.w	loc_C121B0	| C12180
 loc_C12184:
 	jsr	(sub_C12506,pc)	| C12184
-	lea.l	-0x7EE6(a4),a3	| C12188
+	lea.l	(bram_D0011A-A4_BASE,a4),a3	| C12188
 	move.w	0x2(a2,d6.w),d1	| C1218C
 	andi.w	#0x7,d1	| C12190
 	move.b	(a3,d1.w),d0	| C12194
@@ -560,12 +560,12 @@ loc_C121A2:
 	jsr	(sub_C1253E,pc)	| C121AA
 	addq.l	#0x1,(a0)	| C121AE
 loc_C121B0:
-	addq.b	#0x1,-0x7EF7(a4)	| C121B0
+	addq.b	#0x1,(bram_D00109-A4_BASE,a4)	| C121B0
 	moveq	#0x0,d6	| C121B4
-	move.b	-0x7EF7(a4),d6	| C121B6
+	move.b	(bram_D00109-A4_BASE,a4),d6	| C121B6
 	move.b	d6,d0	| C121BA
 	lsl.w	#0x2,d6	| C121BC
-	cmp.b	-0x7FB9(a4),d0	| C121BE
+	cmp.b	(bram_D00047-A4_BASE,a4),d0	| C121BE
 	bcs.b	loc_C12166	| C121C2
 	rts	| C121C4
 sub_C121C6:
@@ -841,9 +841,9 @@ tbl_C124E6:
 	dc.b	0x00,0xD0,0x98,0x20,0x00,0xD0,0x98,0xE0,0x00,0xD0,0x99,0xA0,0x00,0xD0,0x9A,0x60
 sub_C12506:
 	moveq	#0x0,d0	| C12506
-	move.b	-0x7EF7(a4),d0	| C12508
+	move.b	(bram_D00109-A4_BASE,a4),d0	| C12508
 	lsl.w	#0x2,d0	| C1250C
-	lea.l	-0x7EDC(a4),a0	| C1250E
+	lea.l	(bram_D00124-A4_BASE,a4),a0	| C1250E
 	move.w	0x2(a0,d0.w),d0	| C12512
 	lsl.w	#0x2,d0	| C12516
 	movea.l	(tbl_C1251E,pc,d0.w),a0	| C12518
@@ -853,19 +853,19 @@ tbl_C1251E:
 	dc.b	0x00,0xD0,0x8C,0x20,0x00,0xD0,0x8E,0x60,0x00,0xD0,0x90,0xA0,0x00,0xD0,0x92,0xE0
 sub_C1253E:
 	moveq	#0x0,d0	| C1253E
-	move.b	-0x7EF7(a4),d0	| C12540
+	move.b	(bram_D00109-A4_BASE,a4),d0	| C12540
 	lsl.w	#0x2,d0	| C12544
-	lea.l	-0x7EDC(a4),a0	| C12546
+	lea.l	(bram_D00124-A4_BASE,a4),a0	| C12546
 	move.w	0x2(a0,d0.w),d0	| C1254A
 	lsl.w	#0x2,d0	| C1254E
-	lea.l	-0x7E00(a4),a0	| C12550
+	lea.l	(bram_D00200-A4_BASE,a4),a0	| C12550
 	lea.l	(a0,d0.w),a0	| C12554
 	rts	| C12558
 sub_C1255A:
 	moveq	#0x0,d0	| C1255A
-	move.b	-0x7EF7(a4),d0	| C1255C
+	move.b	(bram_D00109-A4_BASE,a4),d0	| C1255C
 	lsl.w	#0x2,d0	| C12560
-	lea.l	-0x7EDC(a4),a0	| C12562
+	lea.l	(bram_D00124-A4_BASE,a4),a0	| C12562
 	move.w	0x2(a0,d0.w),d0	| C12566
 	lsl.w	#0x2,d0	| C1256A
 	movea.l	(tbl_C12572,pc,d0.w),a0	| C1256C
@@ -877,7 +877,7 @@ sub_C12592:
 	andi.w	#0xFF,d0	| C12592
 	lsl.w	#0x4,d0	| C12596
 	jsr	(sub_C125A4,pc)	| C12598
-	move.l	-0x7EFC(a4),(a0,d0.w)	| C1259C
+	move.l	(bram_D00104-A4_BASE,a4),(a0,d0.w)	| C1259C
 	rts	| C125A2
 sub_C125A4:
 	moveq	#0x0,d1	| C125A4
@@ -1093,21 +1093,21 @@ loc_C1284C:
 loc_C1285E:
 	rts	| C1285E
 sub_C12860:
-	subq.b	#0x1,-0x7FA3(a4)	| C12860
+	subq.b	#0x1,(bram_D0005D-A4_BASE,a4)	| C12860
 	bne.w	loc_C128A4	| C12864
-	move.b	#0x3C,-0x7FA3(a4)	| C12868
-	addq.b	#0x1,-0x7FA4(a4)	| C1286E
-	cmpi.b	#0x3C,-0x7FA4(a4)	| C12872
+	move.b	#0x3C,(bram_D0005D-A4_BASE,a4)	| C12868
+	addq.b	#0x1,(bram_D0005C-A4_BASE,a4)	| C1286E
+	cmpi.b	#0x3C,(bram_D0005C-A4_BASE,a4)	| C12872
 	bcs.w	loc_C128A4	| C12878
-	clr.b	-0x7FA4(a4)	| C1287C
-	addq.b	#0x1,-0x7FA5(a4)	| C12880
-	cmpi.b	#0x3C,-0x7FA5(a4)	| C12884
+	clr.b	(bram_D0005C-A4_BASE,a4)	| C1287C
+	addq.b	#0x1,(bram_D0005B-A4_BASE,a4)	| C12880
+	cmpi.b	#0x3C,(bram_D0005B-A4_BASE,a4)	| C12884
 	bcs.w	loc_C128A4	| C1288A
-	clr.b	-0x7FA5(a4)	| C1288E
-	addq.b	#0x4,-0x7FA6(a4)	| C12892
-	cmpi.b	#0x60,-0x7FA6(a4)	| C12896
+	clr.b	(bram_D0005B-A4_BASE,a4)	| C1288E
+	addq.b	#0x4,(bram_D0005A-A4_BASE,a4)	| C12892
+	cmpi.b	#0x60,(bram_D0005A-A4_BASE,a4)	| C12896
 	bcs.w	loc_C128A4	| C1289C
-	clr.b	-0x7FA6(a4)	| C128A0
+	clr.b	(bram_D0005A-A4_BASE,a4)	| C128A0
 loc_C128A4:
 	rts	| C128A4
 sub_C128A6:
@@ -1127,16 +1127,16 @@ loc_C128C2:
 	move.b	d0,(a6,d4.w)	| C128CA
 	sub.b	d0,d0	| C128CE
 	move.b	0x1(a3),d0	| C128D0
-	move.b	-0x7FCC(a4),d1	| C128D4
+	move.b	(Credits-A4_BASE,a4),d1	| C128D4
 	abcd	d1,d0	| C128D8
 	bcc.b	loc_C128E0	| C128DA
 	move.b	#0x99,d0	| C128DC
 loc_C128E0:
-	move.b	d0,-0x7FCC(a4)	| C128E0
+	move.b	d0,(Credits-A4_BASE,a4)	| C128E0
 loc_C128E4:
 	rts	| C128E4
 sub_C128E6:
-	btst.b	#0x2,-0x7FDE(a4)	| C128E6
+	btst.b	#0x2,(bram_D00022-A4_BASE,a4)	| C128E6
 	beq.b	loc_C12910	| C128EC
 	moveq	#0x1,d7	| C128EE
 	tst.b	(ram_10FEBC-A5_BASE,a5)	| C128F0
@@ -1145,24 +1145,26 @@ sub_C128E6:
 	add.l	d7,0xC(a1)	| C128FA
 loc_C128FE:
 	sub.b	d0,d0	| C128FE
-	move.b	-0x7FCC(a4),d0	| C12900
+	move.b	(Credits-A4_BASE,a4),d0	| C12900
 	abcd	d7,d0	| C12904
 	bcc.b	loc_C1290C	| C12906
 	move.b	#0x99,d0	| C12908
 loc_C1290C:
-	move.b	d0,-0x7FCC(a4)	| C1290C
+	move.b	d0,(Credits-A4_BASE,a4)	| C1290C
 loc_C12910:
 	rts	| C12910
-sub_C12912:
+| DeductStartCredits [C] after CART_PLAYER_START: for P1 and P2 (DeductPlayerCredit) takes the credits and counts the start in book keeping; MAME: credits 02 -> 01 on START
+DeductStartCredits:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12912
 	lea.l	(bram_D08000).l,a4	| C12918
 	lea.l	(ram_10FDBA-A5_BASE,a5),a1	| C1291E
 	move.b	(BIOS_START_FLAG-A5_BASE,a5),d0	| C12922
-	jsr	(sub_C12934,pc)	| C12926
-	jsr	(sub_C12934,pc)	| C1292A
+	jsr	(DeductPlayerCredit,pc)	| C12926
+	jsr	(DeductPlayerCredit,pc)	| C1292A
 	jsr	(sub_C121C6,pc)	| C1292E
 	rts	| C12932
-sub_C12934:
+| DeductPlayerCredit [C] if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters
+DeductPlayerCredit:
 	move.b	(a1)+,d2	| C12934
 	ror.b	#0x1,d0	| C12936
 	bcc.b	loc_C12996	| C12938
@@ -1171,29 +1173,29 @@ loc_C1293C:
 	move.b	(REG_DIPSW).l,d5	| C1293C
 	andi.b	#0x40,d5	| C12942
 	beq.b	loc_C12958	| C12946
-	move.b	-0x7FCC(a4),d3	| C12948
+	move.b	(Credits-A4_BASE,a4),d3	| C12948
 	sub.b	d5,d5	| C1294C
 	sbcd	d4,d3	| C1294E
 	bcc.b	loc_C12954	| C12950
 	moveq	#0x0,d3	| C12952
 loc_C12954:
-	move.b	d3,-0x7FCC(a4)	| C12954
+	move.b	d3,(Credits-A4_BASE,a4)	| C12954
 loc_C12958:
-	movea.l	-0x7EF6(a4),a2	| C12958
-	jsr	(sub_C129C6,pc)	| C1295C
-	movea.l	-0x7EF2(a4),a2	| C12960
-	jsr	(sub_C129C6,pc)	| C12964
-	movea.l	-0x7E5C(a4),a2	| C12968
-	jsr	(sub_C129C6,pc)	| C1296C
-	movea.l	-0x7EEE(a4),a2	| C12970
+	movea.l	(bram_D0010A-A4_BASE,a4),a2	| C12958
+	jsr	(BookKeepingCount,pc)	| C1295C
+	movea.l	(bram_D0010E-A4_BASE,a4),a2	| C12960
+	jsr	(BookKeepingCount,pc)	| C12964
+	movea.l	(bram_D001A4-A4_BASE,a4),a2	| C12968
+	jsr	(BookKeepingCount,pc)	| C1296C
+	movea.l	(bram_D00112-A4_BASE,a4),a2	| C12970
 	lea.l	0x240(a2),a2	| C12974
-	jsr	(sub_C129C6,pc)	| C12978
-	movea.l	-0x7EEA(a4),a2	| C1297C
+	jsr	(BookKeepingCount,pc)	| C12978
+	movea.l	(bram_D00116-A4_BASE,a4),a2	| C1297C
 	lea.l	0xC0(a2),a2	| C12980
-	jsr	(sub_C129C6,pc)	| C12984
-	movea.l	-0x7E58(a4),a2	| C12988
+	jsr	(BookKeepingCount,pc)	| C12984
+	movea.l	(bram_D001A8-A4_BASE,a4),a2	| C12988
 	moveq	#0x0,d4	| C1298C
-	move.b	-0x7FA6(a4),d4	| C1298E
+	move.b	(bram_D0005A-A4_BASE,a4),d4	| C1298E
 	addq.l	#0x1,(a2,d4.w)	| C12992
 loc_C12996:
 	addq.l	#0x4,a0	| C12996
@@ -1212,7 +1214,8 @@ sub_C129BC:
 	move.b	(a3)+,d4	| C129BE
 	beq.b	loc_C12996	| C129C0
 	bra.w	loc_C1293C	| C129C2
-sub_C129C6:
+| BookKeepingCount [I] adds to a book keeping counter at a2 (called for several counters per start)
+BookKeepingCount:
 	addq.l	#0x1,0x4(a2)	| C129C6
 	tst.b	d2	| C129CA
 	beq.b	loc_C129D2	| C129CC

@@ -110,3 +110,6 @@ C14220,CardDeleteData,W,CARD function 4: delete data
 C142B8,CardReadTitle,W,CARD function 5: read data title
 C1440E,CardSaveUserName,W,CARD function 6: save user name
 C14472,CardLoadUserName,W,CARD function 7: load user name
+C12912,DeductStartCredits,C,"after CART_PLAYER_START: for P1 and P2 (DeductPlayerCredit) takes the credits and counts the start in book keeping; MAME: credits 02 -> 01 on START"
+C12934,DeductPlayerCredit,C,"if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters"
+C129C6,BookKeepingCount,I,"adds to a book keeping counter at a2 (called for several counters per start)"

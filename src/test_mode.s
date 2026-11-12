@@ -2520,7 +2520,7 @@ loc_C1B1A8:
 	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1B1A8
 	beq.b	sub_C1B1BA	| C1B1AC
 sub_C1B1AE:
-	lea.l	-0x7FC4(a4),a3	| C1B1AE
+	lea.l	(bram_D0003C-A4_BASE,a4),a3	| C1B1AE
 	moveq	#0x1,d2	| C1B1B2
 	move.w	#0x700B,d6	| C1B1B4
 	bra.b	loc_C1B1C4	| C1B1B8

@@ -81,6 +81,7 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
 - MAME saves DIP switches in its cfg: give each run its own `-cfg_directory`.
 - a4 is a general pointer: only after `lea $D08000,a4` is it the backup RAM base. The generator
   follows a4 per routine and through calls whose callers all set it; elsewhere `-0x7Fxx(a4)` stays raw.
+  The tracer records `jsr (label,pc)` both as a code and as a data reference: count it once.
 - RAM $10FCD8 was first named after the test menu, then found used as a frame count: check every
   user of a variable (all writes and reads) before giving it a specific name.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.

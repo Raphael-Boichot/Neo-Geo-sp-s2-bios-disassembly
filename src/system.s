@@ -170,7 +170,7 @@ CreditDown:
 	jsr	(sub_C1299A,pc)	| C11830
 	rts	| C11834
 sub_C11836:
-	jsr	(sub_C12912,pc)	| C11836
+	jsr	(DeductStartCredits,pc)	| C11836
 	rts	| C1183A
 sub_C1183C:
 	tst.b	(ram_10FEBB-A5_BASE,a5)	| C1183C

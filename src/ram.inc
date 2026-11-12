@@ -151,6 +151,7 @@
 	.equ	bram_D00038,0xD00038
 	.equ	bram_D00039,0xD00039
 	.equ	bram_D0003A,0xD0003A
+	.equ	bram_D0003C,0xD0003C
 	.equ	bram_D00042,0xD00042
 	.equ	bram_D00043,0xD00043
 	.equ	bram_D00044,0xD00044
@@ -176,6 +177,7 @@
 	.equ	bram_D0011A,0xD0011A
 	.equ	bram_D00122,0xD00122
 	.equ	bram_D00124,0xD00124
+	.equ	bram_D00164,0xD00164
 	.equ	bram_D001A4,0xD001A4
 	.equ	bram_D001A8,0xD001A8
 	.equ	bram_D001AC,0xD001AC

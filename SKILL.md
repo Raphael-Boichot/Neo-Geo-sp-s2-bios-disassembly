@@ -56,6 +56,9 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
    streamed through a pipe and keeps the unique executed addresses in `coverage/NAME.txt`;
    `tools/coverage.py` compares them with the static trace (missed code, speculative entries, BIOS calls).
 
+Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/coverage.py` (L2),
+`tools/relocation_test.py` + MAME (L5).
+
 ## Pitfalls (all hit once)
 
 - GNU as optimises silently: `move.l #imm,dN` becomes `moveq` when it fits. Such lines stay as `dc.w`
@@ -74,6 +77,9 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
   (`-debug -debugger none`, started from Lua with `manager.machine.debugger:command`; `-debugscript`
   is ignored with `-debugger none`). A trace is ~20,000 lines per frame: stream it through a FIFO.
 - MAME saves DIP switches in its cfg: give each run its own `-cfg_directory`.
+- Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
+  Text needs mostly letters and no long counting run, and is never looked for inside a named table.
+- A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.
 
 ## Discipline
 

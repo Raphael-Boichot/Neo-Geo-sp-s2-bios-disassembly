@@ -267,7 +267,9 @@ class Gen:
             while end < SIZE and kinds[end] == kinds[off] and BASE + end not in self.labels:
                 end += 1
             if kinds[off] == 'F':
-                L.append(f'\t.fill\t{end - off},1,0xFF\t| {addr:06X}-{BASE + end - 1:06X} free')
+                # .org pads to the next block's address: code added before a free
+                # block uses it up, and overflowing into the next block is an error
+                L.append(f'\t.org\t0x{end:05X},0xFF\t| {addr:06X}-{BASE + end - 1:06X} free ({end - off} bytes)')
             else:
                 L.extend(self.data_lines(off, end))
             off = end
@@ -295,7 +297,7 @@ def write_ram_inc(path, used):
             f.write(f'\t.equ\t{n},0x{v:06X}\n')
 
 
-LIST_RE = re.compile(r'^\s*\d+\s+([0-9a-f]{4,5})\s.*\|\s([0-9A-F]{6})\b')
+LIST_RE = re.compile(r'^\s*\d+\s+([0-9a-f]{4,5})\s.*\|\s([0-9A-F]{6})(?::|\s*$)')
 
 
 def assemble(src_dir, src_name, want_listing=False):

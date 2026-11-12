@@ -73,15 +73,18 @@ Then `make source` and `make check`.
 
 ## 6. Modify the BIOS
 
-1. Put new code in the free space, e.g. at the start of the 52,480-byte gap at `$C04300`
-   (replace part of `.fill 52480,1,0xFF` by your code and shrink the fill by the same size, so the
-   main code at `$C11000` does not move until relocation is proven).
+1. Put new code in a free block, e.g. just before `.org 0x11000,0xFF` (the 52,480-byte gap at
+   `$C04300`). Free space is written as `.org <next block>,0xFF`, so added code uses it up and the
+   next block stays in place; the assembler stops if a block overflows. Code can also be inserted in
+   the middle of the main code: everything is symbolic, and `tools/relocation_test.py` shows a build
+   where 38,961 bytes moved and everything still runs in MAME (C).
 2. Hook it: change a `jmp` in the BIOS call table or a `jsr` in the code to your label. Keep every
    BIOS call slot at its address: games call `$C00402-$C004DA` directly.
 3. `make fixsum`: rewrites the checksum bytes `$C00080/$C00081`, otherwise the BIOS stops at boot with
    "SYSTEM ROM ERROR".
 4. Run it in MAME: replace `sp-s2.sp1` in a copy of `neogeo.zip` and start a game with `-bios euro`.
-   MAME warns that the BIOS hash is wrong and still runs it (I: not tested in this repository yet).
+   MAME prints `sp-s2.sp1 WRONG CHECKSUMS` and still runs it (C: MAME 0.264). Example:
+   `python3 tools/relocation_test.py build/reloc` builds `build/reloc/sp-s2.sp1`.
 5. Hardware: program `build/sp-s2.sp1` into a 27C1024 (byte order as on disk, already MAME/EPROM order)
    for socketed boards, or a flash adapter. Use a fast part (100 ns or better advised).
 

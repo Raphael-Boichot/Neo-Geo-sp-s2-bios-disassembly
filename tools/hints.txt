@@ -1,0 +1,4 @@
+; Manual tracer hints: one per line
+;   entry ADDR       extra code entry point (with a reason in the comment)
+;   noreturn ADDR    routine that never returns
+;   longtable ADDR   table of 32-bit code pointers

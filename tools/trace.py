@@ -46,7 +46,7 @@ class Tracer:
     def decode(self, addr):
         off = addr - BASE
         for ins in self.md.disasm(self.rom[off:off + 10], addr, 1):
-            return ins
+            return ins if ins.id != 0 else None   # id 0 = undecodable word
         return None
 
     def add_ref(self, target, src, kind):

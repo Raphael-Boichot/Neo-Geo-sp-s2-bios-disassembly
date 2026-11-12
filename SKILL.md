@@ -1,0 +1,73 @@
+---
+name: neogeo-sp-s2-disassembly
+description: Disassemble, rebuild and modify the Neo Geo MVS system ROM SP-S2 (Europe MVS V2) in this repository - levels L0-L6, the tracer/generator pipeline, GNU as pitfalls and the boot checksum. Use when working in Neo-Geo-sp-s2-Bios-disassembly or on any Neo Geo cartridge system ROM.
+---
+
+# Neo Geo SP-S2 system ROM disassembly
+
+Playbook for this repository. Step-by-step commands are in `HOWTO.md`; the
+measured status is the level table in `README.md`. Same method and evidence
+tags as the Game Boy Camera and Game Boy Printer disassemblies.
+
+## The ROM
+
+- `sp-s2.sp1`: 131,072 bytes, CRC32 `9036d879`, SHA-1 `4f5ed7105b7128794654ce82b51723e16e389543`.
+  Never commit it: it lives in `roms/` (git-ignored); `make check` works from the SHA-1 alone.
+- Files are in MAME / EPROM order: every 16-bit word is byte-swapped. The 68000 sees it big-endian,
+  mapped at `$C00000-$C1FFFF` (mirrored up to `$CFFFFF`). `$D00000-$D0FFFF` is MVS backup RAM, not a mirror.
+- Header: vectors `$C00000-$C0007F` (SSP `$10F300`, reset `$C00402`); checksum byte at `$C00080`
+  (repeated at `$C00081`); `"NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK..."` from `$C00082`;
+  `$C00400` system type (`$80` MVS), `$C00401` region (`2` Europe).
+- BIOS call table `$C00402-$C004DA`: 6-byte slots, `jmp abs.l` or `jmp (d16,pc)` + `nop`, then `rts`.
+  Games call these addresses: they must never move.
+- Boot checksum: low byte of sum(`$C00000-$C0007F`) + sum(`$C00082-$C1FFFF`) = byte at `$C00080`.
+- Free space (`$FF` fill): `$C004DC-$C01FFF` (6,948 B), `$C04300-$C10FFF` (52,480 B),
+  `$C1B86E-$C1EFFF` (14,226 B), `$C1F744-$C1FFFF` (2,236 B).
+- BIOS work RAM is reached through `a5 = $10F300` (`lea $10F300,a5` at reset): `0xA82(a5)` is `$10FD82`.
+
+## Levels (say which one a claim is about)
+
+| Level | Meaning | Test |
+|---|---|---|
+| L0 | source rebuilds the ROM byte for byte | `make check` prints `OK sha1 4f5ed710...` |
+| L1 | every byte typed: code, data (text, pointers, bytes), free | `tools/stats.py` |
+| L2 | code proven by recursive descent, 0 unresolved indirect jumps, then run in an emulator | stats + MAME trace |
+| L3 | every routine, table and string named, tagged C / I / ? | names file, doubts list |
+| L4 | RAM, backup RAM and registers named in the source (incl. `x(a5)`) | stats: raw operand counts |
+| L5 | editable tree: modules, all ROM addresses symbolic, code can move | relocation test in MAME |
+| L6 | understanding: boot, test mode, coin/credit, calendar, memory card, sound | written reference |
+
+## Pipeline
+
+1. `tools/trace.py`: recursive descent (Capstone) from the vectors and the BIOS call table; follows
+   `movea.l tbl(pc,dN.w),aN` + `jmp/jsr (aN)` pointer tables; then two speculative passes
+   (code pointers stored as `move.l #$C1xxxx`, orphan code right after `rts/jmp/bra`). Each speculative
+   entry is listed; a decode that reaches an undecodable word (Capstone `id 0`) is rejected.
+2. `tools/gen_source.py`: emits `src/sp-s2.s` (GNU as, Motorola syntax) and `src/neogeo.inc`, labels every
+   target (`sub_`, `loc_`, `dat_`, `tbl_` + address, or a public name from `tools/symbols.py`), turns
+   `$00C0xxxx`/`$00C1xxxx` longs in data into `dc.l label`, then assembles and compares in a loop until the
+   image is identical.
+3. `make check` / `make fixsum` / `tools/romtool.py` for swapping, hashing and the checksum.
+4. Manual corrections go in `tools/hints.txt` (`entry`, `noreturn`, `longtable`), each with a reason.
+
+## Pitfalls (all hit once)
+
+- GNU as optimises silently: `move.l #imm,dN` becomes `moveq` when it fits. Such lines stay as `dc.w`
+  with the instruction in a comment (2 in SP-S2). Check every new tool for this kind of rewrite.
+- After a size change, every later absolute target moves, and the first byte that differs is in an earlier
+  `jmp` that points past it: blaming the first difference gave 138 false raw lines. Detect size changes from
+  the assembler listing (location counter vs original address) instead.
+- Capstone prints `moveq #$ff` unsigned (GNU wants `-0x1`), `abcd.b`/`sbcd.b`/`exg.l` with a size GNU refuses,
+  and returns an `id 0` "dc.w" pseudo-instruction for invalid words: treat it as invalid, not as code.
+- An address read through `x(pc,dN.w)` is a data table: never trace it as code (`$C199FC` was a false entry).
+- `jmp (a6)` at `$C131A8` is a return through a6, used while the RAM (and so the stack) is being tested.
+- The wiki pages disagree on `REG_PALBANK0`/`1`; the register page is followed. Note such conflicts.
+
+## Discipline
+
+- Tag claims C (read in code or seen in an emulator) / I (inferred) / ? (doubt); say what was not checked.
+- Public references only: SNK ROMs (other system ROM versions are fair comparisons), the NeoGeoDev wiki,
+  MAME. Never quote, copy or name third-party replacement BIOSes in this repository.
+- Names come from public documentation or from reading the code: do not invent names for unread routines.
+- Regenerate, rebuild and `make check` before every commit; recompute numbers before quoting them.
+- Never give one percentage for progress: give the level table with the counts from `tools/stats.py`.

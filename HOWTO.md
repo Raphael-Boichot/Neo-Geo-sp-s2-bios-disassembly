@@ -91,9 +91,8 @@ mame ng_mv1 -bios euro -rompath mame/roms -snapshot_directory mame/snap \
      -video none -sound none -nothrottle -autoboot_script tools/mame_snap.lua
 ```
 
-Without a cartridge, SP-S2 shows a green screen of garbled tiles (the boot screen drawn with the
-missing cartridge graphics, letters of "MAX 330 MEGA" are visible), then the crosshatch it keeps when
-no game is present. The "Setting Mode" DIP and the test button did not open test mode without a
+Without a cartridge, SP-S2 shows a green screen of garbled tiles for a few seconds (I: probably the
+boot screen drawn from the missing cartridge graphics), then a crosshatch that stays (C: seen in MAME). The "Setting Mode" DIP and the test button did not open test mode without a
 cartridge (C: tried in MAME 0.264). A game set is needed for the boot animation and test mode.
 
 ## 8. Commit

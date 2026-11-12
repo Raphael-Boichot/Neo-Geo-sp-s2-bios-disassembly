@@ -19,15 +19,15 @@ import sys
 R = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
-for f in ('sp-s2.s', 'neogeo.inc', 'ram.inc'):
+for f in os.listdir(os.path.join(R, 'src')):
     shutil.copy(os.path.join(R, 'src', f), out)
-src = open(os.path.join(out, 'sp-s2.s')).read()
+files = {f: open(os.path.join(out, f)).read() for f in os.listdir(out) if f.endswith('.s')}
 
 
 def edit(old, new):
-    global src
-    assert src.count(old) == 1, old
-    src = src.replace(old, new)
+    hits = [f for f, txt in files.items() if old in txt]
+    assert len(hits) == 1 and files[hits[0]].count(old) == 1, old
+    files[hits[0]] = files[hits[0]].replace(old, new)
 
 
 edit('Reset:\n', 'Reset:\n\tnop\n\tnop\n')
@@ -46,7 +46,8 @@ CustomText:                             | command 3: VRAM address, then text up 
 \t.org\t0x11000,0xFF''')
 edit('TestMenu:\n\tjsr\t(sub_C13A3C,pc)\t| C19072\n',
      'TestMenu:\n\tjsr\t(sub_C13A3C,pc)\t| C19072\n\tjsr\t(CustomMenuLine).l\n')
-open(os.path.join(out, 'sp-s2.s'), 'w').write(src)
+for f, txt in files.items():
+    open(os.path.join(out, f), 'w').write(txt)
 
 obj, binf, rom = (os.path.join(out, n) for n in ('sp-s2.o', 'sp-s2.bin', 'sp-s2.sp1'))
 subprocess.run(['m68k-linux-gnu-as', '-m68000', '--register-prefix-optional', '-I', out,

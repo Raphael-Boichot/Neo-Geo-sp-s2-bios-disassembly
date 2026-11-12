@@ -60,3 +60,15 @@ def load_regions():
 REGIONS = load_regions()
 # blocks whose bytes are a table: never shown as text
 TABLE_RANGES = [(s, e) for s, e, n, _ in REGIONS if 'Table' in n and 'call' not in n]
+
+
+def load_modules():
+    """symbols/modules.csv: (start address, file, description), in address order."""
+    path = os.path.join(ROOT, 'modules.csv')
+    if not os.path.exists(path):
+        return []
+    with open(path, newline='') as f:
+        return sorted((int(r['start'], 16), r['file'], r['description']) for r in csv.DictReader(f))
+
+
+MODULES = load_modules()

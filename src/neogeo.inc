@@ -69,3 +69,5 @@
 
 | BIOS work RAM base, held in a5 by the BIOS code
 	.equ	A5_BASE,0x10F300
+| backup RAM base, held in a4 after lea $D08000,a4
+	.equ	A4_BASE,0xD08000

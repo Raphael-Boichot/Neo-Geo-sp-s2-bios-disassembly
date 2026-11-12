@@ -141,25 +141,54 @@
 	.equ	ram_10FF00,0x10FF00
 	.equ	bram_D00000,0xD00000
 	.equ	bram_D00010,0xD00010
+	.equ	bram_D00020,0xD00020
 	.equ	bram_D00021,0xD00021
+	.equ	bram_D00022,0xD00022
+	.equ	bram_D00024,0xD00024
+	.equ	bram_D0002C,0xD0002C
 	.equ	bram_D00034,0xD00034
+	.equ	bram_D00035,0xD00035
 	.equ	bram_D00038,0xD00038
+	.equ	bram_D00039,0xD00039
 	.equ	bram_D0003A,0xD0003A
 	.equ	bram_D00042,0xD00042
 	.equ	bram_D00043,0xD00043
 	.equ	bram_D00044,0xD00044
 	.equ	bram_D00046,0xD00046
 	.equ	bram_D00047,0xD00047
+	.equ	bram_D00048,0xD00048
+	.equ	bram_D0004C,0xD0004C
 	.equ	bram_D00058,0xD00058
+	.equ	bram_D0005A,0xD0005A
+	.equ	bram_D0005B,0xD0005B
+	.equ	bram_D0005C,0xD0005C
+	.equ	bram_D0005D,0xD0005D
 	.equ	bram_D0005E,0xD0005E
 	.equ	bram_D00060,0xD00060
+	.equ	bram_D00104,0xD00104
+	.equ	bram_D00105,0xD00105
 	.equ	bram_D00108,0xD00108
 	.equ	bram_D00109,0xD00109
+	.equ	bram_D0010A,0xD0010A
+	.equ	bram_D0010E,0xD0010E
+	.equ	bram_D00112,0xD00112
+	.equ	bram_D00116,0xD00116
 	.equ	bram_D0011A,0xD0011A
 	.equ	bram_D00122,0xD00122
 	.equ	bram_D00124,0xD00124
+	.equ	bram_D001A4,0xD001A4
+	.equ	bram_D001A8,0xD001A8
 	.equ	bram_D001AC,0xD001AC
 	.equ	bram_D001B0,0xD001B0
+	.equ	bram_D00200,0xD00200
+	.equ	bram_D00220,0xD00220
+	.equ	bram_D002A0,0xD002A0
 	.equ	bram_D00320,0xD00320
 	.equ	bram_D08000,0xD08000
 	.equ	bram_D08320,0xD08320
+	.equ	bram_D09520,0xD09520
+	.equ	bram_D09B20,0xD09B20
+	.equ	bram_D09BA0,0xD09BA0
+	.equ	bram_D09DE0,0xD09DE0
+	.equ	bram_D0A020,0xD0A020
+	.equ	bram_D0A0E0,0xD0A0E0

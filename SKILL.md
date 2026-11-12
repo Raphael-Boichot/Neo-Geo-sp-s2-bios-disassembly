@@ -49,10 +49,12 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
    image is identical.
 3. `make check` / `make fixsum` / `tools/romtool.py` for swapping, hashing and the checksum.
 4. Manual corrections go in `tools/hints.txt` (`entry`, `noreturn`, `longtable`), each with a reason.
-5. Names live in `symbols/*.csv` (`addr,name,tag,note`): `rom_names.csv`, `ram.csv`, `registers.csv`,
+5. `src/` is split into the modules of `symbols/modules.csv`; the generator converges on one combined
+   file, then writes the modules and checks that the split source rebuilds the ROM.
+6. Names live in `symbols/*.csv` (`addr,name,tag,note`): `rom_names.csv`, `ram.csv`, `registers.csv`,
    `cart_header.csv`. Never edit names in `src/`: `make source` regenerates it. `src/ram.inc` lists every
    RAM address used (named, else `ram_XXXXXX` / `bram_XXXXXX`); `x(a5)` is written `(NAME-A5_BASE,a5)`.
-6. Coverage: `tools/mame_coverage.sh NAME GAME [MODE=dip KEYS=...]` runs MAME with the debugger trace
+7. Coverage: `tools/mame_coverage.sh NAME GAME [MODE=dip KEYS=...]` runs MAME with the debugger trace
    streamed through a pipe and keeps the unique executed addresses in `coverage/NAME.txt`;
    `tools/coverage.py` compares them with the static trace (missed code, speculative entries, BIOS calls).
 
@@ -77,6 +79,10 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
   (`-debug -debugger none`, started from Lua with `manager.machine.debugger:command`; `-debugscript`
   is ignored with `-debugger none`). A trace is ~20,000 lines per frame: stream it through a FIFO.
 - MAME saves DIP switches in its cfg: give each run its own `-cfg_directory`.
+- a4 is a general pointer: only after `lea $D08000,a4` is it the backup RAM base. The generator
+  follows a4 per routine and through calls whose callers all set it; elsewhere `-0x7Fxx(a4)` stays raw.
+- RAM $10FCD8 was first named after the test menu, then found used as a frame count: check every
+  user of a variable (all writes and reads) before giving it a specific name.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
   Text needs mostly letters and no long counting run, and is never looked for inside a named table.
 - A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.

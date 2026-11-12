@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Measured counts behind the disassembly levels (README table).
 
-Usage: stats.py <rom.sp1> [src/sp-s2.s]
+Usage: stats.py <rom.sp1> [src_dir]
 """
 import os
 import re
@@ -12,7 +12,8 @@ import gen_source as G  # noqa: E402
 import trace as T       # noqa: E402
 
 rom = G.swap(open(sys.argv[1], 'rb').read())
-src = open(sys.argv[2] if len(sys.argv) > 2 else 'src/sp-s2.s').read()
+SRC_DIR = sys.argv[2] if len(sys.argv) > 2 else 'src'
+src = '\n'.join(open(os.path.join(SRC_DIR, f)).read() for f in sorted(os.listdir(SRC_DIR)) if f.endswith('.s'))
 t = T.trace(rom, T.load_hints('tools/hints.txt'))
 kinds, _ = T.summary(rom, t)
 
@@ -36,12 +37,13 @@ print(f'L3 labels {len(labels)}: named {len(labels) - len(auto)}, automatic {len
 code = [ln for ln in src.split('\n') if ln.startswith('\t') and not ln.startswith(('\tdc', '\t.'))]
 raw_ram = [ln for ln in code if re.search(r'0x(10|D0)[0-9A-F]{4}\b', ln)]
 raw_a5 = [ln for ln in code if re.search(r'0x[0-9A-F]+\(a5', ln)]
+raw_a4 = [ln for ln in code if re.search(r'-0x[0-9A-F]+\(a4', ln)]
 raw_io = [ln for ln in code if re.search(r'\(0x3[0-9A-F]{5}\)\.l', ln)]
 raw_w = [ln for ln in code if re.search(r'\(0x[0-9A-F]{4}\)\.w', ln)]
-inc = open(os.path.join(os.path.dirname(sys.argv[2]) if len(sys.argv) > 2 else 'src', 'ram.inc')).read()
+inc = open(os.path.join(SRC_DIR, 'ram.inc')).read()
 ram_names = re.findall(r'\.equ\t(\w+),0x', inc)
 auto_ram = [n for n in ram_names if re.match(r'b?ram_[0-9A-F]{6}$', n)]
 print(f'L4 RAM addresses used {len(ram_names)}: named {len(ram_names) - len(auto_ram)}, automatic {len(auto_ram)}; '
-      f'raw RAM operands left {len(raw_ram)}, raw x(a5) {len(raw_a5)}, unnamed I/O {len(raw_io)}, absolute short {len(raw_w)}')
+      f'raw RAM operands left {len(raw_ram)}, raw x(a5) {len(raw_a5)}, backup RAM through a4 left {len(raw_a4)}, unnamed I/O {len(raw_io)}, absolute short {len(raw_w)}')
 print(f'L5 numeric ROM addresses left in operands: '
       f'{len(re.findall(r"0x00?C[01][0-9A-F]{4}", chr(10).join(code)))}')

@@ -3,7 +3,7 @@
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it.
 
-**Status: L0, L4 and the L5 relocation test done; L1/L2 measured; naming started** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming has not
+**Status: L0 and L5 done, L4 nearly (78 backup RAM accesses left); L1/L2 measured; naming in progress (96 names)** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming has not
 started; the BIOS has been run in MAME (screens below, levels in the table).
 
 ## ROM map
@@ -44,8 +44,8 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 
 | File | What it is |
 |---|---|
-| [`src/sp-s2.s`](src/sp-s2.s) | Generated 68000 source (GNU as, Motorola syntax), ROM addresses in comments |
-| [`src/neogeo.inc`](src/neogeo.inc) | Public register and BIOS RAM names (NeoGeoDev wiki) |
+| [`src/`](src/) | Generated 68000 source (GNU as, Motorola syntax), ROM addresses in comments: `sp-s2.s` includes 14 modules (`header.s`, `tables.s`, `boot.s`, `system.s`, `power_on.s`, `calendar.s`, `card.s`, `boot_error.s`, `hardware_test.s`, `eyecatcher.s`, `video_io.s`, `how_to_play.s`, `test_mode.s`, `data_end.s`) |
+| [`src/neogeo.inc`](src/neogeo.inc), [`src/ram.inc`](src/ram.inc) | Registers, cartridge header, `A5_BASE`/`A4_BASE`; every RAM address used |
 | [`Makefile`](Makefile) | `make`, `make check`, `make fixsum`, `make source` |
 | [`HOWTO.md`](HOWTO.md) | Requirements, build, regeneration, trace hints, how to modify and test the BIOS |
 | [`SKILL.md`](SKILL.md) | Working playbook: ROM facts, levels L0-L6, pipeline, pitfalls, rules |
@@ -57,7 +57,7 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 | [`tools/hints.txt`](tools/hints.txt) | Manual tracer hints (empty so far) |
 | [`tools/mame_run.lua`](tools/mame_run.lua) | MAME autoboot script: headless screenshots, test mode, joystick taps |
 | [`docs/`](docs/) | ROM byte maps and screenshots of the BIOS running in MAME |
-| [`symbols/`](symbols/) | Names (`rom_names`, `ram`, `registers`, `cart_header`) and named regions, tagged W / C / I / ? |
+| [`symbols/`](symbols/) | Names (`rom_names`, `ram`, `registers`, `cart_header`), named regions and module boundaries (`modules.csv`), tagged W / C / I / ? |
 | [`coverage/`](coverage/) | Executed system ROM addresses of each MAME scenario (`tools/mame_coverage.sh`) |
 | [`tools/coverage.py`](tools/coverage.py) | Compares MAME coverage with the static trace |
 | [`tools/rom_map.py`](tools/rom_map.py) | Draws the ROM byte maps |
@@ -82,9 +82,9 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 | L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 8,030 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
 | L1 every byte typed | done by the tracer: code 28,432 B, data 25,917 B (text as `.ascii`, 210 ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000` and `$C03000`, a sine table at `$C04000`, tag I); 16 speculative entries, none run in MAME so far |
 | L2 code traced and run | 12 code-pointer tables followed, 1 indirect jump left (`jmp (a6)` at `$C131A8`, a return through a6 during the RAM test). MAME, 8 scenarios (boot to the game, coin and start, hardware test, 5 test-mode items): 2,956 of 8,030 instructions ran (36.8 %, 38.5 % of code bytes); nothing ran outside the static trace once `pea (pc)` return addresses were followed. CREDIT_CHECK, CREDIT_DOWN, SYSTEM_INT2, SETUP_CALENDAR, CARD_ERROR, HOW_TO_PLAY never ran |
-| L3 names | 55 routines and tables named in `symbols/rom_names.csv`: the 17 BIOS call slots and their 17 target routines (W), test mode and hardware test (35, C from MAME screens and coverage), 3 numeric tables (I); 41 of 163 RAM addresses named; 1,340 automatic labels left |
-| L4 RAM and registers | done in the source: no raw RAM, backup RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`. 163 RAM addresses used: 38 named (W), 125 automatic (`ram_`/`bram_`); 18 cartridge header fields named (17 W, 1 I) |
-| L5 editable tree | one source file, no numeric ROM address left; free space written as `.org` so added code uses it up. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs added at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, and runs the test menu (with the new line) and the hardware test. Split into modules not done yet |
+| L3 names | 96 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots and their targets (W); boot path (power-on tests, boot errors, system modes, eyecatcher), VBlank and SYSTEM_IO, test mode and hardware test (C from code reading, MAME screens and coverage); some helpers I. 1,299 automatic labels left |
+| L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (121 accesses, 78 left raw where a4 comes from several callers). 192 RAM addresses used: 45 named (W/C/I), 147 automatic; 18 cartridge header fields named |
+| L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |
 | L6 understanding | started: boot sequence and every test-mode screen captured in MAME; screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); routines not linked to screens yet |
 
 ## Sources

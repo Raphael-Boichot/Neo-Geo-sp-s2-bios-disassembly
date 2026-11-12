@@ -64,6 +64,8 @@ Then `make source` and `make check`.
   `ram.csv` (work and backup RAM), `registers.csv`, `cart_header.csv` (cartridge program header fields).
   Tags: W (NeoGeoDev wiki), C (read in the code or seen in MAME), I (inferred), ? (doubt).
   `tools/symbols.py` refuses duplicate addresses or names and unknown tags.
+- `symbols/modules.csv` lists the module files of `src/` by start address; `src/sp-s2.s` includes them
+  in order. A boundary must be an instruction or data start (`make source` stops otherwise).
 - `make source` applies them: `src/neogeo.inc` (registers, header, `A5_BASE`) and `src/ram.inc`
   (every RAM address used; unnamed ones as `ram_XXXXXX` / `bram_XXXXXX`) are generated.
 - Everything else keeps an automatic label: `sub_` (called), `loc_` (jumped to), `dat_` (data),

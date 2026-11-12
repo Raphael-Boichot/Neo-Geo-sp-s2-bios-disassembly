@@ -6,7 +6,7 @@ Usage: coverage.py <rom.sp1> coverage/*.txt
 Each coverage file lists executed instruction addresses (one hex address per
 line, from tools/mame_coverage.sh). Prints the executed share of the traced
 code, the executed addresses the tracer missed, the check of every speculative
-entry, and which scenarios run each BIOS call.
+entry, and which scenarios run each named routine.
 """
 import os
 import sys
@@ -56,8 +56,10 @@ def main():
     for a, why in t.speculative:
         print(f'  {a:06X} ({why}): {"executed" if a in allpc else "not executed"}')
 
-    print('BIOS calls executed, by scenario:')
+    print('named routines executed, by scenario (BIOS call slots show their target):')
     for a, n in sorted(S.ROM_NAMES.items()):
+        if a not in t.insn:
+            continue                     # data or table name
         tgt = a
         ins = t.insn.get(a)
         if ins is not None and ins.mnemonic == 'jmp':

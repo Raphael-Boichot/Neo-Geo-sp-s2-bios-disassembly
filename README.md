@@ -3,13 +3,13 @@
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it.
 
-**Status: L0 and L5 done, L4 nearly (78 backup RAM accesses left); L1/L2 measured; naming in progress (96 names)** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming has not
+**Status: L0 and L5 done, L4 nearly (78 backup RAM accesses left); L1/L2 measured; naming in progress (111 names)** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming has not
 started; the BIOS has been run in MAME (screens below, levels in the table).
 
 ## ROM map
 
 One pixel per byte, coloured by type (`tools/rom_map.py`); bright blue code ran in MAME in at least
-one of the 8 coverage scenarios. Full ROM:
+one of the 9 coverage scenarios. Full ROM:
 
 ![SP-S2 byte map](docs/rom_map.png)
 
@@ -81,8 +81,8 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 |---|---|
 | L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 8,030 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
 | L1 every byte typed | done by the tracer: code 28,432 B, data 25,917 B (text as `.ascii`, 210 ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000` and `$C03000`, a sine table at `$C04000`, tag I); 16 speculative entries, none run in MAME so far |
-| L2 code traced and run | 12 code-pointer tables followed, 1 indirect jump left (`jmp (a6)` at `$C131A8`, a return through a6 during the RAM test). MAME, 8 scenarios (boot to the game, coin and start, hardware test, 5 test-mode items): 2,956 of 8,030 instructions ran (36.8 %, 38.5 % of code bytes); nothing ran outside the static trace once `pea (pc)` return addresses were followed. CREDIT_CHECK, CREDIT_DOWN, SYSTEM_INT2, SETUP_CALENDAR, CARD_ERROR, HOW_TO_PLAY never ran |
-| L3 names | 96 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots and their targets (W); boot path (power-on tests, boot errors, system modes, eyecatcher), VBlank and SYSTEM_IO, test mode and hardware test (C from code reading, MAME screens and coverage); some helpers I. 1,299 automatic labels left |
+| L2 code traced and run | 12 code-pointer tables followed, 1 indirect jump left (`jmp (a6)` at `$C131A8`, a return through a6 during the RAM test). MAME, 9 scenarios (boot, coin, coins + START into the game, hardware test, 5 test-mode items): 2,975 of 8,030 instructions ran (37.0 %, 38.7 % of code bytes); nothing ran outside the static trace. CREDIT_CHECK runs when a game starts; CREDIT_DOWN, SYSTEM_INT2, SETUP_CALENDAR, CARD_ERROR, HOW_TO_PLAY, the checksum slot and the CARD functions never ran |
+| L3 names | 111 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots and their targets and the 8 CARD functions (W); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons and credits, test mode and hardware test (C from code reading, MAME screens and coverage); some helpers I. 1,284 automatic labels left |
 | L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (121 accesses, 78 left raw where a4 comes from several callers). 192 RAM addresses used: 45 named (W/C/I), 147 automatic; 18 cartridge header fields named |
 | L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |
 | L6 understanding | started: boot sequence and every test-mode screen captured in MAME; screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); routines not linked to screens yet |

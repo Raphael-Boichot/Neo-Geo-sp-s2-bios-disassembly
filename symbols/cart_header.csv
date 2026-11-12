@@ -1,0 +1,19 @@
+addr,name,tag,note
+000000,CART_VECTORS,I,start of the cartridge 68k vector table (generic 68000 layout)
+000100,CART_NEOGEO_ID,W,"""NEO-GEO"" recognition string (wiki 68k program header)"
+000107,CART_SYS_VERSION,W,system version byte (wiki 68k program header)
+000108,CART_NGH,W,NGH number in BCD (wiki 68k program header)
+00010A,CART_PROM_SIZE,W,total P ROM size in bytes (wiki 68k program header)
+00010E,CART_BACKUP_PTR,W,pointer to the game's backup RAM block (wiki 68k program header)
+000112,CART_BACKUP_SIZE,W,size of the backup RAM block (wiki 68k program header)
+000114,CART_EYECATCH_FLAG,W,"eyecatcher: 0 system ROM, 1 game, 2 none (wiki 68k program header)"
+000115,CART_EYECATCH_BANK,W,sprite bank of the eyecatcher logo (wiki 68k program header)
+000116,CART_SOFTDIP_JP,W,pointer to the Japanese soft DIP layout (wiki 68k program header)
+00011A,CART_SOFTDIP_US,W,pointer to the US soft DIP layout (wiki 68k program header)
+00011E,CART_SOFTDIP_EU,W,pointer to the European soft DIP layout (wiki 68k program header)
+000122,CART_USER,W,JMP to the game's USER routine (wiki 68k program header)
+000128,CART_PLAYER_START,W,JMP to the game's PLAYER_START routine (wiki 68k program header)
+00012E,CART_DEMO_END,W,JMP to the game's DEMO_END routine (wiki 68k program header)
+000134,CART_COIN_SOUND,W,JMP to the game's COIN_SOUND routine (wiki 68k program header)
+000182,CART_SECURITY_PTR,W,pointer to the security code (wiki 68k program header)
+000186,CART_HEADER_186,W,"unknown longword, 0 except on boards with Spanish soft DIPs (wiki 68k program header)"

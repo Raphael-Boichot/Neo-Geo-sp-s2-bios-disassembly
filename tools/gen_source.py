@@ -31,6 +31,17 @@ def swap(b):
     return bytes(b[i ^ 1] for i in range(len(b)))
 
 
+A5_BASE = 0x10F300      # a5 always holds this in the BIOS (lea $10F300,a5)
+
+
+def ram_kind(v):
+    if 0x100000 <= v < 0x110000:
+        return 'ram'
+    if 0xD00000 <= v < 0xD10000:
+        return 'bram'
+    return None
+
+
 class Gen:
     def __init__(self, rom, t):
         self.rom = rom
@@ -38,6 +49,7 @@ class Gen:
         self.kinds, _ = T.summary(rom, t)
         self.labels = {}
         self.ptr_longs = set()     # data offsets holding a ROM pointer
+        self.ram_used = {}         # RAM address -> name used in the source
         self.collect()
 
     # ------------------------------------------------------------ labels
@@ -95,6 +107,11 @@ class Gen:
                 self.ptr_longs.add(off)
                 self.want(v, 'data')
 
+    def ram(self, v):
+        name = S.RAM.get(v) or f'{ram_kind(v)}_{v:06X}'
+        self.ram_used[v] = name
+        return name
+
     def ref(self, addr):
         """Symbolic expression for a ROM address."""
         if addr in self.labels:
@@ -121,11 +138,15 @@ class Gen:
         def absol(mm):
             v = int(mm.group(1), 16)
             if mm.group(2) == 'w':
+                if (v & 0xFFFF) in S.CART:
+                    return f'({S.CART[v & 0xFFFF]}).w'
                 return f'(0x{v & 0xFFFF:04X}).w'
             if T.in_rom(v):
                 return f'({self.ref(v)}).l'
-            if v in S.ABS_SYMBOLS:
-                return f'({S.ABS_SYMBOLS[v]}).l'
+            if v in S.REGISTERS:
+                return f'({S.REGISTERS[v]}).l'
+            if ram_kind(v):
+                return f'({self.ram(v)}).l'
             return f'(0x{v:06X}).l'
         op = re.sub(r'\$([0-9a-f]+)\.([lw])', absol, op)
 
@@ -133,10 +154,17 @@ class Gen:
             neg, v = mm.group(1), int(mm.group(2), 16)
             if not neg and mn.endswith('.l') and T.in_rom(v) and v in t.refs:
                 return '#' + self.ref(v)
+            if not neg and mn.endswith('.l') and ram_kind(v) and v not in (0x100000, 0xD00000):
+                return '#' + self.ram(v)
             return f'#{neg}0x{v:X}'
         op = re.sub(r'#(-?)\$([0-9a-f]+)', imm, op)
         op = re.sub(r'(-?)\$([0-9a-f]+)(?=\()', lambda mm: f'{mm.group(1)}0x{mm.group(2).upper()}', op)
         op = op.replace('$', '0x').replace(', ', ',')
+
+        def a5rel(mm):                      # x(a5) -> (NAME-A5_BASE,a5)
+            d = int(mm.group(2), 16) * (-1 if mm.group(1) else 1)
+            return f'({self.ram(A5_BASE + d)}-A5_BASE,a5{mm.group(3) or ""})'
+        op = re.sub(r'(-?)0x([0-9A-Fa-f]+)\(a5(,[ad][0-7]\.[wl])?\)', a5rel, op)
         if mn == 'moveq':                   # GNU wants the signed value
             mm = re.match(r'#0x([0-9A-F]+),', op)
             v = int(mm.group(1), 16)
@@ -185,6 +213,7 @@ class Gen:
              '| Assemble with GNU as (m68k), Motorola syntax: see tools/build.sh',
              '',
              '\t.include\t"neogeo.inc"',
+             '\t.include\t"ram.inc"',
              '\t.text',
              '']
         off = 0
@@ -217,11 +246,23 @@ class Gen:
 
 def write_inc(path):
     with open(path, 'w') as f:
-        f.write('| Public Neo Geo symbols (NeoGeoDev wiki)\n')
-        for title, d in (('Hardware registers', S.REGISTERS), ('BIOS RAM', S.RAM)):
-            f.write(f'\n| {title}\n')
-            for v, n in sorted(d.items()):
-                f.write(f'\t.equ\t{n},0x{v:06X}\n')
+        f.write('| Neo Geo hardware registers (symbols/registers.csv)\n\n')
+        for v, n in sorted(S.REGISTERS.items()):
+            f.write(f'\t.equ\t{n},0x{v:06X}\n')
+        f.write('\n| Cartridge program header (symbols/cart_header.csv)\n\n')
+        for v, n in sorted(S.CART.items()):
+            f.write(f'\t.equ\t{n},0x{v:06X}\n')
+        f.write(f'\n| BIOS work RAM base, held in a5 by the BIOS code\n\t.equ\tA5_BASE,0x{A5_BASE:06X}\n')
+
+
+def write_ram_inc(path, used):
+    """Every RAM address the source uses: names from symbols/ram.csv, else
+    ram_XXXXXX (work RAM) / bram_XXXXXX (backup RAM)."""
+    with open(path, 'w') as f:
+        f.write('| RAM used by the system ROM - generated; names come from symbols/ram.csv\n\n')
+        for v in sorted(set(used) | set(S.RAM)):
+            n = S.RAM.get(v) or used[v]
+            f.write(f'\t.equ\t{n},0x{v:06X}\n')
 
 
 LIST_RE = re.compile(r'^\s*\d+\s+([0-9a-f]{4,5})\s.*\|\s([0-9A-F]{6})\b')
@@ -271,6 +312,7 @@ def main():
     src_path = os.path.join(out_dir, 'sp-s2.s')
     for it in range(5000):
         open(src_path, 'w').write(g.generate(fallback))
+        write_ram_inc(os.path.join(out_dir, 'ram.inc'), g.ram_used)
         img, err, lst = assemble(out_dir, 'sp-s2.s', want_listing=True)
         if img is None:
             # assembler rejected lines: fall back on every instruction it names

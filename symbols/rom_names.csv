@@ -1,0 +1,18 @@
+addr,name,tag,note
+C00402,ENTRY_RESET,W,reset vector and first slot (wiki: entry point)
+C00438,SYSTEM_INT1,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C0043E,SYSTEM_INT2,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C00444,SYSTEM_RETURN,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C0044A,SYSTEM_IO,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C00450,CREDIT_CHECK,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C00456,CREDIT_DOWN,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C0045C,READ_CALENDAR,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C00462,SETUP_CALENDAR,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C00468,CARD,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C0046E,CARD_ERROR,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C00474,HOW_TO_PLAY,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C0047A,CHECKSUM_LOOP,W,wiki: calc a checksum and loop forever
+C004C2,FIX_CLEAR,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C004C8,LSP_1ST,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C004CE,MESS_OUT,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C004D4,CONTROLLER_SETUP,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)

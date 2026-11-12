@@ -1,0 +1,46 @@
+addr,name,tag,note
+300000,REG_P1CNT,W,NeoGeoDev wiki Memory mapped registers
+300001,REG_DIPSW,W,NeoGeoDev wiki Memory mapped registers
+300081,REG_SYSTYPE,W,NeoGeoDev wiki Memory mapped registers
+320000,REG_SOUND,W,NeoGeoDev wiki Memory mapped registers
+320001,REG_STATUS_A,W,NeoGeoDev wiki Memory mapped registers
+340000,REG_P2CNT,W,NeoGeoDev wiki Memory mapped registers
+380000,REG_STATUS_B,W,NeoGeoDev wiki Memory mapped registers
+380001,REG_POUTPUT,W,NeoGeoDev wiki Memory mapped registers
+380011,REG_CRDBANK,W,NeoGeoDev wiki Memory mapped registers
+380021,REG_SLOT,W,NeoGeoDev wiki Memory mapped registers
+380031,REG_LEDLATCHES,W,NeoGeoDev wiki Memory mapped registers
+380041,REG_LEDDATA,W,NeoGeoDev wiki Memory mapped registers
+380051,REG_RTCCTRL,W,NeoGeoDev wiki Memory mapped registers
+380061,REG_RESETCC1,W,NeoGeoDev wiki Memory mapped registers
+380063,REG_RESETCC2,W,NeoGeoDev wiki Memory mapped registers
+380065,REG_RESETCL1,W,NeoGeoDev wiki Memory mapped registers
+380067,REG_RESETCL2,W,NeoGeoDev wiki Memory mapped registers
+3800E1,REG_SETCC1,W,NeoGeoDev wiki Memory mapped registers
+3800E3,REG_SETCC2,W,NeoGeoDev wiki Memory mapped registers
+3800E5,REG_SETCL1,W,NeoGeoDev wiki Memory mapped registers
+3800E7,REG_SETCL2,W,NeoGeoDev wiki Memory mapped registers
+3A0001,REG_NOSHADOW,W,NeoGeoDev wiki Memory mapped registers
+3A0003,REG_SWPBIOS,W,NeoGeoDev wiki Memory mapped registers
+3A0005,REG_CRDUNLOCK1,W,NeoGeoDev wiki Memory mapped registers
+3A0007,REG_CRDLOCK2,W,NeoGeoDev wiki Memory mapped registers
+3A0009,REG_CRDREGSEL,W,NeoGeoDev wiki Memory mapped registers
+3A000B,REG_BRDFIX,W,NeoGeoDev wiki Memory mapped registers
+3A000D,REG_SRAMLOCK,W,NeoGeoDev wiki Memory mapped registers
+3A000F,REG_PALBANK0,W,NeoGeoDev wiki Memory mapped registers (wiki pages disagree on PALBANK0/1)
+3A0011,REG_SHADOW,W,NeoGeoDev wiki Memory mapped registers
+3A0013,REG_SWPROM,W,NeoGeoDev wiki Memory mapped registers
+3A0015,REG_CRDLOCK1,W,NeoGeoDev wiki Memory mapped registers
+3A0017,REG_CRDUNLOCK2,W,NeoGeoDev wiki Memory mapped registers
+3A0019,REG_CRDNORMAL,W,NeoGeoDev wiki Memory mapped registers
+3A001B,REG_CRTFIX,W,NeoGeoDev wiki Memory mapped registers
+3A001D,REG_SRAMUNLOCK,W,NeoGeoDev wiki Memory mapped registers
+3A001F,REG_PALBANK1,W,NeoGeoDev wiki Memory mapped registers (wiki pages disagree on PALBANK0/1)
+3C0000,REG_VRAMADDR,W,NeoGeoDev wiki Memory mapped registers
+3C0002,REG_VRAMRW,W,NeoGeoDev wiki Memory mapped registers
+3C0004,REG_VRAMMOD,W,NeoGeoDev wiki Memory mapped registers
+3C0006,REG_LSPCMODE,W,NeoGeoDev wiki Memory mapped registers
+3C0008,REG_TIMERHIGH,W,NeoGeoDev wiki Memory mapped registers
+3C000A,REG_TIMERLOW,W,NeoGeoDev wiki Memory mapped registers
+3C000C,REG_IRQACK,W,NeoGeoDev wiki Memory mapped registers
+3C000E,REG_TIMERSTOP,W,NeoGeoDev wiki Memory mapped registers

@@ -8,7 +8,7 @@ ROM     ?= roms/sp-s2.sp1
 
 all: build/sp-s2.sp1
 
-build/sp-s2.o: src/sp-s2.s src/neogeo.inc
+build/sp-s2.o: src/sp-s2.s src/neogeo.inc src/ram.inc
 	@mkdir -p build
 	$(AS) -I src -al=build/sp-s2.lst -o $@ src/sp-s2.s
 

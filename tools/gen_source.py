@@ -24,7 +24,33 @@ AS = ['m68k-linux-gnu-as', '-m68000', '--register-prefix-optional']
 LD = ['m68k-linux-gnu-ld', '-Ttext=0xC00000', '-e', '0xC00402', '--oformat', 'binary']
 
 COND = re.compile(r'^(b(hi|ls|cc|hs|cs|lo|ne|eq|vc|vs|pl|mi|ge|lt|gt|le|ra|sr)|db\w+)')
-TEXT_RUN = re.compile(rb'[ -!#-\[\]-~]{5,}')
+_TEXT_CAND = re.compile(rb'[ -!#-\[\]-~]{5,}')
+_LETTERS = re.compile(rb'[A-Za-z ]')
+
+
+class _TextRun:
+    """Printable run that reads as text: at least 60 % letters or spaces and
+    3 letters, so numeric tables in the $20-$7E range are not taken as text."""
+    @staticmethod
+    def _ok(m):
+        g = m.group()
+        letters = len(_LETTERS.findall(g))
+        if any(all(g[i + k + 1] - g[i + k] == 1 for k in range(10)) for i in range(len(g) - 10)):
+            return False                    # long counting run (ramp table), not text ("12345678" stays)
+        return letters >= 0.6 * len(g) and sum(c.isalpha() for c in g.decode()) >= 3
+
+    def match(self, b):
+        m = _TEXT_CAND.match(b)
+        return m if m and self._ok(m) else None
+
+    def search(self, b):
+        for m in _TEXT_CAND.finditer(b):
+            if self._ok(m):
+                return m
+        return None
+
+
+TEXT_RUN = _TextRun()
 
 
 def swap(b):
@@ -196,13 +222,14 @@ class Gen:
                     stop = p
                     break
             chunk = self.rom[off:stop]
-            mm = TEXT_RUN.match(chunk)
+            in_table = any(a <= BASE + off <= b for a, b in S.TABLE_RANGES)
+            mm = None if in_table else TEXT_RUN.match(chunk)
             if mm:
                 out.append(f'\t.ascii\t"{mm.group().decode()}"')
                 off += len(mm.group())
                 continue
             # bytes up to the next text run (max 16 per line)
-            mt = TEXT_RUN.search(chunk)
+            mt = None if in_table else TEXT_RUN.search(chunk)
             n = min(16, mt.start() if mt else len(chunk), len(chunk))
             out.append('\tdc.b\t' + ','.join(f'0x{b:02X}' for b in chunk[:n]))
             off += n

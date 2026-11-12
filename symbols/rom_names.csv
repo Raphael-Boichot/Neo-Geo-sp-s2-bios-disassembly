@@ -16,3 +16,6 @@ C004C2,FIX_CLEAR,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004C8,LSP_1ST,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004CE,MESS_OUT,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004D4,CONTROLLER_SETUP,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
+C02000,ScaleTableA,I,"64 rows x 64 bytes, each row starts at $40 and decreases; use not read in code yet"
+C03000,ScaleTableB,I,"64 rows x 64 bytes of ramps (row 0 = 0..63); use not read in code yet"
+C04000,AbsSineTable,I,"384 words |sin(n*pi/128)| * $10000, the peak stored as $0001; use not read in code yet"

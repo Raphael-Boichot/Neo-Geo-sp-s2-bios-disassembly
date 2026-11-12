@@ -3,8 +3,19 @@
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it.
 
-**Status: L0 done** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming has not
+**Status: L0 and L4 done, L1/L2 measured** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming has not
 started; the BIOS has been run in MAME (screens below, levels in the table).
+
+## ROM map
+
+One pixel per byte, coloured by type (`tools/rom_map.py`); bright blue code ran in MAME in at least
+one of the 8 coverage scenarios. Full ROM:
+
+![SP-S2 byte map](docs/rom_map.png)
+
+Used bytes only (free space folded, 256 bytes per row), with the named tables:
+
+![SP-S2 used bytes](docs/rom_map_used.png)
 
 ## Screens
 
@@ -40,7 +51,12 @@ credit LED counters), the sound test, the memory card test and the backup RAM cl
 | [`tools/stats.py`](tools/stats.py) | Counts behind the level table |
 | [`tools/hints.txt`](tools/hints.txt) | Manual tracer hints (empty so far) |
 | [`tools/mame_run.lua`](tools/mame_run.lua) | MAME autoboot script: headless screenshots, test mode, joystick taps |
-| [`docs/`](docs/) | Screenshots of the BIOS running in MAME |
+| [`docs/`](docs/) | ROM byte maps and screenshots of the BIOS running in MAME |
+| [`symbols/`](symbols/) | Names (`rom_names`, `ram`, `registers`, `cart_header`) and named regions, tagged W / C / I / ? |
+| [`coverage/`](coverage/) | Executed system ROM addresses of each MAME scenario (`tools/mame_coverage.sh`) |
+| [`tools/coverage.py`](tools/coverage.py) | Compares MAME coverage with the static trace |
+| [`tools/rom_map.py`](tools/rom_map.py) | Draws the ROM byte maps |
+| [`tools/mame_trace.lua`](tools/mame_trace.lua), [`tools/mame_coverage.sh`](tools/mame_coverage.sh) | Traced MAME runs (debugger trace through a FIFO) |
 
 The ROM is **not** in the repository (SNK copyright). Put your own dump in `roms/` (git-ignored).
 
@@ -57,11 +73,11 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 
 | Level | State |
 |---|---|
-| L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 8,024 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
-| L1 every byte typed | done by the tracer: code 28,410 B, data 25,939 B (text runs as `.ascii`, 203 ROM pointers as `dc.l label`), free 76,723 B; 18 entries found speculatively, to review |
-| L2 code traced and run | traced: 12 code-pointer tables followed, 1 indirect jump left (`jmp (a6)` at `$C131A8`, a return through a6 during the RAM test); runs in MAME 0.264 (boot, test mode, hand-over to a game); code coverage not measured yet |
-| L3 names | 17 public names (BIOS calls), 1,373 automatic labels |
-| L4 RAM and registers | registers and named BIOS RAM applied to absolute operands; left: 59 code lines with raw `$10xxxx`, 81 raw I/O or backup RAM, 25 absolute short, and 1,185 accesses through `x(a5)` (a5 = `$10F300`) |
+| L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 8,030 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
+| L1 every byte typed | done by the tracer: code 28,432 B, data 25,917 B (text as `.ascii`, 210 ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000` and `$C03000`, a sine table at `$C04000`, tag I); 16 speculative entries, none run in MAME so far |
+| L2 code traced and run | 12 code-pointer tables followed, 1 indirect jump left (`jmp (a6)` at `$C131A8`, a return through a6 during the RAM test). MAME, 8 scenarios (boot to the game, coin and start, hardware test, 5 test-mode items): 2,956 of 8,030 instructions ran (36.8 %, 38.5 % of code bytes); nothing ran outside the static trace once `pea (pc)` return addresses were followed. CREDIT_CHECK, CREDIT_DOWN, SYSTEM_INT2, SETUP_CALENDAR, CARD_ERROR, HOW_TO_PLAY never ran |
+| L3 names | 17 BIOS calls (W) and 3 tables (I) in `symbols/rom_names.csv`; 1,375 automatic labels |
+| L4 RAM and registers | done in the source: no raw RAM, backup RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`. 163 RAM addresses used: 38 named (W), 125 automatic (`ram_`/`bram_`); 18 cartridge header fields named (17 W, 1 I) |
 | L5 editable tree | one file; no numeric ROM address left in operands (all symbolic); code relocation not tested yet |
 | L6 understanding | started: boot sequence and every test-mode screen captured in MAME; screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); routines not linked to screens yet |
 

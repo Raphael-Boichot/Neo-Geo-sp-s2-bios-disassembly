@@ -41,3 +41,17 @@ CART = load('cart_header.csv')
 BIOS_CALLS = ROM_NAMES          # kept for older callers
 ABS_SYMBOLS = dict(REGISTERS)
 ABS_SYMBOLS.update(RAM)
+
+
+def load_regions():
+    """symbols/regions.csv: (start, end, name, tag) for named blocks (tables, call table)."""
+    path = os.path.join(ROOT, 'regions.csv')
+    if not os.path.exists(path):
+        return []
+    with open(path, newline='') as f:
+        return [(int(r['start'], 16), int(r['end'], 16), r['name'], r['tag']) for r in csv.DictReader(f)]
+
+
+REGIONS = load_regions()
+# blocks whose bytes are a table: never shown as text
+TABLE_RANGES = [(s, e) for s, e, n, _ in REGIONS if 'Table' in n and 'call' not in n]

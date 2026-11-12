@@ -83,17 +83,27 @@ Then `make source` and `make check`.
 
 ## 7. Screenshots in MAME (headless)
 
-MAME 0.264 runs the BIOS without a screen; `tools/mame_snap.lua` saves PNG frames:
+MAME 0.264 runs the BIOS without a screen; `tools/mame_run.lua` saves PNG frames. The BIOS set
+(`neogeo.zip`, with a rebuilt `sp-s2.sp1` in it to test a build) and a game set you own go in a
+ROM folder outside the repository:
 
 ```
-mkdir -p mame/roms && cp neogeo.zip mame/roms/      # BIOS set (put a rebuilt sp-s2.sp1 in it to test a build)
-mame ng_mv1 -bios euro -rompath mame/roms -snapshot_directory mame/snap \
-     -video none -sound none -nothrottle -autoboot_script tools/mame_snap.lua
+mame <game> -bios euro -rompath mame/roms -cfg_directory mame/cfg_run1 -nvram_directory mame/nv_run1 \
+     -snapshot_directory mame/snap -video none -sound none -nothrottle -skip_gameinfo \
+     -autoboot_script tools/mame_run.lua
 ```
 
-Without a cartridge, SP-S2 shows a green screen of garbled tiles for a few seconds (I: probably the
-boot screen drawn from the missing cartridge graphics), then a crosshatch that stays (C: seen in MAME). The "Setting Mode" DIP and the test button did not open test mode without a
-cartridge (C: tried in MAME 0.264). A game set is needed for the boot animation and test mode.
+with, in the environment:
+
+| Variables | Result |
+|---|---|
+| `MODE=boot LAST=1500 STEP=30` | boot sequence (`docs/boot_sequence.png`) |
+| `MODE=dip LAST=800 STEP=40` | test mode main menu ("Setting Mode" DIP on) |
+| `MODE=dip KEYS="420:P1 Down,440:P1 Down,460:P1 A"` | opens the third menu item (`docs/test_mode.png`) |
+
+Give every run its own `-cfg_directory`: MAME saves the DIP switches there, and a later "normal" run
+would start in test mode again. Without a cartridge, SP-S2 stops on a crosshatch after the boot tests
+(C: seen in MAME); the boot animation and test mode need a game set.
 
 ## 8. Commit
 

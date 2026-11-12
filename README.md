@@ -6,6 +6,19 @@ source tree that rebuilds the ROM byte for byte. The long-term goal is a custom 
 **Status: L0 done** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming and
 understanding have not started yet (table below).
 
+## Screens
+
+SP-S2 rebuilt from `src/` is byte-identical, so these MAME 0.264 captures show this code
+(`tools/mame_run.lua`, HOWTO section 7). Boot sequence: start-up screen, the NEO·GEO logo animation,
+"MAX 330 MEGA / PRO-GEAR SPEC", SNK logo:
+
+![SP-S2 boot sequence](docs/boot_sequence.png)
+
+Test mode ("Setting Mode" DIP on): main menu, hardware test (crosshatch), hard DIP, soft DIP (cabinet),
+book keeping, code number, calendar:
+
+![SP-S2 test mode](docs/test_mode.png)
+
 ## Contents
 
 | File | What it is |
@@ -21,6 +34,8 @@ understanding have not started yet (table below).
 | [`tools/romtool.py`](tools/romtool.py) | Byte swap, SHA-1 check, boot checksum check and fix |
 | [`tools/stats.py`](tools/stats.py) | Counts behind the level table |
 | [`tools/hints.txt`](tools/hints.txt) | Manual tracer hints (empty so far) |
+| [`tools/mame_run.lua`](tools/mame_run.lua) | MAME autoboot script: headless screenshots, test mode, joystick taps |
+| [`docs/`](docs/) | Screenshots of the BIOS running in MAME |
 
 The ROM is **not** in the repository (SNK copyright). Put your own dump in `roms/` (git-ignored).
 
@@ -43,7 +58,7 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 | L3 names | 17 public names (BIOS calls), 1,373 automatic labels |
 | L4 RAM and registers | registers and named BIOS RAM applied to absolute operands; left: 59 code lines with raw `$10xxxx`, 81 raw I/O or backup RAM, 25 absolute short, and 1,185 accesses through `x(a5)` (a5 = `$10F300`) |
 | L5 editable tree | one file; no numeric ROM address left in operands (all symbolic); code relocation not tested yet |
-| L6 understanding | not started |
+| L6 understanding | started: boot sequence and every test-mode screen captured in MAME; screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); routines not linked to screens yet |
 
 ## Sources
 

@@ -81,7 +81,22 @@ Then `make source` and `make check`.
 5. Hardware: program `build/sp-s2.sp1` into a 27C1024 (byte order as on disk, already MAME/EPROM order)
    for socketed boards, or a flash adapter. Use a fast part (100 ns or better advised).
 
-## 7. Commit
+## 7. Screenshots in MAME (headless)
+
+MAME 0.264 runs the BIOS without a screen; `tools/mame_snap.lua` saves PNG frames:
+
+```
+mkdir -p mame/roms && cp neogeo.zip mame/roms/      # BIOS set (put a rebuilt sp-s2.sp1 in it to test a build)
+mame ng_mv1 -bios euro -rompath mame/roms -snapshot_directory mame/snap \
+     -video none -sound none -nothrottle -autoboot_script tools/mame_snap.lua
+```
+
+Without a cartridge, SP-S2 shows a green screen of garbled tiles (the boot screen drawn with the
+missing cartridge graphics, letters of "MAX 330 MEGA" are visible), then the crosshatch it keeps when
+no game is present. The "Setting Mode" DIP and the test button did not open test mode without a
+cartridge (C: tried in MAME 0.264). A game set is needed for the boot animation and test mode.
+
+## 8. Commit
 
 ```
 make source && make check && python3 tools/stats.py roms/sp-s2.sp1

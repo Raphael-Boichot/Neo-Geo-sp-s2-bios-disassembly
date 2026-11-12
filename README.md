@@ -19,6 +19,11 @@ book keeping, code number, calendar:
 
 ![SP-S2 test mode](docs/test_mode.png)
 
+Hardware test: START steps from the crosshatch to the colour bars, the I/O check (inputs, DIP switches,
+credit LED counters), the sound test, the memory card test and the backup RAM clear:
+
+![SP-S2 hardware test](docs/hardware_test.png)
+
 ## Contents
 
 | File | What it is |

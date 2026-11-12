@@ -100,6 +100,7 @@ with, in the environment:
 | `MODE=boot LAST=1500 STEP=30` | boot sequence (`docs/boot_sequence.png`) |
 | `MODE=dip LAST=800 STEP=40` | test mode main menu ("Setting Mode" DIP on) |
 | `MODE=dip KEYS="420:P1 Down,440:P1 Down,460:P1 A"` | opens the third menu item (`docs/test_mode.png`) |
+| `MODE=dip LAST=2400 KEYS="440:P1 A,600:1 Player Start,900:1 Player Start,..."` | hardware test, START steps to the next screen (`docs/hardware_test.png`) |
 
 Give every run its own `-cfg_directory`: MAME saves the DIP switches there, and a later "normal" run
 would start in test mode again. Without a cartridge, SP-S2 stops on a crosshatch after the boot tests

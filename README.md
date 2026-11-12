@@ -3,8 +3,8 @@
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it.
 
-**Status: L0 done** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming and
-understanding have not started yet (table below).
+**Status: L0 done** (2026-11-12): `src/sp-s2.s` assembles to the original ROM (SHA-1 below). Naming has not
+started; the BIOS has been run in MAME (screens below, levels in the table).
 
 ## Screens
 
@@ -54,7 +54,7 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 |---|---|
 | L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 8,024 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
 | L1 every byte typed | done by the tracer: code 28,410 B, data 25,939 B (text runs as `.ascii`, 203 ROM pointers as `dc.l label`), free 76,723 B; 18 entries found speculatively, to review |
-| L2 code traced and run | traced: 12 code-pointer tables followed, 1 indirect jump left (`jmp (a6)` at `$C131A8`, a return through a6 during the RAM test); not yet run in an emulator |
+| L2 code traced and run | traced: 12 code-pointer tables followed, 1 indirect jump left (`jmp (a6)` at `$C131A8`, a return through a6 during the RAM test); runs in MAME 0.264 (boot, test mode, hand-over to a game); code coverage not measured yet |
 | L3 names | 17 public names (BIOS calls), 1,373 automatic labels |
 | L4 RAM and registers | registers and named BIOS RAM applied to absolute operands; left: 59 code lines with raw `$10xxxx`, 81 raw I/O or backup RAM, 25 absolute short, and 1,185 accesses through `x(a5)` (a5 = `$10F300`) |
 | L5 editable tree | one file; no numeric ROM address left in operands (all symbolic); code relocation not tested yet |

@@ -60,8 +60,12 @@ Then `make source` and `make check`.
 
 ## 5. Names
 
-- Public names (BIOS calls, registers, BIOS RAM variables) are in `tools/symbols.py`, from the NeoGeoDev
-  wiki; `src/neogeo.inc` is generated from it.
+- All names are in `symbols/*.csv` (`addr,name,tag,note`, address in hex): `rom_names.csv` (ROM labels),
+  `ram.csv` (work and backup RAM), `registers.csv`, `cart_header.csv` (cartridge program header fields).
+  Tags: W (NeoGeoDev wiki), C (read in the code or seen in MAME), I (inferred), ? (doubt).
+  `tools/symbols.py` refuses duplicate addresses or names and unknown tags.
+- `make source` applies them: `src/neogeo.inc` (registers, header, `A5_BASE`) and `src/ram.inc`
+  (every RAM address used; unnamed ones as `ram_XXXXXX` / `bram_XXXXXX`) are generated.
 - Everything else keeps an automatic label: `sub_` (called), `loc_` (jumped to), `dat_` (data),
   `tbl_` (pointer table read through `x(pc,dN.w)`), followed by the address.
 - A name is added only from reading the code, from a public document or from an emulator run, tagged
@@ -106,7 +110,21 @@ Give every run its own `-cfg_directory`: MAME saves the DIP switches there, and 
 would start in test mode again. Without a cartridge, SP-S2 stops on a crosshatch after the boot tests
 (C: seen in MAME); the boot animation and test mode need a game set.
 
-## 8. Commit
+## 8. Code coverage in MAME
+
+```
+MAME=/usr/games/mame MAME_ROMS=mame/roms tools/mame_coverage.sh boot sengoku2 LAST=1500
+MAME=/usr/games/mame MAME_ROMS=mame/roms tools/mame_coverage.sh hw sengoku2 MODE=dip LAST=2300 \
+     KEYS="440:P1 A,600:1 Player Start,900:1 Player Start,1200:1 Player Start"
+python3 tools/coverage.py roms/sp-s2.sp1 coverage/*.txt
+```
+
+Each run writes the executed system ROM addresses to `coverage/NAME.txt` (a few KB; the full trace,
+about 20,000 lines per frame, only passes through a pipe). `coverage.py` prints the share of traced code
+that ran, executed addresses the tracer missed (add them to `tools/hints.txt` with the scenario as the
+reason), the speculative entries that ran, and which scenarios use each BIOS call.
+
+## 9. Commit
 
 ```
 make source && make check && python3 tools/stats.py roms/sp-s2.sp1

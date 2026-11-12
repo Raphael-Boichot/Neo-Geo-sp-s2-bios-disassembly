@@ -3188,7 +3188,7 @@ tbl_C131B4:
 	dc.b	0x8B,0x20,0xC3,0x6F,0xE6,0x20,0xE3,0xCC,0xD9,0xE8,0x54,0x45,0x20,0x80
 sub_C1334C:
 	lea.l	(ram_10F300).l,a5	| C1334C
-	pea.l	(dat_C133BA,pc)	| C13352
+	pea.l	(loc_C133BA,pc)	| C13352
 	move.l	a7,(ram_10FD00-A5_BASE,a5)	| C13356
 	move.b	#0xFF,(ram_10FCF4-A5_BASE,a5)	| C1335A
 	move.b	(REG_STATUS_B).l,d0	| C13360
@@ -3215,8 +3215,9 @@ tbl_C1339A:
 	dc.l	loc_C142B8
 	dc.l	loc_C1440E
 	dc.l	loc_C14472
-dat_C133BA:
-	dc.b	0x4E,0xBA,0x1A,0xD8,0x4E,0x75
+loc_C133BA:
+	jsr	(sub_C14E94,pc)	| C133BA
+	rts	| C133BE
 loc_C133C0:
 	lea.l	(ram_10F300).l,a5	| C133C0
 	move.l	a7,(ram_10FD00-A5_BASE,a5)	| C133C6
@@ -3243,7 +3244,7 @@ loc_C1340A:
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C1341C
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C13424
 	clr.b	(ram_10FEBA-A5_BASE,a5)	| C13428
-	pea.l	(dat_C1345A,pc)	| C1342C
+	pea.l	(loc_C1345A,pc)	| C1342C
 	move.w	(BIOS_SYSTEM_MODE-A5_BASE,a5),(ram_10FE8E-A5_BASE,a5)	| C13430
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13436
 	move.w	#0x2000,sr	| C1343C
@@ -3255,8 +3256,11 @@ tbl_C13446:
 	dc.l	loc_C1347A
 	dc.l	loc_C1353E
 	dc.l	loc_C1363E
-dat_C1345A:
-	dc.b	0x4E,0xBA,0x1A,0x38,0x4E,0xBA,0x05,0x8C,0x3B,0x6D,0x0B,0x8E,0x0A,0x80,0x4E,0x75
+loc_C1345A:
+	jsr	(sub_C14E94,pc)	| C1345A
+	jsr	(sub_C139EC,pc)	| C1345E
+	move.w	(ram_10FE8E-A5_BASE,a5),(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13462
+	rts	| C13468
 loc_C1346A:
 	lea.l	(dat_C13482,pc),a4	| C1346A
 	bra.w	loc_C13500	| C1346E
@@ -3568,6 +3572,7 @@ loc_C139AE:
 loc_C139E6:
 	jsr	(sub_C13A3C,pc)	| C139E6
 	rts	| C139EA
+sub_C139EC:
 	tst.b	(ram_10FEBA-A5_BASE,a5)	| C139EC
 	beq.b	loc_C13A3A	| C139F0
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C139F2
@@ -5461,6 +5466,7 @@ sub_C14E86:
 	move.b	d0,(REG_CRDUNLOCK1).l	| C14E86
 	move.b	d0,(REG_CRDUNLOCK2).l	| C14E8C
 	rts	| C14E92
+sub_C14E94:
 	move.b	d0,(REG_CRDLOCK2).l	| C14E94
 	move.b	d0,(REG_CRDLOCK1).l	| C14E9A
 	rts	| C14EA0

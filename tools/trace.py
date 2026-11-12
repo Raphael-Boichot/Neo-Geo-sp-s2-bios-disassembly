@@ -110,7 +110,10 @@ class Tracer:
                 # references held in operands (lea/pea/move #imm etc.)
                 t, kind = self.ea_target(ins)
                 if t is not None and in_rom(t):
-                    self.add_ref(t, addr, 'data')
+                    if mn.startswith('pea') and kind == 'pc':
+                        self.push(t, addr, 'code')   # pushed return address, reached by rts
+                    else:
+                        self.add_ref(t, addr, 'data')
                 for mm in re.finditer(r'#\$([0-9a-f]+)', ins.op_str):
                     v = int(mm.group(1), 16)
                     if in_rom(v) and v % 2 == 0 and mn.endswith('.l'):

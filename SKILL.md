@@ -49,6 +49,12 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
    image is identical.
 3. `make check` / `make fixsum` / `tools/romtool.py` for swapping, hashing and the checksum.
 4. Manual corrections go in `tools/hints.txt` (`entry`, `noreturn`, `longtable`), each with a reason.
+5. Names live in `symbols/*.csv` (`addr,name,tag,note`): `rom_names.csv`, `ram.csv`, `registers.csv`,
+   `cart_header.csv`. Never edit names in `src/`: `make source` regenerates it. `src/ram.inc` lists every
+   RAM address used (named, else `ram_XXXXXX` / `bram_XXXXXX`); `x(a5)` is written `(NAME-A5_BASE,a5)`.
+6. Coverage: `tools/mame_coverage.sh NAME GAME [MODE=dip KEYS=...]` runs MAME with the debugger trace
+   streamed through a pipe and keeps the unique executed addresses in `coverage/NAME.txt`;
+   `tools/coverage.py` compares them with the static trace (missed code, speculative entries, BIOS calls).
 
 ## Pitfalls (all hit once)
 
@@ -62,10 +68,17 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
 - An address read through `x(pc,dN.w)` is a data table: never trace it as code (`$C199FC` was a false entry).
 - `jmp (a6)` at `$C131A8` is a return through a6, used while the RAM (and so the stack) is being tested.
 - The wiki pages disagree on `REG_PALBANK0`/`1`; the register page is followed. Note such conflicts.
+- `pea (label,pc)` pushes a return address that a later `rts` jumps to: it is code, not data
+  (`$C133BA` was missed until MAME ran it).
+- MAME: a read tap on the ROM does not see opcode fetches (only data reads): use the debugger trace
+  (`-debug -debugger none`, started from Lua with `manager.machine.debugger:command`; `-debugscript`
+  is ignored with `-debugger none`). A trace is ~20,000 lines per frame: stream it through a FIFO.
+- MAME saves DIP switches in its cfg: give each run its own `-cfg_directory`.
 
 ## Discipline
 
-- Tag claims C (read in code or seen in an emulator) / I (inferred) / ? (doubt); say what was not checked.
+- Tag claims W (public documentation: NeoGeoDev wiki), C (read in code or seen in an emulator),
+  I (inferred), ? (doubt); say what was not checked.
 - Public references only: SNK ROMs (other system ROM versions are fair comparisons), the NeoGeoDev wiki,
   MAME. Never quote, copy or name third-party replacement BIOSes in this repository.
 - Names come from public documentation or from reading the code: do not invent names for unread routines.

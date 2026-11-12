@@ -37,3 +37,6 @@ addr,name,tag,note
 10FDD8,BIOS_SECOND,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
 10FDDA,BIOS_SELECT_TIMER,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
 10FE80,BIOS_DEVMODE,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
+10FCD8,TestIndex,C,"test mode: menu cursor line, and step of HwTestStepTable in the hardware test"
+10FCDA,TestIndexNew,C,"test mode: new cursor line before TestMenuDrawCursor"
+10FE8C,FrameWaitFlag,I,"set by WaitFrame, which waits for it to be cleared (by the VBlank handler, not read yet)"

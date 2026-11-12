@@ -14,6 +14,9 @@ import os
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'symbols')
 
 
+NOTES = {}      # address -> (tag, note) of every loaded name
+
+
 def load(name):
     rows = {}
     path = os.path.join(ROOT, name)
@@ -31,7 +34,9 @@ def load(name):
                 raise SystemExit(f'{name}: bad tag {r["tag"]!r} at {a:06X}')
             names.add(r['name'])
             rows[a] = r['name']
+            NOTES[a] = (r['tag'], r.get('note', ''))
     return rows
+
 
 
 ROM_NAMES = load('rom_names.csv')

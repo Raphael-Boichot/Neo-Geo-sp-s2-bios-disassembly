@@ -12,9 +12,9 @@
 	.equ	ram_10FC91,0x10FC91
 	.equ	ram_10FCB4,0x10FCB4
 	.equ	ram_10FCB5,0x10FCB5
-	.equ	ram_10FCD8,0x10FCD8
+	.equ	TestIndex,0x10FCD8
 	.equ	ram_10FCD9,0x10FCD9
-	.equ	ram_10FCDA,0x10FCDA
+	.equ	TestIndexNew,0x10FCDA
 	.equ	ram_10FCDB,0x10FCDB
 	.equ	ram_10FCDC,0x10FCDC
 	.equ	ram_10FCDE,0x10FCDE
@@ -99,7 +99,7 @@
 	.equ	ram_10FE88,0x10FE88
 	.equ	ram_10FE8A,0x10FE8A
 	.equ	ram_10FE8B,0x10FE8B
-	.equ	ram_10FE8C,0x10FE8C
+	.equ	FrameWaitFlag,0x10FE8C
 	.equ	ram_10FE8D,0x10FE8D
 	.equ	ram_10FE8E,0x10FE8E
 	.equ	ram_10FE90,0x10FE90

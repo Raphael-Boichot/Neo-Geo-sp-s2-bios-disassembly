@@ -248,6 +248,9 @@ class Gen:
         while off < SIZE:
             addr = BASE + off
             if addr in self.labels:
+                if addr in S.ROM_NAMES and addr in S.NOTES:
+                    tag, note = S.NOTES[addr]
+                    L.append(f'| {S.ROM_NAMES[addr]} [{tag}] {note}')
                 L.append(f'{self.labels[addr]}:')
             if kinds[off] == 'C':
                 ins = self.t.insn[addr]

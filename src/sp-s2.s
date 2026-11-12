@@ -717,13 +717,14 @@ Reset:
 	move.w	#0x7,(REG_IRQACK).l	| C1100C
 	move.w	#0x4000,(REG_LSPCMODE).l	| C11014
 	lea.l	(ram_10F300).l,a5	| C1101C
-	jmp	(loc_C11A84).l	| C11022
+	jmp	(PowerOnTest).l	| C11022
 loc_C11028:
-	bra.w	loc_C11038	| C11028
+	bra.w	ClearRamAndVideo	| C11028
 loc_C1102C:
 	move.w	(dat_C00400).l,(BIOS_MVS_FLAG-A5_BASE,a5)	| C1102C
-	bra.w	loc_C11136	| C11034
-loc_C11038:
+	bra.w	BiosStart	| C11034
+| ClearRamAndVideo [C] clears work RAM, both palette banks, the fix layer (FixClear), sprite VRAM, then LspFirst
+ClearRamAndVideo:
 	moveq	#0x0,d0	| C11038
 	move.l	d0,d1	| C1103A
 	move.l	d0,d2	| C1103C
@@ -804,24 +805,28 @@ loc_C110E2:
 	dbra	d7,loc_C110E2	| C11128
 	jsr	(LspFirst).l	| C1112C
 	bra.w	loc_C1102C	| C11132
-loc_C11136:
+| BiosStart [I] after the tests: MESS_OUT buffer, ControllerSetup, then SystemModeDispatch
+BiosStart:
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C11136
 	jsr	(ControllerSetup,pc)	| C1113E
-loc_C11142:
+| SystemModeDispatch [C] resets the stack, then jumps through SystemModeTable by the low byte of BIOS_SYSTEM_MODE
+SystemModeDispatch:
 	move.b	d0,(REG_DIPSW).l	| C11142
 	movea.l	#ram_10F300,a7	| C11148
 	lea.l	(ram_10F300).l,a5	| C1114E
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C11154
 	moveq	#0x0,d0	| C1115A
-	move.b	(ram_10FD81-A5_BASE,a5),d0	| C1115C
+	move.b	(BIOS_SYSTEM_MODE_LO-A5_BASE,a5),d0	| C1115C
 	lsl.w	#0x2,d0	| C11160
-	movea.l	(tbl_C11168,pc,d0.w),a0	| C11162
+	movea.l	(SystemModeTable,pc,d0.w),a0	| C11162
 	jmp	(a0)	| C11166
-tbl_C11168:
-	dc.l	loc_C11174
-	dc.l	loc_C111A0
-	dc.l	loc_C111EA
-loc_C11174:
+| SystemModeTable [C] 3 entries: SystemMode0, SystemMode1, SystemMode2
+SystemModeTable:
+	dc.l	SystemMode0
+	dc.l	SystemMode1
+	dc.l	SystemMode2
+| SystemMode0 [I] mode 0 routine (first entry of SystemModeTable)
+SystemMode0:
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11174
 	jsr	(sub_C121D6,pc)	| C1117A
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1117E
@@ -832,7 +837,8 @@ loc_C11174:
 	move.b	#0x0,d0	| C11196
 	move.b	d0,d1	| C1119A
 	bra.w	loc_C11286	| C1119C
-loc_C111A0:
+| SystemMode1 [C] reads CART_EYECATCH_FLAG: 0 runs the system ROM eyecatcher (Eyecatcher), 1 lets the game do it, 2 skips it
+SystemMode1:
 	move.b	#0xA,(ram_10FEE1-A5_BASE,a5)	| C111A0
 	clr.b	(BIOS_USER_MODE-A5_BASE,a5)	| C111A6
 	clr.b	(ram_10FCEC-A5_BASE,a5)	| C111AA
@@ -846,20 +852,21 @@ loc_C111A0:
 loc_C111C2:
 	move.b	#0x1,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C111C2
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C111C8
-	jmp	(loc_C17E26).l	| C111CC
+	jmp	(Eyecatcher).l	| C111CC
 loc_C111D2:
 	move.w	#0x2,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C111D2
-	bra.w	loc_C11142	| C111D8
+	bra.w	SystemModeDispatch	| C111D8
 dat_C111DC:
 	dc.b	0x00,0x03,0x72,0x2C,0x01,0x08
 	.ascii	"SLOT "
 	dc.b	0xFF,0x00,0x00
-loc_C111EA:
+| SystemMode2 [I] mode 2 routine (third entry of SystemModeTable)
+SystemMode2:
 	tst.w	(bram_D00060).l	| C111EA
 	beq.w	loc_C11260	| C111F0
 	move.b	#0xFF,(ram_10FEE1).l	| C111F4
 	move.b	d0,(REG_SWPBIOS).l	| C111FC
-	move.w	#0x12C,(TestIndex-A5_BASE,a5)	| C11202
+	move.w	#0x12C,(WorkIndex-A5_BASE,a5)	| C11202
 	move.l	#0xEEE0000,(0x400002).l	| C11208
 	move.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C11212
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C11218
@@ -880,7 +887,7 @@ loc_C1124E:
 	jsr	(WaitFrame,pc)	| C1124E
 	btst.b	#0x1,(ram_10FEDD-A5_BASE,a5)	| C11252
 	bne.b	loc_C11260	| C11258
-	subq.w	#0x1,(TestIndex-A5_BASE,a5)	| C1125A
+	subq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C1125A
 	bne.b	loc_C1124E	| C1125E
 loc_C11260:
 	move.b	#0xA,(ram_10FEE1-A5_BASE,a5)	| C11260
@@ -946,9 +953,9 @@ loc_C11326:
 	jsr	(sub_C13A3C,pc)	| C11360
 	jsr	(LspFirst,pc)	| C11364
 loc_C11368:
-	pea.l	(loc_C11142,pc)	| C11368
+	pea.l	(SystemModeDispatch,pc)	| C11368
 	moveq	#0x0,d0	| C1136C
-	move.b	(ram_10FD81-A5_BASE,a5),d0	| C1136E
+	move.b	(BIOS_SYSTEM_MODE_LO-A5_BASE,a5),d0	| C1136E
 	lsl.w	#0x2,d0	| C11372
 	movea.l	(tbl_C1137A,pc,d0.w),a0	| C11374
 	jmp	(a0)	| C11378
@@ -976,7 +983,7 @@ loc_C11396:
 	bcc.b	CheckSettingMode	| C113CE
 	bra.b	loc_C113D8	| C113D0
 loc_C113D2:
-	move.b	#0x1,(ram_10FD81-A5_BASE,a5)	| C113D2
+	move.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C113D2
 loc_C113D8:
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C113D8
 	rts	| C113DC
@@ -995,14 +1002,14 @@ CheckSettingMode:
 	move.b	d0,(REG_SRAMLOCK).l	| C11410
 	bra.b	loc_C113D2	| C11416
 loc_C11418:
-	move.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C11418
+	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11418
 	jsr	(sub_C123C4,pc)	| C1141E
 	move.b	(bram_D00108).l,d5	| C11422
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C11428
 	jsr	(sub_C1268A,pc)	| C1142C
 	rts	| C11430
 loc_C11432:
-	move.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C11432
+	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11432
 	move.b	(bram_D00108).l,d5	| C11438
 	jsr	(sub_C1268A,pc)	| C1143E
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11442
@@ -1013,7 +1020,7 @@ loc_C11452:
 	clr.b	(ram_10FEC5-A5_BASE,a5)	| C11452
 	jsr	(sub_C12C24,pc)	| C11456
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1145A
-	move.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C11460
+	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11460
 	jsr	(sub_C12322,pc)	| C11466
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1146A
 	tst.b	(bram_D00043).l	| C1146E
@@ -1029,33 +1036,33 @@ loc_C11486:
 loc_C11498:
 	rts	| C11498
 loc_C1149A:
-	move.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C1149A
+	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1149A
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114A0
 	jsr	(sub_C12322,pc)	| C114A6
 	jsr	(sub_C123C4,pc)	| C114AA
 	move.b	(bram_D00058).l,d0	| C114AE
 	cmp.b	(bram_D00108).l,d0	| C114B4
 	bne.b	loc_C114C2	| C114BA
-	move.b	#0x1,(ram_10FD81-A5_BASE,a5)	| C114BC
+	move.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114BC
 loc_C114C2:
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114C2
 	rts	| C114C6
 loc_C114C8:
-	move.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C114C8
+	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114C8
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114CE
 	jsr	(sub_C12322,pc)	| C114D4
 	jsr	(sub_C123C4,pc)	| C114D8
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114DC
 	rts	| C114E0
 loc_C114E2:
-	move.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C114E2
+	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114E2
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114E8
 	jsr	(sub_C12322,pc)	| C114EE
 	jsr	(sub_C12372,pc)	| C114F2
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114F6
 	rts	| C114FA
 loc_C114FC:
-	move.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C114FC
+	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114FC
 	rts	| C11502
 sub_C11504:
 	move.w	#0x2700,sr	| C11504
@@ -1140,7 +1147,7 @@ sub_C11632:
 SystemInt1:
 	move.w	#0x4,(REG_IRQACK).l	| C11646
 	move.b	d0,(REG_DIPSW).l	| C1164E
-	tst.b	(ram_10FEE3).l	| C11654
+	tst.b	(Int1CountOnly).l	| C11654
 	bne.b	loc_C11672	| C1165A
 	movem.l	d0-d7/a0-a6,-(a7)	| C1165C
 	jsr	(MessOut,pc)	| C11660
@@ -1148,14 +1155,14 @@ SystemInt1:
 	clr.b	(FrameWaitFlag).l	| C11668
 	movem.l	(a7)+,d0-d7/a0-a6	| C1166E
 loc_C11672:
-	addq.b	#0x1,(ram_10FEE4).l	| C11672
+	addq.b	#0x1,(VBlankCount).l	| C11672
 	rte	| C11678
 | SystemIo [W] target of SYSTEM_IO
 SystemIo:
 	lea.l	(ram_10F300).l,a5	| C1167A
-	addq.l	#0x1,(ram_10FE88-A5_BASE,a5)	| C11680
-	jsr	(sub_C126B4,pc)	| C11684
-	jsr	(sub_C1850E,pc)	| C11688
+	addq.l	#0x1,(FrameCounter-A5_BASE,a5)	| C11680
+	jsr	(MvsLedUpdate,pc)	| C11684
+	jsr	(ReadControllers,pc)	| C11688
 	tst.w	(dat_C116C6).l	| C1168C
 	bne.w	loc_C11696	| C11692
 loc_C11696:
@@ -1174,7 +1181,7 @@ loc_C116B2:
 	beq.b	loc_C116C4	| C116B6
 	cmpi.b	#0x2,(BIOS_USER_MODE-A5_BASE,a5)	| C116B8
 	bne.b	loc_C116C4	| C116BE
-	jsr	(sub_C12BE6,pc)	| C116C0
+	jsr	(PlayTimeCount,pc)	| C116C0
 loc_C116C4:
 	rts	| C116C4
 dat_C116C6:
@@ -1228,7 +1235,7 @@ loc_C1173A:
 	move.b	#0x1,(ram_10FEE1-A5_BASE,a5)	| C11760
 	clr.w	(BIOS_SELECT_TIMER-A5_BASE,a5)	| C11766
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C1176A
-	move.b	#0x3,(ram_10FD81-A5_BASE,a5)	| C1176E
+	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1176E
 	jsr	(sub_C11836,pc)	| C11774
 loc_C11778:
 	rts	| C11778
@@ -1299,7 +1306,7 @@ loc_C11816:
 CreditDown:
 	lea.l	(ram_10F300).l,a5	| C11820
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C11826
-	move.b	#0x3,(ram_10FD81-A5_BASE,a5)	| C1182A
+	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1182A
 	jsr	(sub_C1299A,pc)	| C11830
 	rts	| C11834
 sub_C11836:
@@ -1344,7 +1351,7 @@ loc_C118AE:
 	moveq	#0x5,d1	| C118B6
 loc_C118B8:
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C118B8
-	move.b	d1,(ram_10FD81-A5_BASE,a5)	| C118BC
+	move.b	d1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C118BC
 	jsr	(CART_DEMO_END).w	| C118C0
 	jmp	(SystemReturn,pc)	| C118C4
 loc_C118C8:
@@ -1357,25 +1364,25 @@ SystemInt2:
 	moveq	#0x1,d6	| C118DC
 	lea.l	(ram_100000).l,a0	| C118DE
 	move.w	#0x7FFF,d5	| C118E4
-	jsr	(sub_C13134,pc)	| C118E8
+	jsr	(MemTestBlock,pc)	| C118E8
 	moveq	#0x2,d6	| C118EC
 	lea.l	(0x400000).l,a0	| C118EE
 	move.w	#0xFFF,d5	| C118F4
 	move.b	d0,(REG_PALBANK1).l	| C118F8
-	jsr	(sub_C13134,pc)	| C118FE
+	jsr	(MemTestBlock,pc)	| C118FE
 	lea.l	(0x400000).l,a0	| C11902
 	move.b	d0,(REG_PALBANK0).l	| C11908
-	jsr	(sub_C13134,pc)	| C1190E
+	jsr	(MemTestBlock,pc)	| C1190E
 	move.b	d0,(REG_PALBANK1).l	| C11912
 	moveq	#0x3,d6	| C11918
 	lea.l	(REG_VRAMRW).l,a1	| C1191A
 	move.w	#0x1,0x2(a1)	| C11920
 	moveq	#0x0,d4	| C11926
 	move.w	#0x7FFF,d5	| C11928
-	jsr	(sub_C130AA,pc)	| C1192C
+	jsr	(VramTest,pc)	| C1192C
 	move.l	#0x8000,d4	| C11930
 	move.w	#0x5FF,d5	| C11936
-	jsr	(sub_C130AA,pc)	| C1193A
+	jsr	(VramTest,pc)	| C1193A
 	cmpi.l	#Reset,(loc_C00408+2).l	| C1193E
 	bne.w	loc_C11984	| C11948
 	lea.l	(CART_VECTORS).w,a0	| C1194C
@@ -1464,28 +1471,29 @@ loc_C11A40:
 loc_C11A62:
 	moveq	#0x5,d6	| C11A62
 loc_C11A64:
-	jmp	(loc_C16ADA,pc)	| C11A64
+	jmp	(BootError,pc)	| C11A64
 loc_C11A68:
 	moveq	#0x0,d6	| C11A68
-	jmp	(loc_C16ADA,pc)	| C11A6A
+	jmp	(BootError,pc)	| C11A6A
 dat_C11A6E:
 	dc.b	0x00,0x03,0x71,0x4C,0x01,0x08
 	.ascii	"WORK RAM TEST"
 	dc.b	0xFF,0x00,0x00
-loc_C11A84:
+| PowerOnTest [C] boot tests: LED latches, then work RAM, backup RAM, palette banks 1/0 and VRAM (test number in d6), calendar, system ROM checksum, memory card; errors go to BootError
+PowerOnTest:
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11A84
-	bsr.w	sub_C184F0	| C11A8C
+	bsr.w	Delay	| C11A8C
 	move.b	#0xFF,(REG_LEDDATA).l	| C11A90
 	move.b	#0xF7,(REG_LEDLATCHES).l	| C11A98
-	bsr.w	sub_C184F0	| C11AA0
+	bsr.w	Delay	| C11AA0
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11AA4
-	bsr.w	sub_C184F0	| C11AAC
+	bsr.w	Delay	| C11AAC
 	move.b	#0xEF,(REG_LEDLATCHES).l	| C11AB0
-	bsr.w	sub_C184F0	| C11AB8
+	bsr.w	Delay	| C11AB8
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11ABC
-	bsr.w	sub_C184F0	| C11AC4
+	bsr.w	Delay	| C11AC4
 	move.b	#0xDF,(REG_LEDLATCHES).l	| C11AC8
-	bsr.w	sub_C184F0	| C11AD0
+	bsr.w	Delay	| C11AD0
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11AD4
 	move.b	d0,(REG_SWPBIOS).l	| C11ADC
 	move.b	d0,(REG_BRDFIX).l	| C11AE2
@@ -1494,30 +1502,30 @@ loc_C11A84:
 	moveq	#0x0,d6	| C11AF4
 	lea.l	(ram_100000).l,a0	| C11AF6
 	move.w	#0x7FFF,d5	| C11AFC
-	jsr	(sub_C13134,pc)	| C11B00
+	jsr	(MemTestBlock,pc)	| C11B00
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11B04
 	addq.b	#0x1,d6	| C11B0A
 	lea.l	(bram_D00000).l,a0	| C11B0C
-	jsr	(sub_C125C8,pc)	| C11B12
+	jsr	(BackupRamTest,pc)	| C11B12
 	moveq	#0x2,d6	| C11B16
 	lea.l	(0x400000).l,a0	| C11B18
 	move.w	#0xFFF,d5	| C11B1E
 	move.b	d0,(REG_PALBANK1).l	| C11B22
-	jsr	(sub_C13134,pc)	| C11B28
+	jsr	(MemTestBlock,pc)	| C11B28
 	addq.b	#0x1,d6	| C11B2C
 	lea.l	(0x400000).l,a0	| C11B2E
 	move.b	d0,(REG_PALBANK0).l	| C11B34
-	jsr	(sub_C13134,pc)	| C11B3A
+	jsr	(MemTestBlock,pc)	| C11B3A
 	move.b	d0,(REG_PALBANK1).l	| C11B3E
 	addq.b	#0x1,d6	| C11B44
 	lea.l	(REG_VRAMRW).l,a1	| C11B46
 	move.w	#0x1,0x2(a1)	| C11B4C
 	moveq	#0x0,d4	| C11B52
 	move.w	#0x7FFF,d5	| C11B54
-	jsr	(sub_C130AA,pc)	| C11B58
+	jsr	(VramTest,pc)	| C11B58
 	move.l	#0x8000,d4	| C11B5C
 	move.w	#0x5FF,d5	| C11B62
-	jsr	(sub_C130AA,pc)	| C11B66
+	jsr	(VramTest,pc)	| C11B66
 	move.b	d0,(REG_SRAMLOCK).l	| C11B6A
 	move.b	(REG_DIPSW).l,d0	| C11B70
 	bne.w	loc_C11BD6	| C11B76
@@ -1529,36 +1537,37 @@ loc_C11A84:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C11B9A
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C11B9E
 	jsr	(MessOut).l	| C11BA2
-loc_C11BA8:
+| WorkRamTestLoop [C] when REG_DIPSW reads 0 (all hard DIPs on): shows WORK RAM TEST and repeats the RAM tests until a DIP is turned off
+WorkRamTestLoop:
 	moveq	#0x0,d6	| C11BA8
 	lea.l	(ram_100000).l,a0	| C11BAA
 	move.w	#0x7FFF,d5	| C11BB0
-	jsr	(sub_C13134,pc)	| C11BB4
+	jsr	(MemTestBlock,pc)	| C11BB4
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11BB8
 	addq.b	#0x1,d6	| C11BBE
 	lea.l	(bram_D00000).l,a0	| C11BC0
-	jsr	(sub_C125C8,pc)	| C11BC6
+	jsr	(BackupRamTest,pc)	| C11BC6
 	move.b	(REG_DIPSW).l,d0	| C11BCA
-	beq.b	loc_C11BA8	| C11BD0
-	jsr	(sub_C125F4,pc)	| C11BD2
+	beq.b	WorkRamTestLoop	| C11BD0
+	jsr	(ClearBackupRam,pc)	| C11BD2
 loc_C11BD6:
 	moveq	#0x8,d0	| C11BD6
-	jsr	(sub_C12D6C,pc)	| C11BD8
+	jsr	(RtcCommand,pc)	| C11BD8
 	move.b	#0x40,d0	| C11BDC
-	jsr	(sub_C11D94,pc)	| C11BE0
-	clr.b	(ram_10FEE4).l	| C11BE4
-	move.b	#0x1,(ram_10FEE3).l	| C11BEA
+	jsr	(WaitRtcPulse,pc)	| C11BE0
+	clr.b	(VBlankCount).l	| C11BE4
+	move.b	#0x1,(Int1CountOnly).l	| C11BEA
 	move.w	#0x2000,sr	| C11BF2
-	jsr	(sub_C11D94,pc)	| C11BF6
+	jsr	(WaitRtcPulse,pc)	| C11BF6
 	move.w	#0x2700,sr	| C11BFA
-	clr.b	(ram_10FEE3).l	| C11BFE
+	clr.b	(Int1CountOnly).l	| C11BFE
 	moveq	#0x7,d0	| C11C04
-	jsr	(sub_C12D6C,pc)	| C11C06
-	move.b	(ram_10FEE4).l,d0	| C11C0A
+	jsr	(RtcCommand,pc)	| C11C06
+	move.b	(VBlankCount).l,d0	| C11C0A
 	subi.b	#0x39,d0	| C11C10
-	bcs.w	loc_C11D8C	| C11C14
+	bcs.w	BootErrorCalendar	| C11C14
 	cmpi.b	#0x7,d0	| C11C18
-	bcc.w	loc_C11D8C	| C11C1C
+	bcc.w	BootErrorCalendar	| C11C1C
 	cmpi.l	#Reset,(loc_C00408+2).l	| C11C20
 	bne.w	loc_C11C66	| C11C2A
 	lea.l	(CART_VECTORS).w,a0	| C11C2E
@@ -1602,7 +1611,7 @@ loc_C11CC2:
 	move.b	d0,(REG_DIPSW).l	| C11CC2
 	move.w	(a0)+,d1	| C11CC8
 	cmp.b	d1,d0	| C11CCA
-	bne.w	loc_C11D44	| C11CCC
+	bne.w	BootErrorMemCard	| C11CCC
 	dbra	d7,loc_C11CC2	| C11CD0
 	move.w	#0x7FF,d7	| C11CD4
 	movea.l	a1,a0	| C11CD8
@@ -1617,7 +1626,7 @@ loc_C11CF0:
 	move.b	d0,(REG_DIPSW).l	| C11CF0
 	move.w	(a0)+,d1	| C11CF6
 	cmp.b	d1,d0	| C11CF8
-	bne.w	loc_C11D44	| C11CFA
+	bne.w	BootErrorMemCard	| C11CFA
 	dbra	d7,loc_C11CF0	| C11CFE
 	movea.l	a1,a0	| C11D02
 	move.w	#0x3FF,d7	| C11D04
@@ -1638,16 +1647,17 @@ loc_C11D22:
 	lsr.w	#0x8,d2	| C11D2C
 	move.w	(a0)+,d0	| C11D2E
 	cmp.b	d0,d2	| C11D30
-	bne.w	loc_C11D44	| C11D32
+	bne.w	BootErrorMemCard	| C11D32
 	move.w	(a0)+,d0	| C11D36
 	cmp.b	d0,d3	| C11D38
-	bne.w	loc_C11D44	| C11D3A
+	bne.w	BootErrorMemCard	| C11D3A
 	dbra	d7,loc_C11D22	| C11D3E
 	bra.b	loc_C11D4A	| C11D42
-loc_C11D44:
+| BootErrorMemCard [C] d6 = 7 (MEMORY CARD ERROR), then BootError
+BootErrorMemCard:
 	moveq	#0x7,d6	| C11D44
 loc_C11D46:
-	jmp	(loc_C16ADA,pc)	| C11D46
+	jmp	(BootError,pc)	| C11D46
 loc_C11D4A:
 	jsr	(sub_C11DB0,pc)	| C11D4A
 	lea.l	(bram_D00124).l,a0	| C11D4E
@@ -1670,10 +1680,12 @@ loc_C11D84:
 	jmp	(HardwareTest,pc)	| C11D84
 loc_C11D88:
 	jmp	(loc_C11028,pc)	| C11D88
-loc_C11D8C:
+| BootErrorCalendar [C] d6 = 5 (CALENDAR ERROR) when VBlankCount between two calendar pulses is outside $39-$3F (57-63 frames, about 1 s), then BootError
+BootErrorCalendar:
 	moveq	#0x5,d6	| C11D8C
-	jmp	(loc_C16ADA).l	| C11D8E
-sub_C11D94:
+	jmp	(BootError).l	| C11D8E
+| WaitRtcPulse [C] waits for a rising edge of bit 6 of REG_STATUS_A (calendar pulse, wiki register page)
+WaitRtcPulse:
 	move.b	d0,(REG_DIPSW).l	| C11D94
 	move.b	d0,d2	| C11D9A
 	move.b	(REG_STATUS_A).l,d0	| C11D9C
@@ -1681,7 +1693,7 @@ sub_C11D94:
 	eor.b	d1,d2	| C11DA4
 	and.b	d1,d2	| C11DA6
 	andi.b	#0x40,d2	| C11DA8
-	beq.b	sub_C11D94	| C11DAC
+	beq.b	WaitRtcPulse	| C11DAC
 	rts	| C11DAE
 sub_C11DB0:
 	lea.l	(bram_D08000).l,a4	| C11DB0
@@ -1872,7 +1884,7 @@ loc_C12022:
 	beq.b	loc_C1203E	| C12030
 	dbra	d7,loc_C12022	| C12032
 	moveq	#0x8,d6	| C12036
-	jmp	(loc_C16ADA).l	| C12038
+	jmp	(BootError).l	| C12038
 loc_C1203E:
 	bsr.w	sub_C184EC	| C1203E
 	rts	| C12042
@@ -2354,7 +2366,8 @@ sub_C125A4:
 dat_C125B8:
 	.ascii	"BACKUP RAM OK !"
 	dc.b	0x80
-sub_C125C8:
+| BackupRamTest [I] memory test of backup RAM at a0 (test number in d6)
+BackupRamTest:
 	move.b	(REG_DIPSW).l,d0	| C125C8
 	beq.b	loc_C125E6	| C125CE
 	lea.l	(bram_D00010).l,a6	| C125D0
@@ -2366,11 +2379,12 @@ loc_C125DC:
 	dbra	d7,loc_C125DC	| C125E0
 	rts	| C125E4
 loc_C125E6:
-	jsr	(sub_C13134,pc)	| C125E6
+	jsr	(MemTestBlock,pc)	| C125E6
 	move.b	(REG_DIPSW).l,d0	| C125EA
-	bne.b	sub_C125F4	| C125F0
+	bne.b	ClearBackupRam	| C125F0
 	rts	| C125F2
-sub_C125F4:
+| ClearBackupRam [I] unlocks backup RAM and fills it with zeros from $D10000 down
+ClearBackupRam:
 	move.b	#0x1,(ram_10FEBF).l	| C125F4
 	move.b	d0,(REG_SRAMUNLOCK).l	| C125FC
 	lea.l	(0xD10000).l,a0	| C12602
@@ -2411,19 +2425,20 @@ loc_C1266A:
 	rts	| C12688
 sub_C1268A:
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C1268A
-	bsr.w	sub_C184F0	| C12692
+	bsr.w	Delay	| C12692
 	not.b	d5	| C12696
 	move.b	d5,(REG_LEDDATA).l	| C12698
 	move.b	#0xF7,(REG_LEDLATCHES).l	| C1269E
-	bsr.w	sub_C184F0	| C126A6
+	bsr.w	Delay	| C126A6
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C126AA
 	rts	| C126B2
-sub_C126B4:
+| MvsLedUpdate [I] MVS only: credit LED / marquee latch handling at the start of SystemIo
+MvsLedUpdate:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C126B4
 	bne.b	loc_C126BC	| C126B8
 	rts	| C126BA
 loc_C126BC:
-	cmpi.b	#0x1,(ram_10FD81-A5_BASE,a5)	| C126BC
+	cmpi.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C126BC
 	bra.b	loc_C126EA	| C126C2
 	move.b	(ram_10FE8B-A5_BASE,a5),d0	| C126C4
 	andi.b	#0x3,d0	| C126C8
@@ -2442,7 +2457,7 @@ loc_C126EA:
 	bne.b	loc_C126F8	| C126EE
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C126F0
 loc_C126F8:
-	tst.b	(ram_10FD81-A5_BASE,a5)	| C126F8
+	tst.b	(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C126F8
 	beq.b	loc_C12732	| C126FC
 	btst.b	#0x4,(bram_D00038).l	| C126FE
 	bne.b	loc_C12732	| C12706
@@ -2468,7 +2483,7 @@ loc_C12732:
 	eor.b	d0,d1	| C1274E
 	and.b	d0,d1	| C12750
 	move.b	d1,(ram_10FEDF-A5_BASE,a5)	| C12752
-	tst.b	(ram_10FD81-A5_BASE,a5)	| C12756
+	tst.b	(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C12756
 	beq.b	loc_C12768	| C1275A
 	btst.b	#0x7,d1	| C1275C
 	beq.b	loc_C12768	| C12760
@@ -2684,7 +2699,7 @@ loc_C129D2:
 sub_C129D4:
 	tst.b	(ram_10FEE1-A5_BASE,a5)	| C129D4
 	bne.w	loc_C12A16	| C129D8
-	cmpi.b	#0x2,(ram_10FD81-A5_BASE,a5)	| C129DC
+	cmpi.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C129DC
 	bcs.w	loc_C12A16	| C129E2
 	tst.b	(ram_10FEDB-A5_BASE,a5)	| C129E6
 	bne.b	loc_C12A16	| C129EA
@@ -2702,7 +2717,7 @@ loc_C12A06:
 loc_C12A16:
 	rts	| C12A16
 sub_C12A18:
-	cmpi.b	#0x1,(ram_10FD81-A5_BASE,a5)	| C12A18
+	cmpi.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C12A18
 	beq.b	loc_C12A28	| C12A1E
 	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C12A20
 	bne.b	loc_C12A34	| C12A26
@@ -2821,7 +2836,8 @@ dat_C12BB0:
 	dc.b	0xFF,0xFF,0x00,0x05,0x00,0x03,0x01,0x08
 	.ascii	"AT A MEMORY CARD."
 	dc.b	0xFF,0x00,0x00
-sub_C12BE6:
+| PlayTimeCount [I] MVS, while a game runs (BIOS_USER_MODE 2): every 60 frames adds 1 to a long in backup RAM ($D00048, through a4 = $D08000)
+PlayTimeCount:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12BE6
 	lea.l	(bram_D08000).l,a4	| C12BEC
 	lea.l	(ram_10F300).l,a5	| C12BF2
@@ -2861,10 +2877,10 @@ sub_C12C24:
 | ReadCalendar [W] target of READ_CALENDAR
 ReadCalendar:
 	moveq	#0x3,d0	| C12C78
-	jsr	(sub_C12D6C,pc)	| C12C7A
+	jsr	(RtcCommand,pc)	| C12C7A
 	bsr.w	sub_C184F4	| C12C7E
 	moveq	#0x1,d0	| C12C82
-	jsr	(sub_C12D6C,pc)	| C12C84
+	jsr	(RtcCommand,pc)	| C12C84
 	lea.l	(BIOS_YEAR).l,a0	| C12C88
 	jsr	(sub_C12CD8,pc)	| C12C8E
 	move.b	d0,0x6(a0)	| C12C92
@@ -2906,7 +2922,7 @@ SetupCalendar:
 	tst.b	d7	| C12CFC
 	bne.w	loc_C12D46	| C12CFE
 	moveq	#0x1,d0	| C12D02
-	jsr	(sub_C12D6C,pc)	| C12D04
+	jsr	(RtcCommand,pc)	| C12D04
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12D08
 	jsr	(sub_C12D48,pc)	| C12D0C
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C12D10
@@ -2920,9 +2936,9 @@ SetupCalendar:
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12D30
 	jsr	(sub_C12D48,pc)	| C12D34
 	moveq	#0x2,d0	| C12D38
-	jsr	(sub_C12D6C,pc)	| C12D3A
+	jsr	(RtcCommand,pc)	| C12D3A
 	moveq	#0x0,d0	| C12D3E
-	jsr	(sub_C12D6C,pc)	| C12D40
+	jsr	(RtcCommand,pc)	| C12D40
 	moveq	#0x0,d7	| C12D44
 loc_C12D46:
 	rts	| C12D46
@@ -2939,7 +2955,8 @@ loc_C12D4A:
 	lsr.b	#0x1,d0	| C12D64
 	dbra	d7,loc_C12D4A	| C12D66
 	rts	| C12D6A
-sub_C12D6C:
+| RtcCommand [I] sends the 4-bit command in d0 to the calendar chip, bit by bit through sub_C12DB0
+RtcCommand:
 	moveq	#0x3,d7	| C12D6C
 loc_C12D6E:
 	move.b	d0,d1	| C12D6E
@@ -3198,7 +3215,8 @@ dat_C1309A:
 	dc.b	0x00
 dat_C130A2:
 	dc.b	0x4E,0x00,0x4F,0x00,0x47,0x00,0x4F,0x00
-sub_C130AA:
+| VramTest [I] VRAM test through REG_VRAMRW, d4 start address, d5 count
+VramTest:
 	move.w	d4,-0x2(a1)	| C130AA
 	move.w	#0x5555,d0	| C130AE
 	move.w	d5,d7	| C130B2
@@ -3214,7 +3232,7 @@ loc_C130C4:
 	move.w	(a1),d1	| C130C6
 	move.w	d1,(a1)	| C130C8
 	cmp.w	d0,d1	| C130CA
-	bne.w	loc_C16ADA	| C130CC
+	bne.w	BootError	| C130CC
 	addq.l	#0x1,a0	| C130D0
 	dbra	d7,loc_C130C4	| C130D2
 	move.w	d4,-0x2(a1)	| C130D6
@@ -3232,7 +3250,7 @@ loc_C130F0:
 	move.w	(a1),d1	| C130F2
 	move.w	d1,(a1)	| C130F4
 	cmp.w	d0,d1	| C130F6
-	bne.w	loc_C16ADA	| C130F8
+	bne.w	BootError	| C130F8
 	addq.l	#0x1,a0	| C130FC
 	dbra	d7,loc_C130F0	| C130FE
 	move.w	d4,-0x2(a1)	| C13102
@@ -3252,12 +3270,13 @@ loc_C1311E:
 	move.w	(a1),d1	| C13120
 	move.w	d1,(a1)	| C13122
 	cmp.w	d0,d1	| C13124
-	bne.w	loc_C16ADA	| C13126
+	bne.w	BootError	| C13126
 	addq.l	#0x1,a0	| C1312A
 	addq.w	#0x1,d0	| C1312C
 	dbra	d7,loc_C1311E	| C1312E
 	rts	| C13132
-sub_C13134:
+| MemTestBlock [I] memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks
+MemTestBlock:
 	lea.l	(REG_DIPSW).l,a2	| C13134
 	movea.l	(a7)+,a6	| C1313A
 	movea.l	a0,a1	| C1313C
@@ -3273,7 +3292,7 @@ loc_C13150:
 	move.b	d0,(a2)	| C13150
 	move.w	(a0),d1	| C13152
 	cmp.w	d0,d1	| C13154
-	bne.w	loc_C16ADA	| C13156
+	bne.w	BootError	| C13156
 	addq.l	#0x2,a0	| C1315A
 	dbra	d7,loc_C13150	| C1315C
 	movea.l	a1,a0	| C13160
@@ -3289,7 +3308,7 @@ loc_C13174:
 	move.b	d0,(a2)	| C13174
 	move.w	(a0),d1	| C13176
 	cmp.w	d0,d1	| C13178
-	bne.w	loc_C16ADA	| C1317A
+	bne.w	BootError	| C1317A
 	addq.l	#0x2,a0	| C1317E
 	dbra	d7,loc_C13174	| C13180
 	movea.l	a1,a0	| C13184
@@ -3306,7 +3325,7 @@ loc_C13196:
 	move.w	a0,d0	| C13198
 	move.w	(a0),d1	| C1319A
 	cmp.w	d0,d1	| C1319C
-	bne.w	loc_C16ADA	| C1319E
+	bne.w	BootError	| C1319E
 	addq.l	#0x2,a0	| C131A2
 	dbra	d7,loc_C13196	| C131A4
 	jmp	(a6)	| C131A8
@@ -6223,7 +6242,8 @@ sub_C16AAA:
 	move.b	d0,(a0)+	| C16AB0
 	move.b	d1,(a0)+	| C16AB2
 	rts	| C16AB4
-dat_C16AB6:
+| BootErrorMessages [C] pointers to the boot error texts: 0 WORK RAM, 1 BACKUP RAM, 2 COLOR RAM BANK0, 3 COLOR RAM BANK1, 4 VIDEO RAM, 5 CALENDAR, 6 SYSTEM ROM, 7 MEMORY CARD
+BootErrorMessages:
 	dc.l	dat_C16C6E
 	dc.l	dat_C16C96
 	dc.l	dat_C16CC0
@@ -6233,7 +6253,8 @@ dat_C16AB6:
 	dc.l	dat_C16D62
 	dc.l	dat_C16D82
 	dc.l	dat_C16DA2
-loc_C16ADA:
+| BootError [C] error screen: message BootErrorMessages[d6]; for d6 < 5 also prints the failing address and data
+BootError:
 	lea.l	(ram_10F300).l,a5	| C16ADA
 	move.w	#0x7,(REG_IRQACK).l	| C16AE0
 	tst.b	(dat_C00400).l	| C16AE8
@@ -6254,7 +6275,7 @@ loc_C16B20:
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C16B34
 	move.w	(ram_10FD08-A5_BASE,a5),d0	| C16B38
 	lsl.w	#0x2,d0	| C16B3C
-	lea.l	(dat_C16AB6,pc),a1	| C16B3E
+	lea.l	(BootErrorMessages,pc),a1	| C16B3E
 	move.l	(a1,d0.w),(a0)+	| C16B42
 	cmpi.w	#0x14,d0	| C16B46
 	bcc.w	loc_C16B96	| C16B4A
@@ -6479,7 +6500,7 @@ dat_C1704C:
 	dc.b	0xFF,0xFF,0xFF,0x00
 dat_C17060:
 	dc.b	0x00,0x35
-| HardwareTest [C] menu item 1: clears RAM and palettes, then calls HwTestStepTable[TestIndex] once per frame
+| HardwareTest [C] menu item 1: clears RAM and palettes, then calls HwTestStepTable[WorkIndex] once per frame
 HardwareTest:
 	move.w	#0x2700,sr	| C17062
 	move.b	d0,(REG_SWPBIOS).l	| C17066
@@ -6531,11 +6552,11 @@ loc_C170E8:
 	move.w	#0x2000,sr	| C17134
 	tst.b	(bram_D0005E).l	| C17138
 	bmi.b	loc_C17146	| C1713E
-	move.w	#0xC,(TestIndex-A5_BASE,a5)	| C17140
+	move.w	#0xC,(WorkIndex-A5_BASE,a5)	| C17140
 loc_C17146:
 	jsr	(WaitFrame,pc)	| C17146
 	lea.l	(ram_10F300).l,a5	| C1714A
-	move.w	(TestIndex-A5_BASE,a5),d0	| C17150
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C17150
 	add.w	d0,d0	| C17154
 	add.w	d0,d0	| C17156
 	movea.l	(HwTestStepTable,pc,d0.w),a0	| C17158
@@ -6598,7 +6619,7 @@ loc_C171E0:
 	move.w	#0x27,d7	| C17224
 	jsr	(sub_C17238,pc)	| C17228
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1722C
-	move.w	#0x1,(TestIndex-A5_BASE,a5)	| C17230
+	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17230
 	rts	| C17236
 sub_C17238:
 	nop	| C17238
@@ -6613,7 +6634,7 @@ sub_C17238:
 HwTestCrosshatchFrame:
 	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C1724C
 	beq.b	loc_C1725A	| C17252
-	move.w	#0x2,(TestIndex-A5_BASE,a5)	| C17254
+	move.w	#0x2,(WorkIndex-A5_BASE,a5)	| C17254
 loc_C1725A:
 	rts	| C1725A
 | HwTestColorBars [C] draws the RED GREEN BLUE WHITE bars; MAME screen 2
@@ -6630,13 +6651,13 @@ HwTestColorBars:
 	move.w	#0x7484,(REG_VRAMADDR).l	| C17292
 	move.w	(dat_C17060,pc),(REG_VRAMRW).l	| C1729A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C172A2
-	move.w	#0x3,(TestIndex-A5_BASE,a5)	| C172A6
+	move.w	#0x3,(WorkIndex-A5_BASE,a5)	| C172A6
 	rts	| C172AC
 | HwTestColorBarsFrame [C] per frame: START goes to step 4
 HwTestColorBarsFrame:
 	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C172AE
 	beq.b	loc_C172BC	| C172B4
-	move.w	#0x4,(TestIndex-A5_BASE,a5)	| C172B6
+	move.w	#0x4,(WorkIndex-A5_BASE,a5)	| C172B6
 loc_C172BC:
 	rts	| C172BC
 dat_C172BE:
@@ -6658,7 +6679,7 @@ HwTestIoCheck:
 	jsr	(sub_C13A3C,pc)	| C17390
 	move.b	#0x1,(ram_10FEBB).l	| C17394
 	clr.b	(ram_10FCDE-A5_BASE,a5)	| C1739C
-	clr.b	(TestIndexNew-A5_BASE,a5)	| C173A0
+	clr.b	(WorkIndexNew-A5_BASE,a5)	| C173A0
 	moveq	#0x2,d0	| C173A4
 	move.b	(REG_SYSTYPE).l,d1	| C173A6
 	btst.b	#0x6,d1	| C173AC
@@ -6679,14 +6700,14 @@ loc_C173C2:
 	jsr	(sub_C17556,pc)	| C173E2
 	jsr	(sub_C17590,pc)	| C173E6
 	jsr	(sub_C175A0,pc)	| C173EA
-	move.w	#0x5,(TestIndex-A5_BASE,a5)	| C173EE
+	move.w	#0x5,(WorkIndex-A5_BASE,a5)	| C173EE
 	rts	| C173F4
 | HwTestIoCheckFrame [C] per frame routine of the I/O check (inputs, DIPs, LED counters)
 HwTestIoCheckFrame:
 	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C173F6
 	beq.b	loc_C1740A	| C173FC
 	clr.b	(ram_10FEBB-A5_BASE,a5)	| C173FE
-	move.w	#0x6,(TestIndex-A5_BASE,a5)	| C17402
+	move.w	#0x6,(WorkIndex-A5_BASE,a5)	| C17402
 	rts	| C17408
 loc_C1740A:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1740A
@@ -6715,13 +6736,13 @@ sub_C17460:
 	move.b	(ram_10FE8B-A5_BASE,a5),d0	| C17460
 	andi.b	#0x3F,d0	| C17464
 	bne.b	loc_C17480	| C17468
-	move.b	(TestIndexNew-A5_BASE,a5),d0	| C1746A
+	move.b	(WorkIndexNew-A5_BASE,a5),d0	| C1746A
 	addq.b	#0x1,d0	| C1746E
 	cmp.b	(ram_10FCDB-A5_BASE,a5),d0	| C17470
 	bcs.b	loc_C17478	| C17474
 	moveq	#0x0,d0	| C17476
 loc_C17478:
-	move.b	d0,(TestIndexNew-A5_BASE,a5)	| C17478
+	move.b	d0,(WorkIndexNew-A5_BASE,a5)	| C17478
 	jsr	(sub_C17556,pc)	| C1747C
 loc_C17480:
 	rts	| C17480
@@ -6800,7 +6821,7 @@ loc_C1754E:
 	dbra	d7,loc_C17544	| C17550
 	rts	| C17554
 sub_C17556:
-	move.b	(TestIndexNew-A5_BASE,a5),d5	| C17556
+	move.b	(WorkIndexNew-A5_BASE,a5),d5	| C17556
 	jsr	(sub_C1268A,pc)	| C1755A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1755E
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17562
@@ -6809,7 +6830,7 @@ sub_C17556:
 	move.l	#0x372B4,(a0)+	| C1756E
 	move.w	#0x7,(a0)+	| C17574
 	moveq	#0x0,d0	| C17578
-	move.b	(TestIndexNew-A5_BASE,a5),d0	| C1757A
+	move.b	(WorkIndexNew-A5_BASE,a5),d0	| C1757A
 	addi.b	#0x31,d0	| C1757E
 	move.w	d0,(a0)+	| C17582
 	clr.w	(a0)+	| C17584
@@ -6832,7 +6853,7 @@ sub_C175A0:
 	move.w	#0x73B4,d2	| C175B4
 loc_C175B8:
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C175B8
-	bsr.w	sub_C184F0	| C175C0
+	bsr.w	Delay	| C175C0
 	move.b	d0,d5	| C175C4
 	not.b	d5	| C175C6
 	move.b	d5,(REG_LEDDATA).l	| C175C8
@@ -6904,14 +6925,14 @@ HwTestSound:
 	clr.b	(ram_10FCE2-A5_BASE,a5)	| C17748
 	jsr	(sub_C1780A,pc)	| C1774C
 	jsr	(sub_C177C0,pc)	| C17750
-	addq.w	#0x1,(TestIndex-A5_BASE,a5)	| C17754
+	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17754
 	rts	| C17758
 | HwTestSoundFrame [C] per frame routine of the sound test
 HwTestSoundFrame:
 	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C1775A
 	beq.b	loc_C17770	| C17760
 	move.b	#0x3,(REG_SOUND).l	| C17762
-	addq.w	#0x1,(TestIndex-A5_BASE,a5)	| C1776A
+	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C1776A
 	rts	| C1776E
 loc_C17770:
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C17770
@@ -7049,19 +7070,19 @@ HwTestMemCard:
 	move.l	#dat_C17A46,(a0)+	| C1790A
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17910
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17914
-	move.w	#0x9,(TestIndex-A5_BASE,a5)	| C17918
-	move.w	#0x0,(TestIndexNew-A5_BASE,a5)	| C1791E
+	move.w	#0x9,(WorkIndex-A5_BASE,a5)	| C17918
+	move.w	#0x0,(WorkIndexNew-A5_BASE,a5)	| C1791E
 	rts	| C17924
 | HwTestMemCardFrame [C] per frame routine of the memory card test (prints TEST OK / TEST ERROR)
 HwTestMemCardFrame:
-	tst.w	(TestIndexNew-A5_BASE,a5)	| C17926
+	tst.w	(WorkIndexNew-A5_BASE,a5)	| C17926
 	bne.w	loc_C17A36	| C1792A
 	move.b	(REG_STATUS_B).l,d0	| C1792E
 	andi.b	#0x70,d0	| C17934
 	beq.b	loc_C1794A	| C17938
 	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C1793A
 	beq.b	loc_C17948	| C17940
-	move.w	#0xA,(TestIndex-A5_BASE,a5)	| C17942
+	move.w	#0xA,(WorkIndex-A5_BASE,a5)	| C17942
 loc_C17948:
 	rts	| C17948
 loc_C1794A:
@@ -7137,12 +7158,12 @@ loc_C17A10:
 	move.l	a1,(a0)+	| C17A24
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17A26
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17A2A
-	move.w	#0x1,(TestIndexNew-A5_BASE,a5)	| C17A2E
+	move.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C17A2E
 	rts	| C17A34
 loc_C17A36:
 	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C17A36
 	beq.b	loc_C17A44	| C17A3C
-	move.w	#0xA,(TestIndex-A5_BASE,a5)	| C17A3E
+	move.w	#0xA,(WorkIndex-A5_BASE,a5)	| C17A3E
 loc_C17A44:
 	rts	| C17A44
 dat_C17A46:
@@ -7167,7 +7188,7 @@ HwTestBackupClear:
 	move.l	#dat_C17B10,(a0)+	| C17AC2
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17AC8
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17ACC
-	move.w	#0xB,(TestIndex-A5_BASE,a5)	| C17AD0
+	move.w	#0xB,(WorkIndex-A5_BASE,a5)	| C17AD0
 	rts	| C17AD6
 | HwTestBackupClearFrame [C] per frame routine of the backup clear (A+B+C)
 HwTestBackupClearFrame:
@@ -7178,7 +7199,7 @@ HwTestBackupClearFrame:
 	cmpi.b	#0x70,d0	| C17AE8
 	bne.b	loc_C17B0E	| C17AEC
 	move.w	#0x2700,sr	| C17AEE
-	jsr	(sub_C125F4,pc)	| C17AF2
+	jsr	(ClearBackupRam,pc)	| C17AF2
 	move.w	#0x2000,sr	| C17AF6
 loc_C17AFA:
 	jsr	(WaitFrame,pc)	| C17AFA
@@ -7186,7 +7207,7 @@ loc_C17AFA:
 	andi.b	#0x70,d0	| C17B02
 	bne.b	loc_C17AFA	| C17B06
 loc_C17B08:
-	move.w	#0xC,(TestIndex-A5_BASE,a5)	| C17B08
+	move.w	#0xC,(WorkIndex-A5_BASE,a5)	| C17B08
 loc_C17B0E:
 	rts	| C17B0E
 dat_C17B10:
@@ -7233,8 +7254,8 @@ HwTestCalendar:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17BE2
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17BE6
 	jsr	(sub_C17CD4,pc)	| C17BEA
-	clr.w	(TestIndexNew-A5_BASE,a5)	| C17BEE
-	move.w	#0xD,(TestIndex-A5_BASE,a5)	| C17BF2
+	clr.w	(WorkIndexNew-A5_BASE,a5)	| C17BEE
+	move.w	#0xD,(WorkIndex-A5_BASE,a5)	| C17BF2
 	rts	| C17BF8
 	dc.b	0x71,0x57,0x71,0xD7
 	.ascii	"rWqZq"
@@ -7243,7 +7264,7 @@ HwTestCalendar:
 HwTestCalendarFrame:
 	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C17C06
 	beq.b	loc_C17C16	| C17C0C
-	move.w	#0x0,(TestIndex-A5_BASE,a5)	| C17C0E
+	move.w	#0x0,(WorkIndex-A5_BASE,a5)	| C17C0E
 	rts	| C17C14
 loc_C17C16:
 	btst.b	#0x7,(BIOS_P1CHANGE-A5_BASE,a5)	| C17C16
@@ -7257,12 +7278,12 @@ loc_C17C16:
 	bne.b	loc_C17C3A	| C17C36
 	moveq	#-0x1,d1	| C17C38
 loc_C17C3A:
-	move.w	(TestIndexNew-A5_BASE,a5),d0	| C17C3A
+	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C17C3A
 loc_C17C3E:
 	add.b	d1,d0	| C17C3E
 	cmpi.b	#0x6,d0	| C17C40
 	bcc.b	loc_C17C3E	| C17C44
-	move.w	d0,(TestIndexNew-A5_BASE,a5)	| C17C46
+	move.w	d0,(WorkIndexNew-A5_BASE,a5)	| C17C46
 loc_C17C4A:
 	rts	| C17C4A
 tbl_C17C4C:
@@ -7277,7 +7298,7 @@ loc_C17C52:
 	move.b	#0x99,d1	| C17C64
 loc_C17C68:
 	moveq	#0x0,d2	| C17C68
-	move.w	(TestIndexNew-A5_BASE,a5),d0	| C17C6A
+	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C17C6A
 	lea.l	(BIOS_YEAR-A5_BASE,a5),a1	| C17C6E
 	move.b	(tbl_C17C4C,pc,d0.w),d2	| C17C72
 	move.b	(a1,d2.w),d3	| C17C76
@@ -7342,7 +7363,7 @@ sub_C17D34:
 	move.w	#0x3,(a0)+	| C17D34
 	move.w	d2,(a0)+	| C17D38
 	move.w	#0x108,d5	| C17D3A
-	cmp.w	(TestIndexNew-A5_BASE,a5),d6	| C17D3E
+	cmp.w	(WorkIndexNew-A5_BASE,a5),d6	| C17D3E
 	bne.b	loc_C17D48	| C17D42
 	move.w	#0x1108,d5	| C17D44
 loc_C17D48:
@@ -7375,11 +7396,12 @@ dat_C17D72:
 	.ascii	"D BUTTON = SET"
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x59,0x01,0x08,0x2F,0x20,0x20,0x2F,0x20,0x20,0x20,0x20
 	dc.b	0x20,0x3A,0x20,0x20,0x3A,0xFF,0x00,0x00
-loc_C17E26:
+| Eyecatcher [C] system ROM eyecatcher (NEO-GEO logo, MAX 330 MEGA, SNK), reached when CART_EYECATCH_FLAG is 0; MAME boot sequence
+Eyecatcher:
 	move.b	#0x3,(REG_SOUND).l	| C17E26
 	lea.l	(ram_10F300).l,a5	| C17E2E
 	moveq	#0x0,d0	| C17E34
-	move.w	d0,(TestIndex-A5_BASE,a5)	| C17E36
+	move.w	d0,(WorkIndex-A5_BASE,a5)	| C17E36
 	move.w	d0,(ram_10FCE6-A5_BASE,a5)	| C17E3A
 	move.b	d0,(REG_NOSHADOW).l	| C17E3E
 	andi.w	#0xF0FF,sr	| C17E44
@@ -7417,7 +7439,7 @@ loc_C17EA8:
 	move.w	(a0),(0x401FFE).l	| C17EAE
 	clr.w	(ram_10FCE6).l	| C17EB4
 loc_C17EBA:
-	move.w	(TestIndex-A5_BASE,a5),d0	| C17EBA
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C17EBA
 	lsl.w	#0x2,d0	| C17EBE
 	movea.l	(tbl_C17EC8,pc,d0.w),a0	| C17EC0
 	jsr	(a0)	| C17EC4
@@ -7505,7 +7527,7 @@ loc_C17FF2:
 	move.w	#0x0,d0	| C17FF8
 	bsr.w	sub_C18346	| C17FFC
 	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C18000
-	move.w	#0x1,(TestIndex-A5_BASE,a5)	| C18006
+	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C18006
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1800C
 	rts	| C18010
 loc_C18012:
@@ -7534,15 +7556,15 @@ loc_C18054:
 	dbra	d7,loc_C18054	| C18056
 	cmpi.w	#0xFFF,d0	| C1805A
 	bne.b	loc_C18072	| C1805E
-	move.w	#0x0,(TestIndexNew-A5_BASE,a5)	| C18060
+	move.w	#0x0,(WorkIndexNew-A5_BASE,a5)	| C18060
 	move.w	#0xA,(ram_10FCDC-A5_BASE,a5)	| C18066
-	move.w	#0x2,(TestIndex-A5_BASE,a5)	| C1806C
+	move.w	#0x2,(WorkIndex-A5_BASE,a5)	| C1806C
 loc_C18072:
 	rts	| C18072
 loc_C18074:
 	subq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C18074
 	bne.b	loc_C18080	| C18078
-	move.w	#0x3,(TestIndex-A5_BASE,a5)	| C1807A
+	move.w	#0x3,(WorkIndex-A5_BASE,a5)	| C1807A
 loc_C18080:
 	rts	| C18080
 loc_C18082:
@@ -7558,7 +7580,7 @@ loc_C18082:
 	move.w	(ram_10FC48-A5_BASE,a5),(ram_10FC6C-A5_BASE,a5)	| C180A8
 	move.w	#0x6404,(ram_10FC48-A5_BASE,a5)	| C180AE
 	move.w	#0x800,(ram_10FC24-A5_BASE,a5)	| C180B4
-	move.w	#0x4,(TestIndex-A5_BASE,a5)	| C180BA
+	move.w	#0x4,(WorkIndex-A5_BASE,a5)	| C180BA
 	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C180C0
 	move.w	#0x0,(ram_10FCDE-A5_BASE,a5)	| C180C6
 	move.w	#0x71B0,(ram_10FCE0-A5_BASE,a5)	| C180CC
@@ -7581,7 +7603,7 @@ loc_C180FE:
 	cmpi.b	#0xFF,d0	| C18106
 	bne.b	loc_C18118	| C1810A
 	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C1810C
-	move.w	#0x5,(TestIndex-A5_BASE,a5)	| C18112
+	move.w	#0x5,(WorkIndex-A5_BASE,a5)	| C18112
 loc_C18118:
 	rts	| C18118
 loc_C1811A:
@@ -7612,16 +7634,16 @@ loc_C1817C:
 	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C1817C
 	cmpi.w	#0x20,d0	| C18180
 	bne.b	loc_C18192	| C18184
-	move.w	#0x6,(TestIndex-A5_BASE,a5)	| C18186
+	move.w	#0x6,(WorkIndex-A5_BASE,a5)	| C18186
 	move.w	#0x14,(ram_10FCDC-A5_BASE,a5)	| C1818C
 loc_C18192:
 	rts	| C18192
 loc_C18194:
 	subq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C18194
 	bne.b	loc_C181AC	| C18198
-	move.w	#0x7,(TestIndex-A5_BASE,a5)	| C1819A
+	move.w	#0x7,(WorkIndex-A5_BASE,a5)	| C1819A
 	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C181A0
-	move.w	#0x0,(TestIndexNew-A5_BASE,a5)	| C181A6
+	move.w	#0x0,(WorkIndexNew-A5_BASE,a5)	| C181A6
 loc_C181AC:
 	rts	| C181AC
 loc_C181AE:
@@ -7630,13 +7652,13 @@ loc_C181AE:
 	move.w	d0,(ram_10FCDC-A5_BASE,a5)	| C181B4
 	andi.w	#0x1,d0	| C181B8
 	bne.b	loc_C18206	| C181BC
-	move.w	(TestIndexNew-A5_BASE,a5),d1	| C181BE
+	move.w	(WorkIndexNew-A5_BASE,a5),d1	| C181BE
 	lea.l	(dat_C1F02E).l,a0	| C181C2
 	moveq	#0x0,d0	| C181C8
 	move.b	(a0,d1.w),d0	| C181CA
 	bsr.w	sub_C18346	| C181CE
-	addq.w	#0x1,(TestIndexNew-A5_BASE,a5)	| C181D2
-	move.w	(TestIndexNew-A5_BASE,a5),d0	| C181D6
+	addq.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C181D2
+	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C181D6
 	cmpi.w	#0x10,d0	| C181DA
 	bne.w	loc_C18206	| C181DE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C181E2
@@ -7644,7 +7666,7 @@ loc_C181AE:
 	move.w	#0x7B,(REG_VRAMRW).l	| C181EE
 	move.w	#0xB4,(ram_10FCDC-A5_BASE,a5)	| C181F6
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C181FC
-	move.w	#0x8,(TestIndex-A5_BASE,a5)	| C18200
+	move.w	#0x8,(WorkIndex-A5_BASE,a5)	| C18200
 loc_C18206:
 	rts	| C18206
 loc_C18208:
@@ -7681,7 +7703,7 @@ loc_C18272:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C18272
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18276
 	move.w	#0x12C,(ram_10FCDC-A5_BASE,a5)	| C1827A
-	move.w	#0x9,(TestIndex-A5_BASE,a5)	| C18280
+	move.w	#0x9,(WorkIndex-A5_BASE,a5)	| C18280
 	rts	| C18286
 loc_C18288:
 	move.l	#0xEEE0000,(0x400002).l	| C18288
@@ -7695,7 +7717,7 @@ loc_C182A6:
 	beq.b	loc_C182AE	| C182AA
 	rts	| C182AC
 loc_C182AE:
-	cmpi.w	#0x9,(TestIndex-A5_BASE,a5)	| C182AE
+	cmpi.w	#0x9,(WorkIndex-A5_BASE,a5)	| C182AE
 	bne.w	loc_C182EA	| C182B4
 	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C182B8
 	beq.w	loc_C182EA	| C182BC
@@ -7710,12 +7732,12 @@ loc_C182AE:
 loc_C182EA:
 	jmp	(SystemReturn).l	| C182EA
 sub_C182F0:
-	move.w	(TestIndexNew-A5_BASE,a5),d1	| C182F0
+	move.w	(WorkIndexNew-A5_BASE,a5),d1	| C182F0
 	lea.l	(dat_C1F00E).l,a0	| C182F4
 	moveq	#0x0,d0	| C182FA
 	move.b	(a0,d1.w),d0	| C182FC
 	jsr	(sub_C18346,pc)	| C18300
-	addq.w	#0x1,(TestIndexNew-A5_BASE,a5)	| C18304
+	addq.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C18304
 	rts	| C18308
 sub_C1830A:
 	lea.l	(REG_VRAMRW).l,a1	| C1830A
@@ -7828,7 +7850,8 @@ loc_C18496:
 	dc.b	0x00,0x00,0x52,0x40,0x5C,0x8B,0x51,0xCF,0xFF,0xF2,0x49,0xEC,0x00,0x10,0x4E,0x75
 sub_C184EC:
 	bsr.w	sub_C184F8	| C184EC
-sub_C184F0:
+| Delay [I] nested BSR chain into sub_C18500: a fixed delay used between LED latch writes
+Delay:
 	bsr.w	sub_C184F8	| C184F0
 sub_C184F4:
 	bsr.w	sub_C18500	| C184F4
@@ -7843,7 +7866,8 @@ sub_C18500:
 	nop	| C18508
 	nop	| C1850A
 	rts	| C1850C
-sub_C1850E:
+| ReadControllers [C] selects the joystick ports through REG_POUTPUT, reads REG_P1CNT/REG_P2CNT/REG_STATUS_B and updates BIOS_P1STATUS and the following input bytes
+ReadControllers:
 	lea.l	(ram_10F300).l,a5	| C1850E
 	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C18514
 	lea.l	(REG_POUTPUT).l,a2	| C18518
@@ -8015,7 +8039,7 @@ sub_C186DA:
 	move.b	(REG_P2CNT).l,d6	| C18702
 	swap	d6	| C18708
 	rts	| C1870A
-| WaitFrame [C] sets ram_10FE8C to 1 and loops until it is cleared (I: cleared by the VBlank handler)
+| WaitFrame [C] sets FrameWaitFlag and loops until SystemInt1 (VBlank) clears it
 WaitFrame:
 	move.b	#0x1,(FrameWaitFlag).l	| C1870C
 loc_C18714:
@@ -8521,7 +8545,7 @@ loc_C19008:
 	move.b	d0,(REG_NOSHADOW).l	| C1905A
 	move.w	#0x7,(REG_IRQACK).l	| C19060
 	move.w	#0x2000,sr	| C19068
-	move.w	#0x0,(TestIndex-A5_BASE,a5)	| C1906C
+	move.w	#0x0,(WorkIndex-A5_BASE,a5)	| C1906C
 | TestMenu [C] main menu: draws TestMenuText and the date, up/down moves the cursor, A selects (TestMenuSelect); MAME screen
 TestMenu:
 	jsr	(sub_C13A3C,pc)	| C19072
@@ -8547,7 +8571,7 @@ TestMenu:
 	move.w	#0x7484,(REG_VRAMADDR).l	| C190C0
 	move.w	(dat_C17060,pc),(REG_VRAMRW).l	| C190C8
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C190D0
-	move.w	(TestIndex-A5_BASE,a5),(TestIndexNew-A5_BASE,a5)	| C190D4
+	move.w	(WorkIndex-A5_BASE,a5),(WorkIndexNew-A5_BASE,a5)	| C190D4
 	jsr	(TestMenuDrawCursor,pc)	| C190DA
 loc_C190DE:
 	jsr	(WaitFrame,pc)	| C190DE
@@ -8561,31 +8585,31 @@ loc_C190DE:
 	bne.b	loc_C190FE	| C190FA
 	moveq	#-0x1,d1	| C190FC
 loc_C190FE:
-	add.w	(TestIndex-A5_BASE,a5),d1	| C190FE
+	add.w	(WorkIndex-A5_BASE,a5),d1	| C190FE
 	bmi.b	loc_C190DE	| C19102
 	cmpi.w	#0x7,d1	| C19104
 	bcc.b	loc_C190DE	| C19108
-	move.w	d1,(TestIndexNew-A5_BASE,a5)	| C1910A
+	move.w	d1,(WorkIndexNew-A5_BASE,a5)	| C1910A
 	jsr	(TestMenuDrawCursor,pc)	| C1910E
 	bra.b	loc_C190DE	| C19112
-| TestMenuDrawCursor [C] erases the cursor at the old line, copies TestIndexNew to TestIndex, draws it at the new line
+| TestMenuDrawCursor [C] erases the cursor at the old line, copies WorkIndexNew to WorkIndex, draws it at the new line
 TestMenuDrawCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19114
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19118
 	clr.l	(a0)+	| C1911C
 	move.w	#0x20FF,d1	| C1911E
 	jsr	(TestMenuCursorCmd,pc)	| C19122
-	move.w	(TestIndexNew-A5_BASE,a5),(TestIndex-A5_BASE,a5)	| C19126
+	move.w	(WorkIndexNew-A5_BASE,a5),(WorkIndex-A5_BASE,a5)	| C19126
 	move.w	#0x11FF,d1	| C1912C
 	jsr	(TestMenuCursorCmd,pc)	| C19130
 	clr.w	(a0)+	| C19134
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C19136
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1913A
 	rts	| C1913E
-| TestMenuCursorCmd [C] writes one MESS_OUT command for the cursor at line TestIndex (VRAM $70E5 + 3 x line)
+| TestMenuCursorCmd [C] writes one MESS_OUT command for the cursor at line WorkIndex (VRAM $70E5 + 3 x line)
 TestMenuCursorCmd:
 	move.w	#0x3,(a0)+	| C19140
-	move.w	(TestIndex-A5_BASE,a5),d0	| C19144
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C19144
 	move.w	d0,d2	| C19148
 	add.w	d0,d0	| C1914A
 	add.w	d0,d2	| C1914C
@@ -8642,10 +8666,10 @@ PutWeekday:
 WeekdayNames:
 	dc.b	0x53,0x55,0x4E,0xFF,0x4D,0x4F,0x4E,0xFF,0x54,0x55,0x45,0xFF,0x57,0x45,0x44,0xFF
 	dc.b	0x54,0x48,0x55,0xFF,0x46,0x52,0x49,0xFF,0x53,0x41,0x54,0xFF
-| TestMenuSelect [C] pushes TestMenu as the return address and jumps to TestMenuJumpTable[TestIndex]
+| TestMenuSelect [C] pushes TestMenu as the return address and jumps to TestMenuJumpTable[WorkIndex]
 TestMenuSelect:
 	pea.l	(TestMenu,pc)	| C1927E
-	move.w	(TestIndex-A5_BASE,a5),d0	| C19282
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C19282
 	add.w	d0,d0	| C19286
 	add.w	d0,d0	| C19288
 	movea.l	(TestMenuJumpTable,pc,d0.w),a0	| C1928A
@@ -9108,7 +9132,7 @@ TestCalendar:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C19994
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19998
 	jsr	(sub_C19A62,pc)	| C1999C
-	clr.w	(TestIndexNew-A5_BASE,a5)	| C199A0
+	clr.w	(WorkIndexNew-A5_BASE,a5)	| C199A0
 	bra.w	loc_C199B4	| C199A4
 	dc.b	0x71,0x57,0x71,0xD7
 	.ascii	"rWqZq"
@@ -9131,12 +9155,12 @@ loc_C199C2:
 	bne.b	loc_C199EA	| C199E6
 	moveq	#-0x1,d1	| C199E8
 loc_C199EA:
-	move.w	(TestIndexNew-A5_BASE,a5),d0	| C199EA
+	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C199EA
 loc_C199EE:
 	add.b	d1,d0	| C199EE
 	cmpi.b	#0x6,d0	| C199F0
 	bcc.b	loc_C199EE	| C199F4
-	move.w	d0,(TestIndexNew-A5_BASE,a5)	| C199F6
+	move.w	d0,(WorkIndexNew-A5_BASE,a5)	| C199F6
 loc_C199FA:
 	rts	| C199FA
 tbl_C199FC:
@@ -9151,7 +9175,7 @@ loc_C19A02:
 	move.b	#0x99,d1	| C19A14
 loc_C19A18:
 	moveq	#0x0,d2	| C19A18
-	move.w	(TestIndexNew-A5_BASE,a5),d0	| C19A1A
+	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C19A1A
 	lea.l	(BIOS_YEAR-A5_BASE,a5),a1	| C19A1E
 	move.b	(tbl_C199FC,pc,d0.w),d2	| C19A22
 	move.b	(a1,d2.w),d3	| C19A26
@@ -11260,7 +11284,7 @@ loc_C1B572:
 	move.b	d0,(REG_NOSHADOW).l	| C1B5D0
 	move.w	#0x7,(REG_IRQACK).l	| C1B5D6
 	move.w	#0x2000,sr	| C1B5DE
-	move.w	#0x0,(TestIndex-A5_BASE,a5)	| C1B5E2
+	move.w	#0x0,(WorkIndex-A5_BASE,a5)	| C1B5E2
 loc_C1B5E8:
 	jsr	(sub_C13A3C).l	| C1B5E8
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B5EE
@@ -11273,7 +11297,7 @@ loc_C1B604:
 	jsr	(sub_C1B6FE,pc)	| C1B60A
 	tst.b	d5	| C1B60E
 	beq.b	loc_C1B604	| C1B610
-	clr.w	(TestIndex-A5_BASE,a5)	| C1B612
+	clr.w	(WorkIndex-A5_BASE,a5)	| C1B612
 	jsr	(sub_C13A3C).l	| C1B616
 loc_C1B61C:
 	jsr	(WaitFrame).l	| C1B61C
@@ -11289,7 +11313,7 @@ loc_C1B61C:
 	andi.b	#0x3,d0	| C1B642
 	beq.b	loc_C1B61C	| C1B646
 	lea.l	(0x800000).l,a6	| C1B648
-	move.w	(TestIndex-A5_BASE,a5),d2	| C1B64E
+	move.w	(WorkIndex-A5_BASE,a5),d2	| C1B64E
 	moveq	#0x1,d1	| C1B652
 	andi.b	#0x1,d0	| C1B654
 	bne.b	loc_C1B65C	| C1B658
@@ -11298,7 +11322,7 @@ loc_C1B65C:
 	add.b	d1,d2	| C1B65C
 	cmp.w	0x74(a6),d2	| C1B65E
 	bcc.b	loc_C1B65C	| C1B662
-	move.w	d2,(TestIndex-A5_BASE,a5)	| C1B664
+	move.w	d2,(WorkIndex-A5_BASE,a5)	| C1B664
 	jsr	(sub_C13A3C).l	| C1B668
 	bra.b	loc_C1B61C	| C1B66E
 sub_C1B670:
@@ -11364,7 +11388,7 @@ loc_C1B71E:
 	rts	| C1B740
 sub_C1B742:
 	lea.l	(0x800100).l,a6	| C1B742
-	move.w	(TestIndex-A5_BASE,a5),d0	| C1B748
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C1B748
 	move.w	#0x2800,d1	| C1B74C
 	mulu.w	d0,d1	| C1B750
 	adda.l	d1,a6	| C1B752
@@ -11400,14 +11424,14 @@ loc_C1B7AA:
 	lea.l	(bram_D08000).l,a4	| C1B7AA
 	move.w	#0x2700,sr	| C1B7B0
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1B7B4
-	move.w	(TestIndex-A5_BASE,a5),d0	| C1B7BA
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C1B7BA
 	move.w	#0x2800,d1	| C1B7BE
 	mulu.w	d0,d1	| C1B7C2
 	lea.l	(0x800100).l,a0	| C1B7C4
 	adda.l	d1,a0	| C1B7CA
 	lea.l	(REG_DIPSW).l,a3	| C1B7CC
 	move.l	(0x800070).l,-0x7E54(a4)	| C1B7D2
-	move.w	(TestIndex-A5_BASE,a5),-0x7E50(a4)	| C1B7DA
+	move.w	(WorkIndex-A5_BASE,a5),-0x7E50(a4)	| C1B7DA
 	move.l	(a0)+,-0x7EFC(a4)	| C1B7E0
 	move.l	(a0)+,-0x7EF8(a4)	| C1B7E4
 	dc.w	0x2E3C,0x0000,0x0025	| C1B7E8: move.l #$25, d7

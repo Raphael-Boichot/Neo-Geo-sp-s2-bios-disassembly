@@ -12,9 +12,9 @@
 	.equ	ram_10FC91,0x10FC91
 	.equ	ram_10FCB4,0x10FCB4
 	.equ	ram_10FCB5,0x10FCB5
-	.equ	TestIndex,0x10FCD8
+	.equ	WorkIndex,0x10FCD8
 	.equ	ram_10FCD9,0x10FCD9
-	.equ	TestIndexNew,0x10FCDA
+	.equ	WorkIndexNew,0x10FCDA
 	.equ	ram_10FCDB,0x10FCDB
 	.equ	ram_10FCDC,0x10FCDC
 	.equ	ram_10FCDE,0x10FCDE
@@ -44,7 +44,7 @@
 	.equ	ram_10FD4E,0x10FD4E
 	.equ	ram_10FD52,0x10FD52
 	.equ	BIOS_SYSTEM_MODE,0x10FD80
-	.equ	ram_10FD81,0x10FD81
+	.equ	BIOS_SYSTEM_MODE_LO,0x10FD81
 	.equ	BIOS_MVS_FLAG,0x10FD82
 	.equ	BIOS_COUNTRY_CODE,0x10FD83
 	.equ	BIOS_GAME_DIP,0x10FD84
@@ -96,7 +96,7 @@
 	.equ	BIOS_SELECT_TIMER,0x10FDDA
 	.equ	ram_10FDDB,0x10FDDB
 	.equ	BIOS_DEVMODE,0x10FE80
-	.equ	ram_10FE88,0x10FE88
+	.equ	FrameCounter,0x10FE88
 	.equ	ram_10FE8A,0x10FE8A
 	.equ	ram_10FE8B,0x10FE8B
 	.equ	FrameWaitFlag,0x10FE8C
@@ -131,8 +131,8 @@
 	.equ	ram_10FEE0,0x10FEE0
 	.equ	ram_10FEE1,0x10FEE1
 	.equ	ram_10FEE2,0x10FEE2
-	.equ	ram_10FEE3,0x10FEE3
-	.equ	ram_10FEE4,0x10FEE4
+	.equ	Int1CountOnly,0x10FEE3
+	.equ	VBlankCount,0x10FEE4
 	.equ	ram_10FEE6,0x10FEE6
 	.equ	ram_10FEE8,0x10FEE8
 	.equ	ram_10FEEA,0x10FEEA

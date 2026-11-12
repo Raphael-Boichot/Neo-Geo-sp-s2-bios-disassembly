@@ -37,6 +37,10 @@ addr,name,tag,note
 10FDD8,BIOS_SECOND,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
 10FDDA,BIOS_SELECT_TIMER,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
 10FE80,BIOS_DEVMODE,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
-10FCD8,TestIndex,C,"test mode: menu cursor line, and step of HwTestStepTable in the hardware test"
-10FCDA,TestIndexNew,C,"test mode: new cursor line before TestMenuDrawCursor"
-10FE8C,FrameWaitFlag,I,"set by WaitFrame, which waits for it to be cleared (by the VBlank handler, not read yet)"
+10FCD8,WorkIndex,C,"general word: test menu cursor line, hardware-test step (HwTestStepTable), 300-frame count set at $C11202"
+10FCDA,WorkIndexNew,C,"test mode: new cursor line before TestMenuDrawCursor"
+10FE8C,FrameWaitFlag,C,"set by WaitFrame, cleared by SystemInt1 (VBlank) after MessOut and SystemIo"
+10FD81,BIOS_SYSTEM_MODE_LO,I,"low byte of BIOS_SYSTEM_MODE, index of SystemModeTable"
+10FEE4,VBlankCount,C,"byte incremented by SystemInt1 on every VBlank; PowerOnTest counts frames between calendar pulses with it"
+10FEE3,Int1CountOnly,C,"when non-zero SystemInt1 only increments VBlankCount (set during the calendar test)"
+10FE88,FrameCounter,C,"long incremented by every SystemIo call"

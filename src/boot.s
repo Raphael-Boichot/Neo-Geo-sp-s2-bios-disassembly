@@ -120,19 +120,19 @@ SystemModeTable:
 	dc.l	SystemMode0
 	dc.l	SystemMode1
 	dc.l	SystemMode2
-| SystemMode0 [I] mode 0 routine (first entry of SystemModeTable)
+| SystemMode0 [C] mode 0: selects the slot (SelectSlot), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)
 SystemMode0:
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11174
-	jsr	(sub_C121D6,pc)	| C1117A
+	jsr	(SelectSlot,pc)	| C1117A
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1117E
 	cmpi.b	#0x8,(bram_D00109).l	| C11182
 	beq.w	loc_C11368	| C1118A
-	jsr	(sub_C11612,pc)	| C1118E
+	jsr	(LoadGameSoftDips,pc)	| C1118E
 	clr.b	(BIOS_USER_MODE-A5_BASE,a5)	| C11192
 	move.b	#0x0,d0	| C11196
 	move.b	d0,d1	| C1119A
-	bra.w	loc_C11286	| C1119C
-| SystemMode1 [C] reads CART_EYECATCH_FLAG: 0 runs the system ROM eyecatcher (Eyecatcher), 1 lets the game do it, 2 skips it
+	bra.w	CallUser	| C1119C
+| SystemMode1 [C] mode 1, eyecatcher: CART_EYECATCH_FLAG 0 runs the system ROM Eyecatcher, 1 calls the game (CallUser request 1), 2 skips to mode 2
 SystemMode1:
 	move.b	#0xA,(ram_10FEE1-A5_BASE,a5)	| C111A0
 	clr.b	(BIOS_USER_MODE-A5_BASE,a5)	| C111A6
@@ -143,7 +143,7 @@ SystemMode1:
 	bne.b	loc_C111D2	| C111B6
 	move.b	#0x1,d0	| C111B8
 	move.b	d0,d1	| C111BC
-	bra.w	loc_C11286	| C111BE
+	bra.w	CallUser	| C111BE
 loc_C111C2:
 	move.b	#0x1,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C111C2
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C111C8
@@ -151,11 +151,12 @@ loc_C111C2:
 loc_C111D2:
 	move.w	#0x2,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C111D2
 	bra.w	SystemModeDispatch	| C111D8
-dat_C111DC:
+| SlotText [C] MESS_OUT text "SLOT " used by SystemMode2
+SlotText:
 	dc.b	0x00,0x03,0x72,0x2C,0x01,0x08
 	.ascii	"SLOT "
 	dc.b	0xFF,0x00,0x00
-| SystemMode2 [I] mode 2 routine (third entry of SystemModeTable)
+| SystemMode2 [C] mode 2: shows SLOT n (SlotText, slot from $D00108) for up to 300 frames, ended early by bit 1 of ram_10FEDD; then CallUser with request 2 (demo), or 3 (title) when bram $D00034 is non-zero and $D00043 is 0
 SystemMode2:
 	tst.w	(bram_D00060).l	| C111EA
 	beq.w	loc_C11260	| C111F0
@@ -165,7 +166,7 @@ SystemMode2:
 	move.l	#0xEEE0000,(0x400002).l	| C11208
 	move.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C11212
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C11218
-	move.l	#dat_C111DC,(a0)+	| C1121C
+	move.l	#SlotText,(a0)+	| C1121C
 	clr.l	(a0)+	| C11222
 	move.w	#0x5,(a0)+	| C11224
 	move.w	#0x9F,(a0)+	| C11228
@@ -190,11 +191,12 @@ loc_C11260:
 	move.b	#0x2,d1	| C1126C
 	move.b	d1,d0	| C11270
 	tst.b	(bram_D00043).l	| C11272
-	bne.b	loc_C11286	| C11278
-	tst.w	(bram_D00034).l	| C1127A
-	beq.b	loc_C11286	| C11280
+	bne.b	CallUser	| C11278
+	tst.w	(Credits).l	| C1127A
+	beq.b	CallUser	| C11280
 	move.b	#0x3,d0	| C11282
-loc_C11286:
+| CallUser [C] hands over to the game: BIOS_USER_REQUEST = d0, BIOS_SYSTEM_MODE = d1 | $80, cartridge vectors (REG_SWPROM), backup RAM locked, jmp CART_USER
+CallUser:
 	clr.l	(ram_10FDB6-A5_BASE,a5)	| C11286
 	clr.l	(ram_10FDBA-A5_BASE,a5)	| C1128A
 	move.w	#0x7,(REG_IRQACK).l	| C1128E
@@ -320,7 +322,7 @@ loc_C11452:
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1146A
 	tst.b	(bram_D00043).l	| C1146E
 	bne.b	loc_C11486	| C11474
-	tst.w	(bram_D00034).l	| C11476
+	tst.w	(Credits).l	| C11476
 	beq.b	loc_C11486	| C1147C
 	move.w	(bram_D00044).l,(BIOS_SELECT_TIMER-A5_BASE,a5)	| C1147E
 loc_C11486:
@@ -418,7 +420,8 @@ dat_C115EC:
 	dc.b	0x00,0x03,0x70,0xEC,0x01,0x08
 	.ascii	"YOUR CARD IS STILL INSERTED."
 	dc.b	0xFF,0xFF,0x00,0x00
-sub_C11612:
+| LoadGameSoftDips [C] copies the current game soft DIP block from backup RAM into BIOS_GAME_DIP (6 bytes, then 12 nibbles)
+LoadGameSoftDips:
 	jsr	(sub_C11632,pc)	| C11612
 	lea.l	0x10(a0),a0	| C11616
 	lea.l	(BIOS_GAME_DIP).l,a1	| C1161A

@@ -32,7 +32,7 @@ loc_C11696:
 loc_C116A4:
 	tst.b	(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C116A4
 	bpl.b	loc_C116B2	| C116A8
-	jsr	(sub_C116C8,pc)	| C116AA
+	jsr	(CheckPlayerStart,pc)	| C116AA
 	jsr	(sub_C1183C,pc)	| C116AE
 loc_C116B2:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C116B2
@@ -44,7 +44,8 @@ loc_C116C4:
 	rts	| C116C4
 dat_C116C6:
 	dc.b	0x00,0x01
-sub_C116C8:
+| CheckPlayerStart [C] SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3
+CheckPlayerStart:
 	tst.b	(BIOS_USER_MODE-A5_BASE,a5)	| C116C8
 	beq.w	loc_C11778	| C116CC
 	moveq	#0x0,d0	| C116D0
@@ -59,15 +60,15 @@ loc_C116D8:
 	bne.b	loc_C1173A	| C116E4
 	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C116E6
 	bne.w	loc_C11778	| C116EC
-	tst.w	(bram_D00034).l	| C116F0
+	tst.w	(Credits).l	| C116F0
 	beq.w	loc_C11778	| C116F6
 	tst.b	(bram_D00043).l	| C116FA
 	bne.w	loc_C11778	| C11700
 	move.b	(BIOS_SELECT_TIMER-A5_BASE,a5),d1	| C11704
 	beq.w	loc_C11728	| C11708
-	subq.b	#0x1,(ram_10FDDB-A5_BASE,a5)	| C1170C
+	subq.b	#0x1,(SelectTimerFrames-A5_BASE,a5)	| C1170C
 	bpl.w	loc_C11778	| C11710
-	move.b	#0x3B,(ram_10FDDB-A5_BASE,a5)	| C11714
+	move.b	#0x3B,(SelectTimerFrames-A5_BASE,a5)	| C11714
 	sub.b	d2,d2	| C1171A
 	moveq	#0x1,d2	| C1171C
 	sbcd	d2,d1	| C1171E
@@ -76,12 +77,12 @@ loc_C116D8:
 loc_C11728:
 	move.b	#0x1,(ram_10FEE0-A5_BASE,a5)	| C11728
 	moveq	#0x1,d0	| C1172E
-	tst.b	(bram_D00034).l	| C11730
+	tst.b	(Credits).l	| C11730
 	bne.b	loc_C1173A	| C11736
 	moveq	#0x2,d0	| C11738
 loc_C1173A:
 	move.b	d0,(BIOS_START_FLAG-A5_BASE,a5)	| C1173A
-	jsr	(sub_C1177A,pc)	| C1173E
+	jsr	(StartCreditCheck,pc)	| C1173E
 	tst.b	(BIOS_START_FLAG-A5_BASE,a5)	| C11742
 	beq.w	loc_C11778	| C11746
 	movem.l	a5,-(a7)	| C1174A
@@ -97,7 +98,8 @@ loc_C1173A:
 	jsr	(sub_C11836,pc)	| C11774
 loc_C11778:
 	rts	| C11778
-sub_C1177A:
+| StartCreditCheck [I] MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
+StartCreditCheck:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1177A
 	beq.w	loc_C117C0	| C1177E
 	andi.w	#0x3,d0	| C11782
@@ -112,7 +114,7 @@ loc_C1179A:
 	andi.b	#0x40,d1	| C117A0
 	beq.w	loc_C117B8	| C117A4
 	move.b	(tbl_C117C2,pc,d0.w),d1	| C117A8
-	move.b	(bram_D00034).l,d2	| C117AC
+	move.b	(Credits).l,d2	| C117AC
 	cmp.b	d1,d2	| C117B2
 	bcc.b	loc_C117B8	| C117B4
 	addq.b	#0x4,d0	| C117B6
@@ -126,7 +128,7 @@ tbl_C117C2:
 	dc.b	0x02,0x01,0x01,0x02
 tbl_C117C6:
 	dc.b	0x03,0x01,0x02,0x03,0x00,0x00,0x00,0x00
-| CreditCheck [W] target of CREDIT_CHECK
+| CreditCheck [W] target of CREDIT_CHECK: MVS, free play off (hard DIP 7, bit 6 of REG_DIPSW): BCD check of the requested credits ($10FDB0) against Credits
 CreditCheck:
 	lea.l	(ram_10F300).l,a5	| C117CE
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C117D4
@@ -135,7 +137,7 @@ CreditCheck:
 	move.b	(REG_DIPSW).l,d0	| C117E0
 	andi.b	#0x40,d0	| C117E6
 	beq.b	loc_C11814	| C117EA
-	move.b	(bram_D00034).l,d0	| C117EC
+	move.b	(Credits).l,d0	| C117EC
 	lea.l	(ram_10FDB0-A5_BASE,a5),a0	| C117F2
 	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C117F6
 	bne.b	loc_C11802	| C117FC
@@ -182,7 +184,7 @@ loc_C1184A:
 	bne.w	loc_C118C8	| C1185A
 	tst.b	(ram_10FEE0-A5_BASE,a5)	| C1185E
 	bne.w	loc_C118AE	| C11862
-	tst.w	(bram_D00034).l	| C11866
+	tst.w	(Credits).l	| C11866
 	beq.b	loc_C11888	| C1186C
 	tst.b	(ram_10FEC5-A5_BASE,a5)	| C1186E
 	bne.b	loc_C11888	| C11872
@@ -196,7 +198,7 @@ loc_C11888:
 	bne.b	loc_C118A2	| C1188E
 	tst.b	(bram_D00042).l	| C11890
 	bne.b	loc_C118A2	| C11896
-	tst.w	(bram_D00034).l	| C11898
+	tst.w	(Credits).l	| C11898
 	beq.w	loc_C118C8	| C1189E
 loc_C118A2:
 	move.b	(ram_10FEDD-A5_BASE,a5),d0	| C118A2

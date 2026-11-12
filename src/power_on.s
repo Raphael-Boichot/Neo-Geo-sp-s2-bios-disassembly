@@ -574,7 +574,8 @@ sub_C121C6:
 	move.b	d0,(REG_SRAMLOCK).l	| C121CE
 loc_C121D4:
 	rts	| C121D4
-sub_C121D6:
+| SelectSlot [I] scans the slot table in backup RAM ($D00124, 4 bytes per slot) from the slot in $D00109
+SelectSlot:
 	lea.l	(bram_D08000).l,a4	| C121D6
 	lea.l	(bram_D00124-A4_BASE,a4),a2	| C121DC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C121E0
@@ -1078,7 +1079,7 @@ loc_C1282A:
 	jsr	(sub_C12860,pc)	| C1282A
 	tst.b	(ram_10FEBB-A5_BASE,a5)	| C1282E
 	bne.b	loc_C1285E	| C12832
-	move.b	(bram_D00034-A4_BASE,a4),d0	| C12834
+	move.b	(Credits-A4_BASE,a4),d0	| C12834
 	move.b	#0xEF,d1	| C12838
 	btst.b	#0x0,(ram_10FE8B-A5_BASE,a5)	| C1283C
 	beq.b	loc_C1284C	| C12842

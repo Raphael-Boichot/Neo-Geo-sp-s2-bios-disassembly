@@ -17,81 +17,96 @@ C004C8,LSP_1ST,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004CE,MESS_OUT,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004D4,CONTROLLER_SETUP,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C02000,ScaleTableA,I,"64 rows x 64 bytes, each row starts at $40 and decreases; use not read in code yet"
-C03000,ScaleTableB,I,"64 rows x 64 bytes of ramps (row 0 = 0..63); use not read in code yet"
+C03000,ScaleTableB,I,64 rows x 64 bytes of ramps (row 0 = 0..63); use not read in code yet
 C04000,AbsSineTable,I,"384 words |sin(n*pi/128)| * $10000, the peak stored as $0001; use not read in code yet"
 C113DE,CheckSettingMode,C,"reads hard DIP 1 (bit 0 of REG_DIPSW, 0 = on) and branches to TestModeEntry when it is on; MAME: setting mode DIP opens test mode"
 C18F74,TestModeEntry,C,"test mode start: clears system mode, RAM and both palette banks, sets up the BIOS RAM, then TestMenu"
 C19072,TestMenu,C,"main menu: draws TestMenuText and the date, up/down moves the cursor, A selects (TestMenuSelect); MAME screen"
 C19114,TestMenuDrawCursor,C,"erases the cursor at the old line, copies WorkIndexNew to WorkIndex, draws it at the new line"
-C19140,TestMenuCursorCmd,C,"writes one MESS_OUT command for the cursor at line WorkIndex (VRAM $70E5 + 3 x line)"
-C1915C,PutBcdByte,C,"appends a MESS_OUT command printing a BCD byte as two digits at VRAM d2; a leading 0 stays blank"
-C1918E,TestMenuText,C,"MESS_OUT data: the 7 menu lines and the date frame"
-C1924E,PutWeekday,C,"appends the 3-letter name of BIOS_WEEKDAY from WeekdayNames"
+C19140,TestMenuCursorCmd,C,writes one MESS_OUT command for the cursor at line WorkIndex (VRAM $70E5 + 3 x line)
+C1915C,PutBcdByte,C,appends a MESS_OUT command printing a BCD byte as two digits at VRAM d2; a leading 0 stays blank
+C1918E,TestMenuText,C,MESS_OUT data: the 7 menu lines and the date frame
+C1924E,PutWeekday,C,appends the 3-letter name of BIOS_WEEKDAY from WeekdayNames
 C19262,WeekdayNames,C,"SUN MON TUE WED THU FRI SAT, 4 bytes each ($FF ends a name)"
-C1927E,TestMenuSelect,C,"pushes TestMenu as the return address and jumps to TestMenuJumpTable[WorkIndex]"
+C1927E,TestMenuSelect,C,pushes TestMenu as the return address and jumps to TestMenuJumpTable[WorkIndex]
 C19290,TestMenuJumpTable,C,"7 entries in menu order: HardwareTest, TestHardDip, TestSoftDip, TestBookKeeping, TestCodeNumber, TestCalendar, TestMenuExit"
 C196A8,TestMenuExit,C,"EXIT: while hard DIP 1 is still on, shows ""DIP-SW 1 OFF !!"" and waits"
-C196FA,TestHardDip,C,"menu item: SETTING UP THE HARD DIP screen; ran only in that MAME scenario"
-C19B76,TestSoftDip,C,"menu item: SETTING UP THE CABINET (soft DIP) screen; ran only in that MAME scenario"
+C196FA,TestHardDip,C,menu item: SETTING UP THE HARD DIP screen; ran only in that MAME scenario
+C19B76,TestSoftDip,C,menu item: SETTING UP THE CABINET (soft DIP) screen; ran only in that MAME scenario
 C1A74A,TestBookKeeping,C,"menu item: book keeping screen (CABINET/COIN, CABINET/PLAY); ran only in that MAME scenario"
-C192AC,TestCodeNumber,C,"menu item: CODE NUMBER SETTING screen; ran only in that MAME scenario"
-C19358,TestCodeNumberCard,I,"writes the code number to the memory card (texts CODE NUMBER HAS BEEN SET. / THIS CARD IS INVALID.); not run with a card"
-C1991A,TestCalendar,C,"menu item: SETTING UP THE CALENDAR screen; ran only in that MAME scenario"
+C192AC,TestCodeNumber,C,menu item: CODE NUMBER SETTING screen; ran only in that MAME scenario
+C19358,TestCodeNumberCard,I,writes the code number to the memory card (texts CODE NUMBER HAS BEEN SET. / THIS CARD IS INVALID.); not run with a card
+C1991A,TestCalendar,C,menu item: SETTING UP THE CALENDAR screen; ran only in that MAME scenario
 C17062,HardwareTest,C,"menu item 1: clears RAM and palettes, then calls HwTestStepTable[WorkIndex] once per frame"
-C17160,HwTestStepTable,C,"14 entries: for each of the 7 screens a draw routine and a per-frame routine"
-C17198,HwTestCrosshatch,C,"draws the crosshatch (palette and VRAM); MAME screen 1"
-C1724C,HwTestCrosshatchFrame,C,"per frame: START (bit 0 of ram_10FEDD) goes to step 2"
-C1725C,HwTestColorBars,C,"draws the RED GREEN BLUE WHITE bars; MAME screen 2"
-C172AE,HwTestColorBarsFrame,C,"per frame: START goes to step 4"
-C17390,HwTestIoCheck,C,"draws the I/O CHECK screen; MAME screen 3"
+C17160,HwTestStepTable,C,14 entries: for each of the 7 screens a draw routine and a per-frame routine
+C17198,HwTestCrosshatch,C,draws the crosshatch (palette and VRAM); MAME screen 1
+C1724C,HwTestCrosshatchFrame,C,per frame: START (bit 0 of ram_10FEDD) goes to step 2
+C1725C,HwTestColorBars,C,draws the RED GREEN BLUE WHITE bars; MAME screen 2
+C172AE,HwTestColorBarsFrame,C,per frame: START goes to step 4
+C17390,HwTestIoCheck,C,draws the I/O CHECK screen; MAME screen 3
 C173F6,HwTestIoCheckFrame,C,"per frame routine of the I/O check (inputs, DIPs, LED counters)"
-C1771C,HwTestSound,C,"draws the SOUND TEST screen; MAME screen 4"
-C1775A,HwTestSoundFrame,C,"per frame routine of the sound test"
-C178FE,HwTestMemCard,C,"draws the MEMORY CARD TEST screen; MAME screen 5"
-C17926,HwTestMemCardFrame,C,"per frame routine of the memory card test (prints TEST OK / TEST ERROR)"
-C17AB6,HwTestBackupClear,C,"draws the BACKUP CLEAR screen; MAME screen 6"
-C17AD8,HwTestBackupClearFrame,C,"per frame routine of the backup clear (A+B+C)"
-C17B5E,HwTestCalendar,C,"draws SETTING UP THE CALENDAR inside the hardware test; MAME screen 7"
-C17C06,HwTestCalendarFrame,C,"per frame routine of the hardware-test calendar"
-C1870C,WaitFrame,C,"sets FrameWaitFlag and loops until SystemInt1 (VBlank) clears it"
-C11002,Reset,W,"target of the reset vector and ENTRY_RESET"
-C11646,SystemInt1,W,"target of SYSTEM_INT1 (VBlank routine called by games)"
-C118CA,SystemInt2,W,"target of SYSTEM_INT2"
-C112D2,SystemReturn,W,"target of SYSTEM_RETURN"
-C1167A,SystemIo,W,"target of SYSTEM_IO"
-C117CE,CreditCheck,W,"target of CREDIT_CHECK"
-C11820,CreditDown,W,"target of CREDIT_DOWN"
-C12C78,ReadCalendar,W,"target of READ_CALENDAR"
-C12CF2,SetupCalendar,W,"target of SETUP_CALENDAR"
-C1334C,Card,W,"target of CARD (memory card operation)"
-C133C0,CardError,W,"target of CARD_ERROR"
-C18914,HowToPlay,W,"target of HOW_TO_PLAY"
-C16C0E,ChecksumLoop,W,"target of the checksum slot at $C0047A"
-C1835E,FixClear,W,"target of FIX_CLEAR"
-C1839A,LspFirst,W,"target of LSP_1ST (clear sprites)"
-C1871E,MessOut,W,"target of MESS_OUT"
-C18462,ControllerSetup,W,"target of CONTROLLER_SETUP"
+C1771C,HwTestSound,C,draws the SOUND TEST screen; MAME screen 4
+C1775A,HwTestSoundFrame,C,per frame routine of the sound test
+C178FE,HwTestMemCard,C,draws the MEMORY CARD TEST screen; MAME screen 5
+C17926,HwTestMemCardFrame,C,per frame routine of the memory card test (prints TEST OK / TEST ERROR)
+C17AB6,HwTestBackupClear,C,draws the BACKUP CLEAR screen; MAME screen 6
+C17AD8,HwTestBackupClearFrame,C,per frame routine of the backup clear (A+B+C)
+C17B5E,HwTestCalendar,C,draws SETTING UP THE CALENDAR inside the hardware test; MAME screen 7
+C17C06,HwTestCalendarFrame,C,per frame routine of the hardware-test calendar
+C1870C,WaitFrame,C,sets FrameWaitFlag and loops until SystemInt1 (VBlank) clears it
+C11002,Reset,W,target of the reset vector and ENTRY_RESET
+C11646,SystemInt1,W,target of SYSTEM_INT1 (VBlank routine called by games)
+C118CA,SystemInt2,W,target of SYSTEM_INT2
+C112D2,SystemReturn,W,target of SYSTEM_RETURN
+C1167A,SystemIo,W,target of SYSTEM_IO
+C117CE,CreditCheck,W,"target of CREDIT_CHECK: MVS, free play off (hard DIP 7, bit 6 of REG_DIPSW): BCD check of the requested credits ($10FDB0) against Credits"
+C11820,CreditDown,W,target of CREDIT_DOWN
+C12C78,ReadCalendar,W,target of READ_CALENDAR
+C12CF2,SetupCalendar,W,target of SETUP_CALENDAR
+C1334C,Card,C,"target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]"
+C133C0,CardError,W,target of CARD_ERROR
+C18914,HowToPlay,W,target of HOW_TO_PLAY
+C16C0E,ChecksumLoop,W,target of the checksum slot at $C0047A
+C1835E,FixClear,W,target of FIX_CLEAR
+C1839A,LspFirst,W,target of LSP_1ST (clear sprites)
+C1871E,MessOut,W,target of MESS_OUT
+C18462,ControllerSetup,W,target of CONTROLLER_SETUP
 C11A84,PowerOnTest,C,"boot tests: LED latches, then work RAM, backup RAM, palette banks 1/0 and VRAM (test number in d6), calendar, system ROM checksum, memory card; errors go to BootError"
-C11BA8,WorkRamTestLoop,C,"when REG_DIPSW reads 0 (all hard DIPs on): shows WORK RAM TEST and repeats the RAM tests until a DIP is turned off"
+C11BA8,WorkRamTestLoop,C,when REG_DIPSW reads 0 (all hard DIPs on): shows WORK RAM TEST and repeats the RAM tests until a DIP is turned off
 C11D44,BootErrorMemCard,C,"d6 = 7 (MEMORY CARD ERROR), then BootError"
 C11D8C,BootErrorCalendar,C,"d6 = 5 (CALENDAR ERROR) when VBlankCount between two calendar pulses is outside $39-$3F (57-63 frames, about 1 s), then BootError"
 C11D94,WaitRtcPulse,C,"waits for a rising edge of bit 6 of REG_STATUS_A (calendar pulse, wiki register page)"
 C12D6C,RtcCommand,I,"sends the 4-bit command in d0 to the calendar chip, bit by bit through sub_C12DB0"
 C13134,MemTestBlock,I,"memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks"
-C125C8,BackupRamTest,I,"memory test of backup RAM at a0 (test number in d6)"
-C125F4,ClearBackupRam,I,"unlocks backup RAM and fills it with zeros from $D10000 down"
+C125C8,BackupRamTest,I,memory test of backup RAM at a0 (test number in d6)
+C125F4,ClearBackupRam,I,unlocks backup RAM and fills it with zeros from $D10000 down
 C130AA,VramTest,I,"VRAM test through REG_VRAMRW, d4 start address, d5 count"
-C184F0,Delay,I,"nested BSR chain into sub_C18500: a fixed delay used between LED latch writes"
-C16ADA,BootError,C,"error screen: message BootErrorMessages[d6]; for d6 < 5 also prints the failing address and data"
+C184F0,Delay,I,nested BSR chain into sub_C18500: a fixed delay used between LED latch writes
+C16ADA,BootError,C,error screen: message BootErrorMessages[d6]; for d6 < 5 also prints the failing address and data
 C16AB6,BootErrorMessages,C,"pointers to the boot error texts: 0 WORK RAM, 1 BACKUP RAM, 2 COLOR RAM BANK0, 3 COLOR RAM BANK1, 4 VIDEO RAM, 5 CALENDAR, 6 SYSTEM ROM, 7 MEMORY CARD"
 C11038,ClearRamAndVideo,C,"clears work RAM, both palette banks, the fix layer (FixClear), sprite VRAM, then LspFirst"
 C11136,BiosStart,I,"after the tests: MESS_OUT buffer, ControllerSetup, then SystemModeDispatch"
 C11142,SystemModeDispatch,C,"resets the stack, then jumps through SystemModeTable by the low byte of BIOS_SYSTEM_MODE"
 C11168,SystemModeTable,C,"3 entries: SystemMode0, SystemMode1, SystemMode2"
-C11174,SystemMode0,I,"mode 0 routine (first entry of SystemModeTable)"
-C111A0,SystemMode1,C,"reads CART_EYECATCH_FLAG: 0 runs the system ROM eyecatcher (Eyecatcher), 1 lets the game do it, 2 skips it"
-C111EA,SystemMode2,I,"mode 2 routine (third entry of SystemModeTable)"
+C11174,SystemMode0,C,"mode 0: selects the slot (SelectSlot), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)"
+C111A0,SystemMode1,C,"mode 1, eyecatcher: CART_EYECATCH_FLAG 0 runs the system ROM Eyecatcher, 1 calls the game (CallUser request 1), 2 skips to mode 2"
+C111EA,SystemMode2,C,"mode 2: shows SLOT n (SlotText, slot from $D00108) for up to 300 frames, ended early by bit 1 of ram_10FEDD; then CallUser with request 2 (demo), or 3 (title) when bram $D00034 is non-zero and $D00043 is 0"
 C17E26,Eyecatcher,C,"system ROM eyecatcher (NEO-GEO logo, MAX 330 MEGA, SNK), reached when CART_EYECATCH_FLAG is 0; MAME boot sequence"
 C1850E,ReadControllers,C,"selects the joystick ports through REG_POUTPUT, reads REG_P1CNT/REG_P2CNT/REG_STATUS_B and updates BIOS_P1STATUS and the following input bytes"
-C126B4,MvsLedUpdate,I,"MVS only: credit LED / marquee latch handling at the start of SystemIo"
+C126B4,MvsLedUpdate,I,MVS only: credit LED / marquee latch handling at the start of SystemIo
 C12BE6,PlayTimeCount,I,"MVS, while a game runs (BIOS_USER_MODE 2): every 60 frames adds 1 to a long in backup RAM ($D00048, through a4 = $D08000)"
+C11286,CallUser,C,"hands over to the game: BIOS_USER_REQUEST = d0, BIOS_SYSTEM_MODE = d1 | $80, cartridge vectors (REG_SWPROM), backup RAM locked, jmp CART_USER"
+C111DC,SlotText,C,"MESS_OUT text ""SLOT "" used by SystemMode2"
+C11612,LoadGameSoftDips,C,"copies the current game soft DIP block from backup RAM into BIOS_GAME_DIP (6 bytes, then 12 nibbles)"
+C121D6,SelectSlot,I,"scans the slot table in backup RAM ($D00124, 4 bytes per slot) from the slot in $D00109"
+C116C8,CheckPlayerStart,C,"SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3"
+C1177A,StartCreditCheck,I,MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
+C1339A,CardFunctionTable,C,"8 entries indexed by BIOS_CRDF (wiki CARD: 0 format, 1 data search, 2 load, 3 save, 4 delete, 5 read data title, 6 save user name, 7 load user name)"
+C13A74,CardFormat,W,CARD function 0: format memory card (entry 0 of CardFunctionTable)
+C13D32,CardDataSearch,W,CARD function 1: data search
+C13DFA,CardLoadData,W,CARD function 2: load data
+C13F0A,CardSaveData,W,CARD function 3: save data
+C14220,CardDeleteData,W,CARD function 4: delete data
+C142B8,CardReadTitle,W,CARD function 5: read data title
+C1440E,CardSaveUserName,W,CARD function 6: save user name
+C14472,CardLoadUserName,W,CARD function 7: load user name

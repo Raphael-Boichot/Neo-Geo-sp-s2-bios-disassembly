@@ -21,7 +21,7 @@ loc_C17E4C:
 	lea.l	(ram_10F300).l,a5	| C17E66
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C17E6C
 	beq.b	loc_C17E84	| C17E70
-	tst.w	(bram_D00034).l	| C17E72
+	tst.w	(Credits).l	| C17E72
 	beq.b	loc_C17E96	| C17E78
 	bra.w	loc_C182AE	| C17E7A
 loc_C17E7E:

@@ -44,3 +44,5 @@ addr,name,tag,note
 10FEE4,VBlankCount,C,"byte incremented by SystemInt1 on every VBlank; PowerOnTest counts frames between calendar pulses with it"
 10FEE3,Int1CountOnly,C,"when non-zero SystemInt1 only increments VBlankCount (set during the calendar test)"
 10FE88,FrameCounter,C,"long incremented by every SystemIo call"
+10FDDB,SelectTimerFrames,C,"60-frame divider of BIOS_SELECT_TIMER in CheckPlayerStart (reloaded with $3B)"
+D00034,Credits,I,"BCD credit count in backup RAM: CreditCheck subtracts from it with SBCD, SystemMode2 and CheckPlayerStart test it"

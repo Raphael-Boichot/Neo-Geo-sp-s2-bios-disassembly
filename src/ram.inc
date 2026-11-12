@@ -94,7 +94,7 @@
 	.equ	BIOS_MINUTE,0x10FDD7
 	.equ	BIOS_SECOND,0x10FDD8
 	.equ	BIOS_SELECT_TIMER,0x10FDDA
-	.equ	ram_10FDDB,0x10FDDB
+	.equ	SelectTimerFrames,0x10FDDB
 	.equ	BIOS_DEVMODE,0x10FE80
 	.equ	FrameCounter,0x10FE88
 	.equ	ram_10FE8A,0x10FE8A
@@ -146,7 +146,7 @@
 	.equ	bram_D00022,0xD00022
 	.equ	bram_D00024,0xD00024
 	.equ	bram_D0002C,0xD0002C
-	.equ	bram_D00034,0xD00034
+	.equ	Credits,0xD00034
 	.equ	bram_D00035,0xD00035
 	.equ	bram_D00038,0xD00038
 	.equ	bram_D00039,0xD00039

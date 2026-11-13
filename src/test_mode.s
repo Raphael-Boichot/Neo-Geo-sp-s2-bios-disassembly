@@ -765,7 +765,7 @@ loc_C19B88:
 	lea.l	(bram_D08000).l,a4	| C19B8E
 	moveq	#0x0,d6	| C19B94
 	move.w	d6,d5	| C19B96
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C19B98
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C19B98
 	lea.l	(bram_D002A0-A4_BASE,a4),a1	| C19B9C
 	movea.l	a5,a0	| C19BA0
 loc_C19BA2:
@@ -1746,7 +1746,7 @@ loc_C1A75C:
 	lea.l	(bram_D08000).l,a4	| C1A762
 	moveq	#0x0,d6	| C1A768
 	move.w	d6,d5	| C1A76A
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C1A76C
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C1A76C
 	lea.l	(bram_D002A0-A4_BASE,a4),a1	| C1A770
 	movea.l	a5,a0	| C1A774
 loc_C1A776:
@@ -2945,7 +2945,7 @@ loc_C1B7AA:
 	move.l	(0x800070).l,(bram_D001AC-A4_BASE,a4)	| C1B7D2
 	move.w	(WorkIndex-A5_BASE,a5),(bram_D001B0-A4_BASE,a4)	| C1B7DA
 	move.l	(a0)+,(bram_D00104-A4_BASE,a4)	| C1B7E0
-	move.l	(a0)+,(bram_D00108-A4_BASE,a4)	| C1B7E4
+	move.l	(a0)+,(CurrentSlot-A4_BASE,a4)	| C1B7E4
 	dc.w	0x2E3C,0x0000,0x0025	| C1B7E8: move.l #$25, d7
 	lea.l	(bram_D0011A-A4_BASE,a4),a1	| C1B7EE
 	jsr	(sub_C1B850,pc)	| C1B7F2
@@ -2955,7 +2955,7 @@ loc_C1B7AA:
 	move.l	#0x10F0,d7	| C1B804
 	lea.l	(bram_D08320-A4_BASE,a4),a1	| C1B80A
 	jsr	(sub_C1B850,pc)	| C1B80E
-	lea.l	(bram_D00124-A4_BASE,a4),a0	| C1B812
+	lea.l	(SlotTable-A4_BASE,a4),a0	| C1B812
 	moveq	#0x0,d0	| C1B816
 loc_C1B818:
 	tst.w	(a0,d0.w)	| C1B818

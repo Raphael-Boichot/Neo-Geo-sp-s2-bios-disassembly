@@ -171,7 +171,7 @@ SystemMode2:
 	move.w	#0x5,(a0)+	| C11224
 	move.w	#0x9F,(a0)+	| C11228
 	move.w	#0x108,(a0)+	| C1122C
-	move.b	(bram_D00108).l,d0	| C11230
+	move.b	(CurrentSlot).l,d0	| C11230
 	addi.b	#0x31,d0	| C11236
 	move.b	d0,(a0)+	| C1123A
 	move.b	#0xFF,(a0)+	| C1123C
@@ -294,21 +294,21 @@ CheckSettingMode:
 	move.b	(bram_D00058).l,d5	| C113F6
 	bmi.b	loc_C11418	| C113FC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C113FE
-	jsr	(sub_C11F94,pc)	| C11404
+	jsr	(SwitchSlot,pc)	| C11404
 	move.b	#0x3,(REG_SOUND).l	| C11408
 	move.b	d0,(REG_SRAMLOCK).l	| C11410
 	bra.b	loc_C113D2	| C11416
 loc_C11418:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11418
 	jsr	(sub_C123C4,pc)	| C1141E
-	move.b	(bram_D00108).l,d5	| C11422
+	move.b	(CurrentSlot).l,d5	| C11422
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C11428
-	jsr	(sub_C1268A,pc)	| C1142C
+	jsr	(WriteLedData,pc)	| C1142C
 	rts	| C11430
 loc_C11432:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11432
-	move.b	(bram_D00108).l,d5	| C11438
-	jsr	(sub_C1268A,pc)	| C1143E
+	move.b	(CurrentSlot).l,d5	| C11438
+	jsr	(WriteLedData,pc)	| C1143E
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11442
 	jsr	(sub_C123A8,pc)	| C11448
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1144C
@@ -338,7 +338,7 @@ loc_C1149A:
 	jsr	(sub_C12322,pc)	| C114A6
 	jsr	(sub_C123C4,pc)	| C114AA
 	move.b	(bram_D00058).l,d0	| C114AE
-	cmp.b	(bram_D00108).l,d0	| C114B4
+	cmp.b	(CurrentSlot).l,d0	| C114B4
 	bne.b	loc_C114C2	| C114BA
 	move.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114BC
 loc_C114C2:

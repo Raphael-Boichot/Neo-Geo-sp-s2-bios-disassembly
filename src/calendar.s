@@ -114,10 +114,10 @@ WriteRtcCtrl:
 	rts	| C12DB6
 sub_C12DB8:
 	moveq	#0x3,d0	| C12DB8
-	jsr	(sub_C12EAC,pc)	| C12DBA
+	jsr	(RtcCommandAlt,pc)	| C12DBA
 	bsr.w	sub_C184F4	| C12DBE
 	moveq	#0x1,d0	| C12DC2
-	jsr	(sub_C12EAC,pc)	| C12DC4
+	jsr	(RtcCommandAlt,pc)	| C12DC4
 	lea.l	(BIOS_YEAR).l,a0	| C12DC8
 	jsr	(RtcReadByteAlt,pc)	| C12DCE
 	move.b	d0,0x6(a0)	| C12DD2
@@ -159,7 +159,7 @@ sub_C12E32:
 	tst.b	d7	| C12E3C
 	bne.w	loc_C12E86	| C12E3E
 	moveq	#0x1,d0	| C12E42
-	jsr	(sub_C12EAC,pc)	| C12E44
+	jsr	(RtcCommandAlt,pc)	| C12E44
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12E48
 	jsr	(RtcSendByteAlt,pc)	| C12E4C
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C12E50
@@ -173,9 +173,9 @@ sub_C12E32:
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12E70
 	jsr	(RtcSendByteAlt,pc)	| C12E74
 	moveq	#0x2,d0	| C12E78
-	jsr	(sub_C12EAC,pc)	| C12E7A
+	jsr	(RtcCommandAlt,pc)	| C12E7A
 	moveq	#0x0,d0	| C12E7E
-	jsr	(sub_C12EAC,pc)	| C12E80
+	jsr	(RtcCommandAlt,pc)	| C12E80
 	moveq	#0x0,d7	| C12E84
 loc_C12E86:
 	rts	| C12E86
@@ -193,7 +193,8 @@ loc_C12E8A:
 	lsr.b	#0x1,d0	| C12EA4
 	dbra	d7,loc_C12E8A	| C12EA6
 	rts	| C12EAA
-sub_C12EAC:
+| RtcCommandAlt [I] 4-bit command through WriteRtcCtrlAlt, like RtcCommand on the alternate calendar path
+RtcCommandAlt:
 	moveq	#0x3,d7	| C12EAC
 loc_C12EAE:
 	move.b	d0,d1	| C12EAE
@@ -321,7 +322,7 @@ loc_C1303E:
 	bne.b	loc_C13064	| C13040
 	dbra	d7,loc_C1303E	| C13042
 	moveq	#0x0,d0	| C13046
-	move.b	(bram_D00108).l,(bram_D0005E).l	| C13048
+	move.b	(CurrentSlot).l,(bram_D0005E).l	| C13048
 	clr.l	(bram_D00010).l	| C13052
 	jsr	(sub_C12DB8,pc)	| C13058
 	jsr	(SetupCalendar,pc)	| C1305C
@@ -336,7 +337,7 @@ loc_C1306E:
 	dbra	d7,loc_C1306E	| C13072
 	move.w	#0x1,(bram_D00060).l	| C13076
 	clr.l	(bram_D00010).l	| C1307E
-	lea.l	(bram_D00124).l,a0	| C13084
+	lea.l	(SlotTable).l,a0	| C13084
 	moveq	#0x7,d7	| C1308A
 loc_C1308C:
 	move.l	#0xFFFF,(a0)+	| C1308C

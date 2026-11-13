@@ -182,7 +182,7 @@ loc_C11D46:
 	jmp	(BootError,pc)	| C11D46
 loc_C11D4A:
 	jsr	(sub_C11DB0,pc)	| C11D4A
-	lea.l	(bram_D00124).l,a0	| C11D4E
+	lea.l	(SlotTable).l,a0	| C11D4E
 	moveq	#0x0,d0	| C11D54
 loc_C11D56:
 	tst.w	(a0)	| C11D56
@@ -306,7 +306,7 @@ loc_C11EC2:
 	move.b	d0,(REG_CRTFIX).l	| C11ED4
 	jsr	(sub_C11F5A,pc)	| C11EDA
 	move.b	d0,(REG_BRDFIX).l	| C11EDE
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C11EE4
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C11EE4
 	moveq	#0x0,d4	| C11EE8
 	move.b	(bram_D00047-A4_BASE,a4),d4	| C11EEA
 	add.w	d4,d4	| C11EEE
@@ -343,7 +343,7 @@ sub_C11F5A:
 loc_C11F62:
 	move.w	d6,d5	| C11F62
 	lsr.w	#0x2,d5	| C11F64
-	move.b	d5,(bram_D00108-A4_BASE,a4)	| C11F66
+	move.b	d5,(CurrentSlot-A4_BASE,a4)	| C11F66
 	move.b	d5,(REG_SLOT).l	| C11F6A
 	jsr	(sub_C12FFA,pc)	| C11F70
 	bne.b	loc_C11F8C	| C11F74
@@ -358,9 +358,10 @@ loc_C11F8C:
 	cmp.b	d6,d4	| C11F8E
 	bne.b	loc_C11F62	| C11F90
 	rts	| C11F92
-sub_C11F94:
+| SwitchSlot [C] after sub_C11FB2: slot d5 to CurrentSlot and REG_SLOT, then the cartridge fix layer (REG_CRTFIX) and vectors (REG_SWPROM)
+SwitchSlot:
 	jsr	(sub_C11FB2,pc)	| C11F94
-	move.b	d5,(bram_D00108).l	| C11F98
+	move.b	d5,(CurrentSlot).l	| C11F98
 	move.b	d5,(REG_SLOT).l	| C11F9E
 	move.b	d0,(REG_CRTFIX).l	| C11FA4
 	move.b	d0,(REG_SWPROM).l	| C11FAA
@@ -537,7 +538,7 @@ sub_C12160:
 	moveq	#0x0,d6	| C12160
 	move.b	d6,(bram_D00109-A4_BASE,a4)	| C12162
 loc_C12166:
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C12166
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C12166
 	tst.w	(a2,d6.w)	| C1216A
 	beq.w	loc_C121B0	| C1216E
 	tst.w	0x2(a2,d6.w)	| C12172
@@ -568,7 +569,8 @@ loc_C121B0:
 	cmp.b	(bram_D00047-A4_BASE,a4),d0	| C121BE
 	bcs.b	loc_C12166	| C121C2
 	rts	| C121C4
-sub_C121C6:
+| LockBackupRamUnless [I] locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set
+LockBackupRamUnless:
 	tst.b	(ram_10FEBF).l	| C121C6
 	bne.b	loc_C121D4	| C121CC
 	move.b	d0,(REG_SRAMLOCK).l	| C121CE
@@ -577,7 +579,7 @@ loc_C121D4:
 | SelectSlot [I] scans the slot table in backup RAM ($D00124, 4 bytes per slot) from the slot in $D00109
 SelectSlot:
 	lea.l	(bram_D08000).l,a4	| C121D6
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C121DC
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C121DC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C121E0
 	moveq	#0x0,d5	| C121E6
 	move.b	(bram_D00109-A4_BASE,a4),d5	| C121E8
@@ -638,7 +640,7 @@ loc_C1225A:
 loc_C1227A:
 	move.l	d0,(a0)+	| C1227A
 	dbra	d7,loc_C1227A	| C1227C
-	jsr	(sub_C11F94,pc)	| C12280
+	jsr	(SwitchSlot,pc)	| C12280
 	moveq	#0x0,d0	| C12284
 	move.b	(dat_C00401).l,d0	| C12286
 	add.w	d0,d0	| C1228C
@@ -667,17 +669,17 @@ loc_C122C8:
 	cmp.b	(bram_D00047-A4_BASE,a4),d5	| C122C8
 	bcc.b	loc_C122B2	| C122CC
 	clr.b	0x2(a2,d6.w)	| C122CE
-	jsr	(sub_C11F94,pc)	| C122D2
+	jsr	(SwitchSlot,pc)	| C122D2
 	bra.b	loc_C122C0	| C122D6
 sub_C122D8:
 	lea.l	(bram_D08000).l,a4	| C122D8
 	moveq	#0x0,d0	| C122DE
-	move.b	(bram_D00108-A4_BASE,a4),d0	| C122E0
+	move.b	(CurrentSlot-A4_BASE,a4),d0	| C122E0
 	cmpi.b	#0x8,d0	| C122E4
 	bcc.w	loc_C12320	| C122E8
 	add.w	d0,d0	| C122EC
 	add.w	d0,d0	| C122EE
-	lea.l	(bram_D00124-A4_BASE,a4),a0	| C122F0
+	lea.l	(SlotTable-A4_BASE,a4),a0	| C122F0
 	move.w	0x2(a0,d0.w),d0	| C122F4
 	cmpi.w	#0x8,d0	| C122F8
 	bcc.b	loc_C12320	| C122FC
@@ -696,12 +698,12 @@ loc_C12320:
 sub_C12322:
 	lea.l	(bram_D08000).l,a4	| C12322
 	moveq	#0x0,d0	| C12328
-	move.b	(bram_D00108).l,d0	| C1232A
+	move.b	(CurrentSlot).l,d0	| C1232A
 	cmpi.b	#0x8,d0	| C12330
 	bcc.b	loc_C12320	| C12334
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12336
 	lsl.w	#0x2,d0	| C1233C
-	lea.l	(bram_D00124-A4_BASE,a4),a0	| C1233E
+	lea.l	(SlotTable-A4_BASE,a4),a0	| C1233E
 	move.w	0x2(a0,d0.w),d0	| C12342
 	ror.w	#0x4,d0	| C12346
 	addi.l	#bram_D00320,d0	| C12348
@@ -722,8 +724,8 @@ sub_C12372:
 	lea.l	(bram_D08000).l,a4	| C12372
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C12378
 	bsr.w	sub_C184EC	| C12380
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C12384
-	move.b	(bram_D00108-A4_BASE,a4),d5	| C12388
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C12384
+	move.b	(CurrentSlot-A4_BASE,a4),d5	| C12388
 loc_C1238C:
 	subq.b	#0x1,d5	| C1238C
 	bpl.b	loc_C12396	| C1238E
@@ -740,16 +742,16 @@ loc_C12396:
 sub_C123A8:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C123A8
 	lea.l	(bram_D08000).l,a4	| C123AE
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C123B4
-	move.b	(bram_D00108-A4_BASE,a4),d5	| C123B8
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C123B4
+	move.b	(CurrentSlot-A4_BASE,a4),d5	| C123B8
 	move.b	d5,(bram_D00109-A4_BASE,a4)	| C123BC
 	bra.w	loc_C1241E	| C123C0
 sub_C123C4:
 	lea.l	(bram_D08000).l,a4	| C123C4
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C123CA
 	bsr.w	sub_C184EC	| C123D2
-	lea.l	(bram_D00124-A4_BASE,a4),a2	| C123D6
-	move.b	(bram_D00108-A4_BASE,a4),d5	| C123DA
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C123D6
+	move.b	(CurrentSlot-A4_BASE,a4),d5	| C123DA
 loc_C123DE:
 	addq.b	#0x1,d5	| C123DE
 	cmp.b	(bram_D00047-A4_BASE,a4),d5	| C123E0
@@ -769,11 +771,11 @@ loc_C123F6:
 	move.b	d0,(REG_LEDDATA).l	| C12400
 	move.b	#0xF7,(REG_LEDLATCHES).l	| C12406
 	move.b	d5,(bram_D00109-A4_BASE,a4)	| C1240E
-	jsr	(sub_C11F94,pc)	| C12412
+	jsr	(SwitchSlot,pc)	| C12412
 	move.b	#0x3,(REG_SOUND).l	| C12416
 loc_C1241E:
 	moveq	#0x0,d0	| C1241E
-	move.b	(bram_D00108-A4_BASE,a4),d0	| C12420
+	move.b	(CurrentSlot-A4_BASE,a4),d0	| C12420
 	add.w	d0,d0	| C12424
 	add.w	d0,d0	| C12426
 	move.w	(a2,d0.w),(BIOS_GAME_DIP-A5_BASE,a5)	| C12428
@@ -843,7 +845,7 @@ sub_C12506:
 	moveq	#0x0,d0	| C12506
 	move.b	(bram_D00109-A4_BASE,a4),d0	| C12508
 	lsl.w	#0x2,d0	| C1250C
-	lea.l	(bram_D00124-A4_BASE,a4),a0	| C1250E
+	lea.l	(SlotTable-A4_BASE,a4),a0	| C1250E
 	move.w	0x2(a0,d0.w),d0	| C12512
 	lsl.w	#0x2,d0	| C12516
 	movea.l	(tbl_C1251E,pc,d0.w),a0	| C12518
@@ -855,7 +857,7 @@ sub_C1253E:
 	moveq	#0x0,d0	| C1253E
 	move.b	(bram_D00109-A4_BASE,a4),d0	| C12540
 	lsl.w	#0x2,d0	| C12544
-	lea.l	(bram_D00124-A4_BASE,a4),a0	| C12546
+	lea.l	(SlotTable-A4_BASE,a4),a0	| C12546
 	move.w	0x2(a0,d0.w),d0	| C1254A
 	lsl.w	#0x2,d0	| C1254E
 	lea.l	(bram_D00200-A4_BASE,a4),a0	| C12550
@@ -865,7 +867,7 @@ sub_C1255A:
 	moveq	#0x0,d0	| C1255A
 	move.b	(bram_D00109-A4_BASE,a4),d0	| C1255C
 	lsl.w	#0x2,d0	| C12560
-	lea.l	(bram_D00124-A4_BASE,a4),a0	| C12562
+	lea.l	(SlotTable-A4_BASE,a4),a0	| C12562
 	move.w	0x2(a0,d0.w),d0	| C12566
 	lsl.w	#0x2,d0	| C1256A
 	movea.l	(tbl_C12572,pc,d0.w),a0	| C1256C
@@ -936,7 +938,7 @@ loc_C1264E:
 	move.b	(a4)+,(a6)+	| C1264E
 	dbra	d7,loc_C1264E	| C12650
 	move.b	#0x23,(bram_D00122).l	| C12654
-	lea.l	(bram_D00124).l,a0	| C1265C
+	lea.l	(SlotTable).l,a0	| C1265C
 	move.l	#0xFFFF,d0	| C12662
 	moveq	#0x7,d7	| C12668
 loc_C1266A:
@@ -946,7 +948,8 @@ loc_C1266A:
 	move.w	#0xFFFF,(bram_D001B0).l	| C1267A
 	move.b	d0,(REG_SRAMLOCK).l	| C12682
 	rts	| C12688
-sub_C1268A:
+| WriteLedData [C] writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay
+WriteLedData:
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C1268A
 	bsr.w	Delay	| C12692
 	not.b	d5	| C12696
@@ -967,7 +970,7 @@ loc_C126BC:
 	andi.b	#0x3,d0	| C126C8
 	bne.b	loc_C126EA	| C126CC
 	move.b	(ram_10FCEC-A5_BASE,a5),d5	| C126CE
-	jsr	(sub_C1268A,pc)	| C126D2
+	jsr	(WriteLedData,pc)	| C126D2
 	move.b	(ram_10FCEC-A5_BASE,a5),d0	| C126D6
 	addq.b	#0x1,d0	| C126DA
 	cmp.b	(bram_D00047).l,d0	| C126DC
@@ -1088,7 +1091,7 @@ loc_C1282A:
 loc_C1284C:
 	not.b	d0	| C1284C
 	move.b	d0,(REG_LEDDATA).l	| C1284E
-	jsr	(sub_C121C6,pc)	| C12854
+	jsr	(LockBackupRamUnless,pc)	| C12854
 	move.b	d1,(REG_LEDLATCHES).l	| C12858
 loc_C1285E:
 	rts	| C1285E
@@ -1161,7 +1164,7 @@ DeductStartCredits:
 	move.b	(BIOS_START_FLAG-A5_BASE,a5),d0	| C12922
 	jsr	(DeductPlayerCredit,pc)	| C12926
 	jsr	(DeductPlayerCredit,pc)	| C1292A
-	jsr	(sub_C121C6,pc)	| C1292E
+	jsr	(LockBackupRamUnless,pc)	| C1292E
 	rts	| C12932
 | DeductPlayerCredit [C] if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters
 DeductPlayerCredit:
@@ -1207,7 +1210,7 @@ sub_C1299A:
 	lea.l	(ram_10FDB0-A5_BASE,a5),a3	| C129AA
 	jsr	(sub_C129BC,pc)	| C129AE
 	jsr	(sub_C129BC,pc)	| C129B2
-	jsr	(sub_C121C6,pc)	| C129B6
+	jsr	(LockBackupRamUnless,pc)	| C129B6
 	rts	| C129BA
 sub_C129BC:
 	move.b	(a1)+,d2	| C129BC
@@ -1378,7 +1381,7 @@ loc_C12C08:
 	addq.l	#0x1,(bram_D00048-A4_BASE,a4)	| C12C14
 loc_C12C18:
 	move.l	(ram_10FDB6-A5_BASE,a5),(ram_10FDBA-A5_BASE,a5)	| C12C18
-	jsr	(sub_C121C6,pc)	| C12C1E
+	jsr	(LockBackupRamUnless,pc)	| C12C1E
 	rts	| C12C22
 sub_C12C24:
 	lea.l	(bram_D08000).l,a4	| C12C24

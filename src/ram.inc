@@ -190,7 +190,7 @@
 	.equ	bram_D00060,0xD00060
 	.equ	bram_D00104,0xD00104
 	.equ	bram_D00105,0xD00105
-	.equ	bram_D00108,0xD00108
+	.equ	CurrentSlot,0xD00108
 	.equ	bram_D00109,0xD00109
 	.equ	bram_D0010A,0xD0010A
 	.equ	bram_D0010E,0xD0010E
@@ -198,7 +198,7 @@
 	.equ	bram_D00116,0xD00116
 	.equ	bram_D0011A,0xD0011A
 	.equ	bram_D00122,0xD00122
-	.equ	bram_D00124,0xD00124
+	.equ	SlotTable,0xD00124
 	.equ	bram_D00164,0xD00164
 	.equ	bram_D001A4,0xD001A4
 	.equ	bram_D001A8,0xD001A8

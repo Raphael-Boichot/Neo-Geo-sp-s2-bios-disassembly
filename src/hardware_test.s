@@ -323,7 +323,7 @@ loc_C1754E:
 	rts	| C17554
 sub_C17556:
 	move.b	(WorkIndexNew-A5_BASE,a5),d5	| C17556
-	jsr	(sub_C1268A,pc)	| C1755A
+	jsr	(WriteLedData,pc)	| C1755A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1755E
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17562
 	clr.l	(a0)+	| C17566
@@ -823,7 +823,7 @@ loc_C17CA4:
 	move.b	(bram_D0005E).l,d5	| C17CA4
 	bmi.b	loc_C17CC8	| C17CAA
 	move.w	#0x2700,sr	| C17CAC
-	jsr	(sub_C11F94,pc)	| C17CB0
+	jsr	(SwitchSlot,pc)	| C17CB0
 	move.b	d0,(REG_SWPBIOS).l	| C17CB4
 	move.w	#0x2000,sr	| C17CBA
 	jsr	(sub_C12E32,pc)	| C17CBE

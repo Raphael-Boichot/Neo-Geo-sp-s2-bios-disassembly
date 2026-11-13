@@ -146,3 +146,7 @@ C12EF0,WriteRtcCtrlAlt,I,"writes d1 to $280051, the alternate calendar control u
 C18392,FillVramWords,C,"writes d0 to (a0) d1+1 times (REG_VRAMRW with auto-increment)"
 C149A6,IsSnkRomCard,C,"compares the card header with ""SNK ROM "" (dat_C144F0): detects a read-only SNK ROM card"
 C144F0,SnkRomCardId,C,"""SNK ROM "" card header"
+C11F94,SwitchSlot,C,"after sub_C11FB2: slot d5 to CurrentSlot and REG_SLOT, then the cartridge fix layer (REG_CRTFIX) and vectors (REG_SWPROM)"
+C1268A,WriteLedData,C,"writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay"
+C121C6,LockBackupRamUnless,I,"locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set"
+C12EAC,RtcCommandAlt,I,"4-bit command through WriteRtcCtrlAlt, like RtcCommand on the alternate calendar path"

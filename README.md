@@ -3,8 +3,8 @@
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it.
 
-**Status: L0, L1 and L5 done, L4 nearly (30 backup RAM accesses left), L2 measured (48.2 % of the code
-ran in MAME), naming in progress (166 names)** (2026-11-13): `src/sp-s2.s` assembles to the original
+**Status: L0, L1 and L5 done, L4 nearly (30 backup RAM accesses left), L2 measured (49.5 % of the code
+ran in MAME), naming in progress (172 names)** (2026-11-13): `src/sp-s2.s` assembles to the original
 ROM (SHA-1 below); the BIOS has been run in MAME (screens below, levels in the table).
 
 ## ROM map
@@ -127,6 +127,22 @@ A real case needs a game that calls HOW_TO_PLAY with a timer effect on at that m
 known. Later games stopped calling HOW_TO_PLAY and handle their raster interrupts with their own
 vectors, so SystemInt2 is most likely an unused safety net (I).
 
+### NEO-CLN cartridges (cartridge calendar)
+
+The slot scan (`CheckCartridgeId`, `$C12FFA`) accepts a game when its header ID reads `NEO-GEO`
+and its security code matches 122 bytes of the system ROM's own card code (`$C146A2-$C1471B`).
+A cartridge whose ID reads `NEO-CLN` is handled differently: it carries its own calendar chip, read
+at `$220001` and controlled at `$280051` in the cartridge area. The BIOS stores its slot in
+`NeoClnSlot` (`$D0005E`), copies the cartridge calendar to the board calendar and opens the
+hardware test on its calendar screen; there, D sets the cartridge calendar and then the board
+calendar. This is the only use of the "alternate" calendar routines (C). What such a cartridge
+was used for is not documented; a service cartridge for setting the time is a guess (I).
+
+In MAME, `tools/neo_cln_test.py` writes a copy of a game set with only the ID changed. MAME has no
+chip there, so the time shown is open bus (scenario `neo_cln_cartridge`, D pressed at frame 600):
+
+![NEO-CLN header: the hardware test opens on the calendar screen](docs/neo_cln_cartridge.png)
+
 ## Contents
 
 | File | What it is |
@@ -152,6 +168,7 @@ vectors, so SystemInt2 is most likely an unused safety net (I).
 | [`tools/relocation_test.py`](tools/relocation_test.py) | Builds a modified BIOS with moved code and an added routine (L5 test) |
 | [`tools/scan_bios_calls.py`](tools/scan_bios_calls.py) | Counts BIOS call references in game program ROMs |
 | [`tools/mame_bot_sengoku2.lua`](tools/mame_bot_sengoku2.lua) | MAME play bot for Sengoku 2 (reaches level 2, card save/load) |
+| [`tools/neo_cln_test.py`](tools/neo_cln_test.py) | Copies a game set with its header ID set to NEO-CLN (cartridge calendar path, MAME only) |
 | [`tools/hidden_programs_test.py`](tools/hidden_programs_test.py) | Builds a test BIOS whose test menu opens the unreferenced controller test and card utility |
 | [`tools/mame_trace.lua`](tools/mame_trace.lua), [`tools/mame_coverage.sh`](tools/mame_coverage.sh) | Traced MAME runs (debugger trace through a FIFO; extra debugger commands with `DEBUG_CMDS`) |
 | [`tools/mame_watch_irq2.lua`](tools/mame_watch_irq2.lua) | Logs a game's timer IRQ settings, vector switches and SystemInt2 runs |
@@ -173,9 +190,9 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 |---|---|
 | L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 9,109 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
 | L1 every byte typed | done by the tracer: code 32,338 B, data 22,011 B (text as `.ascii`, ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000`/`$C03000`, sine table at `$C04000`, tag I); the unreferenced controller test and memory card utility traced from their pointer tables (`tools/hints.txt`) |
-| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) the only one left (`tools/stats.py`); the card utility dispatch at `$C150A6` is found by the tracer. MAME, 25 scenarios with 4 games (Sengoku 2: boot, coins and START, hardware test, test-mode items, calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete; NAM-1975: HOW_TO_PLAY, and HOW_TO_PLAY with the timer interrupt forced on; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start): 4,386 of 9,109 instructions ran (48.2 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. SYSTEM_INT2 ran only when forced (see above). CREDIT_DOWN ran with King of the Monsters 2. Never run: the checksum slot, the alternate calendar path, the boot error screens and the work RAM test loop (all hard DIPs on) |
-| L3 names | 166 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots (wiki names, W) and their targets, and the 8 CARD functions; all ran in MAME except the checksum slot (SYSTEM_INT2 only when forced); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and an alternate calendar path, never run), test mode, hardware test, the unreferenced controller test and memory card utility, the most-called helpers (C from code reading, MAME screens and coverage); some I. 1,415 automatic labels left |
-| L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (30 accesses left raw where a4 cannot be proven). 217 RAM addresses used: 54 named (W/C/I), 163 automatic; `$100000` is `WorkRamStart` (also the card utility's card buffer); 18 cartridge header fields named |
+| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) the only one left (`tools/stats.py`); the card utility dispatch at `$C150A6` is found by the tracer. MAME, 26 scenarios with 4 games (Sengoku 2: boot, coins and START, hardware test, test-mode items, calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete, and with its header ID patched to NEO-CLN; NAM-1975: HOW_TO_PLAY, and HOW_TO_PLAY with the timer interrupt forced on; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start): 4,505 of 9,109 instructions ran (49.5 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. SYSTEM_INT2 ran only when forced (see above). CREDIT_DOWN ran with King of the Monsters 2. Never run: the checksum slot, the boot error screens and the work RAM test loop (all hard DIPs on) |
+| L3 names | 172 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots (wiki names, W) and their targets, and the 8 CARD functions; all ran in MAME except the checksum slot (SYSTEM_INT2 only when forced); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and the NEO-CLN cartridge calendar), test mode, hardware test, the unreferenced controller test and memory card utility, the most-called helpers (C from code reading, MAME screens and coverage); some I. 1,409 automatic labels left |
+| L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (30 accesses left raw where a4 cannot be proven). 217 RAM addresses used: 55 named (W/C/I), 162 automatic; `$100000` is `WorkRamStart` (also the card utility's card buffer); 18 cartridge header fields named |
 | L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |
 | L6 understanding | started: boot sequence, every test-mode and hardware-test screen, the hidden programs, card save/load/delete, HOW_TO_PLAY, CREDIT_DOWN and SYSTEM_INT2 run in MAME and linked to their routines (README sections above); screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); no written reference per subsystem yet |
 

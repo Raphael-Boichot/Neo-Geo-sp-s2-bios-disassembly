@@ -102,6 +102,9 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
 - MAME debugger actions: the program counter is `curpc` (`pc` gives "unknown symbol" and the
   action does nothing); `frame` works. Lua write and read taps on the I/O registers and on the vector
   area gave nothing past the first vector switch: watch them with debugger `wpset` instead.
+- Code that never runs may wait for a special cartridge: the alternate calendar routines run only for a
+  header ID of NEO-CLN. Read the slot scan's ID checks, then patch the ID in a copy of a game set
+  (`tools/neo_cln_test.py`); MAME accepts the changed ROM (wrong checksum warning only).
 - A path no game takes (SYSTEM_INT2: a timer IRQ while the system ROM vectors are mapped) can be
   reached by a breakpoint that sets the game state at the right instruction (`DEBUG_CMDS`); such a run
   proves the code works, not that a game uses it: say so.

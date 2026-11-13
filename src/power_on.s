@@ -222,7 +222,7 @@ sub_C11DB0:
 	lea.l	(BiosWorkRam).l,a5	| C11DB6
 	move.b	#0xFF,(ram_10FEE1-A5_BASE,a5)	| C11DBC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11DC2
-	move.w	#0xFFFF,(bram_D0005E-A4_BASE,a4)	| C11DC8
+	move.w	#0xFFFF,(NeoClnSlot-A4_BASE,a4)	| C11DC8
 	moveq	#0x0,d0	| C11DCE
 	move.w	d0,(bram_D00060-A4_BASE,a4)	| C11DD0
 	move.l	d0,(bram_D00048-A4_BASE,a4)	| C11DD4
@@ -345,7 +345,7 @@ loc_C11F62:
 	lsr.w	#0x2,d5	| C11F64
 	move.b	d5,(CurrentSlot-A4_BASE,a4)	| C11F66
 	move.b	d5,(REG_SLOT).l	| C11F6A
-	jsr	(sub_C12FFA,pc)	| C11F70
+	jsr	(CheckCartridgeId,pc)	| C11F70
 	bne.b	loc_C11F8C	| C11F74
 	move.w	(CART_NGH).w,(a3,d6.w)	| C11F76
 	tst.b	(CART_EYECATCH_FLAG).w	| C11F7C

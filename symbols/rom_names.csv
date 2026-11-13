@@ -37,7 +37,7 @@ C1A74A,TestBookKeeping,C,"menu item: book keeping screen (CABINET/COIN, CABINET/
 C192AC,TestCodeNumber,C,menu item: CODE NUMBER SETTING screen; ran only in that MAME scenario
 C19358,TestCodeNumberCard,I,writes the code number to the memory card (texts CODE NUMBER HAS BEEN SET. / THIS CARD IS INVALID.); not run with a card
 C1991A,TestCalendar,C,menu item: SETTING UP THE CALENDAR screen; ran only in that MAME scenario
-C17062,HardwareTest,C,"menu item 1: clears RAM and palettes, then calls HwTestStepTable[WorkIndex] once per frame"
+C17062,HardwareTest,C,"menu item 1: clears RAM and palettes, then calls HwTestStepTable[WorkIndex] once per frame; starts at the calendar screen (step $0C) when NeoClnSlot is set (MAME: neo_cln_cartridge)"
 C17160,HwTestStepTable,C,14 entries: for each of the 7 screens a draw routine and a per-frame routine
 C17198,HwTestCrosshatch,C,draws the crosshatch (palette and VRAM); MAME screen 1
 C1724C,HwTestCrosshatchFrame,C,per frame: START (bit 0 of BIOS_STATCHANGE_RAW, Start P1) goes to step 2
@@ -140,21 +140,21 @@ C131AA,BcdToBinary,C,d0 BCD byte (00-99) -> binary through BcdToBinaryTable
 C131B4,BcdToBinaryTable,C,"256 bytes: binary value of each BCD byte, 0 for invalid digits"
 C12D48,RtcSendByte,C,"sends the 8 bits of d0 LSB first to the calendar chip through WriteRtcCtrl (data, clock high, clock low)"
 C12CD8,RtcReadByte,C,"reads 8 bits from the calendar chip (bit 7 of REG_STATUS_A), LSB first, into d0; runs at every boot in MAME"
-C12E88,RtcSendByteAlt,I,same protocol as RtcSendByte but through $280051 (cartridge area); never ran in MAME
-C12E18,RtcReadByteAlt,I,same protocol as RtcReadByte but reading $220001 (cartridge area); never ran in MAME
-C12EF0,WriteRtcCtrlAlt,I,"writes d1 to $280051, the alternate calendar control used by RtcSendByteAlt"
+C12E88,RtcSendByteAlt,C,"writes a byte to the NEO-CLN cartridge calendar through $280051 (same protocol as RtcSendByte). MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
+C12E18,RtcReadByteAlt,C,"reads a byte from the NEO-CLN cartridge calendar at $220001 (same protocol as RtcReadByte). MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
+C12EF0,WriteRtcCtrlAlt,C,"writes d1 to $280051, the control of the NEO-CLN cartridge calendar. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
 C18392,FillVramWords,C,writes d0 to (a0) d1+1 times (REG_VRAMRW with auto-increment)
 C149A6,IsSnkRomCard,C,"compares the card header with ""SNK ROM "" (dat_C144F0): detects a read-only SNK ROM card"
 C144F0,SnkRomCardId,C,"""SNK ROM "" card header"
 C11F94,SwitchSlot,C,"after sub_C11FB2: slot d5 to CurrentSlot and REG_SLOT, then the cartridge fix layer (REG_CRTFIX) and vectors (REG_SWPROM)"
 C1268A,WriteLedData,C,"writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay"
 C121C6,LockBackupRamUnless,I,locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set
-C12EAC,RtcCommandAlt,I,"4-bit command through WriteRtcCtrlAlt, like RtcCommand on the alternate calendar path"
+C12EAC,RtcCommandAlt,C,"4-bit command to the NEO-CLN cartridge calendar, like RtcCommand. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
 C174F2,PutBitChar,C,"appends 0 if the Z flag is set on entry, else 1 (I/O check)"
 C12D9E,RtcClockPulse,C,pulses the calendar clock line: WriteRtcCtrl 2 then 0
-C12DB8,ReadCalendarAlt,I,reads the date and time into BIOS_YEAR.. through the alternate calendar path ($280051/$220001)
-C12E32,SetupCalendarAlt,I,"after sub_C12EF8 checks the date, writes BIOS_SECOND.. to the calendar through the alternate path; called by the hardware-test calendar ($C17CBE)"
-C12EDE,RtcClockPulseAlt,I,pulses the alternate calendar clock line: WriteRtcCtrlAlt 2 then 0
+C12DB8,ReadCalendarAlt,C,"reads the date and time of the NEO-CLN cartridge calendar into BIOS_YEAR..; called only by CheckCartridgeId. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
+C12E32,SetupCalendarAlt,C,"after CheckCalendarDate, writes BIOS_SECOND.. to the NEO-CLN cartridge calendar; called by HwTestCalendar when D is pressed and NeoClnSlot is set ($C17CBE), before SetupCalendar writes the board calendar. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus (D pressed)"
+C12EDE,RtcClockPulseAlt,C,"pulses the clock line of the NEO-CLN cartridge calendar: WriteRtcCtrlAlt 2 then 0. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
 C12EF8,CheckCalendarDate,I,converts BIOS_YEAR/BIOS_MONTH.. from BCD and checks them against limits (dat_C12FEC); d7 non-zero when invalid; runs before SetupCalendar in MAME
 C11808,CreditCheckPlayer,C,"CreditCheck, per player: BCD credits in d0 minus the credits asked in (a0) (BIOS_CREDIT_DEC1, then BIOS_CREDIT_DEC2 by falling through); clears (a0) when there are not enough. In title/demo mode with DEC1 = 0, DEC2 is checked doubled ($C11816). Ran in MAME (game start)"
 C11836,CallDeductStartCredits,C,"jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSTEM_MODE_LO = 3)"
@@ -164,4 +164,10 @@ C00401,SystemRegion,W,"region byte, 2 = Europe in SP-S2 (0 Japan, 1 USA; NeoGeoD
 C11504,CardStillInserted,C,"system mode 3 (back from the game) while a memory card is still inserted (REG_STATUS_B bits 4-5 = 0): maps the system ROM vectors and fix, shows YOUR CARD IS STILL INSERTED. (CardStillInsertedTextJp when BIOS_COUNTRY_CODE = 0), flashes palette entry $400002 for up to 256 frames or until the card is removed, then maps the cartridge back. Ran in MAME after the Sengoku 2 card save"
 C115D2,CardStillInsertedTextJp,C,"Japanese text of CardStillInserted (BIOS_COUNTRY_CODE = 0), MESS_OUT format"
 C115EC,CardStillInsertedText,C,"YOUR CARD IS STILL INSERTED. (MESS_OUT format, BIOS_COUNTRY_CODE not 0)"
-C11632,GetSoftDipPointer,C,"a0 = the cartridge soft DIP block for this system ROM's region: SystemRegion indexes CART_SOFTDIP_JP / _US / _EU; used by LoadGameSoftDips"
+C11632,GetSoftDipPointer,C,a0 = the cartridge soft DIP block for this system ROM's region: SystemRegion indexes CART_SOFTDIP_JP / _US / _EU; used by LoadGameSoftDips
+C12CDA,RtcReadBits,C,"bit loop of RtcReadByte, entered with d7 = bits - 1: ReadCalendar reads the last 4 bits (weekday) this way"
+C12E1A,RtcReadBitsAlt,C,"bit loop of RtcReadByteAlt, entered with d7 = bits - 1. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
+C12FFA,CheckCartridgeId,C,"slot scan, per slot: Z set (d7 = 0) for a game: CART_NEOGEO_ID = NEO-GEO and the code at CART_SECURITY_PTR (even address) equal to the 122 bytes at $C146A2-$C1471B of the system ROM's card code. CART_NEOGEO_ID = NEO-CLN: a cartridge with its own calendar chip (I: a service cartridge for setting the time): stores the slot in NeoClnSlot, clears $D00010, copies the cartridge calendar to the board calendar (ReadCalendarAlt, SetupCalendar) and jumps to HardwareTest, which opens on its calendar screen. NoGoIdText (NEO-GEO read on an 8-bit cartridge, I): sets $D00060 = 1, clears $D00010 and SlotTable, returns Z set. MAME: the NEO-CLN path ran (scenario neo_cln_cartridge)"
+C1302C,NeoGeoIdText,C,"NEO-GEO, compared with CART_NEOGEO_ID by CheckCartridgeId"
+C1309A,NeoClnIdText,C,"NEO-CLN, compared with CART_NEOGEO_ID by CheckCartridgeId: the cartridge calendar path"
+C130A2,NoGoIdText,I,"bytes N 0 O 0 G 0 O 0: the even letters of NEO-GEO with 0 between, as an 8-bit (one byte lane) cartridge would read (I)"

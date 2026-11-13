@@ -10,9 +10,9 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
-| L2 traced and run | 9,109 instructions traced; 4,386 ran in MAME (48.2 %) over 25 scenarios; nothing ran outside the trace |
-| L3 names | 166 names (C 108, I 28, W 30); 1,415 automatic labels left: 156 `sub_`, 160 `dat_`, 38 `tbl_`, 1,061 `loc_` |
-| L4 RAM and registers | 217 RAM addresses used, 54 named; 30 backup RAM accesses through a4 left raw |
+| L2 traced and run | 9,109 instructions traced; 4,505 ran in MAME (49.5 %) over 26 scenarios; nothing ran outside the trace |
+| L3 names | 172 names (C 120, I 22, W 30); 1,409 automatic labels left: 153 `sub_`, 157 `dat_`, 38 `tbl_`, 1,061 `loc_` |
+| L4 RAM and registers | 217 RAM addresses used, 55 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens and BIOS calls seen in MAME; no written reference yet |
 
@@ -24,12 +24,12 @@ Coverage and automatic routines by module:
 | `card.s` (with the card utility) | 31 % (950 / 3,025) | 51 |
 | `boot_error.s` | 0 % (0 / 88) | 0 |
 | `system.s` | 61 % | 0 |
-| `calendar.s` | 67 % | 3 |
+| `calendar.s` | 95 % | 0 |
 | `video_io.s` | 70 % | 14 |
 | `power_on.s` | 81 % | 30 |
 | `eyecatcher.s` | 84 % | 3 |
 | `boot.s` | 85 % | 0 |
-| `hardware_test.s` | 88 % | 13 |
+| `hardware_test.s` | 90 % | 13 |
 | `how_to_play.s` | 90 % | 0 |
 
 ## 1. Test mode coverage (L2)
@@ -55,17 +55,20 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
       calendar, memory card, system ROM checksum
 - [ ] The checksum slot `CHECKSUM_LOOP` (`$C0047A` -> `$C16C0E`)
 - [ ] The work RAM test loop when every hard DIP is on (`WorkRamTestLoop`, `$C11BA8`)
-- [ ] The alternate calendar path (`$C12DB8-$C12EF0`): find what selects it
+- [x] The alternate calendar path (`$C12DB8-$C12EF0`): selected by a cartridge whose ID reads NEO-CLN
+      (`CheckCartridgeId`); run in MAME with `tools/neo_cln_test.py` (scenario `neo_cln_cartridge`)
+- [ ] The `NoGoIdText` case of `CheckCartridgeId` (ID read on an 8-bit cartridge?): find what `$D00060` = 1 changes
 - [ ] Card error cases: no card, write-protected card, full card, wrong format (CARD_ERROR)
 - [ ] Card utility COPY (`CardUtilCopy`) and the controller test, as coverage scenarios of the test build
 - [ ] CREDIT_DOWN in Top Player's Golf and Baseball Stars Professional
 
 ## 3. Names (L3)
 
-- [ ] Every `sub_` named (156 left), test mode and card first, then power_on and video_io
+- [ ] Every `sub_` named (153 left), test mode and card first, then power_on and video_io
   - [x] `system.s`: CreditCheckPlayer, CallDeductStartCredits, DemoEndCheck
   - [x] `boot.s`: CardStillInserted, GetSoftDipPointer (with SystemType, SystemRegion and the two texts)
-- [ ] Every `dat_` and `tbl_` named (198 left): text tables, menu tables, palettes, sprite data
+  - [x] `calendar.s`: RtcReadBits, RtcReadBitsAlt, CheckCartridgeId (and the three ID texts)
+- [ ] Every `dat_` and `tbl_` named (195 left): text tables, menu tables, palettes, sprite data
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
 - [ ] Review the 28 I names: confirm with a coverage run or a code read, or keep them as I with a reason
 - [ ] Doubts list: one line per `?` name, kept in `symbols/`
@@ -74,7 +77,7 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 
-- [ ] Name every work RAM variable used (163 automatic), checking all readers and writers first
+- [ ] Name every work RAM variable used (162 automatic), checking all readers and writers first
 - [ ] Backup RAM map at `$D00000`: book keeping, soft DIPs per slot, calendar, slot data, card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one
 - [x] The 4 `move.l #$100000`: `$100000` is named `WorkRamStart` (work RAM start, RAM tests, the card

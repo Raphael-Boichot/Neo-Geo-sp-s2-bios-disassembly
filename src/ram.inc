@@ -187,7 +187,7 @@
 	.equ	bram_D0005B,0xD0005B
 	.equ	bram_D0005C,0xD0005C
 	.equ	bram_D0005D,0xD0005D
-	.equ	bram_D0005E,0xD0005E
+	.equ	NeoClnSlot,0xD0005E
 	.equ	bram_D00060,0xD00060
 	.equ	bram_D00104,0xD00104
 	.equ	bram_D00105,0xD00105

@@ -30,18 +30,19 @@ loc_C12CC6:
 	jsr	(RtcReadByte,pc)	| C12CCA
 	move.b	d0,(a0)	| C12CCE
 	moveq	#0x3,d7	| C12CD0
-	jsr	(sub_C12CDA,pc)	| C12CD2
+	jsr	(RtcReadBits,pc)	| C12CD2
 	rts	| C12CD6
 | RtcReadByte [C] reads 8 bits from the calendar chip (bit 7 of REG_STATUS_A), LSB first, into d0; runs at every boot in MAME
 RtcReadByte:
 	moveq	#0x7,d7	| C12CD8
-sub_C12CDA:
+| RtcReadBits [C] bit loop of RtcReadByte, entered with d7 = bits - 1: ReadCalendar reads the last 4 bits (weekday) this way
+RtcReadBits:
 	move.b	(REG_STATUS_A).l,d2	| C12CDA
 	jsr	(RtcClockPulse,pc)	| C12CE0
 	andi.b	#0x80,d2	| C12CE4
 	lsr.b	#0x1,d0	| C12CE8
 	or.b	d2,d0	| C12CEA
-	dbra	d7,sub_C12CDA	| C12CEC
+	dbra	d7,RtcReadBits	| C12CEC
 	rts	| C12CF0
 | SetupCalendar [C] target of SETUP_CALENDAR (wiki); MAME: runs when D is pressed on the test-mode calendar screen
 SetupCalendar:
@@ -113,7 +114,7 @@ RtcClockPulse:
 WriteRtcCtrl:
 	move.b	d1,(REG_RTCCTRL).l	| C12DB0
 	rts	| C12DB6
-| ReadCalendarAlt [I] reads the date and time into BIOS_YEAR.. through the alternate calendar path ($280051/$220001)
+| ReadCalendarAlt [C] reads the date and time of the NEO-CLN cartridge calendar into BIOS_YEAR..; called only by CheckCartridgeId. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 ReadCalendarAlt:
 	moveq	#0x3,d0	| C12DB8
 	jsr	(RtcCommandAlt,pc)	| C12DBA
@@ -142,20 +143,21 @@ loc_C12E06:
 	jsr	(RtcReadByteAlt,pc)	| C12E0A
 	move.b	d0,(a0)	| C12E0E
 	moveq	#0x3,d7	| C12E10
-	jsr	(sub_C12E1A,pc)	| C12E12
+	jsr	(RtcReadBitsAlt,pc)	| C12E12
 	rts	| C12E16
-| RtcReadByteAlt [I] same protocol as RtcReadByte but reading $220001 (cartridge area); never ran in MAME
+| RtcReadByteAlt [C] reads a byte from the NEO-CLN cartridge calendar at $220001 (same protocol as RtcReadByte). MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcReadByteAlt:
 	moveq	#0x7,d7	| C12E18
-sub_C12E1A:
+| RtcReadBitsAlt [C] bit loop of RtcReadByteAlt, entered with d7 = bits - 1. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
+RtcReadBitsAlt:
 	move.b	(0x220001).l,d2	| C12E1A
 	jsr	(RtcClockPulseAlt,pc)	| C12E20
 	andi.b	#0x80,d2	| C12E24
 	lsr.b	#0x1,d0	| C12E28
 	or.b	d2,d0	| C12E2A
-	dbra	d7,sub_C12E1A	| C12E2C
+	dbra	d7,RtcReadBitsAlt	| C12E2C
 	rts	| C12E30
-| SetupCalendarAlt [I] after sub_C12EF8 checks the date, writes BIOS_SECOND.. to the calendar through the alternate path; called by the hardware-test calendar ($C17CBE)
+| SetupCalendarAlt [C] after CheckCalendarDate, writes BIOS_SECOND.. to the NEO-CLN cartridge calendar; called by HwTestCalendar when D is pressed and NeoClnSlot is set ($C17CBE), before SetupCalendar writes the board calendar. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus (D pressed)
 SetupCalendarAlt:
 	lea.l	(BiosWorkRam).l,a5	| C12E32
 	jsr	(CheckCalendarDate,pc)	| C12E38
@@ -182,7 +184,7 @@ SetupCalendarAlt:
 	moveq	#0x0,d7	| C12E84
 loc_C12E86:
 	rts	| C12E86
-| RtcSendByteAlt [I] same protocol as RtcSendByte but through $280051 (cartridge area); never ran in MAME
+| RtcSendByteAlt [C] writes a byte to the NEO-CLN cartridge calendar through $280051 (same protocol as RtcSendByte). MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcSendByteAlt:
 	moveq	#0x7,d7	| C12E88
 loc_C12E8A:
@@ -196,7 +198,7 @@ loc_C12E8A:
 	lsr.b	#0x1,d0	| C12EA4
 	dbra	d7,loc_C12E8A	| C12EA6
 	rts	| C12EAA
-| RtcCommandAlt [I] 4-bit command through WriteRtcCtrlAlt, like RtcCommand on the alternate calendar path
+| RtcCommandAlt [C] 4-bit command to the NEO-CLN cartridge calendar, like RtcCommand. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcCommandAlt:
 	moveq	#0x3,d7	| C12EAC
 loc_C12EAE:
@@ -214,14 +216,14 @@ loc_C12EAE:
 	moveq	#0x0,d1	| C12ED6
 	jsr	(WriteRtcCtrlAlt,pc)	| C12ED8
 	rts	| C12EDC
-| RtcClockPulseAlt [I] pulses the alternate calendar clock line: WriteRtcCtrlAlt 2 then 0
+| RtcClockPulseAlt [C] pulses the clock line of the NEO-CLN cartridge calendar: WriteRtcCtrlAlt 2 then 0. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcClockPulseAlt:
 	move.b	#0x2,d1	| C12EDE
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EE2
 	move.b	#0x0,d1	| C12EE6
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EEA
 	rts	| C12EEE
-| WriteRtcCtrlAlt [I] writes d1 to $280051, the alternate calendar control used by RtcSendByteAlt
+| WriteRtcCtrlAlt [C] writes d1 to $280051, the control of the NEO-CLN cartridge calendar. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 WriteRtcCtrlAlt:
 	move.b	d1,(0x280051).l	| C12EF0
 	rts	| C12EF6
@@ -293,9 +295,10 @@ tbl_C12F88:
 	dc.b	0x01,0x03,0x04,0x05
 dat_C12FEC:
 	dc.b	0x1D,0x1F,0x1C,0x1F,0x1E,0x1F,0x1E,0x1F,0x1F,0x1E,0x1F,0x1E,0x1F,0x00
-sub_C12FFA:
+| CheckCartridgeId [C] slot scan, per slot: Z set (d7 = 0) for a game: CART_NEOGEO_ID = NEO-GEO and the code at CART_SECURITY_PTR (even address) equal to the 122 bytes at $C146A2-$C1471B of the system ROM's card code. CART_NEOGEO_ID = NEO-CLN: a cartridge with its own calendar chip (I: a service cartridge for setting the time): stores the slot in NeoClnSlot, clears $D00010, copies the cartridge calendar to the board calendar (ReadCalendarAlt, SetupCalendar) and jumps to HardwareTest, which opens on its calendar screen. NoGoIdText (NEO-GEO read on an 8-bit cartridge, I): sets $D00060 = 1, clears $D00010 and SlotTable, returns Z set. MAME: the NEO-CLN path ran (scenario neo_cln_cartridge)
+CheckCartridgeId:
 	lea.l	(CART_NEOGEO_ID).w,a0	| C12FFA
-	lea.l	(dat_C1302C,pc),a1	| C12FFE
+	lea.l	(NeoGeoIdText,pc),a1	| C12FFE
 	moveq	#0x6,d7	| C13002
 loc_C13004:
 	cmpm.b	(a0)+,(a1)+	| C13004
@@ -315,26 +318,27 @@ loc_C13020:
 	moveq	#0x0,d7	| C13028
 loc_C1302A:
 	rts	| C1302A
-dat_C1302C:
+| NeoGeoIdText [C] NEO-GEO, compared with CART_NEOGEO_ID by CheckCartridgeId
+NeoGeoIdText:
 	.ascii	"NEO-GEO"
 	dc.b	0x00
 loc_C13034:
 	lea.l	(CART_NEOGEO_ID).w,a0	| C13034
-	lea.l	(dat_C1309A,pc),a1	| C13038
+	lea.l	(NeoClnIdText,pc),a1	| C13038
 	moveq	#0x6,d7	| C1303C
 loc_C1303E:
 	cmpm.b	(a0)+,(a1)+	| C1303E
 	bne.b	loc_C13064	| C13040
 	dbra	d7,loc_C1303E	| C13042
 	moveq	#0x0,d0	| C13046
-	move.b	(CurrentSlot).l,(bram_D0005E).l	| C13048
+	move.b	(CurrentSlot).l,(NeoClnSlot).l	| C13048
 	clr.l	(bram_D00010).l	| C13052
 	jsr	(ReadCalendarAlt,pc)	| C13058
 	jsr	(SetupCalendar,pc)	| C1305C
 	jmp	(HardwareTest,pc)	| C13060
 loc_C13064:
 	lea.l	(CART_NEOGEO_ID).w,a0	| C13064
-	lea.l	(dat_C130A2,pc),a1	| C13068
+	lea.l	(NoGoIdText,pc),a1	| C13068
 	moveq	#0x6,d7	| C1306C
 loc_C1306E:
 	cmpm.b	(a0)+,(a1)+	| C1306E
@@ -349,10 +353,12 @@ loc_C1308C:
 	dbra	d7,loc_C1308C	| C13092
 	moveq	#0x0,d7	| C13096
 	rts	| C13098
-dat_C1309A:
+| NeoClnIdText [C] NEO-CLN, compared with CART_NEOGEO_ID by CheckCartridgeId: the cartridge calendar path
+NeoClnIdText:
 	.ascii	"NEO-CLN"
 	dc.b	0x00
-dat_C130A2:
+| NoGoIdText [I] bytes N 0 O 0 G 0 O 0: the even letters of NEO-GEO with 0 between, as an 8-bit (one byte lane) cartridge would read (I)
+NoGoIdText:
 	dc.b	0x4E,0x00,0x4F,0x00,0x47,0x00,0x4F,0x00
 | VramTest [I] VRAM test through REG_VRAMRW, d4 start address, d5 count
 VramTest:

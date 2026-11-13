@@ -63,7 +63,7 @@ dat_C18402:
 	dc.b	0x04,0x04,0x00,0x00,0x00,0x04,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 | ControllerSetup [W] target of CONTROLLER_SETUP
 ControllerSetup:
-	lea.l	(ram_10F300).l,a5	| C18462
+	lea.l	(BiosWorkRam).l,a5	| C18462
 	lea.l	(dat_C18402,pc),a4	| C18468
 	lea.l	(REG_POUTPUT).l,a2	| C1846C
 	moveq	#0x0,d0	| C18472
@@ -103,7 +103,7 @@ sub_C18500:
 	rts	| C1850C
 | ReadControllers [C] selects the joystick ports through REG_POUTPUT, reads REG_P1CNT/REG_P2CNT/REG_STATUS_B and updates BIOS_P1STATUS and the following input bytes
 ReadControllers:
-	lea.l	(ram_10F300).l,a5	| C1850E
+	lea.l	(BiosWorkRam).l,a5	| C1850E
 	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C18514
 	lea.l	(REG_POUTPUT).l,a2	| C18518
 	moveq	#0x0,d1	| C1851E

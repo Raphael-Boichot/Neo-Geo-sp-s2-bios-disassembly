@@ -2,7 +2,7 @@
 
 	.equ	ram_100000,0x100000
 	.equ	ram_10C000,0x10C000
-	.equ	ram_10F300,0x10F300
+	.equ	BiosWorkRam,0x10F300
 	.equ	ram_10F500,0x10F500
 	.equ	ram_10FC00,0x10FC00
 	.equ	ram_10FC04,0x10FC04

@@ -3,7 +3,7 @@
 
 | Card [C] target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]
 Card:
-	lea.l	(ram_10F300).l,a5	| C1334C
+	lea.l	(BiosWorkRam).l,a5	| C1334C
 	pea.l	(loc_C133BA,pc)	| C13352
 	move.l	a7,(ram_10FD00-A5_BASE,a5)	| C13356
 	move.b	#0xFF,(ram_10FCF4-A5_BASE,a5)	| C1335A
@@ -37,7 +37,7 @@ loc_C133BA:
 	rts	| C133BE
 | CardError [C] target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch
 CardError:
-	lea.l	(ram_10F300).l,a5	| C133C0
+	lea.l	(BiosWorkRam).l,a5	| C133C0
 	move.l	a7,(ram_10FD00-A5_BASE,a5)	| C133C6
 	moveq	#0x0,d0	| C133CA
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C133CC
@@ -346,7 +346,7 @@ dat_C1392A:
 	dc.b	0xFF,0x00,0x00
 sub_C13944:
 	jsr	(WaitFrame,pc)	| C13944
-	lea.l	(ram_10F300).l,a5	| C13948
+	lea.l	(BiosWorkRam).l,a5	| C13948
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C1394E
 	or.b	(BIOS_P2REPEAT-A5_BASE,a5),d0	| C13952
 	swap	d0	| C13956
@@ -1326,7 +1326,7 @@ loc_C143F4:
 	move.b	d0,(BIOS_CRDNGH-A5_BASE,a5)	| C14406
 	lsr.w	#0x8,d0	| C1440A
 	bra.b	loc_C1439E	| C1440C
-| CardSaveUserName [W] CARD function 6: save user name
+| CardSaveUserName [C] CARD function 6: save user name (wiki); MAME (card utility test build): writes "AAA" at card offset $11 when END is chosen
 CardSaveUserName:
 	jsr	(IsSnkRomCard,pc)	| C1440E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14412
@@ -1363,7 +1363,7 @@ loc_C14466:
 	addq.l	#0x4,a3	| C1446A
 	dbra	d7,loc_C14466	| C1446C
 	rts	| C14470
-| CardLoadUserName [W] CARD function 7: load user name
+| CardLoadUserName [C] CARD function 7: load user name (wiki); MAME: runs when FILE USER'S NAME opens
 CardLoadUserName:
 	jsr	(IsSnkRomCard,pc)	| C14472
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14476
@@ -2304,7 +2304,7 @@ CardLock:
 | ControllerTest [C] unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame
 ControllerTest:
 	move.w	#0xFF00,(REG_LSPCMODE).l	| C14EA2
-	lea.l	(ram_10F300).l,a5	| C14EAA
+	lea.l	(BiosWorkRam).l,a5	| C14EAA
 	move.l	#0xEEE0000,(0x400002).l	| C14EB0
 	move.w	#0x2000,sr	| C14EBA
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C14EBE
@@ -2378,7 +2378,7 @@ ControllerTestText:
 | CardUtility [C] unreferenced in SP-S2: MEMORY CARD UTILITY menu, up/down over 6 lines, A jumps through CardUtilityMenuTable
 CardUtility:
 	move.w	#0xFF00,(REG_LSPCMODE).l	| C1500A
-	lea.l	(ram_10F300).l,a5	| C15012
+	lea.l	(BiosWorkRam).l,a5	| C15012
 	move.l	#0xEEE0000,(0x400002).l	| C15018
 	move.l	#0xE000000,(0x400022).l	| C15022
 	moveq	#0x0,d0	| C1502C
@@ -2802,7 +2802,7 @@ loc_C1554A:
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C1556C
 	bne.w	loc_C1582C	| C15570
 	jmp	(loc_C1513A,pc)	| C15574
-| CardUtilUserName [I] menu item 5. FILE USER'S NAME (table order)
+| CardUtilUserName [C] menu item 5. FILE USER'S NAME: character grid, A types, END saves through CARD function 6; MAME test build
 CardUtilUserName:
 	jsr	(ReadCardDetect,pc)	| C15578
 	beq.w	loc_C1559C	| C1557C

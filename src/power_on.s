@@ -51,7 +51,7 @@ PowerOnTest:
 	move.b	d0,(REG_SRAMLOCK).l	| C11B6A
 	move.b	(REG_DIPSW).l,d0	| C11B70
 	bne.w	loc_C11BD6	| C11B76
-	lea.l	(ram_10F300).l,a5	| C11B7A
+	lea.l	(BiosWorkRam).l,a5	| C11B7A
 	jsr	(ClearFixLayer).l	| C11B80
 	move.l	#0xEEE0000,(0x400002).l	| C11B86
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C11B90
@@ -111,7 +111,7 @@ loc_C11C4E:
 	bne.w	loc_C11D46	| C11C62
 loc_C11C66:
 	move.b	#0x5,(BIOS_CRDF).l	| C11C66
-	move.l	#ram_10F300,(BIOS_CRDPTR).l	| C11C6E
+	move.l	#BiosWorkRam,(BIOS_CRDPTR).l	| C11C6E
 	clr.w	(BIOS_CRDSIZE).l	| C11C78
 	jsr	(Card,pc)	| C11C7E
 	cmpi.b	#0x81,(BIOS_CRDRESULT).l	| C11C82
@@ -219,7 +219,7 @@ WaitRtcPulse:
 	rts	| C11DAE
 sub_C11DB0:
 	lea.l	(bram_D08000).l,a4	| C11DB0
-	lea.l	(ram_10F300).l,a5	| C11DB6
+	lea.l	(BiosWorkRam).l,a5	| C11DB6
 	move.b	#0xFF,(ram_10FEE1-A5_BASE,a5)	| C11DBC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11DC2
 	move.w	#0xFFFF,(bram_D0005E-A4_BASE,a4)	| C11DC8
@@ -1242,7 +1242,7 @@ sub_C129D4:
 loc_C12A06:
 	jsr	(CART_COIN_SOUND).w	| C12A06
 	lea.l	(bram_D08000).l,a4	| C12A0A
-	lea.l	(ram_10F300).l,a5	| C12A10
+	lea.l	(BiosWorkRam).l,a5	| C12A10
 loc_C12A16:
 	rts	| C12A16
 sub_C12A18:
@@ -1369,7 +1369,7 @@ dat_C12BB0:
 PlayTimeCount:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12BE6
 	lea.l	(bram_D08000).l,a4	| C12BEC
-	lea.l	(ram_10F300).l,a5	| C12BF2
+	lea.l	(BiosWorkRam).l,a5	| C12BF2
 	cmpi.b	#0x1,(ram_10FDBA-A5_BASE,a5)	| C12BF8
 	beq.b	loc_C12C08	| C12BFE
 	cmpi.b	#0x1,(ram_10FDBB-A5_BASE,a5)	| C12C00

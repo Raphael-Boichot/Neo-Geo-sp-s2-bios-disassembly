@@ -42,7 +42,7 @@ loc_C170E8:
 	movem.l	d0-d3,-(a0)	| C170F0
 	movem.l	d0-d3,-(a0)	| C170F4
 	dbra	d7,loc_C170E8	| C170F8
-	lea.l	(ram_10F300).l,a5	| C170FC
+	lea.l	(BiosWorkRam).l,a5	| C170FC
 	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C17102
 	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C17108
 	move.b	(dat_C00401).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1710E
@@ -56,7 +56,7 @@ loc_C170E8:
 	move.w	#0xC,(WorkIndex-A5_BASE,a5)	| C17140
 loc_C17146:
 	jsr	(WaitFrame,pc)	| C17146
-	lea.l	(ram_10F300).l,a5	| C1714A
+	lea.l	(BiosWorkRam).l,a5	| C1714A
 	move.w	(WorkIndex-A5_BASE,a5),d0	| C17150
 	add.w	d0,d0	| C17154
 	add.w	d0,d0	| C17156
@@ -827,7 +827,7 @@ loc_C17CA4:
 	jsr	(SwitchSlot,pc)	| C17CB0
 	move.b	d0,(REG_SWPBIOS).l	| C17CB4
 	move.w	#0x2000,sr	| C17CBA
-	jsr	(sub_C12E32,pc)	| C17CBE
+	jsr	(SetupCalendarAlt,pc)	| C17CBE
 	move.b	d0,(REG_BRDFIX).l	| C17CC2
 loc_C17CC8:
 	jsr	(SetupCalendar,pc)	| C17CC8

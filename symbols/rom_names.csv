@@ -62,7 +62,7 @@ C1167A,SystemIo,W,target of SYSTEM_IO
 C117CE,CreditCheck,W,"target of CREDIT_CHECK: MVS, free play off (hard DIP 7, bit 6 of REG_DIPSW): BCD check of the requested credits ($10FDB0) against Credits"
 C11820,CreditDown,W,target of CREDIT_DOWN
 C12C78,ReadCalendar,W,target of READ_CALENDAR
-C12CF2,SetupCalendar,W,target of SETUP_CALENDAR
+C12CF2,SetupCalendar,C,target of SETUP_CALENDAR (wiki); MAME: runs when D is pressed on the test-mode calendar screen
 C1334C,Card,C,"target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]"
 C133C0,CardError,C,"target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch"
 C18914,HowToPlay,W,target of HOW_TO_PLAY
@@ -108,8 +108,8 @@ C13DFA,CardLoadData,W,CARD function 2: load data
 C13F0A,CardSaveData,W,CARD function 3: save data
 C14220,CardDeleteData,W,CARD function 4: delete data
 C142B8,CardReadTitle,C,CARD function 5: read data title (wiki); MAME with a card: runs at boot and in the hardware test
-C1440E,CardSaveUserName,W,CARD function 6: save user name
-C14472,CardLoadUserName,W,CARD function 7: load user name
+C1440E,CardSaveUserName,C,"CARD function 6: save user name (wiki); MAME (card utility test build): writes ""AAA"" at card offset $11 when END is chosen"
+C14472,CardLoadUserName,C,CARD function 7: load user name (wiki); MAME: runs when FILE USER'S NAME opens
 C12912,DeductStartCredits,C,after CART_PLAYER_START: for P1 and P2 (DeductPlayerCredit) takes the credits and counts the start in book keeping; MAME: credits 02 -> 01 on START
 C12934,DeductPlayerCredit,C,"if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters"
 C129C6,BookKeepingCount,I,adds to a book keeping counter at a2 (called for several counters per start)
@@ -123,7 +123,7 @@ C150C0,CardUtilFormat,C,menu item 1. CARD FORMAT; MAME (test build): FORMAT THE 
 C1513E,CardUtilDisplayNames,C,"menu item 2. DISPLAY DATA NAME; MAME (test build, blank card): THERE IS NO DATA."
 C151B0,CardUtilCopy,I,menu item 3. COPY A DATA (table order)
 C15490,CardUtilDelete,I,menu item 4. DELETE A DATA (table order)
-C15578,CardUtilUserName,I,menu item 5. FILE USER'S NAME (table order)
+C15578,CardUtilUserName,C,"menu item 5. FILE USER'S NAME: character grid, A types, END saves through CARD function 6; MAME test build"
 C15C3C,CardUtilityMenuText,C,MESS_OUT data of the MEMORY CARD UTILITY menu
 C13A3C,ClearFixLayer,C,resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) and fills the $500 fix-layer words from VRAM $7000 with $20 (space); kicks the watchdog (REG_DIPSW write) in the loop
 C16AAA,PutHexByte,C,reads a byte at (a1)+ and appends it at (a0)+ as two hex characters
@@ -151,3 +151,8 @@ C1268A,WriteLedData,C,"writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLAT
 C121C6,LockBackupRamUnless,I,locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set
 C12EAC,RtcCommandAlt,I,"4-bit command through WriteRtcCtrlAlt, like RtcCommand on the alternate calendar path"
 C174F2,PutBitChar,C,"appends 0 if the Z flag is set on entry, else 1 (I/O check)"
+C12D9E,RtcClockPulse,C,pulses the calendar clock line: WriteRtcCtrl 2 then 0
+C12DB8,ReadCalendarAlt,I,reads the date and time into BIOS_YEAR.. through the alternate calendar path ($280051/$220001)
+C12E32,SetupCalendarAlt,I,"after sub_C12EF8 checks the date, writes BIOS_SECOND.. to the calendar through the alternate path; called by the hardware-test calendar ($C17CBE)"
+C12EDE,RtcClockPulseAlt,I,pulses the alternate calendar clock line: WriteRtcCtrlAlt 2 then 0
+C12EF8,CheckCalendarDate,I,converts BIOS_YEAR/BIOS_MONTH.. from BCD and checks them against limits (dat_C12FEC); d7 non-zero when invalid; runs before SetupCalendar in MAME

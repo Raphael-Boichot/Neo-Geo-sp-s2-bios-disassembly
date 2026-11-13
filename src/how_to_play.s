@@ -5,7 +5,7 @@
 HowToPlay:
 	tst.b	(BIOS_MVS_FLAG).l	| C18914
 	beq.w	loc_C18AD8	| C1891A
-	lea.l	(ram_10F300).l,a5	| C1891E
+	lea.l	(BiosWorkRam).l,a5	| C1891E
 	move.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18924
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C1892A
 	move.w	#0x7,(REG_IRQACK).l	| C18930

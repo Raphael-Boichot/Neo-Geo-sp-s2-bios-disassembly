@@ -11,7 +11,7 @@ Reset:
 	move.b	d0,(REG_DIPSW).l	| C11006
 	move.w	#0x7,(REG_IRQACK).l	| C1100C
 	move.w	#0x4000,(REG_LSPCMODE).l	| C11014
-	lea.l	(ram_10F300).l,a5	| C1101C
+	lea.l	(BiosWorkRam).l,a5	| C1101C
 	jmp	(PowerOnTest).l	| C11022
 loc_C11028:
 	bra.w	ClearRamAndVideo	| C11028
@@ -107,8 +107,8 @@ BiosStart:
 | SystemModeDispatch [C] resets the stack, then jumps through SystemModeTable by the low byte of BIOS_SYSTEM_MODE
 SystemModeDispatch:
 	move.b	d0,(REG_DIPSW).l	| C11142
-	movea.l	#ram_10F300,a7	| C11148
-	lea.l	(ram_10F300).l,a5	| C1114E
+	movea.l	#BiosWorkRam,a7	| C11148
+	lea.l	(BiosWorkRam).l,a5	| C1114E
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C11154
 	moveq	#0x0,d0	| C1115A
 	move.b	(BIOS_SYSTEM_MODE_LO-A5_BASE,a5),d0	| C1115C
@@ -222,7 +222,7 @@ SystemReturn:
 	move.w	#0x2000,sr	| C112F8
 	jsr	(WaitFrame,pc)	| C112FC
 	move.b	d0,(REG_SWPBIOS).l	| C11300
-	lea.l	(ram_10F300).l,a7	| C11306
+	lea.l	(BiosWorkRam).l,a7	| C11306
 	moveq	#0x0,d0	| C1130C
 	move.l	d0,d1	| C1130E
 	move.l	d0,d2	| C11310
@@ -244,7 +244,7 @@ loc_C11326:
 	movem.l	d0-d6/a0,-(a1)	| C11342
 	dbra	d7,loc_C11326	| C11346
 	jsr	(ControllerSetup,pc)	| C1134A
-	lea.l	(ram_10F300).l,a5	| C1134E
+	lea.l	(BiosWorkRam).l,a5	| C1134E
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C11354
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C11358
 	jsr	(ClearFixLayer,pc)	| C11360

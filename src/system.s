@@ -17,7 +17,7 @@ loc_C11672:
 	rte	| C11678
 | SystemIo [W] target of SYSTEM_IO
 SystemIo:
-	lea.l	(ram_10F300).l,a5	| C1167A
+	lea.l	(BiosWorkRam).l,a5	| C1167A
 	addq.l	#0x1,(FrameCounter-A5_BASE,a5)	| C11680
 	jsr	(MvsLedUpdate,pc)	| C11684
 	jsr	(ReadControllers,pc)	| C11688
@@ -130,7 +130,7 @@ tbl_C117C6:
 	dc.b	0x03,0x01,0x02,0x03,0x00,0x00,0x00,0x00
 | CreditCheck [W] target of CREDIT_CHECK: MVS, free play off (hard DIP 7, bit 6 of REG_DIPSW): BCD check of the requested credits ($10FDB0) against Credits
 CreditCheck:
-	lea.l	(ram_10F300).l,a5	| C117CE
+	lea.l	(BiosWorkRam).l,a5	| C117CE
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C117D4
 	beq.w	loc_C11814	| C117D8
 	clr.w	(ram_10FDB2-A5_BASE,a5)	| C117DC
@@ -164,7 +164,7 @@ loc_C11816:
 	bra.b	loc_C1180A	| C1181E
 | CreditDown [W] target of CREDIT_DOWN
 CreditDown:
-	lea.l	(ram_10F300).l,a5	| C11820
+	lea.l	(BiosWorkRam).l,a5	| C11820
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C11826
 	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1182A
 	jsr	(sub_C1299A,pc)	| C11830
@@ -264,7 +264,7 @@ loc_C1196C:
 	bne.w	loc_C11A64	| C11980
 loc_C11984:
 	move.b	#0x5,(BIOS_CRDF).l	| C11984
-	move.l	#ram_10F300,(BIOS_CRDPTR).l	| C1198C
+	move.l	#BiosWorkRam,(BIOS_CRDPTR).l	| C1198C
 	clr.w	(BIOS_CRDSIZE).l	| C11996
 	jsr	(Card,pc)	| C1199C
 	cmpi.b	#0x81,(BIOS_CRDRESULT).l	| C119A0

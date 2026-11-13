@@ -4,7 +4,7 @@
 | Eyecatcher [C] system ROM eyecatcher (NEO-GEO logo, MAX 330 MEGA, SNK), reached when CART_EYECATCH_FLAG is 0; MAME boot sequence
 Eyecatcher:
 	move.b	#0x3,(REG_SOUND).l	| C17E26
-	lea.l	(ram_10F300).l,a5	| C17E2E
+	lea.l	(BiosWorkRam).l,a5	| C17E2E
 	moveq	#0x0,d0	| C17E34
 	move.w	d0,(WorkIndex-A5_BASE,a5)	| C17E36
 	move.w	d0,(ram_10FCE6-A5_BASE,a5)	| C17E3A
@@ -18,7 +18,7 @@ loc_C17E4C:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17E5A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17E5E
 	jsr	(WaitFrame,pc)	| C17E62
-	lea.l	(ram_10F300).l,a5	| C17E66
+	lea.l	(BiosWorkRam).l,a5	| C17E66
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C17E6C
 	beq.b	loc_C17E84	| C17E70
 	tst.w	(Credits).l	| C17E72

@@ -3,7 +3,7 @@
 
 | BootError [C] error screen: message BootErrorMessages[d6]; for d6 < 5 also prints the failing address and data
 BootError:
-	lea.l	(ram_10F300).l,a5	| C16ADA
+	lea.l	(BiosWorkRam).l,a5	| C16ADA
 	move.w	#0x7,(REG_IRQACK).l	| C16AE0
 	tst.b	(dat_C00400).l	| C16AE8
 	beq.w	loc_C16BCA	| C16AEE

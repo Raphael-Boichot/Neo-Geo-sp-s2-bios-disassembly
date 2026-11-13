@@ -37,16 +37,16 @@ RtcReadByte:
 	moveq	#0x7,d7	| C12CD8
 sub_C12CDA:
 	move.b	(REG_STATUS_A).l,d2	| C12CDA
-	jsr	(sub_C12D9E,pc)	| C12CE0
+	jsr	(RtcClockPulse,pc)	| C12CE0
 	andi.b	#0x80,d2	| C12CE4
 	lsr.b	#0x1,d0	| C12CE8
 	or.b	d2,d0	| C12CEA
 	dbra	d7,sub_C12CDA	| C12CEC
 	rts	| C12CF0
-| SetupCalendar [W] target of SETUP_CALENDAR
+| SetupCalendar [C] target of SETUP_CALENDAR (wiki); MAME: runs when D is pressed on the test-mode calendar screen
 SetupCalendar:
-	lea.l	(ram_10F300).l,a5	| C12CF2
-	jsr	(sub_C12EF8,pc)	| C12CF8
+	lea.l	(BiosWorkRam).l,a5	| C12CF2
+	jsr	(CheckCalendarDate,pc)	| C12CF8
 	tst.b	d7	| C12CFC
 	bne.w	loc_C12D46	| C12CFE
 	moveq	#0x1,d0	| C12D02
@@ -102,7 +102,8 @@ loc_C12D6E:
 	moveq	#0x0,d1	| C12D96
 	jsr	(WriteRtcCtrl,pc)	| C12D98
 	rts	| C12D9C
-sub_C12D9E:
+| RtcClockPulse [C] pulses the calendar clock line: WriteRtcCtrl 2 then 0
+RtcClockPulse:
 	move.b	#0x2,d1	| C12D9E
 	jsr	(WriteRtcCtrl,pc)	| C12DA2
 	move.b	#0x0,d1	| C12DA6
@@ -112,7 +113,8 @@ sub_C12D9E:
 WriteRtcCtrl:
 	move.b	d1,(REG_RTCCTRL).l	| C12DB0
 	rts	| C12DB6
-sub_C12DB8:
+| ReadCalendarAlt [I] reads the date and time into BIOS_YEAR.. through the alternate calendar path ($280051/$220001)
+ReadCalendarAlt:
 	moveq	#0x3,d0	| C12DB8
 	jsr	(RtcCommandAlt,pc)	| C12DBA
 	bsr.w	sub_C184F4	| C12DBE
@@ -147,15 +149,16 @@ RtcReadByteAlt:
 	moveq	#0x7,d7	| C12E18
 sub_C12E1A:
 	move.b	(0x220001).l,d2	| C12E1A
-	jsr	(sub_C12EDE,pc)	| C12E20
+	jsr	(RtcClockPulseAlt,pc)	| C12E20
 	andi.b	#0x80,d2	| C12E24
 	lsr.b	#0x1,d0	| C12E28
 	or.b	d2,d0	| C12E2A
 	dbra	d7,sub_C12E1A	| C12E2C
 	rts	| C12E30
-sub_C12E32:
-	lea.l	(ram_10F300).l,a5	| C12E32
-	jsr	(sub_C12EF8,pc)	| C12E38
+| SetupCalendarAlt [I] after sub_C12EF8 checks the date, writes BIOS_SECOND.. to the calendar through the alternate path; called by the hardware-test calendar ($C17CBE)
+SetupCalendarAlt:
+	lea.l	(BiosWorkRam).l,a5	| C12E32
+	jsr	(CheckCalendarDate,pc)	| C12E38
 	tst.b	d7	| C12E3C
 	bne.w	loc_C12E86	| C12E3E
 	moveq	#0x1,d0	| C12E42
@@ -211,7 +214,8 @@ loc_C12EAE:
 	moveq	#0x0,d1	| C12ED6
 	jsr	(WriteRtcCtrlAlt,pc)	| C12ED8
 	rts	| C12EDC
-sub_C12EDE:
+| RtcClockPulseAlt [I] pulses the alternate calendar clock line: WriteRtcCtrlAlt 2 then 0
+RtcClockPulseAlt:
 	move.b	#0x2,d1	| C12EDE
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EE2
 	move.b	#0x0,d1	| C12EE6
@@ -221,7 +225,8 @@ sub_C12EDE:
 WriteRtcCtrlAlt:
 	move.b	d1,(0x280051).l	| C12EF0
 	rts	| C12EF6
-sub_C12EF8:
+| CheckCalendarDate [I] converts BIOS_YEAR/BIOS_MONTH.. from BCD and checks them against limits (dat_C12FEC); d7 non-zero when invalid; runs before SetupCalendar in MAME
+CheckCalendarDate:
 	lea.l	(dat_C12FEC,pc),a1	| C12EF8
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12EFC
 	jsr	(BcdToBinary,pc)	| C12F00
@@ -324,7 +329,7 @@ loc_C1303E:
 	moveq	#0x0,d0	| C13046
 	move.b	(CurrentSlot).l,(bram_D0005E).l	| C13048
 	clr.l	(bram_D00010).l	| C13052
-	jsr	(sub_C12DB8,pc)	| C13058
+	jsr	(ReadCalendarAlt,pc)	| C13058
 	jsr	(SetupCalendar,pc)	| C1305C
 	jmp	(HardwareTest,pc)	| C13060
 loc_C13064:

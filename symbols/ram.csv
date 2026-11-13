@@ -48,3 +48,4 @@ addr,name,tag,note
 D00034,Credits,I,"BCD credit count in backup RAM: CreditCheck subtracts from it with SBCD, SystemMode2 and CheckPlayerStart test it"
 D00108,CurrentSlot,C,"backup RAM: slot number written by SwitchSlot together with REG_SLOT; SystemMode2 prints it as SLOT n"
 D00124,SlotTable,I,"backup RAM: 4 bytes per slot, scanned by SelectSlot"
+10F300,BiosWorkRam,C,"start of the BIOS work RAM, loaded into a5 (A5_BASE) by every BIOS entry"

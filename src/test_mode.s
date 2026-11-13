@@ -3,7 +3,7 @@
 
 | TestModeEntry [C] test mode start: clears system mode, RAM and both palette banks, sets up the BIOS RAM, then TestMenu
 TestModeEntry:
-	lea.l	(ram_10F300).l,a5	| C18F74
+	lea.l	(BiosWorkRam).l,a5	| C18F74
 	move.w	#0x2700,sr	| C18F7A
 	clr.w	(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C18F7E
 	jsr	(sub_C11FB2,pc)	| C18F82
@@ -47,7 +47,7 @@ loc_C19008:
 	dbra	d7,loc_C19008	| C19018
 	move.l	#0xEEE0000,(0x400002).l	| C1901C
 	move.l	#0xE000000,(0x400022).l	| C19026
-	lea.l	(ram_10F300).l,a5	| C19030
+	lea.l	(BiosWorkRam).l,a5	| C19030
 	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C19036
 	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C1903C
 	move.b	(dat_C00401).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C19042
@@ -285,7 +285,7 @@ loc_C193AC:
 	andi.b	#0x30,d0	| C193B2
 	bne.w	loc_C194F2	| C193B6
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C193BA
-	move.l	#ram_10F300,(BIOS_CRDPTR-A5_BASE,a5)	| C193C0
+	move.l	#BiosWorkRam,(BIOS_CRDPTR-A5_BASE,a5)	| C193C0
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C193C8
 	jsr	(Card,pc)	| C193CC
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C193D0
@@ -2785,7 +2785,7 @@ loc_C1B572:
 	dbra	d7,loc_C1B572	| C1B582
 	move.l	#0xEEE0000,(0x400002).l	| C1B586
 	move.l	#0xE000000,(0x400022).l	| C1B590
-	lea.l	(ram_10F300).l,a5	| C1B59A
+	lea.l	(BiosWorkRam).l,a5	| C1B59A
 	jsr	(ControllerSetup).l	| C1B5A0
 	move.b	#0x1,(ram_10FEE6-A5_BASE,a5)	| C1B5A6
 	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C1B5AC

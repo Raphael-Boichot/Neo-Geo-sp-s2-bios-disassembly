@@ -56,7 +56,7 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 ## BIOS calls used by games
 
 `tools/scan_bios_calls.py` counts references to each BIOS call slot in a game's program ROM
-(MAME order). Checked so far:
+(MAME order, first program ROM only: code in a second bank such as `p2` is not scanned). Checked so far:
 
 | Game | SYSTEM_IO | CREDIT_CHECK | CREDIT_DOWN | READ_CALENDAR | CARD | HOW_TO_PLAY | FIX_CLEAR | LSP_1ST | SYSTEM_INT2 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -65,8 +65,15 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 | Cyber-Lip | 1 | 1 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | Magician Lord | 3 | 1 | 1 (unused wrapper) | 1 | 1 | 0 | 0 | 0 | 0 |
 | The King of Fighters '94 | 1 | 2 | 0 | 0 | 1 (+1 CARD_ERROR) | 0 | 0 | 33 | 0 |
+| Neo Bomberman | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
+| King of the Monsters 2 | 1 | 7 | 1 (not reached in MAME) | 0 | 6 | 0 | 0 | 14 | 0 |
+| Viewpoint | 2 | 2 | 0 | 0 | 1 | 0 | 1 | 0 | 0 |
+| Alpha Mission II | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 6 | 0 |
+| Robo Army | 1 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
+| Last Resort | 1 | 7 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
+| Crossed Swords | 3 | 2 | 0 | 0 | 2 | 0 | 3 | 1 | 0 |
 
-None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0), and none calls CREDIT_DOWN. HOW_TO_PLAY as called by
+None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0). Two call CREDIT_DOWN in their code: Magician Lord only from an unused wrapper, King of the Monsters 2 after CREDIT_CHECK in a routine gated by a game flag; a P2 join in MAME went through the BIOS start handling (DeductStartCredits) instead, so CREDIT_DOWN has still never run. HOW_TO_PLAY as called by
 NAM-1975 (the BIOS animates the joystick and buttons, the captions come from the game):
 
 ![HOW_TO_PLAY in NAM-1975](docs/how_to_play_nam1975.png)

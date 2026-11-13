@@ -60,7 +60,7 @@ C118CA,SystemInt2,W,"target of SYSTEM_INT2 (wiki: acknowledges hblank); never ra
 C112D2,SystemReturn,W,target of SYSTEM_RETURN
 C1167A,SystemIo,W,target of SYSTEM_IO
 C117CE,CreditCheck,W,"target of CREDIT_CHECK: MVS, free play off (hard DIP 7, bit 6 of REG_DIPSW): BCD check of the requested credits ($10FDB0) against Credits"
-C11820,CreditDown,W,"target of CREDIT_DOWN (wiki); never ran: no reference in Sengoku 2, NAM-1975, Cyber-Lip; Magician Lord has an unused wrapper ($0072DE)"
+C11820,CreditDown,W,"target of CREDIT_DOWN (wiki); never ran. Referenced by Magician Lord (unused wrapper) and King of the Monsters 2 (after CREDIT_CHECK in a routine gated by a game flag, not reached by a P2 join); none of 10 other checked games"
 C12C78,ReadCalendar,W,target of READ_CALENDAR
 C12CF2,SetupCalendar,C,target of SETUP_CALENDAR (wiki); MAME: runs when D is pressed on the test-mode calendar screen
 C1334C,Card,C,"target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]"

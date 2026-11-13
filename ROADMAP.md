@@ -65,7 +65,7 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
 - [ ] Every `sub_` named (156 left), test mode and card first, then power_on and video_io
   - [x] `system.s`: CreditCheckPlayer, CallDeductStartCredits, DemoEndCheck
   - [x] `boot.s`: CardStillInserted, GetSoftDipPointer (with SystemType, SystemRegion and the two texts)
-- [ ] Every `dat_` and `tbl_` named (202): text tables, menu tables, palettes, sprite data
+- [ ] Every `dat_` and `tbl_` named (198 left): text tables, menu tables, palettes, sprite data
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
 - [ ] Review the 28 I names: confirm with a coverage run or a code read, or keep them as I with a reason
 - [ ] Doubts list: one line per `?` name, kept in `symbols/`

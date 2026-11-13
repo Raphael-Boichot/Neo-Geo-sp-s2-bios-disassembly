@@ -295,7 +295,7 @@ tbl_C12F88:
 	dc.b	0x01,0x03,0x04,0x05
 dat_C12FEC:
 	dc.b	0x1D,0x1F,0x1C,0x1F,0x1E,0x1F,0x1E,0x1F,0x1F,0x1E,0x1F,0x1E,0x1F,0x00
-| CheckCartridgeId [C] slot scan, per slot: Z set (d7 = 0) for a game: CART_NEOGEO_ID = NEO-GEO and the code at CART_SECURITY_PTR (even address) equal to the 122 bytes at $C146A2-$C1471B of the system ROM's card code. CART_NEOGEO_ID = NEO-CLN: a cartridge with its own calendar chip (I: a service cartridge for setting the time): stores the slot in NeoClnSlot, clears $D00010, copies the cartridge calendar to the board calendar (ReadCalendarAlt, SetupCalendar) and jumps to HardwareTest, which opens on its calendar screen. NoGoIdText (NEO-GEO read on an 8-bit cartridge, I): sets $D00060 = 1, clears $D00010 and SlotTable, returns Z set. MAME: the NEO-CLN path ran (scenario neo_cln_cartridge)
+| CheckCartridgeId [C] slot scan, per slot: Z set (d7 = 0) for a game: CART_NEOGEO_ID = NEO-GEO and the code at CART_SECURITY_PTR (even address) equal to the 122 bytes at $C146A2-$C1471B of the system ROM's card code. CART_NEOGEO_ID = NEO-CLN: a cartridge with its own calendar chip (I: a service cartridge for setting the time): stores the slot in NeoClnSlot, clears the first long of BackupRamSignature, copies the cartridge calendar to the board calendar (ReadCalendarAlt, SetupCalendar) and jumps to HardwareTest, which opens on its calendar screen. NoGoIdText: sets SlotNumberMode, clears the first long of BackupRamSignature and SlotTable, returns Z set (a game). MAME: both special IDs ran (scenarios neo_cln_cartridge, nogo_cartridge)
 CheckCartridgeId:
 	lea.l	(CART_NEOGEO_ID).w,a0	| C12FFA
 	lea.l	(NeoGeoIdText,pc),a1	| C12FFE
@@ -332,7 +332,7 @@ loc_C1303E:
 	dbra	d7,loc_C1303E	| C13042
 	moveq	#0x0,d0	| C13046
 	move.b	(CurrentSlot).l,(NeoClnSlot).l	| C13048
-	clr.l	(bram_D00010).l	| C13052
+	clr.l	(BackupRamSignature).l	| C13052
 	jsr	(ReadCalendarAlt,pc)	| C13058
 	jsr	(SetupCalendar,pc)	| C1305C
 	jmp	(HardwareTest,pc)	| C13060
@@ -344,8 +344,8 @@ loc_C1306E:
 	cmpm.b	(a0)+,(a1)+	| C1306E
 	bne.b	loc_C1302A	| C13070
 	dbra	d7,loc_C1306E	| C13072
-	move.w	#0x1,(bram_D00060).l	| C13076
-	clr.l	(bram_D00010).l	| C1307E
+	move.w	#0x1,(SlotNumberMode).l	| C13076
+	clr.l	(BackupRamSignature).l	| C1307E
 	lea.l	(SlotTable).l,a0	| C13084
 	moveq	#0x7,d7	| C1308A
 loc_C1308C:
@@ -357,7 +357,7 @@ loc_C1308C:
 NeoClnIdText:
 	.ascii	"NEO-CLN"
 	dc.b	0x00
-| NoGoIdText [I] bytes N 0 O 0 G 0 O 0: the even letters of NEO-GEO with 0 between, as an 8-bit (one byte lane) cartridge would read (I)
+| NoGoIdText [C] bytes N 0 O 0 G 0 O 0, compared with CART_NEOGEO_ID by CheckCartridgeId (the even letters of NEO-GEO with 0 between, as a cartridge with one byte lane would read: I). Sets SlotNumberMode. MAME: patched Sengoku 2 (scenario nogo_cartridge) skips the boot animation, shows SLOT 1 for 300 frames, then runs the game
 NoGoIdText:
 	dc.b	0x4E,0x00,0x4F,0x00,0x47,0x00,0x4F,0x00
 | VramTest [I] VRAM test through REG_VRAMRW, d4 start address, d5 count

@@ -224,7 +224,7 @@ sub_C11DB0:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11DC2
 	move.w	#0xFFFF,(NeoClnSlot-A4_BASE,a4)	| C11DC8
 	moveq	#0x0,d0	| C11DCE
-	move.w	d0,(bram_D00060-A4_BASE,a4)	| C11DD0
+	move.w	d0,(SlotNumberMode-A4_BASE,a4)	| C11DD0
 	move.l	d0,(bram_D00048-A4_BASE,a4)	| C11DD4
 	move.l	d0,(bram_D00020-A4_BASE,a4)	| C11DD8
 	move.b	#0x3B,(bram_D0004C-A4_BASE,a4)	| C11DDC
@@ -412,7 +412,7 @@ loc_C1203E:
 	bsr.w	sub_C184EC	| C1203E
 	rts	| C12042
 sub_C12044:
-	tst.w	(bram_D00060-A4_BASE,a4)	| C12044
+	tst.w	(SlotNumberMode-A4_BASE,a4)	| C12044
 	bne.w	loc_C12072	| C12048
 	moveq	#0x0,d7	| C1204C
 	move.w	d4,d2	| C1204E
@@ -888,15 +888,16 @@ sub_C125A4:
 	move.l	d1,0x8(a0,d0.w)	| C125AE
 	move.l	d1,0xC(a0,d0.w)	| C125B2
 	rts	| C125B6
-dat_C125B8:
+| BackupRamOkText [C] BACKUP RAM OK ! (16 bytes) compared with BackupRamSignature by BackupRamTest
+BackupRamOkText:
 	.ascii	"BACKUP RAM OK !"
 	dc.b	0x80
 | BackupRamTest [I] memory test of backup RAM at a0 (test number in d6)
 BackupRamTest:
 	move.b	(REG_DIPSW).l,d0	| C125C8
 	beq.b	loc_C125E6	| C125CE
-	lea.l	(bram_D00010).l,a6	| C125D0
-	lea.l	(dat_C125B8,pc),a4	| C125D6
+	lea.l	(BackupRamSignature).l,a6	| C125D0
+	lea.l	(BackupRamOkText,pc),a4	| C125D6
 	moveq	#0xF,d7	| C125DA
 loc_C125DC:
 	cmpm.b	(a4)+,(a6)+	| C125DC
@@ -925,8 +926,8 @@ loc_C12614:
 	movem.l	d0-d3,-(a0)	| C12622
 	movem.l	d0-d3,-(a0)	| C12626
 	dbra	d7,loc_C12614	| C1262A
-	lea.l	(bram_D00010).l,a6	| C1262E
-	lea.l	(dat_C125B8,pc),a4	| C12634
+	lea.l	(BackupRamSignature).l,a6	| C1262E
+	lea.l	(BackupRamOkText,pc),a4	| C12634
 	moveq	#0xF,d7	| C12638
 loc_C1263A:
 	move.b	(a4)+,(a6)+	| C1263A

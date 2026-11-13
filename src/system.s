@@ -197,7 +197,7 @@ loc_C1184A:
 	move.b	#0x1,(ram_10FEC5).l	| C1187E
 	bra.b	loc_C118B8	| C11886
 loc_C11888:
-	tst.w	(bram_D00060).l	| C11888
+	tst.w	(SlotNumberMode).l	| C11888
 	bne.b	loc_C118A2	| C1188E
 	tst.b	(bram_D00042).l	| C11890
 	bne.b	loc_C118A2	| C11896

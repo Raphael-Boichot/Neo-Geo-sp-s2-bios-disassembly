@@ -163,7 +163,7 @@
 	.equ	ram_10FEEE,0x10FEEE
 	.equ	ram_10FF00,0x10FF00
 	.equ	bram_D00000,0xD00000
-	.equ	bram_D00010,0xD00010
+	.equ	BackupRamSignature,0xD00010
 	.equ	bram_D00020,0xD00020
 	.equ	bram_D00021,0xD00021
 	.equ	bram_D00022,0xD00022
@@ -188,7 +188,7 @@
 	.equ	bram_D0005C,0xD0005C
 	.equ	bram_D0005D,0xD0005D
 	.equ	NeoClnSlot,0xD0005E
-	.equ	bram_D00060,0xD00060
+	.equ	SlotNumberMode,0xD00060
 	.equ	bram_D00104,0xD00104
 	.equ	bram_D00105,0xD00105
 	.equ	CurrentSlot,0xD00108

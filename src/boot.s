@@ -156,9 +156,9 @@ SlotText:
 	dc.b	0x00,0x03,0x72,0x2C,0x01,0x08
 	.ascii	"SLOT "
 	dc.b	0xFF,0x00,0x00
-| SystemMode2 [C] mode 2: shows SLOT n (SlotText, slot from $D00108) for up to 300 frames, ended early by SELECT P1 (bit 1 of BIOS_STATCHANGE_RAW); then CallUser with request 2 (demo), or 3 (title) when bram $D00034 is non-zero and $D00043 is 0
+| SystemMode2 [C] mode 2: only when SlotNumberMode is set, shows SLOT n (SlotText, CurrentSlot + 1) for up to 300 frames, ended early by SELECT P1 (bit 1 of BIOS_STATCHANGE_RAW); then CallUser with request 2 (demo), or 3 (title) when Credits is non-zero and $D00043 is 0
 SystemMode2:
-	tst.w	(bram_D00060).l	| C111EA
+	tst.w	(SlotNumberMode).l	| C111EA
 	beq.w	loc_C11260	| C111F0
 	move.b	#0xFF,(ram_10FEE1).l	| C111F4
 	move.b	d0,(REG_SWPBIOS).l	| C111FC
@@ -289,7 +289,7 @@ CheckSettingMode:
 	move.b	(REG_DIPSW).l,d0	| C113DE
 	andi.b	#0x1,d0	| C113E4
 	beq.w	TestModeEntry	| C113E8
-	tst.w	(bram_D00060).l	| C113EC
+	tst.w	(SlotNumberMode).l	| C113EC
 	bne.w	loc_C11418	| C113F2
 	move.b	(bram_D00058).l,d5	| C113F6
 	bmi.b	loc_C11418	| C113FC

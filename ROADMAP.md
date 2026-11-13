@@ -10,9 +10,9 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
-| L2 traced and run | 9,109 instructions traced; 4,505 ran in MAME (49.5 %) over 26 scenarios; nothing ran outside the trace |
-| L3 names | 172 names (C 120, I 22, W 30); 1,409 automatic labels left: 153 `sub_`, 157 `dat_`, 38 `tbl_`, 1,061 `loc_` |
-| L4 RAM and registers | 217 RAM addresses used, 55 named; 30 backup RAM accesses through a4 left raw |
+| L2 traced and run | 9,109 instructions traced; 4,545 ran in MAME (49.9 %) over 27 scenarios; nothing ran outside the trace |
+| L3 names | 173 names (C 122, I 21, W 30); 1,408 automatic labels left: 153 `sub_`, 156 `dat_`, 38 `tbl_`, 1,061 `loc_` |
+| L4 RAM and registers | 217 RAM addresses used, 57 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens and BIOS calls seen in MAME; no written reference yet |
 
@@ -57,7 +57,10 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
 - [ ] The work RAM test loop when every hard DIP is on (`WorkRamTestLoop`, `$C11BA8`)
 - [x] The alternate calendar path (`$C12DB8-$C12EF0`): selected by a cartridge whose ID reads NEO-CLN
       (`CheckCartridgeId`); run in MAME with `tools/neo_cln_test.py` (scenario `neo_cln_cartridge`)
-- [ ] The `NoGoIdText` case of `CheckCartridgeId` (ID read on an 8-bit cartridge?): find what `$D00060` = 1 changes
+- [x] The `NoGoIdText` case of `CheckCartridgeId`: sets `SlotNumberMode` (`$D00060`): SLOT n before the game,
+      no jump to the saved slot, duplicates kept, SELECT ends the demo without credits; run in MAME
+      (`tools/neo_cln_test.py --nogo`, scenario `nogo_cartridge`)
+- [ ] Read `BackupRamTest` (`$C125C8`) and confirm that clearing `BackupRamSignature` re-initialises the backup RAM
 - [ ] Card error cases: no card, write-protected card, full card, wrong format (CARD_ERROR)
 - [ ] Card utility COPY (`CardUtilCopy`) and the controller test, as coverage scenarios of the test build
 - [ ] CREDIT_DOWN in Top Player's Golf and Baseball Stars Professional
@@ -68,7 +71,7 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
   - [x] `system.s`: CreditCheckPlayer, CallDeductStartCredits, DemoEndCheck
   - [x] `boot.s`: CardStillInserted, GetSoftDipPointer (with SystemType, SystemRegion and the two texts)
   - [x] `calendar.s`: RtcReadBits, RtcReadBitsAlt, CheckCartridgeId (and the three ID texts)
-- [ ] Every `dat_` and `tbl_` named (195 left): text tables, menu tables, palettes, sprite data
+- [ ] Every `dat_` and `tbl_` named (194 left): text tables, menu tables, palettes, sprite data
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
 - [ ] Review the 28 I names: confirm with a coverage run or a code read, or keep them as I with a reason
 - [ ] Doubts list: one line per `?` name, kept in `symbols/`
@@ -77,7 +80,7 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 
-- [ ] Name every work RAM variable used (162 automatic), checking all readers and writers first
+- [ ] Name every work RAM variable used (160 automatic), checking all readers and writers first
 - [ ] Backup RAM map at `$D00000`: book keeping, soft DIPs per slot, calendar, slot data, card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one
 - [x] The 4 `move.l #$100000`: `$100000` is named `WorkRamStart` (work RAM start, RAM tests, the card

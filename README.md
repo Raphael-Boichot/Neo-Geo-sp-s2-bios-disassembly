@@ -64,8 +64,9 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 | NAM-1975 | 1 | 6 | 0 | 0 | 3 | 1 (ran in MAME) | 2 | 2 | 0 |
 | Cyber-Lip | 1 | 1 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | Magician Lord | 3 | 1 | 1 (unused wrapper) | 1 | 1 | 0 | 0 | 0 | 0 |
+| The King of Fighters '94 | 1 | 2 | 0 | 0 | 1 (+1 CARD_ERROR) | 0 | 0 | 33 | 0 |
 
-None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2. HOW_TO_PLAY as called by
+None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0), and none calls CREDIT_DOWN. HOW_TO_PLAY as called by
 NAM-1975 (the BIOS animates the joystick and buttons, the captions come from the game):
 
 ![HOW_TO_PLAY in NAM-1975](docs/how_to_play_nam1975.png)

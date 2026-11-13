@@ -83,7 +83,7 @@ class Tracer:
     def run(self):
         while self.queue:
             addr = self.queue.pop()
-            prev = None
+            prev = []                  # last instructions of this run, newest last
             while True:
                 if not in_rom(addr):
                     break
@@ -135,17 +135,23 @@ class Tracer:
                     break
                 if addr in self.hints.get('noreturn', ()):
                     break
-                prev = ins
+                prev = (prev + [ins])[-3:]
                 addr = nxt
 
     # ---------------------------------------------------------------
     def indirect_jump(self, ins, prev):
-        """Recognise `movea.l tbl(pc,dN.w),aN ; jmp (aN)` style dispatch."""
-        if prev is None:
-            return
-        mm = re.match(r'\$([0-9a-f]+)\(pc, d\d\.w\), a\d', prev.op_str)
-        if prev.mnemonic in ('movea.l', 'move.l') and mm:
-            self.long_table(int(mm.group(1), 16), prev.address)
+        """Recognise `movea.l tbl(pc,dN.w),aN ; [up to 2 instructions] ; jmp (aN)` dispatch.
+
+        The load may be a few instructions back (`pea (ret,pc)` in between at $C150A2), so the last
+        3 instructions are searched, newest first, for a table load into the jump register."""
+        reg = re.match(r'^\((a\d)\)$', ins.op_str.replace(' ', ''))
+        for p in reversed(prev):
+            mm = re.match(r'\$([0-9a-f]+)\(pc, d\d\.w\), (a\d)$', p.op_str)
+            if p.mnemonic in ('movea.l', 'move.l') and mm and (reg is None or mm.group(2) == reg.group(1)):
+                self.long_table(int(mm.group(1), 16), p.address)
+                return
+            if reg and re.search(r', ' + reg.group(1) + r'$', p.op_str):
+                return                         # jump register overwritten by something else
 
     def long_table(self, tbl, src):
         n = 0

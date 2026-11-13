@@ -31,7 +31,7 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
 |---|---|---|
 | L0 | source rebuilds the ROM byte for byte | `make check` prints `OK sha1 4f5ed710...` |
 | L1 | every byte typed: code, data (text, pointers, bytes), free | `tools/stats.py` |
-| L2 | code proven by recursive descent, 0 unresolved indirect jumps, then run in an emulator | stats + MAME trace |
+| L2 | code proven by recursive descent, every indirect jump resolved or explained, then run in an emulator | stats + MAME trace |
 | L3 | every routine, table and string named, tagged C / I / ? | names file, doubts list |
 | L4 | RAM, backup RAM and registers named in the source (incl. `x(a5)`) | stats: raw operand counts |
 | L5 | editable tree: modules, all ROM addresses symbolic, code can move | relocation test in MAME |
@@ -73,6 +73,9 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
 - An address read through `x(pc,dN.w)` is a data table: never trace it as code (`$C199FC` was a false entry).
 - `jmp (a6)` at `$C131A8` is a return through a6, used while the RAM (and so the stack) is being tested.
 - The wiki pages disagree on `REG_PALBANK0`/`1`; the register page is followed. Note such conflicts.
+- A dispatch can have instructions between the table load and the jump (`movea.l tbl(pc,d0.w),a0 ;
+  pea (ret,pc) ; jmp (a0)` at `$C1509E`): the tracer looks back 3 instructions for a load into the
+  jump register.
 - `pea (label,pc)` pushes a return address that a later `rts` jumps to: it is code, not data
   (`$C133BA` was missed until MAME ran it).
 - MAME: a read tap on the ROM does not see opcode fetches (only data reads): use the debugger trace

@@ -76,7 +76,8 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 - [ ] Backup RAM map at `$D00000`: book keeping, soft DIPs per slot, calendar, slot data, card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one
 - [ ] The 4 `move.l #$100000` (card buffer at the start of work RAM): a named constant
-- [ ] `tools/stats.py`: count the hint-resolved card utility jump as resolved (it reports 2, both explained)
+- [x] Card utility dispatch `$C150A6`: the tracer now finds the table load 2 instructions before the
+      `jmp` (a `pea` in between), so `tools/stats.py` reports 1 indirect jump, the `jmp (a6)` return
 
 ## 5. Written reference (L6)
 

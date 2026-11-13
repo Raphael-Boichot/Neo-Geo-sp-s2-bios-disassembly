@@ -144,6 +144,11 @@ about 20,000 lines per frame, only passes through a pipe). `coverage.py` prints 
 that ran, executed addresses the tracer missed (add them to `tools/hints.txt` with the scenario as the
 reason), the speculative entries that ran, and which scenarios use each BIOS call.
 
+`DEBUG_CMDS` adds MAME debugger commands to a coverage run (several separated by `||`), for example a
+breakpoint that changes a register to reach a path no game takes (README, SYSTEM_INT2). To see what
+games do with the timer interrupt and the vector switches, run a game with
+`-debug -debugger none -log -autoboot_script tools/mame_watch_irq2.lua` and read `error.log`.
+
 ## 9. Commit
 
 ```

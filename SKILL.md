@@ -96,6 +96,12 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
   Ask the owner how the game behaves (Sengoku 2: too slow brings a spiked cart; SAVE only when you
   lose in level 2; fixed scenes: wait and mash A). The save prompt lasts about 10 s: snapshot every
   30 frames around it to time the keys.
+- MAME debugger actions: the program counter is `curpc` (`pc` gives "unknown symbol" and the
+  action does nothing); `frame` works. Lua write and read taps on the I/O registers and on the vector
+  area gave nothing past the first vector switch: watch them with debugger `wpset` instead.
+- A path no game takes (SYSTEM_INT2: a timer IRQ while the system ROM vectors are mapped) can be
+  reached by a breakpoint that sets the game state at the right instruction (`DEBUG_CMDS`); such a run
+  proves the code works, not that a game uses it: say so.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
   Text needs mostly letters and no long counting run, and is never looked for inside a named table.
 - A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.

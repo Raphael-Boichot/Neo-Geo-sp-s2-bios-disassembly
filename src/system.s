@@ -216,7 +216,7 @@ loc_C118B8:
 	jmp	(SystemReturn,pc)	| C118C4
 loc_C118C8:
 	rts	| C118C8
-| SystemInt2 [W] target of SYSTEM_INT2 (wiki: acknowledges hblank); never ran: none of Sengoku 2, NAM-1975, Cyber-Lip, Magician Lord points its level 2 vector at it
+| SystemInt2 [C] target of SYSTEM_INT2, the level 2 (timer) handler of the system ROM vector table: acknowledges the timer IRQ and turns it off (LSPCMODE $4000). Safety net for HOW_TO_PLAY, the only BIOS call that maps the system ROM vectors and lowers the mask without writing LSPCMODE. MAME: ran when the timer IRQ was forced on inside HOW_TO_PLAY in NAM-1975; no checked game runs it on its own
 SystemInt2:
 	move.w	#0x2,(REG_IRQACK).l	| C118CA
 	move.w	#0x4000,(REG_LSPCMODE).l	| C118D2

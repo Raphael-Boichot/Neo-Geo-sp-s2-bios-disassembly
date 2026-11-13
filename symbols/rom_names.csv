@@ -56,7 +56,7 @@ C17C06,HwTestCalendarFrame,C,per frame routine of the hardware-test calendar
 C1870C,WaitFrame,C,sets FrameWaitFlag and loops until SystemInt1 (VBlank) clears it
 C11002,Reset,W,target of the reset vector and ENTRY_RESET
 C11646,SystemInt1,W,target of SYSTEM_INT1 (VBlank routine called by games)
-C118CA,SystemInt2,W,"target of SYSTEM_INT2 (wiki: acknowledges hblank); never ran: none of Sengoku 2, NAM-1975, Cyber-Lip, Magician Lord points its level 2 vector at it"
+C118CA,SystemInt2,C,"target of SYSTEM_INT2, the level 2 (timer) handler of the system ROM vector table: acknowledges the timer IRQ and turns it off (LSPCMODE $4000). Safety net for HOW_TO_PLAY, the only BIOS call that maps the system ROM vectors and lowers the mask without writing LSPCMODE. MAME: ran when the timer IRQ was forced on inside HOW_TO_PLAY in NAM-1975; no checked game runs it on its own"
 C112D2,SystemReturn,W,target of SYSTEM_RETURN
 C1167A,SystemIo,W,target of SYSTEM_IO
 C117CE,CreditCheck,W,"target of CREDIT_CHECK: MVS, free play off (hard DIP 7, bit 6 of REG_DIPSW): BCD check of the requested credits ($10FDB0) against Credits"

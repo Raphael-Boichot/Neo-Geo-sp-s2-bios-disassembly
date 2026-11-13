@@ -222,7 +222,7 @@ SystemInt2:
 	move.w	#0x4000,(REG_LSPCMODE).l	| C118D2
 	rte	| C118DA
 	moveq	#0x1,d6	| C118DC
-	lea.l	(ram_100000).l,a0	| C118DE
+	lea.l	(WorkRamStart).l,a0	| C118DE
 	move.w	#0x7FFF,d5	| C118E4
 	jsr	(MemTestBlock,pc)	| C118E8
 	moveq	#0x2,d6	| C118EC

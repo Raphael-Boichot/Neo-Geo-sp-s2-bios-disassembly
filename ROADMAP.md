@@ -12,7 +12,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
 | L2 traced and run | 9,109 instructions traced; 4,386 ran in MAME (48.2 %) over 25 scenarios; nothing ran outside the trace |
 | L3 names | 157 names (C 101, I 28, W 28); 1,424 automatic labels left: 161 `sub_`, 164 `dat_`, 38 `tbl_`, 1,061 `loc_` |
-| L4 RAM and registers | 216 RAM addresses used, 50 named; 30 backup RAM accesses through a4 and 4 `#$100000` left raw |
+| L4 RAM and registers | 216 RAM addresses used, 51 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens and BIOS calls seen in MAME; no written reference yet |
 
@@ -72,10 +72,11 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 
-- [ ] Name every work RAM variable used (166 automatic), checking all readers and writers first
+- [ ] Name every work RAM variable used (165 automatic), checking all readers and writers first
 - [ ] Backup RAM map at `$D00000`: book keeping, soft DIPs per slot, calendar, slot data, card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one
-- [ ] The 4 `move.l #$100000` (card buffer at the start of work RAM): a named constant
+- [x] The 4 `move.l #$100000`: `$100000` is named `WorkRamStart` (work RAM start, RAM tests, the card
+      utility's card buffer); `tools/stats.py` reports 0 raw RAM operands
 - [x] Card utility dispatch `$C150A6`: the tracer now finds the table load 2 instructions before the
       `jmp` (a `pea` in between), so `tools/stats.py` reports 1 indirect jump, the `jmp (a6)` return
 

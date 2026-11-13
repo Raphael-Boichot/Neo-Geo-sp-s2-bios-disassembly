@@ -90,7 +90,7 @@ loc_C16C24:
 	bne.b	loc_C16C24	| C16C2E
 	sub.b	(CART_HEADER_186).w,d0	| C16C30
 	move.b	d0,(CART_HEADER_186).w	| C16C34
-	move.b	d0,(ram_100000).l	| C16C38
+	move.b	d0,(WorkRamStart).l	| C16C38
 loc_C16C3E:
 	jmp	(loc_C16C3E,pc)	| C16C3E
 	move.w	#0x2700,sr	| C16C42

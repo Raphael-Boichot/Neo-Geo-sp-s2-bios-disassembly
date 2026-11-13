@@ -2583,7 +2583,7 @@ loc_C15246:
 	nop	| C15268
 	move.w	(a1)+,(BIOS_CRDNGH-A5_BASE,a5)	| C1526A
 	move.b	(a1),(BIOS_CRDFILE-A5_BASE,a5)	| C1526E
-	move.l	#0x100000,(BIOS_CRDPTR-A5_BASE,a5)	| C15272
+	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C15272
 	move.w	#0x4000,(BIOS_CRDSIZE-A5_BASE,a5)	| C1527A
 	move.b	#0x2,(BIOS_CRDF-A5_BASE,a5)	| C15280
 	jsr	(Card,pc)	| C15286
@@ -2629,7 +2629,7 @@ loc_C1530C:
 	btst.b	#0x4,d0	| C15318
 	beq.b	loc_C1530C	| C1531C
 loc_C1531E:
-	move.l	#0x100000,(BIOS_CRDPTR-A5_BASE,a5)	| C1531E
+	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C1531E
 	move.b	#0x3,(BIOS_CRDF-A5_BASE,a5)	| C15326
 	jsr	(Card,pc)	| C1532C
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C15330
@@ -2641,7 +2641,7 @@ loc_C15344:
 	jsr	(ClearFixLayer,pc)	| C15344
 	lea.l	(dat_C15F02,pc),a2	| C15348
 	jsr	(CardUtilPutText,pc)	| C1534C
-	lea.l	(ram_100000).l,a0	| C15350
+	lea.l	(WorkRamStart).l,a0	| C15350
 	movea.l	#ram_10C000,a1	| C15356
 	move.w	(ram_10FEB0-A5_BASE,a5),d7	| C1535C
 loc_C15360:
@@ -2702,7 +2702,7 @@ loc_C15414:
 	move.b	#0x6,(BIOS_CRDF-A5_BASE,a5)	| C15432
 	jsr	(Card,pc)	| C15438
 loc_C1543C:
-	lea.l	(ram_100000).l,a0	| C1543C
+	lea.l	(WorkRamStart).l,a0	| C1543C
 	movea.l	#ram_10C000,a1	| C15442
 	move.w	(ram_10FEB0-A5_BASE,a5),d7	| C15448
 loc_C1544C:
@@ -2816,12 +2816,12 @@ loc_C15588:
 	bne.b	loc_C15588	| C15596
 	jsr	(ClearFixLayer,pc)	| C15598
 loc_C1559C:
-	move.l	#0x100000,(BIOS_CRDPTR-A5_BASE,a5)	| C1559C
+	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C1559C
 	move.b	#0x7,(BIOS_CRDF-A5_BASE,a5)	| C155A4
 	jsr	(Card,pc)	| C155AA
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C155AE
 	beq.b	loc_C155C4	| C155B2
-	lea.l	(ram_100000).l,a0	| C155B4
+	lea.l	(WorkRamStart).l,a0	| C155B4
 	moveq	#0xF,d7	| C155BA
 loc_C155BC:
 	move.b	#0x20,(a0)+	| C155BC
@@ -2851,7 +2851,7 @@ loc_C155FC:
 	move.w	(ram_10FEB4-A5_BASE,a5),d1	| C15604
 	cmpi.w	#0x5,d1	| C15608
 	bcs.w	loc_C15638	| C1560C
-	lea.l	(ram_100000).l,a0	| C15610
+	lea.l	(WorkRamStart).l,a0	| C15610
 	move.w	(ram_10FEB0-A5_BASE,a5),d3	| C15616
 	lea.l	(dat_C15BEC,pc),a1	| C1561A
 	move.b	-0x5(a1,d1.w),(a0,d3.w)	| C1561E
@@ -2873,7 +2873,7 @@ tbl_C15642:
 	dc.l	loc_C15690
 	dc.l	loc_C156B0
 loc_C15656:
-	move.l	#0x100000,(BIOS_CRDPTR-A5_BASE,a5)	| C15656
+	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C15656
 	move.b	#0x6,(BIOS_CRDF-A5_BASE,a5)	| C1565E
 	jsr	(Card,pc)	| C15664
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C15668
@@ -2971,7 +2971,7 @@ sub_C15776:
 	clr.l	(a0)+	| C1577E
 	move.l	#0x371A6,(a0)+	| C15780
 	move.w	#0x108,(a0)+	| C15786
-	lea.l	(ram_100000).l,a1	| C1578A
+	lea.l	(WorkRamStart).l,a1	| C1578A
 	moveq	#0x3,d7	| C15790
 loc_C15792:
 	move.l	(a1)+,(a0)+	| C15792

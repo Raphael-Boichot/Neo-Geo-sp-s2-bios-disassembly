@@ -1,6 +1,6 @@
 | RAM used by the system ROM - generated; names come from symbols/ram.csv
 
-	.equ	ram_100000,0x100000
+	.equ	WorkRamStart,0x100000
 	.equ	ram_10C000,0x10C000
 	.equ	BiosWorkRam,0x10F300
 	.equ	ram_10F500,0x10F500

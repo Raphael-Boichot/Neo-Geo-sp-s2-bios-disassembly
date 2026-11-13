@@ -219,7 +219,7 @@ class Gen:
             neg, v = mm.group(1), int(mm.group(2), 16)
             if not neg and mn.endswith('.l') and T.in_rom(v) and v in t.refs:
                 return '#' + self.ref(v)
-            if not neg and mn.endswith('.l') and ram_kind(v) and v not in (0x100000, 0xD00000):
+            if not neg and mn.endswith('.l') and ram_kind(v) and (v != 0x100000 or v in S.RAM) and v != 0xD00000:
                 return '#' + self.ram(v)
             return f'#{neg}0x{v:X}'
         op = re.sub(r'#(-?)\$([0-9a-f]+)', imm, op)

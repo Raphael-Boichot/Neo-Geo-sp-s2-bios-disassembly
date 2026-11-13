@@ -22,7 +22,7 @@ PowerOnTest:
 	move.b	d0,(REG_RESETCL1).l	| C11AE8
 	move.b	d0,(REG_RESETCL2).l	| C11AEE
 	moveq	#0x0,d6	| C11AF4
-	lea.l	(ram_100000).l,a0	| C11AF6
+	lea.l	(WorkRamStart).l,a0	| C11AF6
 	move.w	#0x7FFF,d5	| C11AFC
 	jsr	(MemTestBlock,pc)	| C11B00
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11B04
@@ -62,7 +62,7 @@ PowerOnTest:
 | WorkRamTestLoop [C] when REG_DIPSW reads 0 (all hard DIPs on): shows WORK RAM TEST and repeats the RAM tests until a DIP is turned off
 WorkRamTestLoop:
 	moveq	#0x0,d6	| C11BA8
-	lea.l	(ram_100000).l,a0	| C11BAA
+	lea.l	(WorkRamStart).l,a0	| C11BAA
 	move.w	#0x7FFF,d5	| C11BB0
 	jsr	(MemTestBlock,pc)	| C11BB4
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11BB8

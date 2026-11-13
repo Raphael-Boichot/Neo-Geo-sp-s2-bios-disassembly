@@ -49,3 +49,4 @@ D00034,Credits,I,"BCD credit count in backup RAM: CreditCheck subtracts from it 
 D00108,CurrentSlot,C,"backup RAM: slot number written by SwitchSlot together with REG_SLOT; SystemMode2 prints it as SLOT n"
 D00124,SlotTable,I,"backup RAM: 4 bytes per slot, scanned by SelectSlot"
 10F300,BiosWorkRam,C,"start of the BIOS work RAM, loaded into a5 (A5_BASE) by every BIOS entry"
+100000,WorkRamStart,C,"first byte of the 68000 work RAM ($100000-$10FFFF, game area below BiosWorkRam); the card utility points BIOS_CRDPTR here as its card data buffer ($4000 bytes for CARD 2); ChecksumLoop writes its result byte here; start address of the work RAM tests"

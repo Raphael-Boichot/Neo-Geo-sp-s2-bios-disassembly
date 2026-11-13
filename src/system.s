@@ -162,7 +162,7 @@ loc_C11816:
 	move.b	(a0),d1	| C1181A
 	abcd	d1,d1	| C1181C
 	bra.b	loc_C1180A	| C1181E
-| CreditDown [W] target of CREDIT_DOWN
+| CreditDown [W] target of CREDIT_DOWN (wiki); never ran: no reference in Sengoku 2, NAM-1975, Cyber-Lip; Magician Lord has an unused wrapper ($0072DE)
 CreditDown:
 	lea.l	(BiosWorkRam).l,a5	| C11820
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C11826
@@ -216,7 +216,7 @@ loc_C118B8:
 	jmp	(SystemReturn,pc)	| C118C4
 loc_C118C8:
 	rts	| C118C8
-| SystemInt2 [W] target of SYSTEM_INT2
+| SystemInt2 [W] target of SYSTEM_INT2 (wiki: acknowledges hblank); never ran: none of Sengoku 2, NAM-1975, Cyber-Lip, Magician Lord points its level 2 vector at it
 SystemInt2:
 	move.w	#0x2,(REG_IRQACK).l	| C118CA
 	move.w	#0x4000,(REG_LSPCMODE).l	| C118D2

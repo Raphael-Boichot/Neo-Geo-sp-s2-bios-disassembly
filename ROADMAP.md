@@ -1,6 +1,7 @@
 # Roadmap
 
-Where the SP-S2 disassembly stands and what comes next, in order. Levels L0-L6 are defined in
+Where the SP-S2 disassembly stands and what comes next, in order. The priority is the disassembly itself:
+full coverage, names and a written reference. Levels L0-L6 are defined in
 `SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-13).
 
 ## Where we are
@@ -100,14 +101,11 @@ Public references, allowed for comparison.
 - [ ] Document what the region byte and the system type change
 - [ ] List what differs between versions (bug fixes, new screens)
 
-## 7. Toward a custom system ROM
+## Not now: custom system ROM
 
-Starts once 1-5 are done.
-
-- [ ] Keep every BIOS call slot (`$C00402-$C004DA`) and the RAM contract games rely on
-- [ ] First feature in free space (76,723 B), hooked from the test menu, tested in MAME
-- [ ] A build target for the custom ROM next to the original one (`make check` stays the guard)
-- [ ] Test on hardware: 27C1024 or a flash adapter
+The priority is the disassembly. Work on a modified system ROM waits until steps 1-6 are done; the
+only build changes meanwhile are test builds that help the disassembly (reaching hidden code,
+relocation checks).
 
 ## Rules
 

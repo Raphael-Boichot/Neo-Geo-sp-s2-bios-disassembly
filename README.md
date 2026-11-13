@@ -135,7 +135,7 @@ vectors, so SystemInt2 is most likely an unused safety net (I).
 | [`src/neogeo.inc`](src/neogeo.inc), [`src/ram.inc`](src/ram.inc) | Registers, cartridge header, `A5_BASE`/`A4_BASE`; every RAM address used |
 | [`Makefile`](Makefile) | `make`, `make check`, `make fixsum`, `make source` |
 | [`HOWTO.md`](HOWTO.md) | Requirements, build, regeneration, trace hints, how to modify and test the BIOS |
-| [`ROADMAP.md`](ROADMAP.md) | What is left, in order: coverage, names, RAM, written reference, other SNK ROMs, custom ROM |
+| [`ROADMAP.md`](ROADMAP.md) | What is left for the disassembly, in order: coverage, names, RAM, written reference, other SNK ROMs |
 | [`SKILL.md`](SKILL.md) | Working playbook: ROM facts, levels L0-L6, pipeline, pitfalls, rules |
 | [`tools/trace.py`](tools/trace.py) | Recursive-descent tracer (Capstone): code, data and free bytes |
 | [`tools/gen_source.py`](tools/gen_source.py) | Writes `src/` from the ROM and loops until the rebuild is identical |

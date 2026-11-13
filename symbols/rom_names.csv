@@ -102,7 +102,7 @@ C121D6,SelectSlot,I,"scans the slot table in backup RAM ($D00124, 4 bytes per sl
 C116C8,CheckPlayerStart,C,"SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3"
 C1177A,StartCreditCheck,I,MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
 C1339A,CardFunctionTable,C,"8 entries indexed by BIOS_CRDF (wiki CARD: 0 format, 1 data search, 2 load, 3 save, 4 delete, 5 read data title, 6 save user name, 7 load user name)"
-C13A74,CardFormat,W,CARD function 0: format memory card (entry 0 of CardFunctionTable)
+C13A74,CardFormat,C,CARD function 0: format memory card (wiki); MAME: runs when the card utility formats a card (test build)
 C13D32,CardDataSearch,C,CARD function 1: data search (wiki); MAME with a blank card: called when the game starts
 C13DFA,CardLoadData,W,CARD function 2: load data
 C13F0A,CardSaveData,W,CARD function 3: save data
@@ -125,28 +125,29 @@ C151B0,CardUtilCopy,I,menu item 3. COPY A DATA (table order)
 C15490,CardUtilDelete,I,menu item 4. DELETE A DATA (table order)
 C15578,CardUtilUserName,I,menu item 5. FILE USER'S NAME (table order)
 C15C3C,CardUtilityMenuText,C,MESS_OUT data of the MEMORY CARD UTILITY menu
-C13A3C,ClearFixLayer,C,"resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) and fills the $500 fix-layer words from VRAM $7000 with $20 (space); kicks the watchdog (REG_DIPSW write) in the loop"
-C16AAA,PutHexByte,C,"reads a byte at (a1)+ and appends it at (a0)+ as two hex characters"
+C13A3C,ClearFixLayer,C,resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) and fills the $500 fix-layer words from VRAM $7000 with $20 (space); kicks the watchdog (REG_DIPSW write) in the loop
+C16AAA,PutHexByte,C,reads a byte at (a1)+ and appends it at (a0)+ as two hex characters
 C183E2,ByteToHex,C,"d0 byte -> two ASCII hex digits (high in d0, low in d1)"
-C183F0,NibbleToHex,C,"d1 nibble -> ASCII '0'-'9' / 'A'-'F'"
+C183F0,NibbleToHex,C,d1 nibble -> ASCII '0'-'9' / 'A'-'F'
 C17D34,PutMenuValueLine,I,"appends a MESS_OUT line at VRAM d2, highlighted when d6 equals WorkIndexNew, followed by the BCD value d0 (leading 0 as a space)"
 C15946,WaitFrameGetP1,C,"WaitFrame, then returns P1 change bits in d0 (repeat bits in the high word); special handling when BIOS_P1STATUS is 3"
-C15986,CardUtilPutText,I,"queues the MESS_OUT text at a2 followed by dat_C15CE0"
+C15986,CardUtilPutText,I,queues the MESS_OUT text at a2 followed by dat_C15CE0
 C1597A,ReadCardDetect,C,"d0 = REG_STATUS_B & $30 (memory card detect bits, 0 = card inserted)"
 C1AE82,DivU32,C,"unsigned 32-bit division: d4 / d3 -> quotient in d4, remainder in d0"
-C14E86,CardUnlock,C,"unlocks the memory card (REG_CRDUNLOCK1/2); counterpart of CardLock"
-C12DB0,WriteRtcCtrl,C,"writes d1 to REG_RTCCTRL (calendar chip data/clock/strobe lines)"
-C131AA,BcdToBinary,C,"d0 BCD byte (00-99) -> binary through BcdToBinaryTable"
+C14E86,CardUnlock,C,unlocks the memory card (REG_CRDUNLOCK1/2); counterpart of CardLock
+C12DB0,WriteRtcCtrl,C,writes d1 to REG_RTCCTRL (calendar chip data/clock/strobe lines)
+C131AA,BcdToBinary,C,d0 BCD byte (00-99) -> binary through BcdToBinaryTable
 C131B4,BcdToBinaryTable,C,"256 bytes: binary value of each BCD byte, 0 for invalid digits"
 C12D48,RtcSendByte,C,"sends the 8 bits of d0 LSB first to the calendar chip through WriteRtcCtrl (data, clock high, clock low)"
 C12CD8,RtcReadByte,C,"reads 8 bits from the calendar chip (bit 7 of REG_STATUS_A), LSB first, into d0; runs at every boot in MAME"
-C12E88,RtcSendByteAlt,I,"same protocol as RtcSendByte but through $280051 (cartridge area); never ran in MAME"
-C12E18,RtcReadByteAlt,I,"same protocol as RtcReadByte but reading $220001 (cartridge area); never ran in MAME"
+C12E88,RtcSendByteAlt,I,same protocol as RtcSendByte but through $280051 (cartridge area); never ran in MAME
+C12E18,RtcReadByteAlt,I,same protocol as RtcReadByte but reading $220001 (cartridge area); never ran in MAME
 C12EF0,WriteRtcCtrlAlt,I,"writes d1 to $280051, the alternate calendar control used by RtcSendByteAlt"
-C18392,FillVramWords,C,"writes d0 to (a0) d1+1 times (REG_VRAMRW with auto-increment)"
+C18392,FillVramWords,C,writes d0 to (a0) d1+1 times (REG_VRAMRW with auto-increment)
 C149A6,IsSnkRomCard,C,"compares the card header with ""SNK ROM "" (dat_C144F0): detects a read-only SNK ROM card"
 C144F0,SnkRomCardId,C,"""SNK ROM "" card header"
 C11F94,SwitchSlot,C,"after sub_C11FB2: slot d5 to CurrentSlot and REG_SLOT, then the cartridge fix layer (REG_CRTFIX) and vectors (REG_SWPROM)"
 C1268A,WriteLedData,C,"writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay"
-C121C6,LockBackupRamUnless,I,"locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set"
+C121C6,LockBackupRamUnless,I,locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set
 C12EAC,RtcCommandAlt,I,"4-bit command through WriteRtcCtrlAlt, like RtcCommand on the alternate calendar path"
+C174F2,PutBitChar,C,"appends 0 if the Z flag is set on entry, else 1 (I/O check)"

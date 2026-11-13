@@ -271,15 +271,16 @@ sub_C174A8:
 	move.b	(REG_SYSTYPE).l,d0	| C174BC
 	not.b	d0	| C174C2
 	btst.b	#0x7,d0	| C174C4
-	jsr	(sub_C174F2,pc)	| C174C8
+	jsr	(PutBitChar,pc)	| C174C8
 	btst.b	#0x0,(bram_D00021).l	| C174CC
-	jsr	(sub_C174F2,pc)	| C174D4
+	jsr	(PutBitChar,pc)	| C174D4
 	btst.b	#0x1,(bram_D00021).l	| C174D8
-	jsr	(sub_C174F2,pc)	| C174E0
+	jsr	(PutBitChar,pc)	| C174E0
 	btst.b	#0x2,(bram_D00021).l	| C174E4
-	jsr	(sub_C174F2,pc)	| C174EC
+	jsr	(PutBitChar,pc)	| C174EC
 	rts	| C174F0
-sub_C174F2:
+| PutBitChar [C] appends 0 if the Z flag is set on entry, else 1 (I/O check)
+PutBitChar:
 	bne.b	loc_C174FA	| C174F2
 	move.b	#0x30,(a0)+	| C174F4
 	rts	| C174F8

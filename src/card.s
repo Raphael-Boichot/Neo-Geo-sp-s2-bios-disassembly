@@ -425,7 +425,7 @@ loc_C13A62:
 	dbra	d7,loc_C13A62	| C13A6A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13A6E
 	rts	| C13A72
-| CardFormat [W] CARD function 0: format memory card (entry 0 of CardFunctionTable)
+| CardFormat [C] CARD function 0: format memory card (wiki); MAME: runs when the card utility formats a card (test build)
 CardFormat:
 	move.b	(REG_STATUS_B).l,d0	| C13A74
 	andi.b	#0x40,d0	| C13A7A

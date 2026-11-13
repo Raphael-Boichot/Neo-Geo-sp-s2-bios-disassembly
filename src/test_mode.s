@@ -50,7 +50,7 @@ loc_C19008:
 	lea.l	(BiosWorkRam).l,a5	| C19030
 	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C19036
 	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C1903C
-	move.b	(dat_C00401).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C19042
+	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C19042
 	move.b	#0x80,(BIOS_MVS_FLAG).l	| C1904A
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C19052
 	move.b	d0,(REG_NOSHADOW).l	| C1905A
@@ -201,7 +201,7 @@ TestCodeNumber:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C192BA
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C192BE
 	lea.l	(dat_C19560,pc),a1	| C192C2
-	tst.b	(dat_C00401).l	| C192C6
+	tst.b	(SystemRegion).l	| C192C6
 	beq.b	loc_C192D2	| C192CC
 	lea.l	(dat_C195DA,pc),a1	| C192CE
 loc_C192D2:
@@ -363,7 +363,7 @@ loc_C194A0:
 	move.w	d0,(a0)	| C194A2
 	addq.l	#0x4,a0	| C194A4
 	dbra	d7,loc_C194A0	| C194A6
-	move.b	(dat_C00401).l,d0	| C194AA
+	move.b	(SystemRegion).l,d0	| C194AA
 	move.w	d0,(a0)	| C194B0
 	move.w	#0x20,0x10(a6)	| C194B2
 	move.w	#0x0,0x18(a6)	| C194B8
@@ -386,7 +386,7 @@ loc_C194F2:
 	move.l	d0,(bram_D001AC).l	| C19508
 	move.w	#0xFFFF,(bram_D001B0).l	| C1950E
 	lea.l	(dat_C195B2,pc),a1	| C19516
-	tst.b	(dat_C00401).l	| C1951A
+	tst.b	(SystemRegion).l	| C1951A
 	beq.b	loc_C19526	| C19520
 	lea.l	(dat_C19668,pc),a1	| C19522
 loc_C19526:
@@ -402,7 +402,7 @@ loc_C1953C:
 	rts	| C19544
 loc_C19546:
 	lea.l	(dat_C195C4,pc),a1	| C19546
-	tst.b	(dat_C00401).l	| C1954A
+	tst.b	(SystemRegion).l	| C1954A
 	beq.b	loc_C19526	| C19550
 	lea.l	(dat_C1968A,pc),a1	| C19552
 	bra.b	loc_C19526	| C19556
@@ -1193,7 +1193,7 @@ loc_C1A106:
 	move.b	d5,(REG_SLOT).l	| C1A136
 	move.b	d5,(REG_CRTFIX).l	| C1A13C
 	moveq	#0x0,d0	| C1A142
-	move.b	(dat_C00401).l,d0	| C1A144
+	move.b	(SystemRegion).l,d0	| C1A144
 	add.w	d0,d0	| C1A14A
 	add.w	d0,d0	| C1A14C
 	addi.l	#0x116,d0	| C1A14E
@@ -2790,7 +2790,7 @@ loc_C1B572:
 	move.b	#0x1,(ram_10FEE6-A5_BASE,a5)	| C1B5A6
 	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C1B5AC
 	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C1B5B2
-	move.b	(dat_C00401).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1B5B8
+	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1B5B8
 	move.b	#0x80,(BIOS_MVS_FLAG).l	| C1B5C0
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C1B5C8
 	move.b	d0,(REG_NOSHADOW).l	| C1B5D0

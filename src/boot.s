@@ -16,7 +16,7 @@ Reset:
 loc_C11028:
 	bra.w	ClearRamAndVideo	| C11028
 loc_C1102C:
-	move.w	(dat_C00400).l,(BIOS_MVS_FLAG-A5_BASE,a5)	| C1102C
+	move.w	(SystemType).l,(BIOS_MVS_FLAG-A5_BASE,a5)	| C1102C
 	bra.w	BiosStart	| C11034
 | ClearRamAndVideo [C] clears work RAM, both palette banks, the fix layer (FixClear), sprite VRAM, then LspFirst
 ClearRamAndVideo:
@@ -329,7 +329,7 @@ loc_C11486:
 	move.b	(REG_STATUS_B).l,d0	| C11486
 	andi.b	#0x30,d0	| C1148C
 	bne.w	loc_C11498	| C11490
-	jsr	(sub_C11504,pc)	| C11494
+	jsr	(CardStillInserted,pc)	| C11494
 loc_C11498:
 	rts	| C11498
 loc_C1149A:
@@ -361,7 +361,8 @@ loc_C114E2:
 loc_C114FC:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114FC
 	rts	| C11502
-sub_C11504:
+| CardStillInserted [C] system mode 3 (back from the game) while a memory card is still inserted (REG_STATUS_B bits 4-5 = 0): maps the system ROM vectors and fix, shows YOUR CARD IS STILL INSERTED. (CardStillInsertedTextJp when BIOS_COUNTRY_CODE = 0), flashes palette entry $400002 for up to 256 frames or until the card is removed, then maps the cartridge back. Ran in MAME after the Sengoku 2 card save
+CardStillInserted:
 	move.w	#0x2700,sr	| C11504
 	jsr	(sub_C11FB2,pc)	| C11508
 	move.b	#0x1,(ram_10FEDB-A5_BASE,a5)	| C1150C
@@ -374,10 +375,10 @@ sub_C11504:
 	clr.b	(ram_10FEDB-A5_BASE,a5)	| C11534
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C11538
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1153C
-	lea.l	(dat_C115D2,pc),a1	| C11540
+	lea.l	(CardStillInsertedTextJp,pc),a1	| C11540
 	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C11544
 	beq.b	loc_C1154E	| C11548
-	lea.l	(dat_C115EC,pc),a1	| C1154A
+	lea.l	(CardStillInsertedText,pc),a1	| C1154A
 loc_C1154E:
 	move.l	a1,(a0)+	| C1154E
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C11550
@@ -413,16 +414,18 @@ loc_C11596:
 	clr.b	(ram_10FE8D-A5_BASE,a5)	| C115C8
 	clr.b	(ram_10FEDB-A5_BASE,a5)	| C115CC
 	rts	| C115D0
-dat_C115D2:
+| CardStillInsertedTextJp [C] Japanese text of CardStillInserted (BIOS_COUNTRY_CODE = 0), MESS_OUT format
+CardStillInsertedTextJp:
 	dc.b	0x00,0x03,0x71,0x0C,0x01,0x09,0xE1,0xE2,0xE7,0xF9,0xC5,0xF9,0x6E,0xAC,0x20,0xAB
 	dc.b	0x8C,0xA9,0x07,0x95,0x20,0x21,0xFF,0xFF,0x00,0x00
-dat_C115EC:
+| CardStillInsertedText [C] YOUR CARD IS STILL INSERTED. (MESS_OUT format, BIOS_COUNTRY_CODE not 0)
+CardStillInsertedText:
 	dc.b	0x00,0x03,0x70,0xEC,0x01,0x08
 	.ascii	"YOUR CARD IS STILL INSERTED."
 	dc.b	0xFF,0xFF,0x00,0x00
 | LoadGameSoftDips [C] copies the current game soft DIP block from backup RAM into BIOS_GAME_DIP (6 bytes, then 12 nibbles)
 LoadGameSoftDips:
-	jsr	(sub_C11632,pc)	| C11612
+	jsr	(GetSoftDipPointer,pc)	| C11612
 	lea.l	0x10(a0),a0	| C11616
 	lea.l	(BIOS_GAME_DIP).l,a1	| C1161A
 	move.l	(a0)+,(a1)+	| C11620
@@ -434,9 +437,10 @@ loc_C11626:
 	move.b	d0,(a1)+	| C1162A
 	dbra	d7,loc_C11626	| C1162C
 	rts	| C11630
-sub_C11632:
+| GetSoftDipPointer [C] a0 = the cartridge soft DIP block for this system ROM's region: SystemRegion indexes CART_SOFTDIP_JP / _US / _EU; used by LoadGameSoftDips
+GetSoftDipPointer:
 	moveq	#0x0,d0	| C11632
-	move.b	(dat_C00401).l,d0	| C11634
+	move.b	(SystemRegion).l,d0	| C11634
 	lsl.w	#0x2,d0	| C1163A
 	lea.l	(CART_SOFTDIP_JP).w,a0	| C1163C
 	movea.l	(a0,d0.w),a0	| C11640

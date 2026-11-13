@@ -11,7 +11,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
 | L2 traced and run | 9,109 instructions traced; 4,386 ran in MAME (48.2 %) over 25 scenarios; nothing ran outside the trace |
-| L3 names | 160 names (C 104, I 28, W 28); 1,421 automatic labels left: 158 `sub_`, 164 `dat_`, 38 `tbl_`, 1,061 `loc_` |
+| L3 names | 166 names (C 108, I 28, W 30); 1,415 automatic labels left: 156 `sub_`, 160 `dat_`, 38 `tbl_`, 1,061 `loc_` |
 | L4 RAM and registers | 217 RAM addresses used, 54 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens and BIOS calls seen in MAME; no written reference yet |
@@ -28,7 +28,7 @@ Coverage and automatic routines by module:
 | `video_io.s` | 70 % | 14 |
 | `power_on.s` | 81 % | 30 |
 | `eyecatcher.s` | 84 % | 3 |
-| `boot.s` | 85 % | 2 |
+| `boot.s` | 85 % | 0 |
 | `hardware_test.s` | 88 % | 13 |
 | `how_to_play.s` | 90 % | 0 |
 
@@ -62,8 +62,9 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
 
 ## 3. Names (L3)
 
-- [ ] Every `sub_` named (158 left), test mode and card first, then power_on and video_io
+- [ ] Every `sub_` named (156 left), test mode and card first, then power_on and video_io
   - [x] `system.s`: CreditCheckPlayer, CallDeductStartCredits, DemoEndCheck
+  - [x] `boot.s`: CardStillInserted, GetSoftDipPointer (with SystemType, SystemRegion and the two texts)
 - [ ] Every `dat_` and `tbl_` named (202): text tables, menu tables, palettes, sprite data
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
 - [ ] Review the 28 I names: confirm with a coverage run or a code read, or keep them as I with a reason

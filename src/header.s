@@ -39,9 +39,11 @@ dat_C00080:
 dat_C00082:
 	.ascii	"NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK CORPORATION"
 	.org	0x00400,0xFF	| C000BF-C003FF free (833 bytes)
-dat_C00400:
+| SystemType [W] system type byte, $80 = MVS (NeoGeoDev wiki System ROM); Reset copies the word $C00400 into BIOS_MVS_FLAG and BIOS_COUNTRY_CODE
+SystemType:
 	dc.b	0x80
-dat_C00401:
+| SystemRegion [W] region byte, 2 = Europe in SP-S2 (0 Japan, 1 USA; NeoGeoDev wiki System ROM); read by the test mode, the card code and GetSoftDipPointer
+SystemRegion:
 	dc.b	0x02
 | ENTRY_RESET [W] reset vector and first slot (wiki: entry point)
 ENTRY_RESET:

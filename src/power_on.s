@@ -642,7 +642,7 @@ loc_C1227A:
 	dbra	d7,loc_C1227A	| C1227C
 	jsr	(SwitchSlot,pc)	| C12280
 	moveq	#0x0,d0	| C12284
-	move.b	(dat_C00401).l,d0	| C12286
+	move.b	(SystemRegion).l,d0	| C12286
 	add.w	d0,d0	| C1228C
 	add.w	d0,d0	| C1228E
 	addi.l	#0x116,d0	| C12290

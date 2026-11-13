@@ -45,7 +45,7 @@ loc_C170E8:
 	lea.l	(BiosWorkRam).l,a5	| C170FC
 	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C17102
 	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C17108
-	move.b	(dat_C00401).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1710E
+	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1710E
 	move.b	#0x80,(BIOS_MVS_FLAG).l	| C17116
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C1711E
 	move.b	d0,(REG_NOSHADOW).l	| C17126

@@ -471,7 +471,7 @@ loc_C13ADC:
 	move.w	d0,(a0)	| C13ADE
 	addq.l	#0x4,a0	| C13AE0
 	dbra	d7,loc_C13ADC	| C13AE2
-	move.b	(dat_C00401).l,d0	| C13AE6
+	move.b	(SystemRegion).l,d0	| C13AE6
 	move.w	d0,(a0)	| C13AEC
 	tst.b	(ram_10FD15-A5_BASE,a5)	| C13AEE
 	bne.w	loc_C13B8A	| C13AF2
@@ -623,7 +623,7 @@ loc_C13C70:
 	move.w	d0,(a0)	| C13C72
 	addq.l	#0x4,a0	| C13C74
 	dbra	d7,loc_C13C70	| C13C76
-	move.b	(dat_C00401).l,d0	| C13C7A
+	move.b	(SystemRegion).l,d0	| C13C7A
 	move.w	d0,(a0)	| C13C80
 	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C13C82
 	move.w	(ram_10FD08-A5_BASE,a5),d7	| C13C86

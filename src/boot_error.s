@@ -5,7 +5,7 @@
 BootError:
 	lea.l	(BiosWorkRam).l,a5	| C16ADA
 	move.w	#0x7,(REG_IRQACK).l	| C16AE0
-	tst.b	(dat_C00400).l	| C16AE8
+	tst.b	(SystemType).l	| C16AE8
 	beq.w	loc_C16BCA	| C16AEE
 	move.l	a0,(ram_10FD00-A5_BASE,a5)	| C16AF2
 	move.w	d0,(ram_10FD04-A5_BASE,a5)	| C16AF6

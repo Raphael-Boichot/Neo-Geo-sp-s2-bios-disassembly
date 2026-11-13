@@ -1207,7 +1207,7 @@ sub_C1299A:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1299A
 	lea.l	(bram_D08000).l,a4	| C129A0
 	lea.l	(ram_10FDBA-A5_BASE,a5),a1	| C129A6
-	lea.l	(ram_10FDB0-A5_BASE,a5),a3	| C129AA
+	lea.l	(BIOS_CREDIT_DEC1-A5_BASE,a5),a3	| C129AA
 	jsr	(sub_C129BC,pc)	| C129AE
 	jsr	(sub_C129BC,pc)	| C129B2
 	jsr	(LockBackupRamUnless,pc)	| C129B6
@@ -1257,7 +1257,7 @@ loc_C12A28:
 loc_C12A34:
 	rts	| C12A34
 loc_C12A36:
-	btst.b	#0x1,(ram_10FEDD-A5_BASE,a5)	| C12A36
+	btst.b	#0x1,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C12A36
 	beq.b	loc_C12A34	| C12A3C
 	lea.l	(bram_D08000).l,a4	| C12A3E
 	lea.l	(0x800000).l,a6	| C12A44
@@ -1301,7 +1301,7 @@ loc_C12A8A:
 loc_C12ACA:
 	move.w	#0x2700,sr	| C12ACA
 	moveq	#0x0,d7	| C12ACE
-	move.b	d7,(ram_10FEDD-A5_BASE,a5)	| C12AD0
+	move.b	d7,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C12AD0
 	move.b	d7,(REG_CRDNORMAL).l	| C12AD4
 	move.b	d7,(REG_CRDBANK).l	| C12ADA
 	move.b	d7,(REG_CRDUNLOCK1).l	| C12AE0

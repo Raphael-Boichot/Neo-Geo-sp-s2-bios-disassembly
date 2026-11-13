@@ -40,7 +40,7 @@ C1991A,TestCalendar,C,menu item: SETTING UP THE CALENDAR screen; ran only in tha
 C17062,HardwareTest,C,"menu item 1: clears RAM and palettes, then calls HwTestStepTable[WorkIndex] once per frame"
 C17160,HwTestStepTable,C,14 entries: for each of the 7 screens a draw routine and a per-frame routine
 C17198,HwTestCrosshatch,C,draws the crosshatch (palette and VRAM); MAME screen 1
-C1724C,HwTestCrosshatchFrame,C,per frame: START (bit 0 of ram_10FEDD) goes to step 2
+C1724C,HwTestCrosshatchFrame,C,per frame: START (bit 0 of BIOS_STATCHANGE_RAW, Start P1) goes to step 2
 C1725C,HwTestColorBars,C,draws the RED GREEN BLUE WHITE bars; MAME screen 2
 C172AE,HwTestColorBarsFrame,C,per frame: START goes to step 4
 C17390,HwTestIoCheck,C,draws the I/O CHECK screen; MAME screen 3
@@ -90,7 +90,7 @@ C11142,SystemModeDispatch,C,"resets the stack, then jumps through SystemModeTabl
 C11168,SystemModeTable,C,"3 entries: SystemMode0, SystemMode1, SystemMode2"
 C11174,SystemMode0,C,"mode 0: selects the slot (SelectSlot), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)"
 C111A0,SystemMode1,C,"mode 1, eyecatcher: CART_EYECATCH_FLAG 0 runs the system ROM Eyecatcher, 1 calls the game (CallUser request 1), 2 skips to mode 2"
-C111EA,SystemMode2,C,"mode 2: shows SLOT n (SlotText, slot from $D00108) for up to 300 frames, ended early by bit 1 of ram_10FEDD; then CallUser with request 2 (demo), or 3 (title) when bram $D00034 is non-zero and $D00043 is 0"
+C111EA,SystemMode2,C,"mode 2: shows SLOT n (SlotText, slot from $D00108) for up to 300 frames, ended early by SELECT P1 (bit 1 of BIOS_STATCHANGE_RAW); then CallUser with request 2 (demo), or 3 (title) when bram $D00034 is non-zero and $D00043 is 0"
 C17E26,Eyecatcher,C,"system ROM eyecatcher (NEO-GEO logo, MAX 330 MEGA, SNK), reached when CART_EYECATCH_FLAG is 0; MAME boot sequence"
 C1850E,ReadControllers,C,"selects the joystick ports through REG_POUTPUT, reads REG_P1CNT/REG_P2CNT/REG_STATUS_B and updates BIOS_P1STATUS and the following input bytes"
 C126B4,MvsLedUpdate,I,MVS only: credit LED / marquee latch handling at the start of SystemIo
@@ -156,3 +156,6 @@ C12DB8,ReadCalendarAlt,I,reads the date and time into BIOS_YEAR.. through the al
 C12E32,SetupCalendarAlt,I,"after sub_C12EF8 checks the date, writes BIOS_SECOND.. to the calendar through the alternate path; called by the hardware-test calendar ($C17CBE)"
 C12EDE,RtcClockPulseAlt,I,pulses the alternate calendar clock line: WriteRtcCtrlAlt 2 then 0
 C12EF8,CheckCalendarDate,I,converts BIOS_YEAR/BIOS_MONTH.. from BCD and checks them against limits (dat_C12FEC); d7 non-zero when invalid; runs before SetupCalendar in MAME
+C11808,CreditCheckPlayer,C,"CreditCheck, per player: BCD credits in d0 minus the credits asked in (a0) (BIOS_CREDIT_DEC1, then BIOS_CREDIT_DEC2 by falling through); clears (a0) when there are not enough. In title/demo mode with DEC1 = 0, DEC2 is checked doubled ($C11816). Ran in MAME (game start)"
+C11836,CallDeductStartCredits,C,"jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSTEM_MODE_LO = 3)"
+C1183C,DemoEndCheck,C,"SystemIo while BIOS_USER_MODE = 1 (title/demo): a first coin (credits, no free play) sets system mode 6, SELECT P1 / P2 (BIOS_STATCHANGE_RAW bits 1 / 3) mode 4 / 5; then CART_DEMO_END and SystemReturn. Also sets the LED latches. MAME: the coin path ran (coin_start); the SELECT path did not"

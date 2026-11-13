@@ -131,9 +131,9 @@ sub_C17238:
 	move.w	d0,(a2)	| C17244
 	dbra	d7,sub_C17238	| C17246
 	rts	| C1724A
-| HwTestCrosshatchFrame [C] per frame: START (bit 0 of ram_10FEDD) goes to step 2
+| HwTestCrosshatchFrame [C] per frame: START (bit 0 of BIOS_STATCHANGE_RAW
 HwTestCrosshatchFrame:
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C1724C
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1724C
 	beq.b	loc_C1725A	| C17252
 	move.w	#0x2,(WorkIndex-A5_BASE,a5)	| C17254
 loc_C1725A:
@@ -156,7 +156,7 @@ HwTestColorBars:
 	rts	| C172AC
 | HwTestColorBarsFrame [C] per frame: START goes to step 4
 HwTestColorBarsFrame:
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C172AE
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C172AE
 	beq.b	loc_C172BC	| C172B4
 	move.w	#0x4,(WorkIndex-A5_BASE,a5)	| C172B6
 loc_C172BC:
@@ -205,7 +205,7 @@ loc_C173C2:
 	rts	| C173F4
 | HwTestIoCheckFrame [C] per frame routine of the I/O check (inputs, DIPs, LED counters)
 HwTestIoCheckFrame:
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C173F6
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C173F6
 	beq.b	loc_C1740A	| C173FC
 	clr.b	(ram_10FEBB-A5_BASE,a5)	| C173FE
 	move.w	#0x6,(WorkIndex-A5_BASE,a5)	| C17402
@@ -431,7 +431,7 @@ HwTestSound:
 	rts	| C17758
 | HwTestSoundFrame [C] per frame routine of the sound test
 HwTestSoundFrame:
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C1775A
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1775A
 	beq.b	loc_C17770	| C17760
 	move.b	#0x3,(REG_SOUND).l	| C17762
 	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C1776A
@@ -582,7 +582,7 @@ HwTestMemCardFrame:
 	move.b	(REG_STATUS_B).l,d0	| C1792E
 	andi.b	#0x70,d0	| C17934
 	beq.b	loc_C1794A	| C17938
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C1793A
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1793A
 	beq.b	loc_C17948	| C17940
 	move.w	#0xA,(WorkIndex-A5_BASE,a5)	| C17942
 loc_C17948:
@@ -663,7 +663,7 @@ loc_C17A10:
 	move.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C17A2E
 	rts	| C17A34
 loc_C17A36:
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C17A36
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17A36
 	beq.b	loc_C17A44	| C17A3C
 	move.w	#0xA,(WorkIndex-A5_BASE,a5)	| C17A3E
 loc_C17A44:
@@ -694,7 +694,7 @@ HwTestBackupClear:
 	rts	| C17AD6
 | HwTestBackupClearFrame [C] per frame routine of the backup clear (A+B+C)
 HwTestBackupClearFrame:
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C17AD8
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17AD8
 	bne.b	loc_C17B08	| C17ADE
 	move.b	(BIOS_P1CURRENT-A5_BASE,a5),d0	| C17AE0
 	andi.b	#0x70,d0	| C17AE4
@@ -764,7 +764,7 @@ HwTestCalendar:
 	dc.b	0xDA,0x72,0x5A
 | HwTestCalendarFrame [C] per frame routine of the hardware-test calendar
 HwTestCalendarFrame:
-	btst.b	#0x0,(ram_10FEDD-A5_BASE,a5)	| C17C06
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17C06
 	beq.b	loc_C17C16	| C17C0C
 	move.w	#0x0,(WorkIndex-A5_BASE,a5)	| C17C0E
 	rts	| C17C14

@@ -11,8 +11,8 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
 | L2 traced and run | 9,109 instructions traced; 4,386 ran in MAME (48.2 %) over 25 scenarios; nothing ran outside the trace |
-| L3 names | 157 names (C 101, I 28, W 28); 1,424 automatic labels left: 161 `sub_`, 164 `dat_`, 38 `tbl_`, 1,061 `loc_` |
-| L4 RAM and registers | 216 RAM addresses used, 51 named; 30 backup RAM accesses through a4 left raw |
+| L3 names | 160 names (C 104, I 28, W 28); 1,421 automatic labels left: 158 `sub_`, 164 `dat_`, 38 `tbl_`, 1,061 `loc_` |
+| L4 RAM and registers | 217 RAM addresses used, 54 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens and BIOS calls seen in MAME; no written reference yet |
 
@@ -23,7 +23,7 @@ Coverage and automatic routines by module:
 | `test_mode.s` | 23 % (535 / 2,294) | 42 |
 | `card.s` (with the card utility) | 31 % (950 / 3,025) | 51 |
 | `boot_error.s` | 0 % (0 / 88) | 0 |
-| `system.s` | 61 % | 3 |
+| `system.s` | 61 % | 0 |
 | `calendar.s` | 67 % | 3 |
 | `video_io.s` | 70 % | 14 |
 | `power_on.s` | 81 % | 30 |
@@ -62,7 +62,8 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
 
 ## 3. Names (L3)
 
-- [ ] Every `sub_` named (161), test mode and card first, then power_on and video_io
+- [ ] Every `sub_` named (158 left), test mode and card first, then power_on and video_io
+  - [x] `system.s`: CreditCheckPlayer, CallDeductStartCredits, DemoEndCheck
 - [ ] Every `dat_` and `tbl_` named (202): text tables, menu tables, palettes, sprite data
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
 - [ ] Review the 28 I names: confirm with a coverage run or a code read, or keep them as I with a reason
@@ -72,7 +73,7 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 
-- [ ] Name every work RAM variable used (165 automatic), checking all readers and writers first
+- [ ] Name every work RAM variable used (163 automatic), checking all readers and writers first
 - [ ] Backup RAM map at `$D00000`: book keeping, soft DIPs per slot, calendar, slot data, card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one
 - [x] The 4 `move.l #$100000`: `$100000` is named `WorkRamStart` (work RAM start, RAM tests, the card

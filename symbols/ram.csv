@@ -50,3 +50,6 @@ D00108,CurrentSlot,C,"backup RAM: slot number written by SwitchSlot together wit
 D00124,SlotTable,I,"backup RAM: 4 bytes per slot, scanned by SelectSlot"
 10F300,BiosWorkRam,C,"start of the BIOS work RAM, loaded into a5 (A5_BASE) by every BIOS entry"
 100000,WorkRamStart,C,"first byte of the 68000 work RAM ($100000-$10FFFF, game area below BiosWorkRam); the card utility points BIOS_CRDPTR here as its card data buffer ($4000 bytes for CARD 2); ChecksumLoop writes its result byte here; start address of the work RAM tests"
+10FDB0,BIOS_CREDIT_DEC1,W,"NeoGeoDev wiki CREDIT_CHECK / BIOS RAM locations: credits asked for player 1, cleared by CREDIT_CHECK when not enough"
+10FDB1,BIOS_CREDIT_DEC2,W,"NeoGeoDev wiki CREDIT_CHECK: credits asked for player 2 (reached as 1(a0) from BIOS_CREDIT_DEC1)"
+10FEDD,BIOS_STATCHANGE_RAW,W,"NeoGeoDev wiki BIOS RAM locations: Select and Start of P1-P4, positive logic (bit 0 Start P1, bit 1 Select P1, ...)"

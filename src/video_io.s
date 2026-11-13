@@ -148,7 +148,7 @@ loc_C1857C:
 	moveq	#0x3,d0	| C185A4
 	jsr	(sub_C1862E,pc)	| C185A6
 	move.b	d2,(ram_10FEDC-A5_BASE,a5)	| C185AA
-	move.b	d3,(ram_10FEDD-A5_BASE,a5)	| C185AE
+	move.b	d3,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C185AE
 	andi.b	#0x55,d2	| C185B2
 	andi.b	#0x55,d3	| C185B6
 	move.b	d2,(BIOS_STATCURNT-A5_BASE,a5)	| C185BA

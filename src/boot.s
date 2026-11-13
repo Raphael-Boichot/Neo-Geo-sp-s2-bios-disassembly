@@ -156,7 +156,7 @@ SlotText:
 	dc.b	0x00,0x03,0x72,0x2C,0x01,0x08
 	.ascii	"SLOT "
 	dc.b	0xFF,0x00,0x00
-| SystemMode2 [C] mode 2: shows SLOT n (SlotText, slot from $D00108) for up to 300 frames, ended early by bit 1 of ram_10FEDD; then CallUser with request 2 (demo), or 3 (title) when bram $D00034 is non-zero and $D00043 is 0
+| SystemMode2 [C] mode 2: shows SLOT n (SlotText, slot from $D00108) for up to 300 frames, ended early by SELECT P1 (bit 1 of BIOS_STATCHANGE_RAW); then CallUser with request 2 (demo), or 3 (title) when bram $D00034 is non-zero and $D00043 is 0
 SystemMode2:
 	tst.w	(bram_D00060).l	| C111EA
 	beq.w	loc_C11260	| C111F0
@@ -181,7 +181,7 @@ SystemMode2:
 	move.w	#0x2000,sr	| C1124A
 loc_C1124E:
 	jsr	(WaitFrame,pc)	| C1124E
-	btst.b	#0x1,(ram_10FEDD-A5_BASE,a5)	| C11252
+	btst.b	#0x1,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C11252
 	bne.b	loc_C11260	| C11258
 	subq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C1125A
 	bne.b	loc_C1124E	| C1125E

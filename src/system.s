@@ -33,7 +33,7 @@ loc_C116A4:
 	tst.b	(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C116A4
 	bpl.b	loc_C116B2	| C116A8
 	jsr	(CheckPlayerStart,pc)	| C116AA
-	jsr	(sub_C1183C,pc)	| C116AE
+	jsr	(DemoEndCheck,pc)	| C116AE
 loc_C116B2:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C116B2
 	beq.b	loc_C116C4	| C116B6
@@ -95,7 +95,7 @@ loc_C1173A:
 	clr.w	(BIOS_SELECT_TIMER-A5_BASE,a5)	| C11766
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C1176A
 	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1176E
-	jsr	(sub_C11836,pc)	| C11774
+	jsr	(CallDeductStartCredits,pc)	| C11774
 loc_C11778:
 	rts	| C11778
 | StartCreditCheck [I] MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
@@ -138,15 +138,16 @@ CreditCheck:
 	andi.b	#0x40,d0	| C117E6
 	beq.b	loc_C11814	| C117EA
 	move.b	(Credits).l,d0	| C117EC
-	lea.l	(ram_10FDB0-A5_BASE,a5),a0	| C117F2
+	lea.l	(BIOS_CREDIT_DEC1-A5_BASE,a5),a0	| C117F2
 	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C117F6
 	bne.b	loc_C11802	| C117FC
 	tst.b	(a0)	| C117FE
 	beq.b	loc_C11816	| C11800
 loc_C11802:
-	jsr	(sub_C11808,pc)	| C11802
+	jsr	(CreditCheckPlayer,pc)	| C11802
 	addq.l	#0x1,a0	| C11806
-sub_C11808:
+| CreditCheckPlayer [C] CreditCheck, per player: BCD credits in d0 minus the credits asked in (a0) (BIOS_CREDIT_DEC1, then BIOS_CREDIT_DEC2 by falling through); clears (a0) when there are not enough. In title/demo mode with DEC1 = 0, DEC2 is checked doubled ($C11816). Ran in MAME (game start)
+CreditCheckPlayer:
 	move.b	(a0),d1	| C11808
 loc_C1180A:
 	sub.b	d2,d2	| C1180A
@@ -169,10 +170,12 @@ CreditDown:
 	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1182A
 	jsr	(sub_C1299A,pc)	| C11830
 	rts	| C11834
-sub_C11836:
+| CallDeductStartCredits [C] jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSTEM_MODE_LO = 3)
+CallDeductStartCredits:
 	jsr	(DeductStartCredits,pc)	| C11836
 	rts	| C1183A
-sub_C1183C:
+| DemoEndCheck [C] SystemIo while BIOS_USER_MODE = 1 (title/demo): a first coin (credits, no free play) sets system mode 6, SELECT P1 / P2 (BIOS_STATCHANGE_RAW bits 1 / 3) mode 4 / 5; then CART_DEMO_END and SystemReturn. Also sets the LED latches. MAME: the coin path ran (coin_start); the SELECT path did not
+DemoEndCheck:
 	tst.b	(ram_10FEBB-A5_BASE,a5)	| C1183C
 	bne.b	loc_C1184A	| C11840
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11842
@@ -201,7 +204,7 @@ loc_C11888:
 	tst.w	(Credits).l	| C11898
 	beq.w	loc_C118C8	| C1189E
 loc_C118A2:
-	move.b	(ram_10FEDD-A5_BASE,a5),d0	| C118A2
+	move.b	(BIOS_STATCHANGE_RAW-A5_BASE,a5),d0	| C118A2
 	andi.b	#0xA,d0	| C118A6
 	beq.w	loc_C118C8	| C118AA
 loc_C118AE:

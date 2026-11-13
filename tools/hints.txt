@@ -2,3 +2,9 @@
 ;   entry ADDR       extra code entry point (with a reason in the comment)
 ;   noreturn ADDR    routine that never returns
 ;   longtable ADDR   table of 32-bit code pointers
+; Unreferenced controller test + memory card utility ($C14EA2-$C16AA9): nothing in the
+; ROM points into this block (checked: no reference, no long pointer). Traced so it reads as code.
+longtable $C150A8   ; card utility menu: 5 items then Reset (END), same order as the menu text
+longtable $C15642   ; 5 code pointers inside the card utility
+longtable $C163AC   ; 7 code pointers inside the card utility
+entry     $C1500A   ; card utility main (menu): sets LSPCMODE and a5, draws the menu, dispatches through $C150A8

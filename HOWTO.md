@@ -115,6 +115,13 @@ Give every run its own `-cfg_directory`: MAME saves the DIP switches there, and 
 would start in test mode again. Without a cartridge, SP-S2 stops on a crosshatch after the boot tests
 (C: seen in MAME); the boot animation and test mode need a game set.
 
+### Memory card and hidden programs
+
+- A blank card: the Lua line `manager.machine.images[":memcard"]:create("card.neo")` at the start of
+  the autoboot script (the hardware test then shows MEMORY CARD TEST OK).
+- `python3 tools/hidden_programs_test.py build/hidden` builds a BIOS where test-menu item 5 opens the
+  unreferenced controller test and item 7 the memory card utility (MAME only).
+
 ## 8. Code coverage in MAME
 
 ```

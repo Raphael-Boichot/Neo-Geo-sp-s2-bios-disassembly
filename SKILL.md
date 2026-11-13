@@ -84,6 +84,13 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
   The tracer records `jsr (label,pc)` both as a code and as a data reference: count it once.
 - RAM $10FCD8 was first named after the test menu, then found used as a frame count: check every
   user of a variable (all writes and reads) before giving it a specific name.
+- Unreferenced code exists: a controller test and a memory card utility (`$C14EA2-$C16AA9`) that
+  nothing calls. The tracer reached only their first routine by the orphan heuristic; the rest looked
+  like data (`NqNq` "text" was a run of `nop`, `$4E71`). Look for 68000 patterns in big data blocks
+  (`4E75` rts, `4EBA` jsr, `3B7C` move.w #,(d,a5)) and trace them from their pointer tables
+  (`tools/hints.txt`), then check them by pointing a menu entry at them in a test build.
+- MAME memory card: create it from Lua (`manager.machine.images[":memcard"]:create(path)`) before the
+  BIOS checks it; `-memc` needs an existing file.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
   Text needs mostly letters and no long counting run, and is never looked for inside a named table.
 - A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.

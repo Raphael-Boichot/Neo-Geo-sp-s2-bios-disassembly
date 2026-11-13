@@ -64,7 +64,7 @@ C11820,CreditDown,W,target of CREDIT_DOWN
 C12C78,ReadCalendar,W,target of READ_CALENDAR
 C12CF2,SetupCalendar,W,target of SETUP_CALENDAR
 C1334C,Card,C,"target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]"
-C133C0,CardError,W,target of CARD_ERROR
+C133C0,CardError,C,"target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch"
 C18914,HowToPlay,W,target of HOW_TO_PLAY
 C16C0E,ChecksumLoop,W,target of the checksum slot at $C0047A
 C1835E,FixClear,W,target of FIX_CLEAR
@@ -103,13 +103,25 @@ C116C8,CheckPlayerStart,C,"SystemIo while a game runs: start buttons from BIOS_S
 C1177A,StartCreditCheck,I,MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
 C1339A,CardFunctionTable,C,"8 entries indexed by BIOS_CRDF (wiki CARD: 0 format, 1 data search, 2 load, 3 save, 4 delete, 5 read data title, 6 save user name, 7 load user name)"
 C13A74,CardFormat,W,CARD function 0: format memory card (entry 0 of CardFunctionTable)
-C13D32,CardDataSearch,W,CARD function 1: data search
+C13D32,CardDataSearch,C,CARD function 1: data search (wiki); MAME with a blank card: called when the game starts
 C13DFA,CardLoadData,W,CARD function 2: load data
 C13F0A,CardSaveData,W,CARD function 3: save data
 C14220,CardDeleteData,W,CARD function 4: delete data
-C142B8,CardReadTitle,W,CARD function 5: read data title
+C142B8,CardReadTitle,C,CARD function 5: read data title (wiki); MAME with a card: runs at boot and in the hardware test
 C1440E,CardSaveUserName,W,CARD function 6: save user name
 C14472,CardLoadUserName,W,CARD function 7: load user name
-C12912,DeductStartCredits,C,"after CART_PLAYER_START: for P1 and P2 (DeductPlayerCredit) takes the credits and counts the start in book keeping; MAME: credits 02 -> 01 on START"
+C12912,DeductStartCredits,C,after CART_PLAYER_START: for P1 and P2 (DeductPlayerCredit) takes the credits and counts the start in book keeping; MAME: credits 02 -> 01 on START
 C12934,DeductPlayerCredit,C,"if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters"
-C129C6,BookKeepingCount,I,"adds to a book keeping counter at a2 (called for several counters per start)"
+C129C6,BookKeepingCount,I,adds to a book keeping counter at a2 (called for several counters per start)
+C14E94,CardLock,C,"locks the memory card (REG_CRDLOCK1/2); pushed as the return address by Card, so it runs after every CARD call"
+C14EA2,ControllerTest,C,"unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame"
+C14F32,PutInputBits,C,appends 10 characters 0/1 for the low bits of d1 (ControllerTest)
+C14F4C,ControllerTestText,C,MESS_OUT data of the controller test screen
+C1500A,CardUtility,C,"unreferenced in SP-S2: MEMORY CARD UTILITY menu, up/down over 6 lines, A jumps through CardUtilityMenuTable"
+C150A8,CardUtilityMenuTable,C,"6 entries in menu order: format, display data name, copy, delete, file user's name, END (Reset)"
+C150C0,CardUtilFormat,C,menu item 1. CARD FORMAT; MAME (test build): FORMAT THE CARD screen
+C1513E,CardUtilDisplayNames,C,"menu item 2. DISPLAY DATA NAME; MAME (test build, blank card): THERE IS NO DATA."
+C151B0,CardUtilCopy,I,menu item 3. COPY A DATA (table order)
+C15490,CardUtilDelete,I,menu item 4. DELETE A DATA (table order)
+C15578,CardUtilUserName,I,menu item 5. FILE USER'S NAME (table order)
+C15C3C,CardUtilityMenuText,C,MESS_OUT data of the MEMORY CARD UTILITY menu

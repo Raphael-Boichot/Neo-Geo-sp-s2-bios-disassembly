@@ -764,7 +764,7 @@ loc_C13DEE:
 	dbra	d7,loc_C13DC4	| C13DF0
 	move.w	d5,(BIOS_CRDFILE-A5_BASE,a5)	| C13DF4
 	rts	| C13DF8
-| CardLoadData [W] CARD function 2: load data
+| CardLoadData [C] CARD function 2: load data (wiki); MAME: Sengoku 2 LOAD prompt with a saved card, the game resumes in its second area
 CardLoadData:
 	jsr	(IsSnkRomCard,pc)	| C13DFA
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13DFE
@@ -865,7 +865,7 @@ loc_C13ED6:
 loc_C13F04:
 	move.l	a4,(BIOS_CRDPTR-A5_BASE,a5)	| C13F04
 	rts	| C13F08
-| CardSaveData [W] CARD function 3: save data
+| CardSaveData [C] CARD function 3: save data (wiki); MAME: Sengoku 2 SAVE prompt after losing in level 2, writes SENGOKU2 SAVE DATA
 CardSaveData:
 	move.b	(REG_STATUS_B).l,d0	| C13F0A
 	andi.b	#0x40,d0	| C13F10
@@ -1142,7 +1142,7 @@ loc_C14206:
 	move.b	d0,d1	| C14216
 	move.w	d1,0x4(a0)	| C14218
 	bra.w	loc_C1490C	| C1421C
-| CardDeleteData [W] CARD function 4: delete data
+| CardDeleteData [C] CARD function 4: delete data (wiki); MAME: card utility DELETE A DATA (test build), then THERE IS NO DATA.
 CardDeleteData:
 	move.b	(REG_STATUS_B).l,d0	| C14220
 	andi.b	#0x40,d0	| C14226
@@ -2722,7 +2722,7 @@ loc_C1544C:
 	adda.l	d0,a0	| C15486
 	dbra	d7,loc_C1544C	| C15488
 	jmp	(loc_C1513A,pc)	| C1548C
-| CardUtilDelete [I] menu item 4. DELETE A DATA (table order)
+| CardUtilDelete [C] menu item 4. DELETE A DATA: lists the data, asks DO YOU MIND TO DELETE DATA, deletes through CARD function 4; MAME test build
 CardUtilDelete:
 	jsr	(ReadCardDetect,pc)	| C15490
 	beq.w	loc_C154B4	| C15494

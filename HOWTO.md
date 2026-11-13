@@ -122,6 +122,14 @@ would start in test mode again. Without a cartridge, SP-S2 stops on a crosshatch
 - `python3 tools/hidden_programs_test.py build/hidden` builds a BIOS where test-menu item 5 opens the
   unreferenced controller test and item 7 the memory card utility (MAME only).
 
+### Card save and load with a game (Sengoku 2)
+
+`tools/mame_bot_sengoku2.lua` plays: walk right, mash A towards both sides, continues with coins and
+START, a MAME state every 1,200 frames. From a state in the second area, run it with `IDLE=1 NOCONT=1`
+and tap `P1 Left` then `P1 A` while the SAVE prompt shows (`KEYS=` as in `mame_run.lua`): the game
+saves SENGOKU2 SAVE DATA through CARD function 3. A new game with that card offers LOAD (YES is the
+default, A loads). Load states with `-state_directory DIR -state NAME`.
+
 ## 8. Code coverage in MAME
 
 ```

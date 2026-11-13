@@ -104,9 +104,9 @@ C1177A,StartCreditCheck,I,MVS: checks the requested starts in BIOS_START_FLAG ag
 C1339A,CardFunctionTable,C,"8 entries indexed by BIOS_CRDF (wiki CARD: 0 format, 1 data search, 2 load, 3 save, 4 delete, 5 read data title, 6 save user name, 7 load user name)"
 C13A74,CardFormat,C,CARD function 0: format memory card (wiki); MAME: runs when the card utility formats a card (test build)
 C13D32,CardDataSearch,C,CARD function 1: data search (wiki); MAME with a blank card: called when the game starts
-C13DFA,CardLoadData,W,CARD function 2: load data
-C13F0A,CardSaveData,W,CARD function 3: save data
-C14220,CardDeleteData,W,CARD function 4: delete data
+C13DFA,CardLoadData,C,"CARD function 2: load data (wiki); MAME: Sengoku 2 LOAD prompt with a saved card, the game resumes in its second area"
+C13F0A,CardSaveData,C,"CARD function 3: save data (wiki); MAME: Sengoku 2 SAVE prompt after losing in level 2, writes SENGOKU2 SAVE DATA"
+C14220,CardDeleteData,C,"CARD function 4: delete data (wiki); MAME: card utility DELETE A DATA (test build), then THERE IS NO DATA."
 C142B8,CardReadTitle,C,CARD function 5: read data title (wiki); MAME with a card: runs at boot and in the hardware test
 C1440E,CardSaveUserName,C,"CARD function 6: save user name (wiki); MAME (card utility test build): writes ""AAA"" at card offset $11 when END is chosen"
 C14472,CardLoadUserName,C,CARD function 7: load user name (wiki); MAME: runs when FILE USER'S NAME opens
@@ -122,7 +122,7 @@ C150A8,CardUtilityMenuTable,C,"6 entries in menu order: format, display data nam
 C150C0,CardUtilFormat,C,menu item 1. CARD FORMAT; MAME (test build): FORMAT THE CARD screen
 C1513E,CardUtilDisplayNames,C,"menu item 2. DISPLAY DATA NAME; MAME (test build, blank card): THERE IS NO DATA."
 C151B0,CardUtilCopy,I,menu item 3. COPY A DATA (table order)
-C15490,CardUtilDelete,I,menu item 4. DELETE A DATA (table order)
+C15490,CardUtilDelete,C,"menu item 4. DELETE A DATA: lists the data, asks DO YOU MIND TO DELETE DATA, deletes through CARD function 4; MAME test build"
 C15578,CardUtilUserName,C,"menu item 5. FILE USER'S NAME: character grid, A types, END saves through CARD function 6; MAME test build"
 C15C3C,CardUtilityMenuText,C,MESS_OUT data of the MEMORY CARD UTILITY menu
 C13A3C,ClearFixLayer,C,resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) and fills the $500 fix-layer words from VRAM $7000 with $20 (space); kicks the watchdog (REG_DIPSW write) in the loop

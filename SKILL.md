@@ -91,6 +91,11 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
   (`tools/hints.txt`), then check them by pointing a menu entry at them in a test build.
 - MAME memory card: create it from Lua (`manager.machine.images[":memcard"]:create(path)`) before the
   BIOS checks it; `-memc` needs an existing file.
+- Reaching game code paths (card save) needs play: a simple bot (walk right, mash A both sides,
+  continues) plus MAME states every 1,200 frames, then replay only the interesting stretch traced.
+  Ask the owner how the game behaves (Sengoku 2: too slow brings a spiked cart; SAVE only when you
+  lose in level 2; fixed scenes: wait and mash A). The save prompt lasts about 10 s: snapshot every
+  30 frames around it to time the keys.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
   Text needs mostly letters and no long counting run, and is never looked for inside a named table.
 - A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.

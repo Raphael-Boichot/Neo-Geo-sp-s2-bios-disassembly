@@ -72,8 +72,15 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 | Robo Army | 1 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | Last Resort | 1 | 7 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | Crossed Swords | 3 | 2 | 0 | 0 | 2 | 0 | 3 | 1 | 0 |
+| Fatal Fury | 1 | 2 | 0 | 1 | 5 (+4 CARD_ERROR) | 0 | 0 | 0 | 0 |
+| Eight Man | 1 | 3 | 0 | 0 | 3 (+1 CARD_ERROR) | 0 | 0 | 1 | 0 |
+| Riding Hero | 1 | 2 | 0 | 0 | 7 (+3 CARD_ERROR) | 0 | 0 | 0 | 0 |
+| Mahjong Kyoretsuden | 1 | 2 | 0 | 0 | 3 (+2 CARD_ERROR) | 1 (ran in MAME) | 0 | 0 | 0 |
+| Top Player's Golf | 1 | 2 | 1 | 0 | 10 (+4 CARD_ERROR) | 0 | 0 | 0 | 0 |
+| Baseball Stars Professional | 1 | 3 | 1 | 0 | 7 (+1 CARD_ERROR) | 1 (ran in MAME) | 0 | 0 | 0 |
 
-None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0). Two call CREDIT_DOWN in their code: Magician Lord only from an unused wrapper, and King of the
+None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0). Top Player's Golf and Baseball Stars Professional reference CREDIT_DOWN
+(not run yet). Two other games call it in their code: Magician Lord only from an unused wrapper, and King of the
 Monsters 2 when one player selects PLAYER1 PLAYER2 vs COMPUTER: the game takes the second player's
 credit itself with CREDIT_CHECK then CREDIT_DOWN (a P2 START join or a continue go through the BIOS
 start handling instead):
@@ -93,9 +100,12 @@ The exception is HOW_TO_PLAY (`$C18914`): it maps the system ROM vectors at `$C1
 mask at `$C18962` without touching `REG_LSPCMODE`. A game that leaves a raster (timer) effect on and
 calls HOW_TO_PLAY gets its next timer interrupt here, which shuts the timer off for the BIOS screen (I).
 
-Checked in MAME with `tools/mame_watch_irq2.lua` (debugger watchpoints, 3,000 frames of attract,
-coin and START): only Sengoku 2 (`$08D0`) and Viewpoint (`$00D8`) turn the timer interrupt on, and
-neither calls HOW_TO_PLAY; NAM-1975 calls HOW_TO_PLAY with the timer off. So no checked game runs
+Checked in MAME with `tools/mame_watch_irq2.lua` (debugger watchpoints, 3,000 to 4,000 frames of
+attract, coin and START, 18 games): Sengoku 2 (`$08D0`), Viewpoint (`$00D8`), Eight Man (`$00D0`, in
+attract) and Top Player's Golf (`$0F50`) turn the timer interrupt on, and none of them calls
+HOW_TO_PLAY. The three games that call it (NAM-1975, Mahjong Kyoretsuden, Baseball Stars
+Professional) do so after START with the timer off (last `REG_LSPCMODE` write `$4000` or `$0800`).
+Riding Hero contains a `$00D0` write that did not run in this window. So no checked game runs
 SystemInt2 by itself. Forcing it: a debugger breakpoint at `$C1895C` (just after the vector switch in
 HOW_TO_PLAY) turns the timer interrupt on as such a game would; SystemInt2 then runs once and the
 HOW_TO_PLAY screen goes on normally (scenario `nam1975_how_to_play_timer_irq`):
@@ -106,8 +116,9 @@ MAME=mame MAME_ROMS=mame/roms tools/mame_coverage.sh nam1975_how_to_play_timer_i
   'DEBUG_CMDS=bpset c1895c,1,{w@3c0006=0030; w@3c0008=0; w@3c000a=1000; g}'
 ```
 
-A real case needs a game that calls HOW_TO_PLAY (early 1990-1991 titles) and has a timer effect on at
-that moment; none is known yet.
+A real case needs a game that calls HOW_TO_PLAY with a timer effect on at that moment; none is
+known. Later games stopped calling HOW_TO_PLAY and handle their raster interrupts with their own
+vectors, so SystemInt2 is most likely an unused safety net (I).
 
 ## Contents
 

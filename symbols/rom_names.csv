@@ -65,7 +65,7 @@ C12C78,ReadCalendar,W,target of READ_CALENDAR
 C12CF2,SetupCalendar,C,target of SETUP_CALENDAR (wiki); MAME: runs when D is pressed on the test-mode calendar screen
 C1334C,Card,C,"target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]"
 C133C0,CardError,C,"target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch"
-C18914,HowToPlay,C,"target of HOW_TO_PLAY (wiki); MAME: NAM-1975 calls it after START (joystick and buttons animated, the game captions); not called by Sengoku 2, Cyber-Lip, Magician Lord"
+C18914,HowToPlay,C,"target of HOW_TO_PLAY (wiki); MAME: NAM-1975, Mahjong Kyoretsuden and Baseball Stars Professional call it after START (joystick and buttons animated, the game captions); none of the other 15 checked games references it"
 C16C0E,ChecksumLoop,W,target of the checksum slot at $C0047A
 C1835E,FixClear,W,target of FIX_CLEAR
 C1839A,LspFirst,W,target of LSP_1ST (clear sprites)

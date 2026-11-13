@@ -42,9 +42,9 @@ python3 tools/stats.py roms/sp-s2.sp1
 identical; it prints the instructions it had to keep as raw words. `stats.py` prints the counts used in
 the README level table.
 
-Use regeneration while the tracer or the naming changes. Once hand comments and module splits start in
-`src/`, regeneration must stop overwriting them (L5): from then on the source is edited directly and
-`make check` is the guard.
+`src/` is always regenerated: names, notes and module boundaries come from `symbols/*.csv`, so never
+edit `src/` by hand for these (a hand edit is lost at the next `make source`). Code changes for a
+modified BIOS go in a copy of `src/`, as `tools/relocation_test.py` and `tools/hidden_programs_test.py` do.
 
 ## 4. Correct the trace
 
@@ -75,7 +75,7 @@ Then `make source` and `make check`.
 
 ## 6. Modify the BIOS
 
-1. Put new code in a free block, e.g. just before `.org 0x11000,0xFF` (the 52,480-byte gap at
+1. In a copy of `src/`, put new code in a free block, e.g. just before `.org 0x11000,0xFF` (the 52,480-byte gap at
    `$C04300`). Free space is written as `.org <next block>,0xFF`, so added code uses it up and the
    next block stays in place; the assembler stops if a block overflows. Code can also be inserted in
    the middle of the main code: everything is symbolic, and `tools/relocation_test.py` shows a build

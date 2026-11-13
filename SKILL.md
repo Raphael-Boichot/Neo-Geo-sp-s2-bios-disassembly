@@ -21,7 +21,7 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
 - BIOS call table `$C00402-$C004DA`: 6-byte slots, `jmp abs.l` or `jmp (d16,pc)` + `nop`, then `rts`.
   Games call these addresses: they must never move.
 - Boot checksum: low byte of sum(`$C00000-$C0007F`) + sum(`$C00082-$C1FFFF`) = byte at `$C00080`.
-- Free space (`$FF` fill): `$C004DC-$C01FFF` (6,948 B), `$C04300-$C10FFF` (52,480 B),
+- Free space (`$FF` fill, 76,723 B): `$C000BF-$C003FF` (833 B, in the header), `$C004DC-$C01FFF` (6,948 B), `$C04300-$C10FFF` (52,480 B),
   `$C1B86E-$C1EFFF` (14,226 B), `$C1F744-$C1FFFF` (2,236 B).
 - BIOS work RAM is reached through `a5 = $10F300` (`lea $10F300,a5` at reset): `0xA82(a5)` is `$10FD82`.
 

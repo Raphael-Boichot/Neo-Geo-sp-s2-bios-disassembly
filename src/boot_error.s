@@ -33,16 +33,16 @@ loc_C16B20:
 	move.w	#0x2002,(a0)+	| C16B5A
 	move.l	#0x3708D,(a0)+	| C16B5E
 	move.w	#0x7,(a0)+	| C16B64
-	jsr	(sub_C16AAA,pc)	| C16B68
-	jsr	(sub_C16AAA,pc)	| C16B6C
-	jsr	(sub_C16AAA,pc)	| C16B70
-	jsr	(sub_C16AAA,pc)	| C16B74
+	jsr	(PutHexByte,pc)	| C16B68
+	jsr	(PutHexByte,pc)	| C16B6C
+	jsr	(PutHexByte,pc)	| C16B70
+	jsr	(PutHexByte,pc)	| C16B74
 	move.w	#0x2020,(a0)+	| C16B78
-	jsr	(sub_C16AAA,pc)	| C16B7C
-	jsr	(sub_C16AAA,pc)	| C16B80
+	jsr	(PutHexByte,pc)	| C16B7C
+	jsr	(PutHexByte,pc)	| C16B80
 	move.w	#0x2020,(a0)+	| C16B84
-	jsr	(sub_C16AAA,pc)	| C16B88
-	jsr	(sub_C16AAA,pc)	| C16B8C
+	jsr	(PutHexByte,pc)	| C16B88
+	jsr	(PutHexByte,pc)	| C16B8C
 	move.l	#0x20FF0000,(a0)+	| C16B90
 loc_C16B96:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16B96

@@ -144,7 +144,7 @@ HwTestColorBars:
 	move.w	#0xE0,(0x400044).l	| C17264
 	move.w	#0xE,(0x400064).l	| C1726C
 	move.w	#0xEEE,(0x400084).l	| C17274
-	jsr	(sub_C13A3C,pc)	| C1727C
+	jsr	(ClearFixLayer,pc)	| C1727C
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17280
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17284
 	move.l	#dat_C172BE,(a0)+	| C17288
@@ -177,7 +177,7 @@ dat_C172BE:
 	dc.b	0x41,0x08,0x20,0x20,0x20,0x20,0x20,0x20,0xFF,0xFF,0x00,0x00
 | HwTestIoCheck [C] draws the I/O CHECK screen; MAME screen 3
 HwTestIoCheck:
-	jsr	(sub_C13A3C,pc)	| C17390
+	jsr	(ClearFixLayer,pc)	| C17390
 	move.b	#0x1,(ram_10FEBB).l	| C17394
 	clr.b	(ram_10FCDE-A5_BASE,a5)	| C1739C
 	clr.b	(WorkIndexNew-A5_BASE,a5)	| C173A0
@@ -416,7 +416,7 @@ dat_C17618:
 HwTestSound:
 	move.l	#0xE000000,(0x400022).l	| C1771C
 	jsr	(loc_C178CE,pc)	| C17726
-	jsr	(sub_C13A3C,pc)	| C1772A
+	jsr	(ClearFixLayer,pc)	| C1772A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1772E
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17732
 	move.l	#dat_C178EA,(a0)+	| C17736
@@ -565,7 +565,7 @@ dat_C178EA:
 	dc.b	0xFF,0xFF,0x00,0x00
 | HwTestMemCard [C] draws the MEMORY CARD TEST screen; MAME screen 5
 HwTestMemCard:
-	jsr	(sub_C13A3C,pc)	| C178FE
+	jsr	(ClearFixLayer,pc)	| C178FE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17902
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17906
 	move.l	#dat_C17A46,(a0)+	| C1790A
@@ -588,7 +588,7 @@ loc_C17948:
 	rts	| C17948
 loc_C1794A:
 	jsr	(WaitFrame,pc)	| C1794A
-	jsr	(sub_C13A3C,pc)	| C1794E
+	jsr	(ClearFixLayer,pc)	| C1794E
 	move.b	d0,(REG_CRDUNLOCK1).l	| C17952
 	move.b	d0,(REG_CRDUNLOCK2).l	| C17958
 	move.b	d0,(REG_CRDNORMAL).l	| C1795E
@@ -683,7 +683,7 @@ dat_C17A96:
 	dc.b	0xFF,0xFF,0x00,0x00
 | HwTestBackupClear [C] draws the BACKUP CLEAR screen; MAME screen 6
 HwTestBackupClear:
-	jsr	(sub_C13A3C,pc)	| C17AB6
+	jsr	(ClearFixLayer,pc)	| C17AB6
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17ABA
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17ABE
 	move.l	#dat_C17B10,(a0)+	| C17AC2
@@ -721,7 +721,7 @@ dat_C17B10:
 	dc.b	0xFF,0xFF,0x00,0x00
 | HwTestCalendar [C] draws SETTING UP THE CALENDAR inside the hardware test; MAME screen 7
 HwTestCalendar:
-	jsr	(sub_C13A3C,pc)	| C17B5E
+	jsr	(ClearFixLayer,pc)	| C17B5E
 	move.l	#0xEEE0000,(0x400002).l	| C17B62
 	move.l	#0xE000000,(0x400022).l	| C17B6C
 	jsr	(ReadCalendar,pc)	| C17B76
@@ -732,22 +732,22 @@ HwTestCalendar:
 	clr.l	(a0)+	| C17B8A
 	move.w	#0x720A,d2	| C17B8C
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C17B90
-	jsr	(sub_C17D34,pc)	| C17B94
+	jsr	(PutMenuValueLine,pc)	| C17B94
 	move.w	#0x714A,d2	| C17B98
 	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C17B9C
-	jsr	(sub_C17D34,pc)	| C17BA0
+	jsr	(PutMenuValueLine,pc)	| C17BA0
 	move.w	#0x71AA,d2	| C17BA4
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C17BA8
-	jsr	(sub_C17D34,pc)	| C17BAC
+	jsr	(PutMenuValueLine,pc)	| C17BAC
 	move.w	#0x714D,d2	| C17BB0
 	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C17BB4
-	jsr	(sub_C17D34,pc)	| C17BB8
+	jsr	(PutMenuValueLine,pc)	| C17BB8
 	move.w	#0x71AD,d2	| C17BBC
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C17BC0
-	jsr	(sub_C17D34,pc)	| C17BC4
+	jsr	(PutMenuValueLine,pc)	| C17BC4
 	move.w	#0x720D,d2	| C17BC8
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C17BCC
-	jsr	(sub_C17D34,pc)	| C17BD0
+	jsr	(PutMenuValueLine,pc)	| C17BD0
 	move.w	#0x3,(a0)+	| C17BD4
 	move.w	#0x728A,(a0)+	| C17BD8
 	jsr	(PutWeekday,pc)	| C17BDC
@@ -840,27 +840,28 @@ sub_C17CD4:
 	clr.l	(a0)+	| C17CDE
 	move.w	#0x7119,d2	| C17CE0
 	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C17CE4
-	jsr	(sub_C17D34,pc)	| C17CE8
+	jsr	(PutMenuValueLine,pc)	| C17CE8
 	move.w	#0x7179,d2	| C17CEC
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C17CF0
-	jsr	(sub_C17D34,pc)	| C17CF4
+	jsr	(PutMenuValueLine,pc)	| C17CF4
 	move.w	#0x71D9,d2	| C17CF8
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C17CFC
-	jsr	(sub_C17D34,pc)	| C17D00
+	jsr	(PutMenuValueLine,pc)	| C17D00
 	move.w	#0x7239,d2	| C17D04
 	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C17D08
-	jsr	(sub_C17D34,pc)	| C17D0C
+	jsr	(PutMenuValueLine,pc)	| C17D0C
 	move.w	#0x7299,d2	| C17D10
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C17D14
-	jsr	(sub_C17D34,pc)	| C17D18
+	jsr	(PutMenuValueLine,pc)	| C17D18
 	move.w	#0x72F9,d2	| C17D1C
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C17D20
-	jsr	(sub_C17D34,pc)	| C17D24
+	jsr	(PutMenuValueLine,pc)	| C17D24
 	clr.w	(a0)+	| C17D28
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17D2A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17D2E
 	rts	| C17D32
-sub_C17D34:
+| PutMenuValueLine [I] appends a MESS_OUT line at VRAM d2, highlighted when d6 equals WorkIndexNew, followed by the BCD value d0 (leading 0 as a space)
+PutMenuValueLine:
 	move.w	#0x3,(a0)+	| C17D34
 	move.w	d2,(a0)+	| C17D38
 	move.w	#0x108,d5	| C17D3A

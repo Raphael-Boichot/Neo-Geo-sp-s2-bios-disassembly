@@ -9,15 +9,15 @@ ReadCalendar:
 	moveq	#0x1,d0	| C12C82
 	jsr	(RtcCommand,pc)	| C12C84
 	lea.l	(BIOS_YEAR).l,a0	| C12C88
-	jsr	(sub_C12CD8,pc)	| C12C8E
+	jsr	(RtcReadByte,pc)	| C12C8E
 	move.b	d0,0x6(a0)	| C12C92
-	jsr	(sub_C12CD8,pc)	| C12C96
+	jsr	(RtcReadByte,pc)	| C12C96
 	move.b	d0,0x5(a0)	| C12C9A
-	jsr	(sub_C12CD8,pc)	| C12C9E
+	jsr	(RtcReadByte,pc)	| C12C9E
 	move.b	d0,0x4(a0)	| C12CA2
-	jsr	(sub_C12CD8,pc)	| C12CA6
+	jsr	(RtcReadByte,pc)	| C12CA6
 	move.b	d0,0x2(a0)	| C12CAA
-	jsr	(sub_C12CD8,pc)	| C12CAE
+	jsr	(RtcReadByte,pc)	| C12CAE
 	move.b	d0,d1	| C12CB2
 	andi.b	#0xF,d1	| C12CB4
 	move.b	d1,0x3(a0)	| C12CB8
@@ -27,12 +27,13 @@ ReadCalendar:
 	addq.b	#0x6,d0	| C12CC4
 loc_C12CC6:
 	move.b	d0,0x1(a0)	| C12CC6
-	jsr	(sub_C12CD8,pc)	| C12CCA
+	jsr	(RtcReadByte,pc)	| C12CCA
 	move.b	d0,(a0)	| C12CCE
 	moveq	#0x3,d7	| C12CD0
 	jsr	(sub_C12CDA,pc)	| C12CD2
 	rts	| C12CD6
-sub_C12CD8:
+| RtcReadByte [C] reads 8 bits from the calendar chip (bit 7 of REG_STATUS_A), LSB first, into d0; runs at every boot in MAME
+RtcReadByte:
 	moveq	#0x7,d7	| C12CD8
 sub_C12CDA:
 	move.b	(REG_STATUS_A).l,d2	| C12CDA
@@ -51,17 +52,17 @@ SetupCalendar:
 	moveq	#0x1,d0	| C12D02
 	jsr	(RtcCommand,pc)	| C12D04
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12D08
-	jsr	(sub_C12D48,pc)	| C12D0C
+	jsr	(RtcSendByte,pc)	| C12D0C
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C12D10
-	jsr	(sub_C12D48,pc)	| C12D14
+	jsr	(RtcSendByte,pc)	| C12D14
 	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C12D18
-	jsr	(sub_C12D48,pc)	| C12D1C
+	jsr	(RtcSendByte,pc)	| C12D1C
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12D20
-	jsr	(sub_C12D48,pc)	| C12D24
+	jsr	(RtcSendByte,pc)	| C12D24
 	move.b	(ram_10FD01-A5_BASE,a5),d0	| C12D28
-	jsr	(sub_C12D48,pc)	| C12D2C
+	jsr	(RtcSendByte,pc)	| C12D2C
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12D30
-	jsr	(sub_C12D48,pc)	| C12D34
+	jsr	(RtcSendByte,pc)	| C12D34
 	moveq	#0x2,d0	| C12D38
 	jsr	(RtcCommand,pc)	| C12D3A
 	moveq	#0x0,d0	| C12D3E
@@ -69,16 +70,17 @@ SetupCalendar:
 	moveq	#0x0,d7	| C12D44
 loc_C12D46:
 	rts	| C12D46
-sub_C12D48:
+| RtcSendByte [C] sends the 8 bits of d0 LSB first to the calendar chip through WriteRtcCtrl (data, clock high, clock low)
+RtcSendByte:
 	moveq	#0x7,d7	| C12D48
 loc_C12D4A:
 	move.b	d0,d1	| C12D4A
 	andi.b	#0x1,d1	| C12D4C
-	jsr	(sub_C12DB0,pc)	| C12D50
+	jsr	(WriteRtcCtrl,pc)	| C12D50
 	ori.b	#0x2,d1	| C12D54
-	jsr	(sub_C12DB0,pc)	| C12D58
+	jsr	(WriteRtcCtrl,pc)	| C12D58
 	eori.b	#0x2,d1	| C12D5C
-	jsr	(sub_C12DB0,pc)	| C12D60
+	jsr	(WriteRtcCtrl,pc)	| C12D60
 	lsr.b	#0x1,d0	| C12D64
 	dbra	d7,loc_C12D4A	| C12D66
 	rts	| C12D6A
@@ -88,25 +90,26 @@ RtcCommand:
 loc_C12D6E:
 	move.b	d0,d1	| C12D6E
 	andi.b	#0x1,d1	| C12D70
-	jsr	(sub_C12DB0,pc)	| C12D74
+	jsr	(WriteRtcCtrl,pc)	| C12D74
 	ori.b	#0x2,d1	| C12D78
-	jsr	(sub_C12DB0,pc)	| C12D7C
+	jsr	(WriteRtcCtrl,pc)	| C12D7C
 	eori.b	#0x2,d1	| C12D80
-	jsr	(sub_C12DB0,pc)	| C12D84
+	jsr	(WriteRtcCtrl,pc)	| C12D84
 	lsr.b	#0x1,d0	| C12D88
 	dbra	d7,loc_C12D6E	| C12D8A
 	move.b	#0x4,d1	| C12D8E
-	jsr	(sub_C12DB0,pc)	| C12D92
+	jsr	(WriteRtcCtrl,pc)	| C12D92
 	moveq	#0x0,d1	| C12D96
-	jsr	(sub_C12DB0,pc)	| C12D98
+	jsr	(WriteRtcCtrl,pc)	| C12D98
 	rts	| C12D9C
 sub_C12D9E:
 	move.b	#0x2,d1	| C12D9E
-	jsr	(sub_C12DB0,pc)	| C12DA2
+	jsr	(WriteRtcCtrl,pc)	| C12DA2
 	move.b	#0x0,d1	| C12DA6
-	jsr	(sub_C12DB0,pc)	| C12DAA
+	jsr	(WriteRtcCtrl,pc)	| C12DAA
 	rts	| C12DAE
-sub_C12DB0:
+| WriteRtcCtrl [C] writes d1 to REG_RTCCTRL (calendar chip data/clock/strobe lines)
+WriteRtcCtrl:
 	move.b	d1,(REG_RTCCTRL).l	| C12DB0
 	rts	| C12DB6
 sub_C12DB8:
@@ -116,15 +119,15 @@ sub_C12DB8:
 	moveq	#0x1,d0	| C12DC2
 	jsr	(sub_C12EAC,pc)	| C12DC4
 	lea.l	(BIOS_YEAR).l,a0	| C12DC8
-	jsr	(sub_C12E18,pc)	| C12DCE
+	jsr	(RtcReadByteAlt,pc)	| C12DCE
 	move.b	d0,0x6(a0)	| C12DD2
-	jsr	(sub_C12E18,pc)	| C12DD6
+	jsr	(RtcReadByteAlt,pc)	| C12DD6
 	move.b	d0,0x5(a0)	| C12DDA
-	jsr	(sub_C12E18,pc)	| C12DDE
+	jsr	(RtcReadByteAlt,pc)	| C12DDE
 	move.b	d0,0x4(a0)	| C12DE2
-	jsr	(sub_C12E18,pc)	| C12DE6
+	jsr	(RtcReadByteAlt,pc)	| C12DE6
 	move.b	d0,0x2(a0)	| C12DEA
-	jsr	(sub_C12E18,pc)	| C12DEE
+	jsr	(RtcReadByteAlt,pc)	| C12DEE
 	move.b	d0,d1	| C12DF2
 	andi.b	#0xF,d1	| C12DF4
 	move.b	d1,0x3(a0)	| C12DF8
@@ -134,12 +137,13 @@ sub_C12DB8:
 	addq.b	#0x6,d0	| C12E04
 loc_C12E06:
 	move.b	d0,0x1(a0)	| C12E06
-	jsr	(sub_C12E18,pc)	| C12E0A
+	jsr	(RtcReadByteAlt,pc)	| C12E0A
 	move.b	d0,(a0)	| C12E0E
 	moveq	#0x3,d7	| C12E10
 	jsr	(sub_C12E1A,pc)	| C12E12
 	rts	| C12E16
-sub_C12E18:
+| RtcReadByteAlt [I] same protocol as RtcReadByte but reading $220001 (cartridge area); never ran in MAME
+RtcReadByteAlt:
 	moveq	#0x7,d7	| C12E18
 sub_C12E1A:
 	move.b	(0x220001).l,d2	| C12E1A
@@ -157,17 +161,17 @@ sub_C12E32:
 	moveq	#0x1,d0	| C12E42
 	jsr	(sub_C12EAC,pc)	| C12E44
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12E48
-	jsr	(sub_C12E88,pc)	| C12E4C
+	jsr	(RtcSendByteAlt,pc)	| C12E4C
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C12E50
-	jsr	(sub_C12E88,pc)	| C12E54
+	jsr	(RtcSendByteAlt,pc)	| C12E54
 	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C12E58
-	jsr	(sub_C12E88,pc)	| C12E5C
+	jsr	(RtcSendByteAlt,pc)	| C12E5C
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12E60
-	jsr	(sub_C12E88,pc)	| C12E64
+	jsr	(RtcSendByteAlt,pc)	| C12E64
 	move.b	(ram_10FD01-A5_BASE,a5),d0	| C12E68
-	jsr	(sub_C12E88,pc)	| C12E6C
+	jsr	(RtcSendByteAlt,pc)	| C12E6C
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12E70
-	jsr	(sub_C12E88,pc)	| C12E74
+	jsr	(RtcSendByteAlt,pc)	| C12E74
 	moveq	#0x2,d0	| C12E78
 	jsr	(sub_C12EAC,pc)	| C12E7A
 	moveq	#0x0,d0	| C12E7E
@@ -175,16 +179,17 @@ sub_C12E32:
 	moveq	#0x0,d7	| C12E84
 loc_C12E86:
 	rts	| C12E86
-sub_C12E88:
+| RtcSendByteAlt [I] same protocol as RtcSendByte but through $280051 (cartridge area); never ran in MAME
+RtcSendByteAlt:
 	moveq	#0x7,d7	| C12E88
 loc_C12E8A:
 	move.b	d0,d1	| C12E8A
 	andi.b	#0x1,d1	| C12E8C
-	jsr	(sub_C12EF0,pc)	| C12E90
+	jsr	(WriteRtcCtrlAlt,pc)	| C12E90
 	ori.b	#0x2,d1	| C12E94
-	jsr	(sub_C12EF0,pc)	| C12E98
+	jsr	(WriteRtcCtrlAlt,pc)	| C12E98
 	eori.b	#0x2,d1	| C12E9C
-	jsr	(sub_C12EF0,pc)	| C12EA0
+	jsr	(WriteRtcCtrlAlt,pc)	| C12EA0
 	lsr.b	#0x1,d0	| C12EA4
 	dbra	d7,loc_C12E8A	| C12EA6
 	rts	| C12EAA
@@ -193,35 +198,36 @@ sub_C12EAC:
 loc_C12EAE:
 	move.b	d0,d1	| C12EAE
 	andi.b	#0x1,d1	| C12EB0
-	jsr	(sub_C12EF0,pc)	| C12EB4
+	jsr	(WriteRtcCtrlAlt,pc)	| C12EB4
 	ori.b	#0x2,d1	| C12EB8
-	jsr	(sub_C12EF0,pc)	| C12EBC
+	jsr	(WriteRtcCtrlAlt,pc)	| C12EBC
 	eori.b	#0x2,d1	| C12EC0
-	jsr	(sub_C12EF0,pc)	| C12EC4
+	jsr	(WriteRtcCtrlAlt,pc)	| C12EC4
 	lsr.b	#0x1,d0	| C12EC8
 	dbra	d7,loc_C12EAE	| C12ECA
 	move.b	#0x4,d1	| C12ECE
-	jsr	(sub_C12EF0,pc)	| C12ED2
+	jsr	(WriteRtcCtrlAlt,pc)	| C12ED2
 	moveq	#0x0,d1	| C12ED6
-	jsr	(sub_C12EF0,pc)	| C12ED8
+	jsr	(WriteRtcCtrlAlt,pc)	| C12ED8
 	rts	| C12EDC
 sub_C12EDE:
 	move.b	#0x2,d1	| C12EDE
-	jsr	(sub_C12EF0,pc)	| C12EE2
+	jsr	(WriteRtcCtrlAlt,pc)	| C12EE2
 	move.b	#0x0,d1	| C12EE6
-	jsr	(sub_C12EF0,pc)	| C12EEA
+	jsr	(WriteRtcCtrlAlt,pc)	| C12EEA
 	rts	| C12EEE
-sub_C12EF0:
+| WriteRtcCtrlAlt [I] writes d1 to $280051, the alternate calendar control used by RtcSendByteAlt
+WriteRtcCtrlAlt:
 	move.b	d1,(0x280051).l	| C12EF0
 	rts	| C12EF6
 sub_C12EF8:
 	lea.l	(dat_C12FEC,pc),a1	| C12EF8
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12EFC
-	jsr	(sub_C131AA,pc)	| C12F00
+	jsr	(BcdToBinary,pc)	| C12F00
 	move.b	d0,(ram_10FD00-A5_BASE,a5)	| C12F04
 	move.w	d0,d1	| C12F08
 	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C12F0A
-	jsr	(sub_C131AA,pc)	| C12F0E
+	jsr	(BcdToBinary,pc)	| C12F0E
 	move.w	d0,d2	| C12F12
 	move.w	d2,d3	| C12F14
 	lsl.b	#0x4,d0	| C12F16
@@ -234,7 +240,7 @@ sub_C12EF8:
 	moveq	#0x0,d3	| C12F2A
 loc_C12F2C:
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12F2C
-	jsr	(sub_C131AA,pc)	| C12F30
+	jsr	(BcdToBinary,pc)	| C12F30
 	move.b	d0,(ram_10FD02-A5_BASE,a5)	| C12F34
 	cmp.b	(a1,d3.w),d0	| C12F38
 	bhi.w	loc_C12F84	| C12F3C
@@ -456,11 +462,13 @@ loc_C13196:
 	addq.l	#0x2,a0	| C131A2
 	dbra	d7,loc_C13196	| C131A4
 	jmp	(a6)	| C131A8
-sub_C131AA:
+| BcdToBinary [C] d0 BCD byte (00-99) -> binary through BcdToBinaryTable
+BcdToBinary:
 	andi.w	#0xFF,d0	| C131AA
-	move.b	(tbl_C131B4,pc,d0.w),d0	| C131AE
+	move.b	(BcdToBinaryTable,pc,d0.w),d0	| C131AE
 	rts	| C131B2
-tbl_C131B4:
+| BcdToBinaryTable [C] 256 bytes: binary value of each BCD byte, 0 for invalid digits
+BcdToBinaryTable:
 	dc.b	0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0x10,0x11,0x12,0x13,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x14,0x15,0x16,0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x00,0x00,0x00,0x00,0x00,0x00

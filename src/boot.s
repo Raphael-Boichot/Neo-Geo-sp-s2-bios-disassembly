@@ -247,7 +247,7 @@ loc_C11326:
 	lea.l	(ram_10F300).l,a5	| C1134E
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C11354
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C11358
-	jsr	(sub_C13A3C,pc)	| C11360
+	jsr	(ClearFixLayer,pc)	| C11360
 	jsr	(LspFirst,pc)	| C11364
 loc_C11368:
 	pea.l	(SystemModeDispatch,pc)	| C11368

@@ -300,7 +300,7 @@ loc_C1822C:
 loc_C1825A:
 	move.l	(a1)+,(a0)+	| C1825A
 	dbra	d7,loc_C1825A	| C1825C
-	jsr	(sub_C13A3C,pc)	| C18260
+	jsr	(ClearFixLayer,pc)	| C18260
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18264
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C18268
 	move.l	#dat_C1F5AA,(a0)+	| C1826C
@@ -312,7 +312,7 @@ loc_C18272:
 	rts	| C18286
 loc_C18288:
 	move.l	#0xEEE0000,(0x400002).l	| C18288
-	jsr	(sub_C13A3C,pc)	| C18292
+	jsr	(ClearFixLayer,pc)	| C18292
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18296
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1829A
 	move.l	#dat_C1F652,(a0)+	| C1829E
@@ -327,7 +327,7 @@ loc_C182AE:
 	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C182B8
 	beq.w	loc_C182EA	| C182BC
 	clr.l	(0x400002).l	| C182C0
-	jsr	(sub_C13A3C,pc)	| C182C6
+	jsr	(ClearFixLayer,pc)	| C182C6
 	jsr	(sub_C11FB2,pc)	| C182CA
 	jsr	(WaitFrame,pc)	| C182CE
 	move.b	#0x3,(REG_SOUND).l	| C182D2

@@ -52,7 +52,7 @@ PowerOnTest:
 	move.b	(REG_DIPSW).l,d0	| C11B70
 	bne.w	loc_C11BD6	| C11B76
 	lea.l	(ram_10F300).l,a5	| C11B7A
-	jsr	(sub_C13A3C).l	| C11B80
+	jsr	(ClearFixLayer).l	| C11B80
 	move.l	#0xEEE0000,(0x400002).l	| C11B86
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C11B90
 	move.l	#dat_C11A6E,(a0)+	| C11B94
@@ -265,7 +265,7 @@ loc_C11E32:
 	move.b	(bram_D00105-A4_BASE,a4),d0	| C11E52
 	cmp.b	(a5),d0	| C11E56
 	beq.b	loc_C11E8C	| C11E58
-	jsr	(sub_C131AA,pc)	| C11E5A
+	jsr	(BcdToBinary,pc)	| C11E5A
 	subq.b	#0x1,d0	| C11E5E
 	lsl.w	#0x4,d0	| C11E60
 	lea.l	(bram_D0A0E0-A4_BASE,a4),a0	| C11E62
@@ -322,13 +322,13 @@ loc_C11EC2:
 	jsr	(sub_C12160,pc)	| C11F10
 loc_C11F14:
 	move.b	(bram_D0005B-A4_BASE,a4),d0	| C11F14
-	jsr	(sub_C131AA,pc)	| C11F18
+	jsr	(BcdToBinary,pc)	| C11F18
 	move.b	d0,(bram_D0005B-A4_BASE,a4)	| C11F1C
 	move.b	(bram_D0005C-A4_BASE,a4),d0	| C11F20
-	jsr	(sub_C131AA,pc)	| C11F24
+	jsr	(BcdToBinary,pc)	| C11F24
 	move.b	d0,(bram_D0005C-A4_BASE,a4)	| C11F28
 	move.b	(bram_D0005A-A4_BASE,a4),d0	| C11F2C
-	jsr	(sub_C131AA,pc)	| C11F30
+	jsr	(BcdToBinary,pc)	| C11F30
 	lsl.b	#0x2,d0	| C11F34
 	move.b	d0,(bram_D0005A-A4_BASE,a4)	| C11F36
 	move.b	#0x3C,(bram_D0005D-A4_BASE,a4)	| C11F3A
@@ -821,7 +821,7 @@ loc_C12488:
 	add.w	d0,d0	| C124A4
 	movea.l	(tbl_C124E6,pc,d0.w),a0	| C124A6
 	move.b	(bram_D00105-A4_BASE,a4),d0	| C124AA
-	jsr	(sub_C131AA,pc)	| C124AE
+	jsr	(BcdToBinary,pc)	| C124AE
 	lsl.w	#0x4,d0	| C124B2
 	lea.l	-0x10(a0,d0.w),a0	| C124B4
 	move.l	a0,(bram_D001A4-A4_BASE,a4)	| C124B8
@@ -1326,7 +1326,7 @@ loc_C12ACA:
 	move.b	d7,(REG_CRDLOCK2).l	| C12B3E
 	move.b	d7,(REG_CRDLOCK1).l	| C12B44
 	move.l	#0xEEE0000,(0x400002).l	| C12B4A
-	jsr	(sub_C13A3C,pc)	| C12B54
+	jsr	(ClearFixLayer,pc)	| C12B54
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C12B58
 	lea.l	(dat_C12BA0,pc),a1	| C12B5C
 	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C12B60

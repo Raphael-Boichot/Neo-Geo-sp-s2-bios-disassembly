@@ -59,7 +59,7 @@ loc_C19008:
 	move.w	#0x0,(WorkIndex-A5_BASE,a5)	| C1906C
 | TestMenu [C] main menu: draws TestMenuText and the date, up/down moves the cursor, A selects (TestMenuSelect); MAME screen
 TestMenu:
-	jsr	(sub_C13A3C,pc)	| C19072
+	jsr	(ClearFixLayer,pc)	| C19072
 	jsr	(ReadCalendar,pc)	| C19076
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1907A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1907E
@@ -196,7 +196,7 @@ TestMenuJumpTable:
 	dc.l	TestMenuExit
 | TestCodeNumber [C] menu item: CODE NUMBER SETTING screen; ran only in that MAME scenario
 TestCodeNumber:
-	jsr	(sub_C13A3C,pc)	| C192AC
+	jsr	(ClearFixLayer,pc)	| C192AC
 	move.l	#0xE000000,(0x400022).l	| C192B0
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C192BA
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C192BE
@@ -447,7 +447,7 @@ TestMenuExit:
 	move.b	(REG_DIPSW).l,d0	| C196A8
 	andi.b	#0x1,d0	| C196AE
 	bne.w	loc_C196DC	| C196B2
-	jsr	(sub_C13A3C,pc)	| C196B6
+	jsr	(ClearFixLayer,pc)	| C196B6
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C196BA
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C196BE
 	move.l	#dat_C196E2,(a0)+	| C196C2
@@ -465,7 +465,7 @@ dat_C196E2:
 	dc.b	0xFF,0x00,0x00
 | TestHardDip [C] menu item: SETTING UP THE HARD DIP screen; ran only in that MAME scenario
 TestHardDip:
-	jsr	(sub_C13A3C,pc)	| C196FA
+	jsr	(ClearFixLayer,pc)	| C196FA
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C196FE
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19702
 	move.l	#dat_C19890,(a0)+	| C19706
@@ -610,7 +610,7 @@ dat_C19890:
 	dc.b	0xFF,0x00,0x00
 | TestCalendar [C] menu item: SETTING UP THE CALENDAR screen; ran only in that MAME scenario
 TestCalendar:
-	jsr	(sub_C13A3C,pc)	| C1991A
+	jsr	(ClearFixLayer,pc)	| C1991A
 	move.l	#0xE000000,(0x400022).l	| C1991E
 	jsr	(ReadCalendar,pc)	| C19928
 	moveq	#0x7,d6	| C1992C
@@ -620,22 +620,22 @@ TestCalendar:
 	clr.l	(a0)+	| C1993C
 	move.w	#0x720A,d2	| C1993E
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C19942
-	jsr	(sub_C17D34,pc)	| C19946
+	jsr	(PutMenuValueLine,pc)	| C19946
 	move.w	#0x714A,d2	| C1994A
 	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C1994E
-	jsr	(sub_C17D34,pc)	| C19952
+	jsr	(PutMenuValueLine,pc)	| C19952
 	move.w	#0x71AA,d2	| C19956
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C1995A
-	jsr	(sub_C17D34,pc)	| C1995E
+	jsr	(PutMenuValueLine,pc)	| C1995E
 	move.w	#0x714D,d2	| C19962
 	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C19966
-	jsr	(sub_C17D34,pc)	| C1996A
+	jsr	(PutMenuValueLine,pc)	| C1996A
 	move.w	#0x71AD,d2	| C1996E
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C19972
-	jsr	(sub_C17D34,pc)	| C19976
+	jsr	(PutMenuValueLine,pc)	| C19976
 	move.w	#0x720D,d2	| C1997A
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C1997E
-	jsr	(sub_C17D34,pc)	| C19982
+	jsr	(PutMenuValueLine,pc)	| C19982
 	move.w	#0x3,(a0)+	| C19986
 	move.w	#0x728A,(a0)+	| C1998A
 	jsr	(PutWeekday,pc)	| C1998E
@@ -718,22 +718,22 @@ sub_C19A62:
 	clr.l	(a0)+	| C19A6C
 	move.w	#0x7119,d2	| C19A6E
 	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C19A72
-	jsr	(sub_C17D34,pc)	| C19A76
+	jsr	(PutMenuValueLine,pc)	| C19A76
 	move.w	#0x7179,d2	| C19A7A
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C19A7E
-	jsr	(sub_C17D34,pc)	| C19A82
+	jsr	(PutMenuValueLine,pc)	| C19A82
 	move.w	#0x71D9,d2	| C19A86
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C19A8A
-	jsr	(sub_C17D34,pc)	| C19A8E
+	jsr	(PutMenuValueLine,pc)	| C19A8E
 	move.w	#0x7239,d2	| C19A92
 	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C19A96
-	jsr	(sub_C17D34,pc)	| C19A9A
+	jsr	(PutMenuValueLine,pc)	| C19A9A
 	move.w	#0x7299,d2	| C19A9E
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C19AA2
-	jsr	(sub_C17D34,pc)	| C19AA6
+	jsr	(PutMenuValueLine,pc)	| C19AA6
 	move.w	#0x72F9,d2	| C19AAA
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C19AAE
-	jsr	(sub_C17D34,pc)	| C19AB2
+	jsr	(PutMenuValueLine,pc)	| C19AB2
 	clr.w	(a0)+	| C19AB6
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C19AB8
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19ABC
@@ -790,7 +790,7 @@ loc_C19BC2:
 	move.b	d5,(ram_10FCE7-A5_BASE,a5)	| C19BD2
 	clr.w	(ram_10FCDE-A5_BASE,a5)	| C19BD6
 loc_C19BDA:
-	jsr	(sub_C13A3C,pc)	| C19BDA
+	jsr	(ClearFixLayer,pc)	| C19BDA
 	move.b	(ram_10FCE6-A5_BASE,a5),d5	| C19BDE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19BE2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19BE6
@@ -877,7 +877,7 @@ loc_C19CE6:
 	tst.w	(ram_10FCDE-A5_BASE,a5)	| C19CEA
 	bne.w	loc_C1A106	| C19CEE
 	jmp	(loc_C1B0A4,pc)	| C19CF2
-	jsr	(sub_C13A3C,pc)	| C19CF6
+	jsr	(ClearFixLayer,pc)	| C19CF6
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19CFA
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19CFE
 	move.l	#dat_C1A084,(a0)+	| C19D02
@@ -1074,7 +1074,7 @@ loc_C19F3A:
 	move.w	#0x738E,(a0)+	| C19F50
 	move.w	#0x108,(a0)+	| C19F54
 	move.b	-0x7FBC(a4),d0	| C19F58
-	jsr	(sub_C183E2,pc)	| C19F5C
+	jsr	(ByteToHex,pc)	| C19F5C
 	move.b	d0,(a0)+	| C19F60
 	move.b	d1,(a0)+	| C19F62
 	move.b	#0x20,(a0)+	| C19F64
@@ -1288,7 +1288,7 @@ loc_C1A1F6:
 	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1A228
 	clr.w	(ram_10FCEE-A5_BASE,a5)	| C1A22C
 loc_C1A230:
-	jsr	(sub_C13A3C,pc)	| C1A230
+	jsr	(ClearFixLayer,pc)	| C1A230
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A234
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C1A238
 	clr.l	(a0)+	| C1A23C
@@ -1688,7 +1688,7 @@ sub_C1A6AE:
 	bne.b	loc_C1A6C4	| C1A6BC
 	move.w	#0x1108,-0x2(a0)	| C1A6BE
 loc_C1A6C4:
-	jsr	(sub_C183E2,pc)	| C1A6C4
+	jsr	(ByteToHex,pc)	| C1A6C4
 	move.b	d0,(a0)+	| C1A6C8
 	move.b	d1,(a0)+	| C1A6CA
 	move.w	#0xFF00,(a0)+	| C1A6CC
@@ -1769,7 +1769,7 @@ loc_C1A796:
 	move.b	d5,(ram_10FCE6-A5_BASE,a5)	| C1A7A0
 	addq.b	#0x2,d5	| C1A7A4
 	move.b	d5,(ram_10FCE7-A5_BASE,a5)	| C1A7A6
-	jsr	(sub_C13A3C,pc)	| C1A7AA
+	jsr	(ClearFixLayer,pc)	| C1A7AA
 	move.b	(ram_10FCE6-A5_BASE,a5),d5	| C1A7AE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A7B2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1A7B6
@@ -1869,7 +1869,7 @@ loc_C1A8D8:
 	jsr	(sub_C1AE78,pc)	| C1A8F2
 	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1A8F6
 loc_C1A8FA:
-	jsr	(sub_C13A3C,pc)	| C1A8FA
+	jsr	(ClearFixLayer,pc)	| C1A8FA
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A8FE
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1A902
 	move.l	#dat_C1AF24,(a0)+	| C1A906
@@ -1965,7 +1965,7 @@ loc_C1AA00:
 	jsr	(sub_C1AE78,pc)	| C1AA1A
 	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1AA1E
 loc_C1AA22:
-	jsr	(sub_C13A3C,pc)	| C1AA22
+	jsr	(ClearFixLayer,pc)	| C1AA22
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1AA26
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1AA2A
 	move.l	#dat_C1AF24,(a0)+	| C1AA2E
@@ -2106,7 +2106,7 @@ loc_C1AB66:
 	move.l	(a2)+,(a1)+	| C1ABCC
 	clr.w	(ram_10FCE2-A5_BASE,a5)	| C1ABCE
 loc_C1ABD2:
-	jsr	(sub_C13A3C,pc)	| C1ABD2
+	jsr	(ClearFixLayer,pc)	| C1ABD2
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1ABD6
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1ABDA
 	move.l	#dat_C1AF24,(a0)+	| C1ABDE
@@ -2167,7 +2167,7 @@ sub_C1AC68:
 	move.w	#0x1108,-0x2(a0)	| C1AC7E
 loc_C1AC84:
 	move.b	0x1(a2),d0	| C1AC84
-	jsr	(sub_C131AA,pc)	| C1AC88
+	jsr	(BcdToBinary,pc)	| C1AC88
 	jsr	(sub_C1ACB8,pc)	| C1AC8C
 	move.b	#0x2F,-0x1(a0)	| C1AC90
 	move.b	0x2(a2),d0	| C1AC96
@@ -2193,7 +2193,7 @@ tbl_C1ACC2:
 	dc.b	0x41,0x55,0x47,0xFF,0x53,0x45,0x50,0xFF,0x4F,0x43,0x54,0xFF,0x4E,0x4F,0x56,0xFF
 	dc.b	0x44,0x45,0x43,0xFF
 sub_C1ACF6:
-	jsr	(sub_C183E2,pc)	| C1ACF6
+	jsr	(ByteToHex,pc)	| C1ACF6
 	cmpi.b	#0x30,d0	| C1ACFA
 	bne.b	loc_C1AD04	| C1ACFE
 	move.b	#0x20,d0	| C1AD00
@@ -2233,22 +2233,22 @@ loc_C1AD4A:
 loc_C1AD64:
 	move.b	#0x20,d1	| C1AD64
 	move.l	#0xF4240,d3	| C1AD68
-	jsr	(sub_C1AE82,pc)	| C1AD6E
+	jsr	(DivU32,pc)	| C1AD6E
 	jsr	(sub_C1AE9E,pc)	| C1AD72
 	move.l	#0x186A0,d3	| C1AD76
-	jsr	(sub_C1AE82,pc)	| C1AD7C
+	jsr	(DivU32,pc)	| C1AD7C
 	jsr	(sub_C1AE9E,pc)	| C1AD80
 	move.l	#0x2710,d3	| C1AD84
-	jsr	(sub_C1AE82,pc)	| C1AD8A
+	jsr	(DivU32,pc)	| C1AD8A
 	jsr	(sub_C1AE9E,pc)	| C1AD8E
 	move.l	#0x3E8,d3	| C1AD92
-	jsr	(sub_C1AE82,pc)	| C1AD98
+	jsr	(DivU32,pc)	| C1AD98
 	jsr	(sub_C1AE9E,pc)	| C1AD9C
 	moveq	#0x64,d3	| C1ADA0
-	jsr	(sub_C1AE82,pc)	| C1ADA2
+	jsr	(DivU32,pc)	| C1ADA2
 	jsr	(sub_C1AE9E,pc)	| C1ADA6
 	moveq	#0xA,d3	| C1ADAA
-	jsr	(sub_C1AE82,pc)	| C1ADAC
+	jsr	(DivU32,pc)	| C1ADAC
 	jsr	(sub_C1AE9E,pc)	| C1ADB0
 	ori.b	#0x30,d4	| C1ADB4
 	move.b	d4,(a0)+	| C1ADB8
@@ -2267,23 +2267,23 @@ sub_C1ADC0:
 	move.l	d0,-(a7)	| C1ADDC
 	bra.b	loc_C1ADFC	| C1ADDE
 loc_C1ADE0:
-	jsr	(sub_C1AE82,pc)	| C1ADE0
+	jsr	(DivU32,pc)	| C1ADE0
 	cmpi.l	#0xEA24,d0	| C1ADE4
 	bcs.b	loc_C1ADF2	| C1ADEA
 	move.l	#0xEA24,d0	| C1ADEC
 loc_C1ADF2:
 	move.l	d0,d4	| C1ADF2
 	moveq	#0x3C,d3	| C1ADF4
-	jsr	(sub_C1AE82,pc)	| C1ADF6
+	jsr	(DivU32,pc)	| C1ADF6
 	move.l	d4,-(a7)	| C1ADFA
 loc_C1ADFC:
 	move.b	#0x20,d1	| C1ADFC
 	move.l	d0,d4	| C1AE00
 	moveq	#0x64,d3	| C1AE02
-	jsr	(sub_C1AE82,pc)	| C1AE04
+	jsr	(DivU32,pc)	| C1AE04
 	jsr	(sub_C1AE9E,pc)	| C1AE08
 	moveq	#0xA,d3	| C1AE0C
-	jsr	(sub_C1AE82,pc)	| C1AE0E
+	jsr	(DivU32,pc)	| C1AE0E
 	jsr	(sub_C1AE9E,pc)	| C1AE12
 	ori.b	#0x30,d4	| C1AE16
 	move.b	d4,(a0)+	| C1AE1A
@@ -2296,7 +2296,7 @@ loc_C1ADFC:
 	move.b	#0x3A,(a0)+	| C1AE30
 	move.l	(a7)+,d4	| C1AE34
 	moveq	#0xA,d3	| C1AE36
-	jsr	(sub_C1AE82,pc)	| C1AE38
+	jsr	(DivU32,pc)	| C1AE38
 	nop	| C1AE3C
 	ori.b	#0x30,d0	| C1AE3E
 	move.b	d0,(a0)+	| C1AE42
@@ -2325,7 +2325,8 @@ loc_C1AE7A:
 	move.l	(a2)+,(a1)+	| C1AE7A
 	dbra	d7,loc_C1AE7A	| C1AE7C
 	rts	| C1AE80
-sub_C1AE82:
+| DivU32 [C] unsigned 32-bit division: d4 / d3 -> quotient in d4, remainder in d0
+DivU32:
 	move.l	d7,-(a7)	| C1AE82
 	moveq	#0x0,d0	| C1AE84
 	moveq	#0x1F,d7	| C1AE86
@@ -2429,7 +2430,7 @@ dat_C1B062:
 dat_C1B083:
 	.ascii	"SOOOOOOOUOOOOOOOUOOOOOOOUOOOOOOOV"
 loc_C1B0A4:
-	jsr	(sub_C13A3C,pc)	| C1B0A4
+	jsr	(ClearFixLayer,pc)	| C1B0A4
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B0A8
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1B0AC
 	move.l	#dat_C1B450,(a0)+	| C1B0B0
@@ -2637,7 +2638,7 @@ loc_C1B302:
 	move.w	#0x7391,(a0)+	| C1B318
 	move.w	#0x108,(a0)+	| C1B31C
 	move.b	-0x7FBC(a4),d0	| C1B320
-	jsr	(sub_C183E2,pc)	| C1B324
+	jsr	(ByteToHex,pc)	| C1B324
 	move.b	d0,(a0)+	| C1B328
 	move.b	d1,(a0)+	| C1B32A
 	move.b	#0x20,(a0)+	| C1B32C
@@ -2797,7 +2798,7 @@ loc_C1B572:
 	move.w	#0x2000,sr	| C1B5DE
 	move.w	#0x0,(WorkIndex-A5_BASE,a5)	| C1B5E2
 loc_C1B5E8:
-	jsr	(sub_C13A3C).l	| C1B5E8
+	jsr	(ClearFixLayer).l	| C1B5E8
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B5EE
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1B5F2
 	move.l	#dat_C1B6CC,(a0)+	| C1B5F6
@@ -2809,7 +2810,7 @@ loc_C1B604:
 	tst.b	d5	| C1B60E
 	beq.b	loc_C1B604	| C1B610
 	clr.w	(WorkIndex-A5_BASE,a5)	| C1B612
-	jsr	(sub_C13A3C).l	| C1B616
+	jsr	(ClearFixLayer).l	| C1B616
 loc_C1B61C:
 	jsr	(WaitFrame).l	| C1B61C
 	jsr	(sub_C1B670,pc)	| C1B622
@@ -2834,7 +2835,7 @@ loc_C1B65C:
 	cmp.w	0x74(a6),d2	| C1B65E
 	bcc.b	loc_C1B65C	| C1B662
 	move.w	d2,(WorkIndex-A5_BASE,a5)	| C1B664
-	jsr	(sub_C13A3C).l	| C1B668
+	jsr	(ClearFixLayer).l	| C1B668
 	bra.b	loc_C1B61C	| C1B66E
 sub_C1B670:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B670

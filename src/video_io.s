@@ -8,15 +8,16 @@ FixClear:
 	move.w	#0x7020,-0x2(a0)	| C1836A
 	move.w	#0xFF,d0	| C18370
 	move.w	#0x4BF,d1	| C18374
-	jsr	(sub_C18392,pc)	| C18378
+	jsr	(FillVramWords,pc)	| C18378
 	move.w	#0x20,d0	| C1837C
 	move.w	#0x1F,d1	| C18380
-	jsr	(sub_C18392,pc)	| C18384
+	jsr	(FillVramWords,pc)	| C18384
 	move.w	#0x7000,-0x2(a0)	| C18388
 	move.w	#0x1F,d1	| C1838E
-sub_C18392:
+| FillVramWords [C] writes d0 to (a0) d1+1 times (REG_VRAMRW with auto-increment)
+FillVramWords:
 	move.w	d0,(a0)	| C18392
-	dbra	d1,sub_C18392	| C18394
+	dbra	d1,FillVramWords	| C18394
 	rts	| C18398
 | LspFirst [W] target of LSP_1ST (clear sprites)
 LspFirst:
@@ -25,25 +26,27 @@ LspFirst:
 	move.w	#0x8000,-0x2(a0)	| C183A6
 	move.w	#0xFFF,d0	| C183AC
 	move.w	#0x1FF,d1	| C183B0
-	jsr	(sub_C18392,pc)	| C183B4
+	jsr	(FillVramWords,pc)	| C183B4
 	moveq	#0x0,d0	| C183B8
 	move.w	#0x1FF,d1	| C183BA
-	jsr	(sub_C18392,pc)	| C183BE
+	jsr	(FillVramWords,pc)	| C183BE
 	move.w	#0xBE00,d0	| C183C2
 	move.w	#0x1FF,d1	| C183C6
-	jsr	(sub_C18392,pc)	| C183CA
+	jsr	(FillVramWords,pc)	| C183CA
 	move.w	#0x0,-0x2(a0)	| C183CE
 	move.w	#0xFF,d0	| C183D4
 	move.w	#0x2,0x2(a0)	| C183D8
 	moveq	#0x1F,d1	| C183DE
-	bra.b	sub_C18392	| C183E0
-sub_C183E2:
+	bra.b	FillVramWords	| C183E0
+| ByteToHex [C] d0 byte -> two ASCII hex digits (high in d0, low in d1)
+ByteToHex:
 	move.w	d0,d1	| C183E2
 	lsr.b	#0x4,d1	| C183E4
-	jsr	(sub_C183F0,pc)	| C183E6
+	jsr	(NibbleToHex,pc)	| C183E6
 	exg	d0,d1	| C183EA
 	andi.b	#0xF,d1	| C183EC
-sub_C183F0:
+| NibbleToHex [C] d1 nibble -> ASCII '0'-'9' / 'A'-'F'
+NibbleToHex:
 	cmpi.b	#0xA,d1	| C183F0
 	bcc.b	loc_C183FC	| C183F4
 	addi.b	#0x30,d1	| C183F6

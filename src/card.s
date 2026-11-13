@@ -388,7 +388,7 @@ loc_C139AE:
 	move.l	#0xEEE0000,(0x400002).l	| C139D2
 	move.l	#0xE000000,(0x400022).l	| C139DC
 loc_C139E6:
-	jsr	(sub_C13A3C,pc)	| C139E6
+	jsr	(ClearFixLayer,pc)	| C139E6
 	rts	| C139EA
 sub_C139EC:
 	tst.b	(ram_10FEBA-A5_BASE,a5)	| C139EC
@@ -410,7 +410,8 @@ loc_C13A16:
 	clr.b	(ram_10FEBA-A5_BASE,a5)	| C13A36
 loc_C13A3A:
 	rts	| C13A3A
-sub_C13A3C:
+| ClearFixLayer [C] resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) and fills the $500 fix-layer words from VRAM $7000 with $20 (space); kicks the watchdog (REG_DIPSW write) in the loop
+ClearFixLayer:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13A3C
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C13A40
 	lea.l	(REG_VRAMRW).l,a1	| C13A48
@@ -694,7 +695,7 @@ loc_C13D28:
 | CardDataSearch [C] CARD function 1: data search (wiki); MAME with a blank card: called when the game starts
 CardDataSearch:
 	move.w	#0x0,(BIOS_CRDFILE-A5_BASE,a5)	| C13D32
-	jsr	(sub_C149A6,pc)	| C13D38
+	jsr	(IsSnkRomCard,pc)	| C13D38
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13D3C
 	beq.b	loc_C13D44	| C13D40
 	rts	| C13D42
@@ -765,7 +766,7 @@ loc_C13DEE:
 	rts	| C13DF8
 | CardLoadData [W] CARD function 2: load data
 CardLoadData:
-	jsr	(sub_C149A6,pc)	| C13DFA
+	jsr	(IsSnkRomCard,pc)	| C13DFA
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13DFE
 	beq.b	loc_C13E06	| C13E02
 loc_C13E04:
@@ -872,7 +873,7 @@ CardSaveData:
 	move.b	#0x85,(BIOS_CRDRESULT-A5_BASE,a5)	| C13F16
 	rts	| C13F1C
 loc_C13F1E:
-	jsr	(sub_C149A6,pc)	| C13F1E
+	jsr	(IsSnkRomCard,pc)	| C13F1E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13F22
 	beq.b	loc_C13F2A	| C13F26
 loc_C13F28:
@@ -882,7 +883,7 @@ loc_C13F2A:
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13F2E
 	bne.b	loc_C13F28	| C13F32
 	andi.b	#0xF,(BIOS_CRDFILE-A5_BASE,a5)	| C13F34
-	jsr	(sub_C14E86,pc)	| C13F3A
+	jsr	(CardUnlock,pc)	| C13F3A
 	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C13F3E
 	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C13F42
 	move.w	(ram_10FD08-A5_BASE,a5),d7	| C13F46
@@ -1149,7 +1150,7 @@ CardDeleteData:
 	move.b	#0x85,(BIOS_CRDRESULT-A5_BASE,a5)	| C1422C
 	rts	| C14232
 loc_C14234:
-	jsr	(sub_C149A6,pc)	| C14234
+	jsr	(IsSnkRomCard,pc)	| C14234
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14238
 	beq.b	loc_C14240	| C1423C
 loc_C1423E:
@@ -1166,7 +1167,7 @@ loc_C14240:
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C1425A
 	rts	| C14260
 loc_C14262:
-	jsr	(sub_C14E86,pc)	| C14262
+	jsr	(CardUnlock,pc)	| C14262
 	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C14266
 	tst.b	(ram_10FD15-A5_BASE,a5)	| C1426A
 	bne.b	loc_C14280	| C1426E
@@ -1186,7 +1187,7 @@ loc_C14290:
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C14298
 	rts	| C1429E
 loc_C142A0:
-	jsr	(sub_C14E86,pc)	| C142A0
+	jsr	(CardUnlock,pc)	| C142A0
 	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C142A4
 	move.w	#0xFF00,(a0)	| C142A8
 	move.w	0x4(a0),d3	| C142AC
@@ -1194,7 +1195,7 @@ loc_C142A0:
 	bra.w	loc_C1490C	| C142B4
 | CardReadTitle [C] CARD function 5: read data title (wiki); MAME with a card: runs at boot and in the hardware test
 CardReadTitle:
-	jsr	(sub_C149A6,pc)	| C142B8
+	jsr	(IsSnkRomCard,pc)	| C142B8
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C142BC
 	beq.b	loc_C142C4	| C142C0
 loc_C142C2:
@@ -1327,7 +1328,7 @@ loc_C143F4:
 	bra.b	loc_C1439E	| C1440C
 | CardSaveUserName [W] CARD function 6: save user name
 CardSaveUserName:
-	jsr	(sub_C149A6,pc)	| C1440E
+	jsr	(IsSnkRomCard,pc)	| C1440E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14412
 	bne.b	loc_C1442A	| C14416
 	move.b	(REG_STATUS_B).l,d0	| C14418
@@ -1337,7 +1338,7 @@ CardSaveUserName:
 loc_C1442A:
 	rts	| C1442A
 loc_C1442C:
-	jsr	(sub_C14E86,pc)	| C1442C
+	jsr	(CardUnlock,pc)	| C1442C
 	tst.b	(ram_10FD15-A5_BASE,a5)	| C14430
 	bmi.w	loc_C14450	| C14434
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14438
@@ -1364,7 +1365,7 @@ loc_C14466:
 	rts	| C14470
 | CardLoadUserName [W] CARD function 7: load user name
 CardLoadUserName:
-	jsr	(sub_C149A6,pc)	| C14472
+	jsr	(IsSnkRomCard,pc)	| C14472
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14476
 	bne.b	loc_C1442A	| C1447A
 	tst.b	(ram_10FD15-A5_BASE,a5)	| C1447C
@@ -1414,7 +1415,8 @@ loc_C144DE:
 dat_C144E8:
 	.ascii	"NEO-GEO"
 	dc.b	0x80
-dat_C144F0:
+| SnkRomCardId [C] "SNK ROM " card header
+SnkRomCardId:
 	.ascii	"SNK ROM "
 sub_C144F8:
 	andi.w	#0xFF,d3	| C144F8
@@ -1698,7 +1700,7 @@ loc_C14798:
 	rts	| C14798
 loc_C1479A:
 	move.b	d0,(REG_DIPSW).l	| C1479A
-	jsr	(sub_C14E86,pc)	| C147A0
+	jsr	(CardUnlock,pc)	| C147A0
 	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C147A4
 	movea.l	a0,a1	| C147A8
 	moveq	#0x0,d0	| C147AA
@@ -1718,7 +1720,7 @@ loc_C147BA:
 	rts	| C147CC
 loc_C147CE:
 	move.b	d0,(REG_DIPSW).l	| C147CE
-	jsr	(sub_C14E86,pc)	| C147D4
+	jsr	(CardUnlock,pc)	| C147D4
 	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C147D8
 	movea.l	a0,a1	| C147DC
 	moveq	#0x0,d0	| C147DE
@@ -1768,7 +1770,7 @@ loc_C1484C:
 	rts	| C1484C
 loc_C1484E:
 	move.b	d0,(REG_DIPSW).l	| C1484E
-	jsr	(sub_C14E86,pc)	| C14854
+	jsr	(CardUnlock,pc)	| C14854
 	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14858
 	movea.l	a0,a1	| C1485C
 	moveq	#0x0,d0	| C1485E
@@ -1790,7 +1792,7 @@ loc_C1486E:
 	rts	| C14884
 loc_C14886:
 	move.b	d0,(REG_DIPSW).l	| C14886
-	jsr	(sub_C14E86,pc)	| C1488C
+	jsr	(CardUnlock,pc)	| C1488C
 	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14890
 	movea.l	a0,a1	| C14894
 	moveq	#0x0,d0	| C14896
@@ -1843,7 +1845,7 @@ loc_C1490A:
 	rts	| C1490A
 loc_C1490C:
 	move.b	d0,(REG_DIPSW).l	| C1490C
-	jsr	(sub_C14E86,pc)	| C14912
+	jsr	(CardUnlock,pc)	| C14912
 	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14916
 	movea.l	a0,a1	| C1491A
 	moveq	#0x0,d0	| C1491C
@@ -1870,7 +1872,7 @@ loc_C1492C:
 	rts	| C1494C
 loc_C1494E:
 	move.b	d0,(REG_DIPSW).l	| C1494E
-	jsr	(sub_C14E86,pc)	| C14954
+	jsr	(CardUnlock,pc)	| C14954
 	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14958
 	movea.l	a0,a1	| C1495C
 	moveq	#0x0,d0	| C1495E
@@ -1904,10 +1906,11 @@ loc_C14996:
 	add.b	d1,d0	| C1499E
 	dbra	d7,loc_C14996	| C149A0
 	rts	| C149A4
-sub_C149A6:
+| IsSnkRomCard [C] compares the card header with "SNK ROM " (dat_C144F0): detects a read-only SNK ROM card
+IsSnkRomCard:
 	movea.l	a6,a0	| C149A6
 	moveq	#0x0,d6	| C149A8
-	lea.l	(dat_C144F0,pc),a1	| C149AA
+	lea.l	(SnkRomCardId,pc),a1	| C149AA
 	moveq	#0x3,d7	| C149AE
 loc_C149B0:
 	cmpm.w	(a0)+,(a1)+	| C149B0
@@ -1961,7 +1964,7 @@ sub_C14A3A:
 	movea.l	a6,a0	| C14A3A
 	moveq	#0x0,d6	| C14A3C
 	move.w	d6,(ram_10FD14-A5_BASE,a5)	| C14A3E
-	lea.l	(dat_C144F0,pc),a1	| C14A42
+	lea.l	(SnkRomCardId,pc),a1	| C14A42
 	moveq	#0x3,d7	| C14A46
 loc_C14A48:
 	cmpm.w	(a0)+,(a1)+	| C14A48
@@ -1976,7 +1979,7 @@ loc_C14A56:
 	move.w	d6,(ram_10FD14-A5_BASE,a5)	| C14A5A
 	rts	| C14A5E
 loc_C14A60:
-	jsr	(sub_C14E86,pc)	| C14A60
+	jsr	(CardUnlock,pc)	| C14A60
 	movea.l	a6,a0	| C14A64
 	move.w	#0xAAAA,(a0)	| C14A66
 	move.w	#0x5555,0x4(a0)	| C14A6A
@@ -2288,7 +2291,8 @@ tbl_C14DF6:
 	dc.b	0x01,0x80,0x00,0x00,0x00,0x80,0x00,0xDF,0x00,0x00,0x03,0x80,0x01,0x00,0x00,0x00
 	dc.b	0x02,0x00,0x00,0x00,0x00,0x80,0x00,0xFF,0x00,0x00,0x04,0x00,0x01,0x00,0x00,0x00
 	dc.b	0x02,0x00
-sub_C14E86:
+| CardUnlock [C] unlocks the memory card (REG_CRDUNLOCK1/2); counterpart of CardLock
+CardUnlock:
 	move.b	d0,(REG_CRDUNLOCK1).l	| C14E86
 	move.b	d0,(REG_CRDUNLOCK2).l	| C14E8C
 	rts	| C14E92
@@ -2305,7 +2309,7 @@ ControllerTest:
 	move.w	#0x2000,sr	| C14EBA
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C14EBE
 	jsr	(MessOut,pc)	| C14EC2
-	jsr	(sub_C13A3C,pc)	| C14EC6
+	jsr	(ClearFixLayer,pc)	| C14EC6
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C14ECA
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C14ECE
 	move.l	#ControllerTestText,(a0)+	| C14ED2
@@ -2385,7 +2389,7 @@ CardUtility:
 loc_C1503E:
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C1503E
 	jsr	(MessOut,pc)	| C15042
-	jsr	(sub_C13A3C,pc)	| C15046
+	jsr	(ClearFixLayer,pc)	| C15046
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1504A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1504E
 	move.l	#CardUtilityMenuText,(a0)+	| C15052
@@ -2394,7 +2398,7 @@ loc_C1503E:
 loc_C15060:
 	jsr	(sub_C159A0,pc)	| C15060
 loc_C15064:
-	jsr	(sub_C15946,pc)	| C15064
+	jsr	(WaitFrameGetP1,pc)	| C15064
 	btst.b	#0x4,d0	| C15068
 	bne.b	loc_C1508E	| C1506C
 	andi.b	#0x3,d0	| C1506E
@@ -2410,7 +2414,7 @@ loc_C1507E:
 	move.w	d1,(ram_10FCDE-A5_BASE,a5)	| C15088
 	bra.b	loc_C15060	| C1508C
 loc_C1508E:
-	jsr	(sub_C13A3C,pc)	| C1508E
+	jsr	(ClearFixLayer,pc)	| C1508E
 	clr.w	(WorkIndexNew-A5_BASE,a5)	| C15092
 	move.w	(WorkIndex-A5_BASE,a5),d0	| C15096
 	add.w	d0,d0	| C1509A
@@ -2429,14 +2433,14 @@ CardUtilityMenuTable:
 | CardUtilFormat [C] menu item 1. CARD FORMAT; MAME (test build): FORMAT THE CARD screen
 CardUtilFormat:
 	lea.l	(dat_C15D0A,pc),a2	| C150C0
-	jsr	(sub_C15986,pc)	| C150C4
+	jsr	(CardUtilPutText,pc)	| C150C4
 loc_C150C8:
-	jsr	(sub_C15946,pc)	| C150C8
+	jsr	(WaitFrameGetP1,pc)	| C150C8
 	btst.b	#0x5,d0	| C150CC
 	bne.w	loc_C15138	| C150D0
 	btst.b	#0x4,d0	| C150D4
 	beq.b	loc_C150C8	| C150D8
-	jsr	(sub_C1597A,pc)	| C150DA
+	jsr	(ReadCardDetect,pc)	| C150DA
 	bne.b	loc_C150C8	| C150DE
 	move.l	#ram_10FE9C,(BIOS_CRDPTR-A5_BASE,a5)	| C150E0
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C150E8
@@ -2444,11 +2448,11 @@ loc_C150C8:
 	jsr	(Card,pc)	| C150F2
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C150F6
 	bne.b	loc_C1511A	| C150FA
-	jsr	(sub_C13A3C,pc)	| C150FC
+	jsr	(ClearFixLayer,pc)	| C150FC
 	lea.l	(dat_C15D5A,pc),a2	| C15100
-	jsr	(sub_C15986,pc)	| C15104
+	jsr	(CardUtilPutText,pc)	| C15104
 loc_C15108:
-	jsr	(sub_C15946,pc)	| C15108
+	jsr	(WaitFrameGetP1,pc)	| C15108
 	btst.b	#0x5,d0	| C1510C
 	bne.w	loc_C15138	| C15110
 	btst.b	#0x4,d0	| C15114
@@ -2465,27 +2469,27 @@ loc_C1511A:
 loc_C15138:
 	rts	| C15138
 loc_C1513A:
-	jsr	(sub_C13A3C,pc)	| C1513A
+	jsr	(ClearFixLayer,pc)	| C1513A
 | CardUtilDisplayNames [C] menu item 2. DISPLAY DATA NAME; MAME (test build, blank card): THERE IS NO DATA.
 CardUtilDisplayNames:
-	jsr	(sub_C1597A,pc)	| C1513E
+	jsr	(ReadCardDetect,pc)	| C1513E
 	beq.w	loc_C15162	| C15142
 	lea.l	(dat_C160E2,pc),a2	| C15146
-	jsr	(sub_C15986,pc)	| C1514A
+	jsr	(CardUtilPutText,pc)	| C1514A
 loc_C1514E:
-	jsr	(sub_C15946,pc)	| C1514E
+	jsr	(WaitFrameGetP1,pc)	| C1514E
 	btst.b	#0x5,d0	| C15152
 	bne.b	loc_C15178	| C15156
-	jsr	(sub_C1597A,pc)	| C15158
+	jsr	(ReadCardDetect,pc)	| C15158
 	bne.b	loc_C1514E	| C1515C
-	jsr	(sub_C13A3C,pc)	| C1515E
+	jsr	(ClearFixLayer,pc)	| C1515E
 loc_C15162:
 	jsr	(sub_C15866,pc)	| C15162
 loc_C15166:
 	lea.l	(dat_C15DE6,pc),a2	| C15166
 	jsr	(sub_C158BA,pc)	| C1516A
 loc_C1516E:
-	jsr	(sub_C15946,pc)	| C1516E
+	jsr	(WaitFrameGetP1,pc)	| C1516E
 	btst.b	#0x5,d0	| C15172
 	beq.b	loc_C1517A	| C15176
 loc_C15178:
@@ -2512,17 +2516,17 @@ loc_C151A8:
 	bra.b	loc_C15166	| C151AE
 | CardUtilCopy [I] menu item 3. COPY A DATA (table order)
 CardUtilCopy:
-	jsr	(sub_C1597A,pc)	| C151B0
+	jsr	(ReadCardDetect,pc)	| C151B0
 	beq.w	loc_C151D4	| C151B4
 	lea.l	(dat_C160E2,pc),a2	| C151B8
-	jsr	(sub_C15986,pc)	| C151BC
+	jsr	(CardUtilPutText,pc)	| C151BC
 loc_C151C0:
-	jsr	(sub_C15946,pc)	| C151C0
+	jsr	(WaitFrameGetP1,pc)	| C151C0
 	btst.b	#0x5,d0	| C151C4
 	bne.b	loc_C151EE	| C151C8
-	jsr	(sub_C1597A,pc)	| C151CA
+	jsr	(ReadCardDetect,pc)	| C151CA
 	bne.b	loc_C151C0	| C151CE
-	jsr	(sub_C13A3C,pc)	| C151D0
+	jsr	(ClearFixLayer,pc)	| C151D0
 loc_C151D4:
 	jsr	(sub_C15866,pc)	| C151D4
 loc_C151D8:
@@ -2531,7 +2535,7 @@ loc_C151D8:
 loc_C151E0:
 	jsr	(sub_C13824,pc)	| C151E0
 loc_C151E4:
-	jsr	(sub_C15946,pc)	| C151E4
+	jsr	(WaitFrameGetP1,pc)	| C151E4
 	btst.b	#0x5,d0	| C151E8
 	beq.b	loc_C151F0	| C151EC
 loc_C151EE:
@@ -2567,9 +2571,9 @@ loc_C15212:
 	move.w	d2,(ram_10FEB2-A5_BASE,a5)	| C15240
 	bra.b	loc_C151D8	| C15244
 loc_C15246:
-	jsr	(sub_C13A3C,pc)	| C15246
+	jsr	(ClearFixLayer,pc)	| C15246
 	lea.l	(dat_C15E52,pc),a2	| C1524A
-	jsr	(sub_C15986,pc)	| C1524E
+	jsr	(CardUtilPutText,pc)	| C1524E
 	moveq	#0x0,d0	| C15252
 	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C15254
 	mulu.w	#0x18,d0	| C15258
@@ -2587,12 +2591,12 @@ loc_C15246:
 	bne.w	loc_C151EE	| C1528E
 	move.w	(ram_10FDCA-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C15292
 loc_C15298:
-	jsr	(sub_C15946,pc)	| C15298
+	jsr	(WaitFrameGetP1,pc)	| C15298
 	btst.b	#0x5,d0	| C1529C
 	bne.w	loc_C151EE	| C152A0
 	btst.b	#0x4,d0	| C152A4
 	beq.b	loc_C15298	| C152A8
-	jsr	(sub_C1597A,pc)	| C152AA
+	jsr	(ReadCardDetect,pc)	| C152AA
 	bne.b	loc_C15298	| C152AE
 	move.w	(BIOS_CRDFILE-A5_BASE,a5),(ram_10FE9A-A5_BASE,a5)	| C152B0
 	move.b	#0x1,(BIOS_CRDF-A5_BASE,a5)	| C152B6
@@ -2608,9 +2612,9 @@ loc_C15298:
 	move.b	d1,(BIOS_CRDFILE-A5_BASE,a5)	| C152DE
 	btst.l	d1,d0	| C152E2
 	beq.w	loc_C1531E	| C152E4
-	jsr	(sub_C13A3C,pc)	| C152E8
+	jsr	(ClearFixLayer,pc)	| C152E8
 	lea.l	(dat_C15E98,pc),a2	| C152EC
-	jsr	(sub_C15986,pc)	| C152F0
+	jsr	(CardUtilPutText,pc)	| C152F0
 	moveq	#0x0,d0	| C152F4
 	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C152F6
 	mulu.w	#0x18,d0	| C152FA
@@ -2619,7 +2623,7 @@ loc_C15298:
 	jsr	(sub_C157EC,pc)	| C15306
 	nop	| C1530A
 loc_C1530C:
-	jsr	(sub_C15946,pc)	| C1530C
+	jsr	(WaitFrameGetP1,pc)	| C1530C
 	btst.b	#0x5,d0	| C15310
 	bne.w	loc_C151EE	| C15314
 	btst.b	#0x4,d0	| C15318
@@ -2634,9 +2638,9 @@ loc_C1531E:
 	bne.w	loc_C1582C	| C1533C
 	bra.w	loc_C151EE	| C15340
 loc_C15344:
-	jsr	(sub_C13A3C,pc)	| C15344
+	jsr	(ClearFixLayer,pc)	| C15344
 	lea.l	(dat_C15F02,pc),a2	| C15348
-	jsr	(sub_C15986,pc)	| C1534C
+	jsr	(CardUtilPutText,pc)	| C1534C
 	lea.l	(ram_100000).l,a0	| C15350
 	movea.l	#ram_10C000,a1	| C15356
 	move.w	(ram_10FEB0-A5_BASE,a5),d7	| C1535C
@@ -2665,12 +2669,12 @@ loc_C15360:
 	jsr	(Card,pc)	| C153B8
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(ram_10FEB6-A5_BASE,a5)	| C153BC
 loc_C153C2:
-	jsr	(sub_C15946,pc)	| C153C2
+	jsr	(WaitFrameGetP1,pc)	| C153C2
 	btst.b	#0x5,d0	| C153C6
 	bne.w	loc_C151EE	| C153CA
 	btst.b	#0x4,d0	| C153CE
 	beq.b	loc_C153C2	| C153D2
-	jsr	(sub_C1597A,pc)	| C153D4
+	jsr	(ReadCardDetect,pc)	| C153D4
 	bne.b	loc_C153C2	| C153D8
 	move.l	#ram_10FE9C,(BIOS_CRDPTR-A5_BASE,a5)	| C153DA
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C153E2
@@ -2678,11 +2682,11 @@ loc_C153C2:
 	jsr	(Card,pc)	| C153EC
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C153F0
 	bne.b	loc_C15414	| C153F4
-	jsr	(sub_C13A3C,pc)	| C153F6
+	jsr	(ClearFixLayer,pc)	| C153F6
 	lea.l	(dat_C15D5A,pc),a2	| C153FA
-	jsr	(sub_C15986,pc)	| C153FE
+	jsr	(CardUtilPutText,pc)	| C153FE
 loc_C15402:
-	jsr	(sub_C15946,pc)	| C15402
+	jsr	(WaitFrameGetP1,pc)	| C15402
 	btst.b	#0x5,d0	| C15406
 	bne.w	loc_C15138	| C1540A
 	btst.b	#0x4,d0	| C1540E
@@ -2720,17 +2724,17 @@ loc_C1544C:
 	jmp	(loc_C1513A,pc)	| C1548C
 | CardUtilDelete [I] menu item 4. DELETE A DATA (table order)
 CardUtilDelete:
-	jsr	(sub_C1597A,pc)	| C15490
+	jsr	(ReadCardDetect,pc)	| C15490
 	beq.w	loc_C154B4	| C15494
 	lea.l	(dat_C160E2,pc),a2	| C15498
-	jsr	(sub_C15986,pc)	| C1549C
+	jsr	(CardUtilPutText,pc)	| C1549C
 loc_C154A0:
-	jsr	(sub_C15946,pc)	| C154A0
+	jsr	(WaitFrameGetP1,pc)	| C154A0
 	btst.b	#0x5,d0	| C154A4
 	bne.b	loc_C154CE	| C154A8
-	jsr	(sub_C1597A,pc)	| C154AA
+	jsr	(ReadCardDetect,pc)	| C154AA
 	bne.b	loc_C154A0	| C154AE
-	jsr	(sub_C13A3C,pc)	| C154B0
+	jsr	(ClearFixLayer,pc)	| C154B0
 loc_C154B4:
 	jsr	(sub_C15866,pc)	| C154B4
 loc_C154B8:
@@ -2739,7 +2743,7 @@ loc_C154B8:
 loc_C154C0:
 	jsr	(sub_C13824,pc)	| C154C0
 loc_C154C4:
-	jsr	(sub_C15946,pc)	| C154C4
+	jsr	(WaitFrameGetP1,pc)	| C154C4
 	btst.b	#0x5,d0	| C154C8
 	beq.b	loc_C154D0	| C154CC
 loc_C154CE:
@@ -2773,9 +2777,9 @@ loc_C154EA:
 	move.w	d2,(ram_10FEB2-A5_BASE,a5)	| C15518
 	bra.b	loc_C154B8	| C1551C
 loc_C1551E:
-	jsr	(sub_C13A3C,pc)	| C1551E
+	jsr	(ClearFixLayer,pc)	| C1551E
 	lea.l	(dat_C15F98,pc),a2	| C15522
-	jsr	(sub_C15986,pc)	| C15526
+	jsr	(CardUtilPutText,pc)	| C15526
 	moveq	#0x0,d0	| C1552A
 	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C1552C
 	mulu.w	#0x18,d0	| C15530
@@ -2786,12 +2790,12 @@ loc_C1551E:
 	move.w	(a1)+,(BIOS_CRDNGH-A5_BASE,a5)	| C15542
 	move.b	(a1),(BIOS_CRDFILE-A5_BASE,a5)	| C15546
 loc_C1554A:
-	jsr	(sub_C15946,pc)	| C1554A
+	jsr	(WaitFrameGetP1,pc)	| C1554A
 	btst.b	#0x5,d0	| C1554E
 	bne.w	loc_C154CE	| C15552
 	btst.b	#0x4,d0	| C15556
 	beq.b	loc_C1554A	| C1555A
-	jsr	(sub_C1597A,pc)	| C1555C
+	jsr	(ReadCardDetect,pc)	| C1555C
 	bne.b	loc_C1554A	| C15560
 	move.b	#0x4,(BIOS_CRDF-A5_BASE,a5)	| C15562
 	jsr	(Card,pc)	| C15568
@@ -2800,17 +2804,17 @@ loc_C1554A:
 	jmp	(loc_C1513A,pc)	| C15574
 | CardUtilUserName [I] menu item 5. FILE USER'S NAME (table order)
 CardUtilUserName:
-	jsr	(sub_C1597A,pc)	| C15578
+	jsr	(ReadCardDetect,pc)	| C15578
 	beq.w	loc_C1559C	| C1557C
 	lea.l	(dat_C160E2,pc),a2	| C15580
-	jsr	(sub_C15986,pc)	| C15584
+	jsr	(CardUtilPutText,pc)	| C15584
 loc_C15588:
-	jsr	(sub_C15946,pc)	| C15588
+	jsr	(WaitFrameGetP1,pc)	| C15588
 	btst.b	#0x5,d0	| C1558C
 	bne.b	loc_C155FA	| C15590
-	jsr	(sub_C1597A,pc)	| C15592
+	jsr	(ReadCardDetect,pc)	| C15592
 	bne.b	loc_C15588	| C15596
-	jsr	(sub_C13A3C,pc)	| C15598
+	jsr	(ClearFixLayer,pc)	| C15598
 loc_C1559C:
 	move.l	#0x100000,(BIOS_CRDPTR-A5_BASE,a5)	| C1559C
 	move.b	#0x7,(BIOS_CRDF-A5_BASE,a5)	| C155A4
@@ -2827,16 +2831,16 @@ loc_C155C4:
 	move.l	#0x50005,(ram_10FEB4-A5_BASE,a5)	| C155C8
 	clr.w	(ram_10FEB8-A5_BASE,a5)	| C155D0
 loc_C155D4:
-	jsr	(sub_C13A3C,pc)	| C155D4
+	jsr	(ClearFixLayer,pc)	| C155D4
 	lea.l	(dat_C15FD8,pc),a2	| C155D8
-	jsr	(sub_C15986,pc)	| C155DC
+	jsr	(CardUtilPutText,pc)	| C155DC
 	jsr	(sub_C15776,pc)	| C155E0
 	jsr	(sub_C157A8,pc)	| C155E4
 	jsr	(MessOut,pc)	| C155E8
 loc_C155EC:
 	jsr	(sub_C156FE,pc)	| C155EC
 loc_C155F0:
-	jsr	(sub_C15946,pc)	| C155F0
+	jsr	(WaitFrameGetP1,pc)	| C155F0
 	btst.b	#0x5,d0	| C155F4
 	beq.b	loc_C155FC	| C155F8
 loc_C155FA:
@@ -3027,7 +3031,7 @@ loc_C1582C:
 	add.w	d0,d0	| C15838
 	movea.l	(tbl_C15818,pc,d0.w),a2	| C1583A
 sub_C1583E:
-	jsr	(sub_C13A3C,pc)	| C1583E
+	jsr	(ClearFixLayer,pc)	| C1583E
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15842
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C15846
 	move.l	a2,(a0)+	| C1584A
@@ -3035,7 +3039,7 @@ sub_C1583E:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C15852
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15856
 loc_C1585A:
-	jsr	(sub_C15946,pc)	| C1585A
+	jsr	(WaitFrameGetP1,pc)	| C1585A
 	andi.b	#0xF0,d0	| C1585E
 	beq.b	loc_C1585A	| C15862
 loc_C15864:
@@ -3069,7 +3073,7 @@ loc_C158A4:
 	rts	| C158B8
 sub_C158BA:
 	clr.w	(ram_10FEB4-A5_BASE,a5)	| C158BA
-	jsr	(sub_C13A3C,pc)	| C158BE
+	jsr	(ClearFixLayer,pc)	| C158BE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C158C2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C158C6
 	move.l	a2,(a0)+	| C158CA
@@ -3114,7 +3118,8 @@ loc_C1593C:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1593C
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15940
 	rts	| C15944
-sub_C15946:
+| WaitFrameGetP1 [C] WaitFrame, then returns P1 change bits in d0 (repeat bits in the high word); special handling when BIOS_P1STATUS is 3
+WaitFrameGetP1:
 	jsr	(WaitFrame,pc)	| C15946
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C1594A
 	swap	d0	| C1594E
@@ -3133,11 +3138,13 @@ loc_C15970:
 	move.b	d1,d0	| C15976
 loc_C15978:
 	rts	| C15978
-sub_C1597A:
+| ReadCardDetect [C] d0 = REG_STATUS_B & $30 (memory card detect bits, 0 = card inserted)
+ReadCardDetect:
 	move.b	(REG_STATUS_B).l,d0	| C1597A
 	andi.b	#0x30,d0	| C15980
 	rts	| C15984
-sub_C15986:
+| CardUtilPutText [I] queues the MESS_OUT text at a2 followed by dat_C15CE0
+CardUtilPutText:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15986
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1598A
 	move.l	a2,(a0)+	| C1598E
@@ -3449,8 +3456,8 @@ loc_C16468:
 	move.w	#0x7,(a0)+	| C16468
 	moveq	#0x3,d6	| C1646C
 loc_C1646E:
-	jsr	(sub_C16AAA,pc)	| C1646E
-	jsr	(sub_C16AAA,pc)	| C16472
+	jsr	(PutHexByte,pc)	| C1646E
+	jsr	(PutHexByte,pc)	| C16472
 	move.b	#0x20,(a0)+	| C16476
 	dbra	d6,loc_C1646E	| C1647A
 	move.b	#0xFF,-0x1(a0)	| C1647E
@@ -3555,7 +3562,7 @@ sub_C16590:
 	jsr	(sub_C165A8,pc)	| C165A2
 	move.w	d2,d0	| C165A6
 sub_C165A8:
-	jsr	(sub_C183E2,pc)	| C165A8
+	jsr	(ByteToHex,pc)	| C165A8
 	move.b	d0,(a0)+	| C165AC
 	move.b	d1,(a0)+	| C165AE
 	rts	| C165B0
@@ -3832,10 +3839,10 @@ sub_C16974:
 	lea.l	(ram_10FD00).l,a1	| C1698A
 	moveq	#0x3,d7	| C16990
 loc_C16992:
-	jsr	(sub_C16AAA,pc)	| C16992
-	jsr	(sub_C16AAA,pc)	| C16996
-	jsr	(sub_C16AAA,pc)	| C1699A
-	jsr	(sub_C16AAA,pc)	| C1699E
+	jsr	(PutHexByte,pc)	| C16992
+	jsr	(PutHexByte,pc)	| C16996
+	jsr	(PutHexByte,pc)	| C1699A
+	jsr	(PutHexByte,pc)	| C1699E
 	move.b	#0x20,(a0)+	| C169A2
 	dbra	d7,loc_C16992	| C169A6
 	move.b	#0xFF,-0x1(a0)	| C169AA
@@ -3853,28 +3860,28 @@ loc_C169D6:
 	move.w	#0x7,(a0)+	| C169D6
 	moveq	#0x3,d6	| C169DA
 loc_C169DC:
-	jsr	(sub_C16AAA,pc)	| C169DC
-	jsr	(sub_C16AAA,pc)	| C169E0
-	jsr	(sub_C16AAA,pc)	| C169E4
-	jsr	(sub_C16AAA,pc)	| C169E8
+	jsr	(PutHexByte,pc)	| C169DC
+	jsr	(PutHexByte,pc)	| C169E0
+	jsr	(PutHexByte,pc)	| C169E4
+	jsr	(PutHexByte,pc)	| C169E8
 	move.b	#0x20,(a0)+	| C169EC
 	dbra	d6,loc_C169DC	| C169F0
 	move.b	#0xFF,-0x1(a0)	| C169F4
 	move.l	#0x50001,(a0)+	| C169FA
 	dbra	d7,loc_C169D6	| C16A00
 	move.w	#0x7,(a0)+	| C16A04
-	jsr	(sub_C16AAA,pc)	| C16A08
-	jsr	(sub_C16AAA,pc)	| C16A0C
-	jsr	(sub_C16AAA,pc)	| C16A10
-	jsr	(sub_C16AAA,pc)	| C16A14
+	jsr	(PutHexByte,pc)	| C16A08
+	jsr	(PutHexByte,pc)	| C16A0C
+	jsr	(PutHexByte,pc)	| C16A10
+	jsr	(PutHexByte,pc)	| C16A14
 	move.b	#0x20,(a0)+	| C16A18
-	jsr	(sub_C16AAA,pc)	| C16A1C
-	jsr	(sub_C16AAA,pc)	| C16A20
-	jsr	(sub_C16AAA,pc)	| C16A24
-	jsr	(sub_C16AAA,pc)	| C16A28
+	jsr	(PutHexByte,pc)	| C16A1C
+	jsr	(PutHexByte,pc)	| C16A20
+	jsr	(PutHexByte,pc)	| C16A24
+	jsr	(PutHexByte,pc)	| C16A28
 	move.b	#0x20,(a0)+	| C16A2C
-	jsr	(sub_C16AAA,pc)	| C16A30
-	jsr	(sub_C16AAA,pc)	| C16A34
+	jsr	(PutHexByte,pc)	| C16A30
+	jsr	(PutHexByte,pc)	| C16A34
 	move.w	#0xFF00,(a0)+	| C16A38
 	clr.w	(a0)+	| C16A3C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16A3E
@@ -3889,7 +3896,7 @@ sub_C16A48:
 	move.w	#0x7,(a0)+	| C16A5E
 	moveq	#0x2,d2	| C16A62
 loc_C16A64:
-	jsr	(sub_C16AAA,pc)	| C16A64
+	jsr	(PutHexByte,pc)	| C16A64
 	dbra	d2,loc_C16A64	| C16A68
 	move.l	#0xFF000000,(a0)+	| C16A6C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16A72
@@ -3903,14 +3910,15 @@ sub_C16A78:
 	move.l	#0x371CE,(a0)+	| C16A8C
 	move.w	#0x7,(a0)+	| C16A92
 loc_C16A96:
-	jsr	(sub_C16AAA,pc)	| C16A96
+	jsr	(PutHexByte,pc)	| C16A96
 	dbra	d7,loc_C16A96	| C16A9A
 	move.l	#0xFF000000,(a0)+	| C16A9E
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16AA4
 	rts	| C16AA8
-sub_C16AAA:
+| PutHexByte [C] reads a byte at (a1)+ and appends it at (a0)+ as two hex characters
+PutHexByte:
 	move.b	(a1)+,d0	| C16AAA
-	jsr	(sub_C183E2,pc)	| C16AAC
+	jsr	(ByteToHex,pc)	| C16AAC
 	move.b	d0,(a0)+	| C16AB0
 	move.b	d1,(a0)+	| C16AB2
 	rts	| C16AB4

@@ -118,7 +118,7 @@ loc_C18A94:
 	bra.w	loc_C189EA	| C18AA0
 loc_C18AA4:
 	clr.l	(0x400002).l	| C18AA4
-	jsr	(sub_C13A3C,pc)	| C18AAA
+	jsr	(ClearFixLayer,pc)	| C18AAA
 	jsr	(sub_C11FB2,pc)	| C18AAE
 	jsr	(WaitFrame,pc)	| C18AB2
 	move.b	#0x3,(REG_SOUND).l	| C18AB6

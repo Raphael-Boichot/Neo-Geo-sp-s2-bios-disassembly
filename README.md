@@ -66,14 +66,19 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 | Magician Lord | 3 | 1 | 1 (unused wrapper) | 1 | 1 | 0 | 0 | 0 | 0 |
 | The King of Fighters '94 | 1 | 2 | 0 | 0 | 1 (+1 CARD_ERROR) | 0 | 0 | 33 | 0 |
 | Neo Bomberman | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| King of the Monsters 2 | 1 | 7 | 1 (not reached in MAME) | 0 | 6 | 0 | 0 | 14 | 0 |
+| King of the Monsters 2 | 1 | 7 | 1 (ran in MAME) | 0 | 6 | 0 | 0 | 14 | 0 |
 | Viewpoint | 2 | 2 | 0 | 0 | 1 | 0 | 1 | 0 | 0 |
 | Alpha Mission II | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 6 | 0 |
 | Robo Army | 1 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | Last Resort | 1 | 7 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | Crossed Swords | 3 | 2 | 0 | 0 | 2 | 0 | 3 | 1 | 0 |
 
-None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0). Two call CREDIT_DOWN in their code: Magician Lord only from an unused wrapper, King of the Monsters 2 after CREDIT_CHECK in a routine gated by a game flag; a P2 join in MAME went through the BIOS start handling (DeductStartCredits) instead, so CREDIT_DOWN has still never run. HOW_TO_PLAY as called by
+None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0). Two call CREDIT_DOWN in their code: Magician Lord only from an unused wrapper, and King of the
+Monsters 2 when one player selects PLAYER1 PLAYER2 vs COMPUTER: the game takes the second player's
+credit itself with CREDIT_CHECK then CREDIT_DOWN (a P2 START join or a continue go through the BIOS
+start handling instead):
+
+![CREDIT_DOWN called by King of the Monsters 2](docs/credit_down_kotm2.png) HOW_TO_PLAY as called by
 NAM-1975 (the BIOS animates the joystick and buttons, the captions come from the game):
 
 ![HOW_TO_PLAY in NAM-1975](docs/how_to_play_nam1975.png)
@@ -122,7 +127,7 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 |---|---|
 | L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 8,030 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
 | L1 every byte typed | done by the tracer: code 32,338 B, data 22,011 B (text as `.ascii`, ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000`/`$C03000`, sine table at `$C04000`, tag I); the unreferenced controller test and memory card utility traced from their pointer tables (`tools/hints.txt`) |
-| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) and the card utility dispatch (resolved by a hint). MAME, 21 scenarios with 3 games (Sengoku 2: boot, coins and START, hardware test, test-mode items, calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete; NAM-1975: HOW_TO_PLAY; Magician Lord: start): 4,360 of 9,109 instructions ran (47.9 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. Never run: CREDIT_DOWN and SYSTEM_INT2 (no checked game uses them, table below), the checksum slot, the alternate calendar path |
+| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) and the card utility dispatch (resolved by a hint). MAME, 24 scenarios with 4 games (Sengoku 2: boot, coins and START, hardware test, test-mode items, calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete; NAM-1975: HOW_TO_PLAY; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start): 4,382 of 9,109 instructions ran (48.1 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. CREDIT_DOWN ran with King of the Monsters 2. Never run: SYSTEM_INT2 (no checked game uses it, table below), the checksum slot, the alternate calendar path |
 | L3 names | 157 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots and their targets and the 8 CARD functions (all seen running in MAME: C); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and an alternate calendar path, never run), test mode, hardware test, the unreferenced controller test and memory card utility, the most-called helpers (C from code reading, MAME screens and coverage); some I. 1,424 automatic labels left |
 | L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (30 accesses left raw where a4 cannot be proven). 216 RAM addresses used: 47 named (W/C/I), 169 automatic; 4 `move.l #$100000` left as numbers (start of work RAM used as the card buffer); 18 cartridge header fields named |
 | L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |

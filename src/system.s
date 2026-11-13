@@ -162,7 +162,7 @@ loc_C11816:
 	move.b	(a0),d1	| C1181A
 	abcd	d1,d1	| C1181C
 	bra.b	loc_C1180A	| C1181E
-| CreditDown [W] target of CREDIT_DOWN (wiki); never ran. Referenced by Magician Lord (unused wrapper) and King of the Monsters 2 (after CREDIT_CHECK in a routine gated by a game flag, not reached by a P2 join); none of 10 other checked games
+| CreditDown [C] target of CREDIT_DOWN (wiki); MAME: King of the Monsters 2 calls it after CREDIT_CHECK when one player picks PLAYER1 PLAYER2 vs COMPUTER (credits 02 -> 01, the second player's credit)
 CreditDown:
 	lea.l	(BiosWorkRam).l,a5	| C11820
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C11826

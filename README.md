@@ -1,4 +1,6 @@
-# Neo-Geo-sp-s2-Bios-disassembly
+# WORK IN PROGRESS 
+
+# NeoGeo sp-s2 bios disassembly
 
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it.

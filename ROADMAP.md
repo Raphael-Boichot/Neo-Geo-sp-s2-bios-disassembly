@@ -10,7 +10,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
-| L2 traced and run | 9,109 instructions traced; 6,205 ran in MAME (68.1 %) over 45 scenarios; nothing ran outside the trace |
+| L2 traced and run | 9,109 instructions traced; 6,206 ran in MAME (68.1 %) over 47 scenarios; nothing ran outside the trace |
 | L3 names | 282 names (C 231, I 21, W 30); 1,300 automatic labels left: 110 `sub_`, 98 `dat_`, 30 `tbl_`, 1,062 `loc_` |
 | L4 RAM and registers | 219 RAM addresses used, 77 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
@@ -66,7 +66,8 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
       (all backup RAM zeroed, defaults written); seen in MAME with five boots sharing one nvram
 - [ ] Card error cases: no card, write-protected card, full card, wrong format (CARD_ERROR)
 - [ ] Card utility COPY (`CardUtilCopy`) and the controller test, as coverage scenarios of the test build
-- [ ] CREDIT_DOWN in Top Player's Golf and Baseball Stars Professional
+- [ ] CREDIT_DOWN in Top Player's Golf, Baseball Stars Professional and Blue's Journey (it ran with League
+      Bowling, King of the Monsters and King of the Monsters 2)
 
 ## 3. Names (L3)
 

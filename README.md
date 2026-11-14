@@ -71,7 +71,18 @@ Game sets (MAME names) used for the MAME runs and the BIOS call scan, by NGH num
 | 006 | Riding Hero | `ridhero` | BIOS call scan, timer IRQ check, soft DIP time fields (test mode) |
 | 007 | Alpha Mission II | `alpham2` | BIOS call scan, timer IRQ check, soft DIP count fields (test mode) |
 | 010 | Cyber-Lip | `cyberlip` | BIOS call scan, timer IRQ check |
+| 011 | The Super Spy | `superspy` | BIOS call scan, timer IRQ check |
+| 014 | Mutation Nation | `mutnat` | BIOS call scan, timer IRQ check |
+| 016 | King of the Monsters | `kotm` | co-op mode: CREDIT_DOWN, BIOS call scan, timer IRQ check |
+| 017 | Sengoku | `sengoku` | BIOS call scan, timer IRQ check |
+| 018 | Burning Fight | `burningf` | BIOS call scan, timer IRQ check |
+| 019 | League Bowling | `lbowling` | game type choice: CREDIT_DOWN, BIOS call scan, timer IRQ check |
+| 020 | Ghost Pilots | `gpilots` | BIOS call scan, timer IRQ check |
+| 021 | Puzzled / Joy Joy Kid | `joyjoy` | BIOS call scan, timer IRQ check |
+| 022 | Blue's Journey | `bjourney` | BIOS call scan, timer IRQ check |
+| 023 | Quiz Daisousa Sen | `quizdais` | BIOS call scan, timer IRQ check |
 | 024 | Last Resort | `lresort` | BIOS call scan, timer IRQ check |
+| 024 | Last Resort (prototype) | `lresortp` | prototype in the `lresort` set (P ROM in two byte halves): BIOS call scan, timer IRQ check |
 | 025 | Eight Man | `eightman` | BIOS call scan, timer IRQ check |
 | 032 | Robo Army | `roboarmy` | BIOS call scan, timer IRQ check |
 | 033 | Fatal Fury | `fatfury1` | BIOS call scan, timer IRQ check |
@@ -99,7 +110,18 @@ by NGH number (the game's number in its cartridge header, `CART_NGH` at `$108`):
 | 006 | Riding Hero | 9 | 1 | 2 | 0 | 0 | 7 | 3 | 0 | 0 | 0 | 0 |
 | 007 | Alpha Mission II | 4 | 1 | 4 | 0 | 0 | 4 | 2 | 0 | 0 | 6 | 0 |
 | 010 | Cyber-Lip | 4 | 1 | 1 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 |
+| 011 | The Super Spy | 4 | 1 | 1 | 0 | 0 | 6 | 2 | 0 | 0 | 0 | 0 |
+| 014 | Mutation Nation | 4 | 3 | 2 | 0 | 0 | 7 | 2 | 0 | 1 | 0 | 0 |
+| 016 | King of the Monsters | 3 | 1 | 8 | 4 (ran in MAME) | 0 | 6 | 2 | 0 | 0 | 0 | 0 |
+| 017 | Sengoku | 2 | 1 | 2 | 0 | 0 | 7 | 1 | 0 | 0 | 0 | 0 |
+| 018 | Burning Fight | 3 | 1 | 2 | 0 | 0 | 6 | 5 | 0 | 3 | 2 | 0 |
+| 019 | League Bowling | 2 | 1 | 3 | 1 (ran in MAME) | 0 | 7 | 3 | 0 | 13 | 0 | 0 |
+| 020 | Ghost Pilots | 4 | 1 | 3 | 0 | 2 | 4 | 2 | 0 | 1 | 1 | 0 |
+| 021 | Puzzled / Joy Joy Kid | 3 | 1 | 1 | 0 | 0 | 6 | 0 | 0 | 5 | 0 | 2 |
+| 022 | Blue's Journey | 5 | 2 | 1 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
+| 023 | Quiz Daisousa Sen | 2 | 1 | 3 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 1 |
 | 024 | Last Resort | 3 | 1 | 7 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 |
+| 024 | Last Resort (prototype) | 3 | 1 | 7 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 |
 | 025 | Eight Man | 4 | 1 | 3 | 0 | 0 | 3 | 1 | 0 | 0 | 1 | 0 |
 | 032 | Robo Army | 6 | 1 | 2 | 0 | 0 | 3 | 2 | 0 | 0 | 0 | 0 |
 | 033 | Fatal Fury | 3 | 1 | 2 | 0 | 1 | 5 | 4 | 0 | 0 | 0 | 0 |
@@ -110,16 +132,19 @@ by NGH number (the game's number in its cartridge header, `CART_NGH` at `$108`):
 | 055 | The King of Fighters '94 | 7 | 1 | 2 | 0 | 0 | 1 | 1 | 0 | 0 | 33 | 0 |
 | 093 | Neo Bomberman | 16 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 
-Every game also holds `ENTRY_RESET` and `SYSTEM_INT1` once (its own vector table); none references
-SYSTEM_INT2, SETUP_CALENDAR, CHECKSUM_LOOP or CONTROLLER_SETUP.
+Every game also holds `ENTRY_RESET` and `SYSTEM_INT1` once (its own vector table; King of the Monsters
+holds `SYSTEM_INT1` twice); none references SYSTEM_INT2, SETUP_CALENDAR, CHECKSUM_LOOP or
+CONTROLLER_SETUP. The Last Resort prototype (`lresortp`) gives the same counts as the release.
 
 None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2. (An earlier version of this
 page said KOF '94 leaves it at 0: the scan read the wrong half of its 2 MB program ROM; it is `$32C3A`.)
-Top Player's Golf and Baseball Stars Professional reference CREDIT_DOWN (not run yet). Two other
-games call it in their code: Magician Lord only from an unused wrapper, and King of the
-Monsters 2 when one player selects PLAYER1 PLAYER2 vs COMPUTER: the game takes the second player's
-credit itself with CREDIT_CHECK then CREDIT_DOWN (a P2 START join or a continue go through the BIOS
-start handling instead):
+Top Player's Golf, Baseball Stars Professional and Blue's Journey reference CREDIT_DOWN (not run yet).
+Magician Lord calls it only from an unused wrapper. It ran in MAME with three games (C):
+League Bowling when the game type is chosen after SELECT PLAY MODE (scenario `lbowling_credit_down`),
+and King of the Monsters and King of the Monsters 2 when one player selects PLAYER1 PLAYER2 vs
+COMPUTER: the game takes the second player's credit itself with CREDIT_CHECK then CREDIT_DOWN (a P2
+START join or a continue go through the BIOS start handling instead; scenarios
+`kotm_coop_credit_down`, `kotm2_coop_credit_down`):
 
 ![CREDIT_DOWN called by King of the Monsters 2](docs/credit_down_kotm2.png)
 
@@ -139,11 +164,13 @@ mask at `$C18962` without touching `REG_LSPCMODE`. A game that leaves a raster (
 calls HOW_TO_PLAY gets its next timer interrupt here, which shuts the timer off for the BIOS screen (I).
 
 Checked in MAME with `tools/mame_watch_irq2.lua` (debugger watchpoints, 3,000 to 4,000 frames of
-attract, coin and START, 18 games): Sengoku 2 (`$08D0`), Viewpoint (`$00D8`), Eight Man (`$00D0`, in
+attract, coin and START, 29 sets): Sengoku 2 (`$08D0`), Viewpoint (`$00D8`), Eight Man (`$00D0`, in
 attract) and Top Player's Golf (`$0F50`) turn the timer interrupt on, and none of them calls
 HOW_TO_PLAY. The three games that call it (NAM-1975, Mahjong Kyoretsuden, Baseball Stars
 Professional) do so after START with the timer off (last `REG_LSPCMODE` write `$4000` or `$0800`).
-Riding Hero contains a `$00D0` write that did not run in this window. So no checked game runs
+Riding Hero contains a `$00D0` write that did not run in this window. None of the eleven sets added
+later (NGH 011-024 and the Last Resort prototype) turns the timer interrupt on or calls HOW_TO_PLAY.
+So no checked game runs
 SystemInt2 by itself. Forcing it: a debugger breakpoint at `$C1895C` (just after the vector switch in
 HOW_TO_PLAY) turns the timer interrupt on as such a game would; SystemInt2 then runs once and the
 HOW_TO_PLAY screen goes on normally (scenario `nam1975_how_to_play_timer_irq`):
@@ -285,7 +312,7 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 |---|---|
 | L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 9,109 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
 | L1 every byte typed | done by the tracer: code 32,338 B, data 22,011 B (text as `.ascii`, ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000`/`$C03000`, sine table at `$C04000`, tag I); the unreferenced controller test and memory card utility traced from their pointer tables (`tools/hints.txt`) |
-| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) the only one left (`tools/stats.py`); the card utility dispatch at `$C150A6` is found by the tracer. MAME, 45 scenarios with 7 games and with no cartridge (Sengoku 2: boot, coins and START, hardware test, every test-mode screen with every key (`tools/test_mode_scenarios.py`), calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete, and with its header ID patched to NEO-CLN or to N 0 O 0 G 0 O 0; NAM-1975: HOW_TO_PLAY, and HOW_TO_PLAY with the timer interrupt forced on; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start; Riding Hero, Top Player's Golf, Alpha Mission II: soft DIP editor; Sengoku 2 and no cartridge: the 1M card cabinet backup with an emulated card): 6,205 of 9,109 instructions ran (68.1 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. SYSTEM_INT2 ran only when forced (see above). CREDIT_DOWN ran with King of the Monsters 2. Never run: the checksum slot, the boot error screens, the work RAM test loop (all hard DIPs on) and the older cabinet page `CabinetSettingsOld` (219 instructions nothing reaches) |
+| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) the only one left (`tools/stats.py`); the card utility dispatch at `$C150A6` is found by the tracer. MAME, 47 scenarios with 9 games and with no cartridge (Sengoku 2: boot, coins and START, hardware test, every test-mode screen with every key (`tools/test_mode_scenarios.py`), calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete, and with its header ID patched to NEO-CLN or to N 0 O 0 G 0 O 0; NAM-1975: HOW_TO_PLAY, and HOW_TO_PLAY with the timer interrupt forced on; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start; King of the Monsters: co-op start; League Bowling: game type choice (CREDIT_DOWN); Riding Hero, Top Player's Golf, Alpha Mission II: soft DIP editor; Sengoku 2 and no cartridge: the 1M card cabinet backup with an emulated card): 6,206 of 9,109 instructions ran (68.1 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. SYSTEM_INT2 ran only when forced (see above). CREDIT_DOWN ran with League Bowling, King of the Monsters and King of the Monsters 2. Never run: the checksum slot, the boot error screens, the work RAM test loop (all hard DIPs on) and the older cabinet page `CabinetSettingsOld` (219 instructions nothing reaches) |
 | L3 names | 282 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots (wiki names, W) and their targets, and the 8 CARD functions; all ran in MAME except the checksum slot (SYSTEM_INT2 only when forced); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and the NEO-CLN cartridge calendar), test mode (every routine, table and text of `test_mode.s`), the 1M card cabinet backup, hardware test, the unreferenced controller test and memory card utility, the most-called helpers (C from code reading, MAME screens and coverage); some I. 1,300 automatic labels left |
 | L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (30 accesses left raw where a4 cannot be proven). 219 RAM addresses used: 77 named (W/C/I), 142 automatic (board settings, code number, cabinet number, book keeping areas named from the test mode); `$100000` is `WorkRamStart` (also the card utility's card buffer); 18 cartridge header fields named |
 | L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |

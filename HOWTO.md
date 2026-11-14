@@ -144,6 +144,24 @@ about 20,000 lines per frame, only passes through a pipe). `coverage.py` prints 
 that ran, executed addresses the tracer missed (add them to `tools/hints.txt` with the scenario as the
 reason), the speculative entries that ran, and which scenarios use each BIOS call.
 
+### Inputs (`tools/mame_inputs.lua`, used by `mame_run.lua` and `mame_trace.lua`)
+
+| Variable | Meaning |
+|---|---|
+| `KEYS="420:P1 Down,600-700:P1 A"` | `F:` one-frame tap, `F-G:` held (A/B repeat), any MAME input name; `P1 Select` / `P2 Select` are emulated (MAME has no MVS SELECT input) |
+| `DIPS="900:Free Play=0"` | set a DIP switch field at a frame (values as MAME lists them: 0 = on) |
+| `MEMCARD=<file> MEMCARD_AT=<frame>` | insert a 2 KB memory card (created blank, or `MEMCARD_FROM=<file>` copied first) |
+| `CARD1M=<file>` | emulate a 1 Mbit 16-bit RAM card at `$800000` with memory taps (keep a `MEMCARD` inserted too) |
+| `NVRAM_DIR=<dir>` (environment of `mame_coverage.sh`) | keep the backup RAM between runs |
+
+### Test mode scenarios
+
+`tools/test_mode_scenarios.py list` shows the scenarios, `keys NAME` their inputs, `run NAME...` runs them
+through `mame_coverage.sh`. `CARD_DIR` holds the card images and chained backup RAM;
+`FORMATTED_CARD` is a card formatted by a game (the Sengoku 2 save of section 7) and
+`PLAYED_NVRAM` a MAME nvram folder after a few played credits. The `card1m_*` scenarios pass their
+backup RAM and 1M card from one to the next: run them in order.
+
 `DEBUG_CMDS` adds MAME debugger commands to a coverage run (several separated by `||`), for example a
 breakpoint that changes a register to reach a path no game takes (README, SYSTEM_INT2). To see what
 games do with the timer interrupt and the vector switches, run a game with

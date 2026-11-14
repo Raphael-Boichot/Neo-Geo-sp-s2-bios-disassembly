@@ -194,10 +194,10 @@ loc_C11D56:
 	move.b	(REG_STATUS_A).l,d0	| C11D66
 	btst.b	#0x2,d0	| C11D6C
 	bne.b	loc_C11D84	| C11D70
-	jsr	(sub_C1B6FE).l	| C11D72
+	jsr	(IsCard1M).l	| C11D72
 	tst.b	d5	| C11D78
 	beq.w	loc_C11D84	| C11D7A
-	jmp	(loc_C1B4F0).l	| C11D7E
+	jmp	(Card1MRecover).l	| C11D7E
 loc_C11D84:
 	jmp	(HardwareTest,pc)	| C11D84
 loc_C11D88:
@@ -237,7 +237,7 @@ loc_C11DEA:
 	move.l	(BIOS_HOUR-A5_BASE,a5),(bram_D0005A-A4_BASE,a4)	| C11DF4
 	move.b	#0x1,(ram_10FD4E-A5_BASE,a5)	| C11DFA
 	lea.l	(BIOS_YEAR-A5_BASE,a5),a0	| C11E00
-	lea.l	(bram_D00104-A4_BASE,a4),a1	| C11E04
+	lea.l	(LastBootDate-A4_BASE,a4),a1	| C11E04
 	moveq	#0x2,d7	| C11E08
 loc_C11E0A:
 	cmpm.b	(a0)+,(a1)+	| C11E0A
@@ -247,18 +247,18 @@ loc_C11E0A:
 	bra.w	loc_C11E8C	| C11E16
 loc_C11E1A:
 	move.b	(bram_D00105-A4_BASE,a4),(a5)	| C11E1A
-	move.l	(BIOS_YEAR-A5_BASE,a5),(bram_D00104-A4_BASE,a4)	| C11E1E
-	move.b	(bram_D00122-A4_BASE,a4),d0	| C11E24
+	move.l	(BIOS_YEAR-A5_BASE,a5),(LastBootDate-A4_BASE,a4)	| C11E1E
+	move.b	(BookDayIndex-A4_BASE,a4),d0	| C11E24
 	addq.b	#0x1,d0	| C11E28
 	cmpi.b	#0x24,d0	| C11E2A
 	bcs.b	loc_C11E32	| C11E2E
 	moveq	#0x0,d0	| C11E30
 loc_C11E32:
-	move.b	d0,(bram_D00122-A4_BASE,a4)	| C11E32
-	lea.l	(bram_D09DE0-A4_BASE,a4),a0	| C11E36
+	move.b	d0,(BookDayIndex-A4_BASE,a4)	| C11E32
+	lea.l	(BookPlayDays-A4_BASE,a4),a0	| C11E36
 	jsr	(sub_C12592,pc)	| C11E3A
-	lea.l	(bram_D09BA0-A4_BASE,a4),a0	| C11E3E
-	move.b	(bram_D00122-A4_BASE,a4),d0	| C11E42
+	lea.l	(BookCoinDays-A4_BASE,a4),a0	| C11E3E
+	move.b	(BookDayIndex-A4_BASE,a4),d0	| C11E42
 	jsr	(sub_C12592,pc)	| C11E46
 	lea.l	(a0,d0.w),a0	| C11E4A
 	move.l	a0,(bram_D00112-A4_BASE,a4)	| C11E4E
@@ -268,13 +268,13 @@ loc_C11E32:
 	jsr	(BcdToBinary,pc)	| C11E5A
 	subq.b	#0x1,d0	| C11E5E
 	lsl.w	#0x4,d0	| C11E60
-	lea.l	(bram_D0A0E0-A4_BASE,a4),a0	| C11E62
+	lea.l	(BookPlayMonths-A4_BASE,a4),a0	| C11E62
 	jsr	(sub_C125A4,pc)	| C11E66
-	lea.l	(bram_D0A020-A4_BASE,a4),a0	| C11E6A
+	lea.l	(BookCoinMonths-A4_BASE,a4),a0	| C11E6A
 	jsr	(sub_C125A4,pc)	| C11E6E
 	lea.l	(a0,d0.w),a0	| C11E72
 	move.l	a0,(bram_D00116-A4_BASE,a4)	| C11E76
-	lea.l	(bram_D09520-A4_BASE,a4),a0	| C11E7A
+	lea.l	(BookGameMonths-A4_BASE,a4),a0	| C11E7A
 	moveq	#0x7,d7	| C11E7E
 loc_C11E80:
 	jsr	(sub_C125A4,pc)	| C11E80
@@ -528,7 +528,7 @@ loc_C12144:
 	beq.b	loc_C12158	| C12148
 	cmpi.w	#0xFFFF,0x2(a2,d6.w)	| C1214A
 	bne.b	loc_C12158	| C12150
-	move.l	(bram_D00104-A4_BASE,a4),0x20(a2,d6.w)	| C12152
+	move.l	(LastBootDate-A4_BASE,a4),0x20(a2,d6.w)	| C12152
 loc_C12158:
 	addq.w	#0x4,d6	| C12158
 	cmp.w	d4,d6	| C1215A
@@ -650,7 +650,7 @@ loc_C1227A:
 	movea.l	(a1),a0	| C12298
 	move.w	0x2(a2,d6.w),d0	| C1229A
 	lsl.w	#0x4,d0	| C1229E
-	lea.l	(bram_D002A0-A4_BASE,a4),a1	| C122A0
+	lea.l	(GameNames-A4_BASE,a4),a1	| C122A0
 	lea.l	(a1,d0.w),a1	| C122A4
 	move.l	(a0)+,(a1)+	| C122A8
 	move.l	(a0)+,(a1)+	| C122AA
@@ -685,7 +685,7 @@ sub_C122D8:
 	bcc.b	loc_C12320	| C122FC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C122FE
 	lsl.w	#0x4,d0	| C12304
-	lea.l	(bram_D00220-A4_BASE,a4),a0	| C12306
+	lea.l	(GameSoftDips-A4_BASE,a4),a0	| C12306
 	lea.l	(a0,d0.w),a0	| C1230A
 	lea.l	(BIOS_GAME_DIP-A5_BASE,a5),a1	| C1230E
 	move.l	(a1)+,(a0)+	| C12312
@@ -797,7 +797,7 @@ loc_C12450:
 	bcs.b	loc_C12450	| C1245A
 	move.w	d6,d0	| C1245C
 	lsl.w	#0x4,d0	| C1245E
-	lea.l	(bram_D00220-A4_BASE,a4),a1	| C12460
+	lea.l	(GameSoftDips-A4_BASE,a4),a1	| C12460
 	lea.l	(a1,d0.w),a1	| C12464
 	lea.l	(BIOS_GAME_DIP-A5_BASE,a5),a0	| C12468
 	move.w	(a0),d0	| C1246C
@@ -807,7 +807,7 @@ loc_C12450:
 	move.l	(a1)+,(a0)+	| C12474
 	cmpi.w	#0x5,d0	| C12476
 	bne.b	loc_C12488	| C1247A
-	tst.b	(bram_D00046-A4_BASE,a4)	| C1247C
+	tst.b	(DemoSoundOff-A4_BASE,a4)	| C1247C
 	beq.b	loc_C12488	| C12480
 	move.b	#0x1,(ram_10FD8A-A5_BASE,a5)	| C12482
 loc_C12488:
@@ -879,7 +879,7 @@ sub_C12592:
 	andi.w	#0xFF,d0	| C12592
 	lsl.w	#0x4,d0	| C12596
 	jsr	(sub_C125A4,pc)	| C12598
-	move.l	(bram_D00104-A4_BASE,a4),(a0,d0.w)	| C1259C
+	move.l	(LastBootDate-A4_BASE,a4),(a0,d0.w)	| C1259C
 	rts	| C125A2
 sub_C125A4:
 	moveq	#0x0,d1	| C125A4
@@ -892,7 +892,7 @@ sub_C125A4:
 BackupRamOkText:
 	.ascii	"BACKUP RAM OK !"
 	dc.b	0x80
-| BackupRamTest [I] memory test of backup RAM at a0 (test number in d6)
+| BackupRamTest [C] power-on test of backup RAM (test number in d6). Hard DIPs not all on: when BackupRamSignature equals BackupRamOkText, returns at once and the contents are kept; otherwise MemTestBlock on backup RAM, then ClearBackupRam. All hard DIPs on (REG_DIPSW = 0): MemTestBlock only, every time (WorkRamTestLoop). MAME: signature found on a second boot with the same nvram, ClearBackupRam on a first boot and on the boot after a NEO-CLN or NoGoIdText cartridge
 BackupRamTest:
 	move.b	(REG_DIPSW).l,d0	| C125C8
 	beq.b	loc_C125E6	| C125CE
@@ -909,7 +909,7 @@ loc_C125E6:
 	move.b	(REG_DIPSW).l,d0	| C125EA
 	bne.b	ClearBackupRam	| C125F0
 	rts	| C125F2
-| ClearBackupRam [I] unlocks backup RAM and fills it with zeros from $D10000 down
+| ClearBackupRam [C] unlocks backup RAM, fills all 64 KB with zeros from $D10000 down, writes BackupRamSignature, copies BackupRamDefaults to $D0003A-$D00046, sets $D00122 = $23, SlotTable all $FFFF, $D001AC = $F0F0F0F0, $D001B0 = $FFFF, locks it. Book keeping and settings are lost
 ClearBackupRam:
 	move.b	#0x1,(ram_10FEBF).l	| C125F4
 	move.b	d0,(REG_SRAMUNLOCK).l	| C125FC
@@ -932,21 +932,21 @@ loc_C12614:
 loc_C1263A:
 	move.b	(a4)+,(a6)+	| C1263A
 	dbra	d7,loc_C1263A	| C1263C
-	lea.l	(dat_C1F000).l,a4	| C12640
-	lea.l	(bram_D0003A).l,a6	| C12646
+	lea.l	(BackupRamDefaults).l,a4	| C12640
+	lea.l	(Coin1Coins).l,a6	| C12646
 	moveq	#0xC,d7	| C1264C
 loc_C1264E:
 	move.b	(a4)+,(a6)+	| C1264E
 	dbra	d7,loc_C1264E	| C12650
-	move.b	#0x23,(bram_D00122).l	| C12654
+	move.b	#0x23,(BookDayIndex).l	| C12654
 	lea.l	(SlotTable).l,a0	| C1265C
 	move.l	#0xFFFF,d0	| C12662
 	moveq	#0x7,d7	| C12668
 loc_C1266A:
 	move.l	d0,(a0)+	| C1266A
 	dbra	d7,loc_C1266A	| C1266C
-	move.l	#0xF0F0F0F0,(bram_D001AC).l	| C12670
-	move.w	#0xFFFF,(bram_D001B0).l	| C1267A
+	move.l	#0xF0F0F0F0,(CodeNumber).l	| C12670
+	move.w	#0xFFFF,(CabinetNumber).l	| C1267A
 	move.b	d0,(REG_SRAMLOCK).l	| C12682
 	rts	| C12688
 | WriteLedData [C] writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay
@@ -988,7 +988,7 @@ loc_C126F8:
 	beq.b	loc_C12732	| C126FC
 	btst.b	#0x4,(bram_D00038).l	| C126FE
 	bne.b	loc_C12732	| C12706
-	jsr	(sub_C12A18,pc)	| C12708
+	jsr	(Card1MSaveCabinet,pc)	| C12708
 	move.b	(REG_DIPSW).l,d0	| C1270C
 	andi.b	#0x80,d0	| C12712
 	bne.b	loc_C12732	| C12716
@@ -1035,7 +1035,7 @@ loc_C12768:
 	movea.l	(bram_D00112-A4_BASE,a4),a2	| C12798
 	movea.l	(bram_D00116-A4_BASE,a4),a1	| C1279C
 	lea.l	(bram_D00024-A4_BASE,a4),a6	| C127A0
-	lea.l	(bram_D0003A-A4_BASE,a4),a3	| C127A4
+	lea.l	(Coin1Coins-A4_BASE,a4),a3	| C127A4
 	jsr	(sub_C128A6,pc)	| C127A8
 	moveq	#0x1,d4	| C127AC
 	moveq	#0x8,d5	| C127AE
@@ -1045,7 +1045,7 @@ loc_C12768:
 	jsr	(sub_C128E6,pc)	| C127B8
 	tst.b	d7	| C127BC
 	beq.b	loc_C127CA	| C127BE
-	move.w	(bram_D00044-A4_BASE,a4),(BIOS_SELECT_TIMER-A5_BASE,a5)	| C127C0
+	move.w	(StartCompulsionTime-A4_BASE,a4),(BIOS_SELECT_TIMER-A5_BASE,a5)	| C127C0
 	addq.b	#0x1,(ram_10FEE2-A5_BASE,a5)	| C127C6
 loc_C127CA:
 	jsr	(sub_C129D4,pc)	| C127CA
@@ -1246,7 +1246,8 @@ loc_C12A06:
 	lea.l	(BiosWorkRam).l,a5	| C12A10
 loc_C12A16:
 	rts	| C12A16
-sub_C12A18:
+| Card1MSaveCabinet [C] SystemIo in title/demo: SELECT P1 with a 1M card whose code is CodeNumber copies this board's calendar and backup RAM to the card as cabinet CabinetNumber (a new board takes the next number, up to 10), DATA HAS BEEN STORED AT A MEMORY CARD., then SystemReturn. MAME (emulated card, SELECT through a read tap): card1m_save_a, card1m_save_b
+Card1MSaveCabinet:
 	cmpi.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C12A18
 	beq.b	loc_C12A28	| C12A1E
 	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C12A20
@@ -1263,7 +1264,7 @@ loc_C12A36:
 	lea.l	(bram_D08000).l,a4	| C12A3E
 	lea.l	(0x800000).l,a6	| C12A44
 	lea.l	0x40(a6),a0	| C12A4A
-	lea.l	(dat_C12B98,pc),a1	| C12A4E
+	lea.l	(Card1MIdTextSave,pc),a1	| C12A4E
 	moveq	#0x7,d7	| C12A52
 loc_C12A54:
 	move.w	(a0),d0	| C12A54
@@ -1275,10 +1276,10 @@ loc_C12A54:
 	andi.b	#0xF0,d0	| C12A64
 	cmpi.b	#0x20,d0	| C12A68
 	bne.b	loc_C12A34	| C12A6C
-	move.l	(bram_D001AC-A4_BASE,a4),d0	| C12A6E
+	move.l	(CodeNumber-A4_BASE,a4),d0	| C12A6E
 	cmp.l	0x70(a6),d0	| C12A72
 	bne.b	loc_C12A34	| C12A76
-	move.w	(bram_D001B0-A4_BASE,a4),d0	| C12A78
+	move.w	(CabinetNumber-A4_BASE,a4),d0	| C12A78
 	bmi.w	loc_C12A8A	| C12A7C
 	cmp.w	0x74(a6),d0	| C12A80
 	bhi.b	loc_C12A34	| C12A84
@@ -1294,7 +1295,7 @@ loc_C12A8A:
 	move.b	d7,(REG_CRDUNLOCK1).l	| C12AA6
 	move.b	d7,(REG_CRDUNLOCK2).l	| C12AAC
 	move.b	d7,(REG_SRAMUNLOCK).l	| C12AB2
-	move.w	d0,(bram_D001B0-A4_BASE,a4)	| C12AB8
+	move.w	d0,(CabinetNumber-A4_BASE,a4)	| C12AB8
 	move.b	d7,(REG_SRAMLOCK).l	| C12ABC
 	move.w	d0,d1	| C12AC2
 	addq.w	#0x1,d1	| C12AC4
@@ -1325,17 +1326,17 @@ loc_C12ACA:
 	lea.l	(bram_D00200-A4_BASE,a4),a1	| C12B28
 	jsr	(sub_C12B8E,pc)	| C12B2C
 	move.l	#0x10F0,d7	| C12B30
-	lea.l	(bram_D08320-A4_BASE,a4),a1	| C12B36
+	lea.l	(BookGameDays-A4_BASE,a4),a1	| C12B36
 	jsr	(sub_C12B8E,pc)	| C12B3A
 	move.b	d7,(REG_CRDLOCK2).l	| C12B3E
 	move.b	d7,(REG_CRDLOCK1).l	| C12B44
 	move.l	#0xEEE0000,(0x400002).l	| C12B4A
 	jsr	(ClearFixLayer,pc)	| C12B54
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C12B58
-	lea.l	(dat_C12BA0,pc),a1	| C12B5C
+	lea.l	(Card1MSaveOkText,pc),a1	| C12B5C
 	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C12B60
 	beq.b	loc_C12B6A	| C12B64
-	lea.l	(dat_C12BB0,pc),a1	| C12B66
+	lea.l	(Card1MStoredText,pc),a1	| C12B66
 loc_C12B6A:
 	move.l	a1,(a0)+	| C12B6A
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C12B6C
@@ -1353,14 +1354,17 @@ sub_C12B8E:
 	subq.l	#0x1,d7	| C12B92
 	bne.b	sub_C12B8E	| C12B94
 	rts	| C12B96
-dat_C12B98:
+| Card1MIdTextSave [C] NEO-GEO, compared one letter per word at +$40 by Card1MSaveCabinet
+Card1MIdTextSave:
 	.ascii	"NEO-GEO"
 	dc.b	0x80
-dat_C12BA0:
+| Card1MSaveOkText [C] SAVE OK (Card1MSaveCabinet, BIOS_COUNTRY_CODE = 0)
+Card1MSaveOkText:
 	dc.b	0x00,0x03,0x71,0xCC,0x01,0x08
 	.ascii	"SAVE OK"
 	dc.b	0xFF,0x00,0x00
-dat_C12BB0:
+| Card1MStoredText [C] DATA HAS BEEN STORED AT A MEMORY CARD. (Card1MSaveCabinet, other countries; MAME: card1m_save_a)
+Card1MStoredText:
 	dc.b	0x00,0x03,0x71,0x2C,0x01,0x08
 	.ascii	"DATA HAS BEEN STORED"
 	dc.b	0xFF,0xFF,0x00,0x05,0x00,0x03,0x01,0x08

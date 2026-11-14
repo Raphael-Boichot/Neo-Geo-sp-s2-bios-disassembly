@@ -38,21 +38,41 @@ addr,name,tag,note
 10FDDA,BIOS_SELECT_TIMER,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
 10FE80,BIOS_DEVMODE,W,NeoGeoDev wiki 68k ASM defines / BIOS RAM locations
 10FCD8,WorkIndex,C,"general word: test menu cursor line, hardware-test step (HwTestStepTable), 300-frame count set at $C11202"
-10FCDA,WorkIndexNew,C,"test mode: new cursor line before TestMenuDrawCursor"
+10FCDA,WorkIndexNew,C,test mode: new cursor line before TestMenuDrawCursor
 10FE8C,FrameWaitFlag,C,"set by WaitFrame, cleared by SystemInt1 (VBlank) after MessOut and SystemIo"
 10FD81,BIOS_SYSTEM_MODE_LO,I,"low byte of BIOS_SYSTEM_MODE, index of SystemModeTable"
-10FEE4,VBlankCount,C,"byte incremented by SystemInt1 on every VBlank; PowerOnTest counts frames between calendar pulses with it"
-10FEE3,Int1CountOnly,C,"when non-zero SystemInt1 only increments VBlankCount (set during the calendar test)"
-10FE88,FrameCounter,C,"long incremented by every SystemIo call"
-10FDDB,SelectTimerFrames,C,"60-frame divider of BIOS_SELECT_TIMER in CheckPlayerStart (reloaded with $3B)"
+10FEE4,VBlankCount,C,byte incremented by SystemInt1 on every VBlank; PowerOnTest counts frames between calendar pulses with it
+10FEE3,Int1CountOnly,C,when non-zero SystemInt1 only increments VBlankCount (set during the calendar test)
+10FE88,FrameCounter,C,long incremented by every SystemIo call
+10FDDB,SelectTimerFrames,C,60-frame divider of BIOS_SELECT_TIMER in CheckPlayerStart (reloaded with $3B)
 D00034,Credits,I,"BCD credit count in backup RAM: CreditCheck subtracts from it with SBCD, SystemMode2 and CheckPlayerStart test it"
-D00108,CurrentSlot,C,"backup RAM: slot number written by SwitchSlot together with REG_SLOT; SystemMode2 prints it as SLOT n"
+D00108,CurrentSlot,C,backup RAM: slot number written by SwitchSlot together with REG_SLOT; SystemMode2 prints it as SLOT n
 D00124,SlotTable,I,"backup RAM: 4 bytes per slot, scanned by SelectSlot"
 10F300,BiosWorkRam,C,"start of the BIOS work RAM, loaded into a5 (A5_BASE) by every BIOS entry"
 100000,WorkRamStart,C,"first byte of the 68000 work RAM ($100000-$10FFFF, game area below BiosWorkRam); the card utility points BIOS_CRDPTR here as its card data buffer ($4000 bytes for CARD 2); ChecksumLoop writes its result byte here; start address of the work RAM tests"
 10FDB0,BIOS_CREDIT_DEC1,W,"NeoGeoDev wiki CREDIT_CHECK / BIOS RAM locations: credits asked for player 1, cleared by CREDIT_CHECK when not enough"
-10FDB1,BIOS_CREDIT_DEC2,W,"NeoGeoDev wiki CREDIT_CHECK: credits asked for player 2 (reached as 1(a0) from BIOS_CREDIT_DEC1)"
+10FDB1,BIOS_CREDIT_DEC2,W,NeoGeoDev wiki CREDIT_CHECK: credits asked for player 2 (reached as 1(a0) from BIOS_CREDIT_DEC1)
 10FEDD,BIOS_STATCHANGE_RAW,W,"NeoGeoDev wiki BIOS RAM locations: Select and Start of P1-P4, positive logic (bit 0 Start P1, bit 1 Select P1, ...)"
 D0005E,NeoClnSlot,C,"slot holding a NEO-CLN (cartridge calendar) cartridge, $FF = none (power-on writes $FFFF); set by CheckCartridgeId, read by HardwareTest (open on the calendar screen) and HwTestCalendar (D also sets the cartridge calendar)"
-D00010,BackupRamSignature,C,"16 bytes compared with BackupRamOkText (BACKUP RAM OK !) by BackupRamTest; CheckCartridgeId clears the first long for a NEO-CLN or NoGoIdText cartridge (I: the backup RAM is then initialised again at the next boot)"
+D00010,BackupRamSignature,C,"16 bytes compared with BackupRamOkText (BACKUP RAM OK !) by BackupRamTest; CheckCartridgeId clears the first long for a NEO-CLN or NoGoIdText cartridge so the next boot runs ClearBackupRam (C: MAME, five boots sharing one nvram)"
 D00060,SlotNumberMode,C,"word, cleared at every power-on ($C11DD0), set to 1 by CheckCartridgeId for a NoGoIdText cartridge. When set: SystemMode2 shows SLOT n for 300 frames (SELECT P1 skips) instead of the boot animation, CheckSettingMode does not switch to the saved slot, the power-on slot list keeps duplicate games ($C12044), and DemoEndCheck lets SELECT end the demo without credits. MAME: scenario nogo_cartridge"
+D0003A,Coin1Coins,C,CabinetSettings COIN1: coins (1-9); BackupRamDefaults 1
+D0003B,Coin1Credits,C,CabinetSettings COIN1: credits (1-9); default 1
+D0003C,Coin2Coins,C,CabinetSettings COIN2: coins (1-9); default 1
+D0003D,Coin2Credits,C,CabinetSettings COIN2: credits (1-9); default 2
+D00042,GameSelectFree,C,"CabinetSettings GAME SELECT: 0 ONLY WHEN CREDITED, 1 FREE; DemoEndCheck lets SELECT end the demo without credits when set"
+D00043,NoStartCompulsion,C,"1 when GAME START COMPULSION is 00 (WITHOUT); set by CabinetSettings, read by SystemMode2 and DemoEndCheck"
+D00044,StartCompulsionTime,C,"CabinetSettings GAME START COMPULSION: seconds, BCD 00-59; default $30"
+D00046,DemoSoundOff,C,"CabinetSettings DEMO SOUND: 0 SET UP IN EACH GAME, 1 WITHOUT"
+D00104,LastBootDate,C,"BIOS_YEAR.. of the last power-on: when the date differs, the power-on code stores the new date and advances BookDayIndex"
+D00122,BookDayIndex,C,index (0-35) of today's record in the 36-day book keeping rings; ClearBackupRam sets $23
+D001AC,CodeNumber,C,"code number (4 digits, one per byte, $0F0F0F0F mask) set by TestCodeNumber; must equal +$70 of a 1M card for Card1MSaveCabinet; default $F0F0F0F0"
+D001B0,CabinetNumber,C,"cabinet number of this board on the 1M card, $FFFF = none yet (Card1MSaveCabinet takes the next one); default $FFFF"
+D00220,GameSoftDips,C,"16 bytes of soft DIP values per game (index from the slot table), copied to BIOS_GAME_DIP; written by SoftDipSave"
+D002A0,GameNames,C,"16-byte name per game (index from the slot table), shown in the TestSoftDip and TestBookKeeping lists"
+D08320,BookGameDays,C,"per game ($240 bytes each): 36 daily book keeping records of 16 bytes (plays, continues, play time)"
+D09520,BookGameMonths,C,per game ($C0 bytes each): 12 monthly book keeping records of 16 bytes
+D09BA0,BookCoinDays,C,"CABINET/COIN: 36 daily records of 16 bytes (COIN1, COIN2, SERVICE)"
+D09DE0,BookPlayDays,C,CABINET/PLAY: 36 daily records of 16 bytes
+D0A020,BookCoinMonths,C,CABINET/COIN: 12 monthly records of 16 bytes
+D0A0E0,BookPlayMonths,C,CABINET/PLAY: 12 monthly records of 16 bytes

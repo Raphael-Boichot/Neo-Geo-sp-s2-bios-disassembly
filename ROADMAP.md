@@ -2,7 +2,7 @@
 
 Where the SP-S2 disassembly stands and what comes next, in order. The priority is the disassembly itself:
 full coverage, names and a written reference. Levels L0-L6 are defined in
-`SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-13).
+`SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-14).
 
 ## Where we are
 
@@ -10,41 +10,43 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
-| L2 traced and run | 9,109 instructions traced; 4,545 ran in MAME (49.9 %) over 27 scenarios; nothing ran outside the trace |
-| L3 names | 173 names (C 122, I 21, W 30); 1,408 automatic labels left: 153 `sub_`, 156 `dat_`, 38 `tbl_`, 1,061 `loc_` |
-| L4 RAM and registers | 217 RAM addresses used, 57 named; 30 backup RAM accesses through a4 left raw |
+| L2 traced and run | 9,109 instructions traced; 6,205 ran in MAME (68.1 %) over 45 scenarios; nothing ran outside the trace |
+| L3 names | 282 names (C 231, I 21, W 30); 1,300 automatic labels left: 110 `sub_`, 98 `dat_`, 30 `tbl_`, 1,062 `loc_` |
+| L4 RAM and registers | 219 RAM addresses used, 77 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
-| L6 understanding | started: screens and BIOS calls seen in MAME; no written reference yet |
+| L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
 
 Coverage and automatic routines by module:
 
 | Module | Ran in MAME | `sub_` left |
 |---|---|---|
-| `test_mode.s` | 23 % (535 / 2,294) | 42 |
-| `card.s` (with the card utility) | 31 % (950 / 3,025) | 51 |
+| `test_mode.s` | 90 % (2,061 / 2,294; 219 of the rest is the unreachable `CabinetSettingsOld`) | 0 |
+| `card.s` (with the card utility) | 31 % (952 / 3,025) | 51 |
 | `boot_error.s` | 0 % (0 / 88) | 0 |
 | `system.s` | 61 % | 0 |
-| `calendar.s` | 95 % | 0 |
-| `video_io.s` | 70 % | 14 |
-| `power_on.s` | 81 % | 30 |
+| `calendar.s` | 98 % | 0 |
+| `video_io.s` | 73 % | 14 |
+| `power_on.s` | 91 % | 29 |
 | `eyecatcher.s` | 84 % | 3 |
-| `boot.s` | 85 % | 0 |
+| `boot.s` | 95 % | 0 |
 | `hardware_test.s` | 90 % | 13 |
 | `how_to_play.s` | 90 % | 0 |
 
-## 1. Test mode coverage (L2)
+## 1. Test mode coverage (L2): done
 
-The largest block that never ran: about 1,760 instructions in `test_mode.s`. Most of it is the
-editing side of the menus.
+`tools/test_mode_scenarios.py` drives every screen (18 scenarios, 7 games and no cartridge).
 
-- [ ] Hard DIP and soft DIP: move the cursor, change every value type, save and leave
-- [ ] Cabinet settings: coins per credit for each slot, game select, demo sound, etc.
-- [ ] Book keeping: page through, clear
-- [ ] Calendar: move the cursor over every field, set, cancel
-- [ ] Code number entry and the EXIT item (with hard DIP 1 still on and off)
-- [ ] One scenario per item with `tools/mame_coverage.sh` (`MODE=dip KEYS=...`), screenshots in `docs/`
+- [x] Hard DIP (switches changed while shown) and soft DIP: every row type (times, counts, lists),
+      both pages, wraps, save; Sengoku 2, Riding Hero, Top Player's Golf, Alpha Mission II
+- [x] Cabinet settings: both coin rates, game select, start compulsion, demo sound
+- [x] Book keeping: CABINET/COIN, CABINET/PLAY, a game, every page, with played data
+- [x] Calendar: every field both ways, set
+- [x] Code number: every digit, no card, blank card, game card, 1M card (emulated)
+- [x] EXIT with the Setting Mode DIP on, then off
+- [x] The 1M card cabinet backup: format, save from two boards, recover (`card1m_*`)
+- [ ] Book keeping with data on more than one day and month (needs the calendar moved between plays)
 
-Done when: every reachable test-mode path has run, and the rest is explained.
+Not reachable: `CabinetSettingsOld` (`$C19CF6-$C1A105`), an older cabinet page after a `jmp`.
 
 ## 2. Error and rare paths (L2)
 
@@ -60,18 +62,20 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
 - [x] The `NoGoIdText` case of `CheckCartridgeId`: sets `SlotNumberMode` (`$D00060`): SLOT n before the game,
       no jump to the saved slot, duplicates kept, SELECT ends the demo without credits; run in MAME
       (`tools/neo_cln_test.py --nogo`, scenario `nogo_cartridge`)
-- [ ] Read `BackupRamTest` (`$C125C8`) and confirm that clearing `BackupRamSignature` re-initialises the backup RAM
+- [x] `BackupRamTest` (`$C125C8`): a cleared `BackupRamSignature` makes the next boot run `ClearBackupRam`
+      (all backup RAM zeroed, defaults written); seen in MAME with five boots sharing one nvram
 - [ ] Card error cases: no card, write-protected card, full card, wrong format (CARD_ERROR)
 - [ ] Card utility COPY (`CardUtilCopy`) and the controller test, as coverage scenarios of the test build
 - [ ] CREDIT_DOWN in Top Player's Golf and Baseball Stars Professional
 
 ## 3. Names (L3)
 
-- [ ] Every `sub_` named (153 left), test mode and card first, then power_on and video_io
+- [ ] Every `sub_` named (110 left), card next, then power_on and video_io
   - [x] `system.s`: CreditCheckPlayer, CallDeductStartCredits, DemoEndCheck
   - [x] `boot.s`: CardStillInserted, GetSoftDipPointer (with SystemType, SystemRegion and the two texts)
   - [x] `calendar.s`: RtcReadBits, RtcReadBitsAlt, CheckCartridgeId (and the three ID texts)
-- [ ] Every `dat_` and `tbl_` named (194 left): text tables, menu tables, palettes, sprite data
+  - [x] `test_mode.s`: all 92 routines, tables and texts, `CodeNumberDraw` renamed (it was `TestCodeNumberCard`)
+- [ ] Every `dat_` and `tbl_` named (128 left): text tables, menu tables, palettes, sprite data
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
 - [ ] Review the 28 I names: confirm with a coverage run or a code read, or keep them as I with a reason
 - [ ] Doubts list: one line per `?` name, kept in `symbols/`
@@ -80,8 +84,9 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 
-- [ ] Name every work RAM variable used (160 automatic), checking all readers and writers first
-- [ ] Backup RAM map at `$D00000`: book keeping, soft DIPs per slot, calendar, slot data, card area
+- [ ] Name every work RAM variable used (142 automatic), checking all readers and writers first
+- [ ] Backup RAM map at `$D00000`: board settings, soft DIPs per game, game names, book keeping rings and
+      code/cabinet numbers are named; still to map: `$D0011A`, `$D09B20`, the slot data, the card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one
 - [x] The 4 `move.l #$100000`: `$100000` is named `WorkRamStart` (work RAM start, RAM tests, the card
       utility's card buffer); `tools/stats.py` reports 0 raw RAM operands

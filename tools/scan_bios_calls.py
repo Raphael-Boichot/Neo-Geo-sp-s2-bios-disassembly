@@ -5,7 +5,8 @@ Usage: scan_bios_calls.py <game.zip or P ROM file> ...
 
 Looks for the 32-bit address of every BIOS call slot ($C00402-$C004DA) in the
 first program ROM (MAME order, byte-swapped back) and prints the count and the
-first offsets, plus the game's level 2 (HBL) interrupt vector. A reference is
+first offsets, plus the game's NGH number and level 2 (HBL) interrupt vector (header at $100 of the
+program, or at $100000 in the file for a 2 MB P1 that MAME loads second half first). A reference is
 usually `jsr`/`jmp` to the slot; 0 references means the game never calls it.
 """
 import io
@@ -31,8 +32,12 @@ def main():
     for path in sys.argv[1:]:
         name, data = prom(path)
         rom = bytes(data[i ^ 1] for i in range(len(data)))
-        hbl = struct.unpack('>I', rom[0x68:0x6C])[0]
-        print(f'{os.path.basename(path)} ({name}): level 2 (HBL) vector ${hbl:08X}')
+        # a 2 MB P1 (KOF '94) is loaded by MAME second half first: its header is at $100000 in the file
+        hdr = 0 if rom[0x100:0x107] == b'NEO-GEO' else 0x100000
+        assert rom[hdr + 0x100:hdr + 0x107] == b'NEO-GEO', 'no NEO-GEO header'
+        hbl = struct.unpack('>I', rom[hdr + 0x68:hdr + 0x6C])[0]
+        ngh = rom[hdr + 0x108] << 8 | rom[hdr + 0x109]
+        print(f'{os.path.basename(path)} ({name}): NGH {ngh:03X}, level 2 (HBL) vector ${hbl:08X}')
         for a, n in slots:
             b, offs, i = a.to_bytes(4, 'big'), [], -1
             while True:

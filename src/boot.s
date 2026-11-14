@@ -190,7 +190,7 @@ loc_C11260:
 	move.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C11266
 	move.b	#0x2,d1	| C1126C
 	move.b	d1,d0	| C11270
-	tst.b	(bram_D00043).l	| C11272
+	tst.b	(NoStartCompulsion).l	| C11272
 	bne.b	CallUser	| C11278
 	tst.w	(Credits).l	| C1127A
 	beq.b	CallUser	| C11280
@@ -320,11 +320,11 @@ loc_C11452:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11460
 	jsr	(sub_C12322,pc)	| C11466
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1146A
-	tst.b	(bram_D00043).l	| C1146E
+	tst.b	(NoStartCompulsion).l	| C1146E
 	bne.b	loc_C11486	| C11474
 	tst.w	(Credits).l	| C11476
 	beq.b	loc_C11486	| C1147C
-	move.w	(bram_D00044).l,(BIOS_SELECT_TIMER-A5_BASE,a5)	| C1147E
+	move.w	(StartCompulsionTime).l,(BIOS_SELECT_TIMER-A5_BASE,a5)	| C1147E
 loc_C11486:
 	move.b	(REG_STATUS_B).l,d0	| C11486
 	andi.b	#0x30,d0	| C1148C

@@ -3,8 +3,8 @@
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it.
 
-**Status: L0, L1 and L5 done, L4 nearly (30 backup RAM accesses left), L2 measured (49.9 % of the code
-ran in MAME), naming in progress (173 names)** (2026-11-13): `src/sp-s2.s` assembles to the original
+**Status: L0, L1 and L5 done, L4 nearly (30 backup RAM accesses left), L2 measured (68.1 % of the code
+ran in MAME), naming in progress (282 names)** (2026-11-14): `src/sp-s2.s` assembles to the original
 ROM (SHA-1 below); the BIOS has been run in MAME (screens below, levels in the table).
 
 ## ROM map
@@ -54,36 +54,65 @@ new routine prints a line under the test menu; the boot sequence and the hardwar
 
 ![Relocated build in MAME](docs/relocation_test.png)
 
+## Games used
+
+Game sets (MAME names) used for the MAME runs and the BIOS call scan, by NGH number
+(`CART_NGH`, the BCD word at `$108` of the cartridge program header):
+
+| NGH | Game | MAME set | Used for |
+|---|---|---|---|
+| 001 | NAM-1975 | `nam1975` | HOW_TO_PLAY (also with the timer IRQ forced on), SYSTEM_INT2 check |
+| 002 | Baseball Stars Professional | `bstars` | BIOS call scan, HOW_TO_PLAY and timer IRQ check |
+| 003 | Top Player's Golf | `tpgolf` | BIOS call scan, timer IRQ check, soft DIP time field (test mode) |
+| 004 | Mahjong Kyoretsuden | `mahretsu` | BIOS call scan, HOW_TO_PLAY and timer IRQ check |
+| 005 | Magician Lord | `maglord` | game start, CREDIT_DOWN wrapper, timer IRQ check |
+| 006 | Riding Hero | `ridhero` | BIOS call scan, timer IRQ check, soft DIP time fields (test mode) |
+| 007 | Alpha Mission II | `alpham2` | BIOS call scan, timer IRQ check, soft DIP count fields (test mode) |
+| 010 | Cyber-Lip | `cyberlip` | BIOS call scan, timer IRQ check |
+| 024 | Last Resort | `lresort` | BIOS call scan, timer IRQ check |
+| 025 | Eight Man | `eightman` | BIOS call scan, timer IRQ check |
+| 032 | Robo Army | `roboarmy` | BIOS call scan, timer IRQ check |
+| 033 | Fatal Fury | `fatfury1` | BIOS call scan, timer IRQ check |
+| 037 | Crossed Swords | `crsword` | BIOS call scan, timer IRQ check |
+| 039 | King of the Monsters 2 | `kotm2` | P2 join, continue, CREDIT_DOWN, timer IRQ check |
+| 040 | Sengoku 2 | `sengoku2` | boot, every test-mode screen, 1M card format and save, hardware test, card save/load/delete (bot), NEO-CLN and N0O0G0O0 IDs, timer IRQ check |
+| 051 | Viewpoint | `viewpoin` | BIOS call scan, timer IRQ check |
+| 055 | The King of Fighters '94 | `kof94` | BIOS call scan, timer IRQ check |
+| 093 | Neo Bomberman | `neobombe` | BIOS call scan, timer IRQ check |
+| - | (no cartridge) | `neogeo` | 1M card recovery (Service held at power-on), hardware test crosshatch |
+
 ## BIOS calls used by games
 
 `tools/scan_bios_calls.py` counts references to each BIOS call slot in a game's program ROM
-(MAME order, first program ROM only: code in a second bank such as `p2` is not scanned). Checked so far:
+(MAME order, first program ROM only: code in a second bank such as `p2` is not scanned). Checked so far,
+by NGH number (the game's number in its cartridge header, `CART_NGH` at `$108`):
 
-| Game | SYSTEM_RETURN | SYSTEM_IO | CREDIT_CHECK | CREDIT_DOWN | READ_CALENDAR | CARD | CARD_ERROR | HOW_TO_PLAY | FIX_CLEAR | LSP_1ST | MESS_OUT |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| Sengoku 2 | 5 | 1 | 1 | 0 | 0 | 7 | 1 | 0 | 0 | 0 | 0 |
-| NAM-1975 | 7 | 1 | 6 | 0 | 0 | 3 | 2 | 1 (ran in MAME) | 2 | 2 | 0 |
-| Cyber-Lip | 4 | 1 | 1 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 |
-| Magician Lord | 5 | 3 | 1 | 1 (unused wrapper) | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
-| The King of Fighters '94 | 7 | 1 | 2 | 0 | 0 | 1 | 1 | 0 | 0 | 33 | 0 |
-| Neo Bomberman | 16 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| King of the Monsters 2 | 2 | 1 | 7 | 1 (ran in MAME) | 0 | 6 | 1 | 0 | 0 | 14 | 0 |
-| Viewpoint | 4 | 2 | 2 | 0 | 0 | 1 | 1 | 0 | 1 | 0 | 2 |
-| Alpha Mission II | 4 | 1 | 4 | 0 | 0 | 4 | 2 | 0 | 0 | 6 | 0 |
-| Robo Army | 6 | 1 | 2 | 0 | 0 | 3 | 2 | 0 | 0 | 0 | 0 |
-| Last Resort | 3 | 1 | 7 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 |
-| Crossed Swords | 6 | 3 | 2 | 0 | 0 | 2 | 2 | 0 | 3 | 1 | 0 |
-| Fatal Fury | 3 | 1 | 2 | 0 | 1 | 5 | 4 | 0 | 0 | 0 | 0 |
-| Eight Man | 4 | 1 | 3 | 0 | 0 | 3 | 1 | 0 | 0 | 1 | 0 |
-| Riding Hero | 9 | 1 | 2 | 0 | 0 | 7 | 3 | 0 | 0 | 0 | 0 |
-| Mahjong Kyoretsuden | 4 | 1 | 2 | 0 | 0 | 3 | 2 | 1 (ran in MAME) | 0 | 0 | 0 |
-| Top Player's Golf | 6 | 1 | 2 | 1 | 0 | 10 | 4 | 0 | 0 | 0 | 0 |
-| Baseball Stars Professional | 6 | 1 | 3 | 1 | 0 | 7 | 1 | 1 (ran in MAME) | 0 | 0 | 0 |
+| NGH | Game | SYSTEM_RETURN | SYSTEM_IO | CREDIT_CHECK | CREDIT_DOWN | READ_CALENDAR | CARD | CARD_ERROR | HOW_TO_PLAY | FIX_CLEAR | LSP_1ST | MESS_OUT |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 001 | NAM-1975 | 7 | 1 | 6 | 0 | 0 | 3 | 2 | 1 (ran in MAME) | 2 | 2 | 0 |
+| 002 | Baseball Stars Professional | 6 | 1 | 3 | 1 | 0 | 7 | 1 | 1 (ran in MAME) | 0 | 0 | 0 |
+| 003 | Top Player's Golf | 6 | 1 | 2 | 1 | 0 | 10 | 4 | 0 | 0 | 0 | 0 |
+| 004 | Mahjong Kyoretsuden | 4 | 1 | 2 | 0 | 0 | 3 | 2 | 1 (ran in MAME) | 0 | 0 | 0 |
+| 005 | Magician Lord | 5 | 3 | 1 | 1 (unused wrapper) | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
+| 006 | Riding Hero | 9 | 1 | 2 | 0 | 0 | 7 | 3 | 0 | 0 | 0 | 0 |
+| 007 | Alpha Mission II | 4 | 1 | 4 | 0 | 0 | 4 | 2 | 0 | 0 | 6 | 0 |
+| 010 | Cyber-Lip | 4 | 1 | 1 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 |
+| 024 | Last Resort | 3 | 1 | 7 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 |
+| 025 | Eight Man | 4 | 1 | 3 | 0 | 0 | 3 | 1 | 0 | 0 | 1 | 0 |
+| 032 | Robo Army | 6 | 1 | 2 | 0 | 0 | 3 | 2 | 0 | 0 | 0 | 0 |
+| 033 | Fatal Fury | 3 | 1 | 2 | 0 | 1 | 5 | 4 | 0 | 0 | 0 | 0 |
+| 037 | Crossed Swords | 6 | 3 | 2 | 0 | 0 | 2 | 2 | 0 | 3 | 1 | 0 |
+| 039 | King of the Monsters 2 | 2 | 1 | 7 | 1 (ran in MAME) | 0 | 6 | 1 | 0 | 0 | 14 | 0 |
+| 040 | Sengoku 2 | 5 | 1 | 1 | 0 | 0 | 7 | 1 | 0 | 0 | 0 | 0 |
+| 051 | Viewpoint | 4 | 2 | 2 | 0 | 0 | 1 | 1 | 0 | 1 | 0 | 2 |
+| 055 | The King of Fighters '94 | 7 | 1 | 2 | 0 | 0 | 1 | 1 | 0 | 0 | 33 | 0 |
+| 093 | Neo Bomberman | 16 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 
 Every game also holds `ENTRY_RESET` and `SYSTEM_INT1` once (its own vector table); none references
 SYSTEM_INT2, SETUP_CALENDAR, CHECKSUM_LOOP or CONTROLLER_SETUP.
 
-None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2 (KOF '94 leaves it at 0).
+None of them points its level 2 (HBL) interrupt vector at SYSTEM_INT2. (An earlier version of this
+page said KOF '94 leaves it at 0: the scan read the wrong half of its 2 MB program ROM; it is `$32C3A`.)
 Top Player's Golf and Baseball Stars Professional reference CREDIT_DOWN (not run yet). Two other
 games call it in their code: Magician Lord only from an unused wrapper, and King of the
 Monsters 2 when one player selects PLAYER1 PLAYER2 vs COMPUTER: the game takes the second player's
@@ -127,6 +156,57 @@ A real case needs a game that calls HOW_TO_PLAY with a timer effect on at that m
 known. Later games stopped calling HOW_TO_PLAY and handle their raster interrupts with their own
 vectors, so SystemInt2 is most likely an unused safety net (I).
 
+### Test mode settings
+
+Every test-mode screen has been driven in MAME with `tools/test_mode_scenarios.py` (key sequences,
+DIP switch changes and memory cards, one coverage scenario each). Keys: Up/Down move, A and B change
+a value (held: repeat), Left/Right pick a column or digit, C goes back, D sets (C: MAME).
+
+- **SETTING UP THE HARD DIP** only shows the switches and redraws when one changes (`HardDipDraw`).
+- **SETTING UP THE SOFT DIP** opens a list: its first line, SETTING UP THE CABINET (`CabinetSettings`),
+  holds the board settings (COIN1 and COIN2 coins = credits, GAME SELECT, GAME START COMPULSION,
+  DEMO SOUND, in `Coin1Coins`.. `DemoSoundOff`); each slot line opens that game's soft DIP
+  (`SoftDipEditor`: times, counts and lists from the game's header block, 8 rows per page, saved to
+  `GameSoftDips` on C). Run with Sengoku 2 (counts, lists, two pages), Riding Hero and Top Player's
+  Golf (times), Alpha Mission II (counts and lists).
+- **BOOK KEEPING**: CABINET/COIN, CABINET/PLAY and one line per game; each page shows the last 7 days
+  (36-day rings in backup RAM) and, with A, January-June and July-December with the TOTAL.
+  Run with a backup RAM after three played credits (AV.TIME uses `DivU32`).
+- **SETTING UP THE CODE NUMBER** stores a 4-digit code (`CodeNumber`); D with a memory card inserted
+  writes it to a 1M card (below); a 2 KB card is refused (THIS CARD IS INVALID.).
+- **EXIT** resets the board, after DIP-SW 1 OFF !! when the Setting Mode switch is still on.
+- Right after the `jmp` to `CabinetSettings`, `$C19CF6-$C1A105` is an older 4-row version of the
+  cabinet page (COIN RATE, GAME SELECT ONLY WHEN CREDITED / ANYTIME, ...) that nothing reaches
+  (`CabinetSettingsOld`, C: no reference, never ran).
+
+![Test mode settings screens](docs/test_mode_settings.png)
+
+### 1M memory card: cabinet backup and recovery
+
+The system ROM can keep a copy of each board's settings and book keeping on a 1 Mbit (64K x 16-bit)
+RAM memory card, and put it back on a board whose backup RAM was lost (C: code read, then run in MAME
+with an emulated card):
+
+1. **Format**: in SETTING UP THE CODE NUMBER, D with the card inserted (`CodeNumberWrite`) tests the
+   card's 64K words, writes `NEO-GEO` (one letter per word at +$40), the region, type `$20` (+$10),
+   the code (+$70) and a cabinet count of 0 (+$74). A card already of type `$2x` only gets the code.
+2. **Save**: during the title or demo, SELECT P1 with that card in a board whose `CodeNumber`
+   matches (`Card1MSaveCabinet`, `$C12A18`): the board takes the next cabinet number
+   (`CabinetNumber`, up to 10), and its date, `$D0011A` (`$25` words), `$D00200` (soft DIPs and game
+   names) and `$D08320` (book keeping) go to +$100 + n x $2800 of the card. DATA HAS BEEN STORED AT A
+   MEMORY CARD., then the game restarts.
+3. **Recover**: power on with no cartridge, Service held and the card in (`$C11D66`):
+   `Card1MRecover` shows CABINET No n and its saved slot list; Up/Down choose the cabinet; A+B+C+D
+   held copy it back to backup RAM (`Card1MRestore`), RECOVER OK, then the board waits to be switched off.
+
+MAME has only the 2 KB 8-bit card, which fails the 16-bit RAM test. `tools/mame_inputs.lua` emulates
+a 1M card with memory taps (`CARD1M=<file>`, the 2 KB card stays inserted for the card-present bits)
+and the MVS SELECT buttons, which MAME does not map (`P1 Select` in `KEYS`, a read tap on
+`REG_STATUS_B`). With those, the system ROM code runs unchanged through the whole cycle (scenarios
+`card1m_format`, `card1m_save_a`, `card1m_code_b`, `card1m_save_b`, `card1m_recover`).
+
+![1M card: format, save, recover](docs/card1m_backup.png)
+
 ### NEO-CLN cartridges (cartridge calendar)
 
 The slot scan (`CheckCartridgeId`, `$C12FFA`) accepts a game when its header ID reads `NEO-GEO`
@@ -148,7 +228,8 @@ byte lane would read: I), is accepted as a game and sets `SlotNumberMode` (`$D00
 The BIOS then skips the boot animation and shows `SLOT n` for 300 frames before the game (SELECT P1
 skips it), does not jump to the slot saved for the setting mode, keeps duplicate games in the slot
 list, and lets SELECT end the demo without credits (C). Both special IDs also clear the start of
-`BackupRamSignature` (`$D00010`, "BACKUP RAM OK !"). MAME: `tools/neo_cln_test.py --nogo`,
+`BackupRamSignature` (`$D00010`, "BACKUP RAM OK !"), so the next boot clears the whole backup RAM
+(book keeping and settings) and writes the defaults again (C: MAME, five boots sharing one nvram). MAME: `tools/neo_cln_test.py --nogo`,
 scenario `nogo_cartridge`:
 
 ![N 0 O 0 G 0 O 0 header: SLOT 1 before the game](docs/nogo_cartridge.png)
@@ -170,6 +251,8 @@ scenario `nogo_cartridge`:
 | [`tools/stats.py`](tools/stats.py) | Counts behind the level table |
 | [`tools/hints.txt`](tools/hints.txt) | Manual tracer hints (the card utility pointer tables) |
 | [`tools/mame_run.lua`](tools/mame_run.lua) | MAME autoboot script: headless screenshots, test mode, joystick taps |
+| [`tools/mame_inputs.lua`](tools/mame_inputs.lua) | Inputs shared by the MAME scripts: key taps and holds, DIP switch changes, memory card insertion, the MVS SELECT buttons and an emulated 1M RAM card |
+| [`tools/test_mode_scenarios.py`](tools/test_mode_scenarios.py) | Key sequences for every test-mode screen and the 1M card chain, run as coverage scenarios |
 | [`docs/`](docs/) | ROM byte maps and screenshots of the BIOS running in MAME |
 | [`symbols/`](symbols/) | Names (`rom_names`, `ram`, `registers`, `cart_header`), named regions and module boundaries (`modules.csv`), tagged W / C / I / ? |
 | [`coverage/`](coverage/) | Executed system ROM addresses of each MAME scenario (`tools/mame_coverage.sh`) |
@@ -200,11 +283,11 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 |---|---|
 | L0 source rebuilds the ROM | done: SHA-1 `4f5ed710...` and boot checksum `$4D`; 9,109 instructions, 2 kept as raw words because GNU as would encode them as `moveq` |
 | L1 every byte typed | done by the tracer: code 32,338 B, data 22,011 B (text as `.ascii`, ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000`/`$C03000`, sine table at `$C04000`, tag I); the unreferenced controller test and memory card utility traced from their pointer tables (`tools/hints.txt`) |
-| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) the only one left (`tools/stats.py`); the card utility dispatch at `$C150A6` is found by the tracer. MAME, 27 scenarios with 4 games (Sengoku 2: boot, coins and START, hardware test, test-mode items, calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete, and with its header ID patched to NEO-CLN or to N 0 O 0 G 0 O 0; NAM-1975: HOW_TO_PLAY, and HOW_TO_PLAY with the timer interrupt forced on; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start): 4,545 of 9,109 instructions ran (49.9 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. SYSTEM_INT2 ran only when forced (see above). CREDIT_DOWN ran with King of the Monsters 2. Never run: the checksum slot, the boot error screens and the work RAM test loop (all hard DIPs on) |
-| L3 names | 173 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots (wiki names, W) and their targets, and the 8 CARD functions; all ran in MAME except the checksum slot (SYSTEM_INT2 only when forced); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and the NEO-CLN cartridge calendar), test mode, hardware test, the unreferenced controller test and memory card utility, the most-called helpers (C from code reading, MAME screens and coverage); some I. 1,408 automatic labels left |
-| L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (30 accesses left raw where a4 cannot be proven). 217 RAM addresses used: 57 named (W/C/I), 160 automatic; `$100000` is `WorkRamStart` (also the card utility's card buffer); 18 cartridge header fields named |
+| L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) the only one left (`tools/stats.py`); the card utility dispatch at `$C150A6` is found by the tracer. MAME, 45 scenarios with 7 games and with no cartridge (Sengoku 2: boot, coins and START, hardware test, every test-mode screen with every key (`tools/test_mode_scenarios.py`), calendar set, memory card blank/formatted, card utility in a test build, played by a bot to level 2 then save, load and delete, and with its header ID patched to NEO-CLN or to N 0 O 0 G 0 O 0; NAM-1975: HOW_TO_PLAY, and HOW_TO_PLAY with the timer interrupt forced on; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start; Riding Hero, Top Player's Golf, Alpha Mission II: soft DIP editor; Sengoku 2 and no cartridge: the 1M card cabinet backup with an emulated card): 6,205 of 9,109 instructions ran (68.1 %); nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran. SYSTEM_INT2 ran only when forced (see above). CREDIT_DOWN ran with King of the Monsters 2. Never run: the checksum slot, the boot error screens, the work RAM test loop (all hard DIPs on) and the older cabinet page `CabinetSettingsOld` (219 instructions nothing reaches) |
+| L3 names | 282 routines, tables and data blocks named in `symbols/rom_names.csv`: the 17 BIOS call slots (wiki names, W) and their targets, and the 8 CARD functions; all ran in MAME except the checksum slot (SYSTEM_INT2 only when forced); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and the NEO-CLN cartridge calendar), test mode (every routine, table and text of `test_mode.s`), the 1M card cabinet backup, hardware test, the unreferenced controller test and memory card utility, the most-called helpers (C from code reading, MAME screens and coverage); some I. 1,300 automatic labels left |
+| L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (30 accesses left raw where a4 cannot be proven). 219 RAM addresses used: 77 named (W/C/I), 142 automatic (board settings, code number, cabinet number, book keeping areas named from the test mode); `$100000` is `WorkRamStart` (also the card utility's card buffer); 18 cartridge header fields named |
 | L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |
-| L6 understanding | started: boot sequence, every test-mode and hardware-test screen, the hidden programs, card save/load/delete, HOW_TO_PLAY, CREDIT_DOWN and SYSTEM_INT2 run in MAME and linked to their routines (README sections above); screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); no written reference per subsystem yet |
+| L6 understanding | started: boot sequence, every test-mode and hardware-test screen (with their settings), the 1M card cabinet backup, the hidden programs, card save/load/delete, HOW_TO_PLAY, CREDIT_DOWN and SYSTEM_INT2 run in MAME and linked to their routines (README sections above); screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); no written reference per subsystem yet |
 
 ## Sources
 

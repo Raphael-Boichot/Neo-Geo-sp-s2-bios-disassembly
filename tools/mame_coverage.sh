@@ -2,6 +2,7 @@
 # Traced MAME run of SP-S2: writes the unique executed addresses to coverage/NAME.txt
 # usage: tools/mame_coverage.sh NAME GAME [VAR=value ...]   (variables as in tools/mame_trace.lua)
 # MAME binary: MAME (default mame). ROMs: MAME_ROMS (default mame/roms) must hold neogeo.zip and the game set.
+# NVRAM_DIR: keep the backup RAM between runs (default: a fresh one per run).
 set -e
 R=$(cd "$(dirname "$0")/.." && pwd)
 name=$1; game=$2; shift 2
@@ -19,7 +20,7 @@ open(sys.argv[2], "w").write("".join(a + "\n" for a in sorted(seen) if a.startsw
 AGG=$!
 mkdir -p "$R/coverage"
 env TRACEFILE="$W/trace" "$@" ${MAME:-mame} "$game" -bios euro -rompath "$ROMS" \
-  -cfg_directory "$W/cfg" -nvram_directory "$W/nvram" -video none -sound none -nothrottle \
+  -cfg_directory "$W/cfg" -nvram_directory "${NVRAM_DIR:-$W/nvram}" -video none -sound none -nothrottle \
   -debug -debugger none -autoboot_script "$R/tools/mame_trace.lua" -skip_gameinfo >/dev/null 2>&1 || true
 ( exec 3>"$W/trace" ) 2>/dev/null &     # unblock the reader if MAME never opened the pipe
 wait $AGG

@@ -142,7 +142,7 @@ loc_C18012:
 	bne.b	loc_C18036	| C1801E
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C18020
 	beq.b	loc_C1802E	| C18024
-	tst.b	(bram_D00046).l	| C18026
+	tst.b	(DemoSoundOff).l	| C18026
 	bne.b	loc_C18036	| C1802C
 loc_C1802E:
 	move.b	#0x2,(REG_SOUND).l	| C1802E

@@ -35,7 +35,7 @@ C196FA,TestHardDip,C,menu item: SETTING UP THE HARD DIP screen; ran only in that
 C19B76,TestSoftDip,C,menu item: SETTING UP THE CABINET (soft DIP) screen; ran only in that MAME scenario
 C1A74A,TestBookKeeping,C,"menu item: book keeping screen (CABINET/COIN, CABINET/PLAY); ran only in that MAME scenario"
 C192AC,TestCodeNumber,C,menu item: CODE NUMBER SETTING screen; ran only in that MAME scenario
-C19358,TestCodeNumberCard,I,writes the code number to the memory card (texts CODE NUMBER HAS BEEN SET. / THIS CARD IS INVALID.); not run with a card
+C19358,CodeNumberDraw,C,"draws the 4 code digits (ram_10FC00), the one under the cursor highlighted; was named TestCodeNumberCard until the card part was found at CodeNumberWrite"
 C1991A,TestCalendar,C,menu item: SETTING UP THE CALENDAR screen; ran only in that MAME scenario
 C17062,HardwareTest,C,"menu item 1: clears RAM and palettes, then calls HwTestStepTable[WorkIndex] once per frame; starts at the calendar screen (step $0C) when NeoClnSlot is set (MAME: neo_cln_cartridge)"
 C17160,HwTestStepTable,C,14 entries: for each of the 7 screens a draw routine and a per-frame routine
@@ -78,8 +78,8 @@ C11D8C,BootErrorCalendar,C,"d6 = 5 (CALENDAR ERROR) when VBlankCount between two
 C11D94,WaitRtcPulse,C,"waits for a rising edge of bit 6 of REG_STATUS_A (calendar pulse, wiki register page)"
 C12D6C,RtcCommand,I,"sends the 4-bit command in d0 to the calendar chip, bit by bit through sub_C12DB0"
 C13134,MemTestBlock,I,"memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks"
-C125C8,BackupRamTest,I,memory test of backup RAM at a0 (test number in d6)
-C125F4,ClearBackupRam,I,unlocks backup RAM and fills it with zeros from $D10000 down
+C125C8,BackupRamTest,C,"power-on test of backup RAM (test number in d6). Hard DIPs not all on: when BackupRamSignature equals BackupRamOkText, returns at once and the contents are kept; otherwise MemTestBlock on backup RAM, then ClearBackupRam. All hard DIPs on (REG_DIPSW = 0): MemTestBlock only, every time (WorkRamTestLoop). MAME: signature found on a second boot with the same nvram, ClearBackupRam on a first boot and on the boot after a NEO-CLN or NoGoIdText cartridge"
+C125F4,ClearBackupRam,C,"unlocks backup RAM, fills all 64 KB with zeros from $D10000 down, writes BackupRamSignature, copies BackupRamDefaults to $D0003A-$D00046, sets $D00122 = $23, SlotTable all $FFFF, $D001AC = $F0F0F0F0, $D001B0 = $FFFF, locks it. Book keeping and settings are lost"
 C130AA,VramTest,I,"VRAM test through REG_VRAMRW, d4 start address, d5 count"
 C184F0,Delay,I,nested BSR chain into sub_C18500: a fixed delay used between LED latch writes
 C16ADA,BootError,C,error screen: message BootErrorMessages[d6]; for d6 < 5 also prints the failing address and data
@@ -172,3 +172,112 @@ C1302C,NeoGeoIdText,C,"NEO-GEO, compared with CART_NEOGEO_ID by CheckCartridgeId
 C1309A,NeoClnIdText,C,"NEO-CLN, compared with CART_NEOGEO_ID by CheckCartridgeId: the cartridge calendar path"
 C130A2,NoGoIdText,C,"bytes N 0 O 0 G 0 O 0, compared with CART_NEOGEO_ID by CheckCartridgeId (the even letters of NEO-GEO with 0 between, as a cartridge with one byte lane would read: I). Sets SlotNumberMode. MAME: patched Sengoku 2 (scenario nogo_cartridge) skips the boot animation, shows SLOT 1 for 300 frames, then runs the game"
 C125B8,BackupRamOkText,C,BACKUP RAM OK ! (16 bytes) compared with BackupRamSignature by BackupRamTest
+C1F000,BackupRamDefaults,C,13 bytes copied to $D0003A-$D00046 by ClearBackupRam (settings defaults; fields not named yet)
+C19558,Card1MIdText,C,"NEO-GEO, written one letter per word at +$40 of a 1M memory card when CodeNumberWrite formats it"
+C19560,CodeNumberTextJp,C,"CODE NUMBER SETTING screen text, Japanese (SystemRegion = 0)"
+C195B2,CodeNumberSetTextJp,C,Japanese of CodeNumberSetText
+C195C4,CardInvalidTextJp,C,Japanese of CardInvalidText
+C195DA,CodeNumberText,C,CODE NUMBER SETTING / D BUTTON = SET / CODE NUMBER WILL BE SET INTO MEMORY CARD WHEN INSERTED DURING THIS MODE.
+C19668,CodeNumberSetText,C,"CODE NUMBER HAS BEEN SET. (MAME: test_code_number_digits, card1m_format)"
+C1968A,CardInvalidText,C,"THIS CARD IS INVALID. (MAME: test_code_number_blank_card, test_code_number_card)"
+C196E2,DipSw1OffText,C,DIP-SW 1 OFF !!: TestMenuExit while the Setting Mode DIP is still on (MAME: test_menu_exit)
+C19748,HardDipDraw,C,"draws the hard DIP rows from HardDipRows: one digit per bit of the mask (. elsewhere), then the matching value text"
+C197C8,HardDipRows,C,"per row: bit mask word, then (value, text pointer) pairs ended by a negative word; SETTING MODE, COMMUNICATION, FREE PLAY, STOP MODE"
+C1982E,HardDipOffText,C,OFF (one-bit rows)
+C19836,HardDipOnText,C,ON (one-bit rows)
+C1983E,HardDipCommOffText,C,OFF (COMMUNICATION row)
+C1984C,HardDipComm1Text,C,"ON [No 1] (COMMUNICATION row, cabinet number)"
+C1985A,HardDipComm2Text,C,ON [No 2]
+C19868,HardDipComm3Text,C,ON [No 3]
+C19876,HardDipComm4Text,C,ON [No 4]
+C19890,HardDipText,C,SETTING UP THE HARD DIP screen text
+C199FC,CalendarFieldIndex,I,TestCalendar: cursor column to calendar byte
+C19A44,CalendarFieldMax,I,TestCalendar: upper bound per calendar byte (BCD)
+C19A4C,CalendarFieldMin,I,TestCalendar: lower bound per calendar byte (BCD)
+C19A62,CalendarDrawNewTime,C,TestCalendar: draws THE TIME TO BE SET UP line with the cursor
+C19AC2,CalendarText,C,SETTING UP THE CALENDAR / CURRENT TIME / THE TIME TO BE SET UP
+C19C7E,SoftDipListCursor,C,"TestSoftDip list: erases the cursor at the old line, draws it at the new one"
+C19CAA,SoftDipListCursorRow,C,cursor character (d1) at list line ram_10FCDE
+C19CC6,SoftDipListText,C,SETTING UP THE CABINET (first line of the TestSoftDip list)
+C19CE6,SoftDipListSelect,C,"A on the TestSoftDip list: line 0 opens CabinetSettings, a slot line SoftDipEditor"
+C19CF6,CabinetSettingsOld,C,"unreferenced: an older 4-row cabinet page (COIN RATE, GAME SELECT ONLY WHEN CREDITED / ANYTIME, GAME START COMPULSION, DEMO SOUND) after the jmp to CabinetSettings; nothing jumps here and it never ran in MAME"
+C19D88,CabinetOldRowTable,C,CabinetSettingsOld: A/B handler per row
+C19DF2,CabinetOldDrawCoin,C,CabinetSettingsOld: draws the coin rate
+C19E2E,CabinetOldDrawCoinPart,C,CabinetSettingsOld: one number of the coin rate
+C19EBE,CabinetOldCreditedText,C,ONLY WHEN CREDITED (CabinetSettingsOld)
+C19EDA,CabinetOldAnytimeText,C,ANYTIME (CabinetSettingsOld)
+C19F92,CabinetOldWithoutText,C,"WITHOUT (CabinetSettingsOld, start compulsion)"
+C19FE6,CabinetOldNoDemoSoundText,C,"WITHOUT (CabinetSettingsOld, demo sound)"
+C1A002,CabinetOldEachGameText,C,SET UP IN EACH GAME (CabinetSettingsOld)
+C1A01E,CabinetOldDrawRow,C,CabinetSettingsOld: draws row ram_10FCE2 through CabinetOldDrawTable
+C1A02C,CabinetOldDrawTable,C,CabinetSettingsOld: draw routine per row
+C1A03C,CabinetOldCursor,C,CabinetSettingsOld: moves the cursor
+C1A068,CabinetOldCursorRow,C,CabinetSettingsOld: cursor character at a row
+C1A084,CabinetOldText,C,"CabinetSettingsOld screen text (SETTING UP THE CABINET, COIN RATE ...)"
+C1A106,SoftDipEditor,C,"soft DIP of the game in the selected slot: maps that slot, builds the row list from the game's soft DIP block (times, counts, lists: type and index per row in ram_10FC00), copies its 16 bytes from GameSoftDips to BIOS_GAME_DIP; 8 rows per page; Up/Down, A/B change (held: repeat), Left/Right minutes or seconds of a time; C saves (SoftDipSave). MAME: test_soft_dip_* (Sengoku 2, Riding Hero, Alpha Mission II, Top Player's Golf)"
+C1A4C2,SoftDipDrawValue,C,"SoftDipEditor: draws the value of row ram_10FCE2 (time mm:ss, count or INFINITE/WITHOUT, list choice)"
+C1A6AE,SoftDipPutBcd,C,"two BCD digits, highlighted when the row and column are under the cursor"
+C1A6D2,SoftDipCursor,C,"SoftDipEditor: erases the cursor at the old row, draws it at the new one"
+C1A6FE,SoftDipCursorRow,C,cursor character (d1) at row ram_10FCE2 of the page
+C1A71E,SoftDipSave,C,C in SoftDipEditor: copies BIOS_GAME_DIP back to the game's 16 bytes in GameSoftDips
+C1A852,BookKeepingCursor,C,"TestBookKeeping list: erases the cursor at the old line, draws it at the new one"
+C1A87E,BookKeepingCursorRow,C,cursor character (d1) at list line ram_10FCDE
+C1A896,BookKeepingListText,C,"CABINET/COIN, CABINET/PLAY (first lines of the TestBookKeeping list)"
+C1A8C0,BookKeepingSelect,C,"A on the TestBookKeeping list: CABINET/COIN, CABINET/PLAY or a game"
+C1A8D8,BookCabinetCoin,C,"CABINET/COIN page: COIN1, COIN2, SERVICE for the last 7 days; A pages to January-June, July-December + TOTAL"
+C1A96E,BookDrawCoinDays,C,CABINET/COIN: 7 daily rows
+C1A9BC,BookDrawCoinMonths,C,CABINET/COIN: 6 monthly rows
+C1AA00,BookCabinetPlay,C,"CABINET/PLAY page: PLAY, CONT., AV.TIME for the last 7 days, then the months"
+C1AA96,BookDrawPlayDays,C,CABINET/PLAY and game pages: 7 daily rows
+C1AAE4,BookDrawPlayMonthsTotal,C,"July-December rows, then the TOTAL row"
+C1AB22,BookDrawPlayMonths,C,"6 monthly rows of PLAY, CONT., AV.TIME"
+C1AB66,BookGame,C,book keeping page of one game (slot line of the list): same layout as CABINET/PLAY from BookGameDays / BookGameMonths
+C1AC68,BookPutDate,C,MMM/DD date label of a daily row
+C1ACA4,BookPutMonthLabel,C,month label of a monthly row
+C1ACB8,BookPutMonthName,C,4 characters of MonthNames
+C1ACC2,MonthNames,C,"JAN FEB ... DEC, 4 bytes each"
+C1ACF6,BookPutDay,C,"two BCD digits, the leading 0 as a space"
+C1AD0A,BookPutTotal,C,TOTAL row label
+C1AD2A,BookPutColumn2,C,"second column: long at +4 of the record, in decimal"
+C1AD36,BookPutColumn3,C,"third column: long at +8 of the record, in decimal"
+C1AD42,BookPutColumn4,C,"CABINET/COIN fourth column (SERVICE): long at +12, in decimal"
+C1ADC0,BookPutAvTime,C,AV.TIME column: play time / plays as m:ss (DivU32)
+C1AE50,BookCopyDays,C,copies the 7 daily records before day index d0 from a 36-entry ring (16 bytes each) to RAM
+C1AE78,BookCopyMonths,C,copies 12 monthly records (16 bytes each) to RAM
+C1AE9E,BookPutDigit,C,"one decimal digit, a leading zero as a space"
+C1AEAC,BookCoinText,C,CABINET/COIN page title and COIN1 COIN2 SERVICE columns
+C1AEE8,BookPlayText,C,CABINET/PLAY page title
+C1AEFC,BookPlayColumnsText,C,PLAY CONT. AV.TIME columns
+C1AF24,BookGridText,C,the book keeping table frame (line-drawing characters)
+C1B062,BookGridRow,C,table frame: inner row
+C1B083,BookGridBottom,C,table frame: bottom row
+C1B0A4,CabinetSettings,C,"SETTING UP THE CABINET page (first line of the TestSoftDip list): COIN1 and COIN2 coins = credits (1-9 each, Left/Right picks which), GAME SELECT (ONLY WHEN CREDITED / FREE), GAME START COMPULSION (00-59 s or WITHOUT), DEMO SOUND (SET UP IN EACH GAME / WITHOUT); Up/Down, A/B, C goes back. MAME: test_cabinet"
+C1B13A,CabinetRowTable,C,CabinetSettings: A/B handler per row
+C1B1AE,CabinetDrawCoin2,C,CabinetSettings: draws the COIN2 rate
+C1B1BA,CabinetDrawCoin1,C,CabinetSettings: draws the COIN1 rate
+C1B1F6,CabinetDrawCoinPart,C,one number of a coin rate (COIN or COINS)
+C1B286,CabinetCreditedText,C,ONLY WHEN CREDITED
+C1B2A2,CabinetFreeText,C,FREE
+C1B35A,CabinetNoCompulsionText,C,WITHOUT (game start compulsion 00)
+C1B3AE,CabinetNoDemoSoundText,C,WITHOUT (demo sound)
+C1B3CA,CabinetEachGameText,C,SET UP IN EACH GAME (demo sound)
+C1B3E6,CabinetDrawRow,C,CabinetSettings: draws row ram_10FCE2 through CabinetDrawTable
+C1B3F4,CabinetDrawTable,C,CabinetSettings: draw routine per row
+C1B408,CabinetCursor,C,"CabinetSettings: erases the cursor at the old row, draws it at the new one"
+C1B434,CabinetCursorRow,C,cursor character (d1) at row ram_10FCE2
+C1B450,CabinetText,C,SETTING UP THE CABINET page text (and the strings after it)
+C1B4F0,Card1MRecover,C,"power-on with no cartridge, Service held and a 1M card holding cabinets: CABINET No n and its saved slot list; Up/Down picks the cabinet, A+B+C+D held copies its backup RAM back from the card (calendar, settings, book keeping), RECOVER OK, then waits for power-off. MAME (emulated 1M card): card1m_recover"
+C1B670,Card1MRecoverDraw,C,Card1MRecover: CABINET No n and the slot list of that cabinet
+C1B6C4,Card1MIdTextRecover,C,"NEO-GEO, compared one letter per word at +$40 by IsCard1M"
+C1B6CC,InsertCard1MText,C,INSERT 1M MEMORY CARD
+C1B6EA,CabinetNoText,C,CABINET No
+C1B6FE,IsCard1M,C,"d5 = 1 when the card is a 1M card holding cabinets: NEO-GEO at +$40, type $2x at +$10, cabinet count at +$74 not 0"
+C1B742,Card1MDrawSlots,C,"SLOTn name lines of cabinet WorkIndex, read from the card"
+C1B7AA,Card1MRestore,C,"A+B+C+D in Card1MRecover: copies the cabinet's data from the card to backup RAM (CodeNumber, CabinetNumber, BookLastDate.., $D0011A, $D00200, $D08320 blocks), marks the slots, RECOVER OK"
+C1B850,Card1MCopyWords,C,"copies d7 words from (a0) to (a1), kicking the watchdog"
+C1B85A,RecoverOkText,C,RECOVER OK
+C193AC,CodeNumberWrite,C,"D in TestCodeNumber with a card inserted: CARD function 5; a 1M RAM card (type not $2x) is tested (64K words at $800000), formatted (Card1MIdText at +$40, region, type $20) and gets the code at +$70 and a cabinet count of 0 at +$74; a card already of type $2x only gets the code; other cards: THIS CARD IS INVALID. The code is also stored in CodeNumber. MAME: card1m_format (emulated 1M card)"
+C12A18,Card1MSaveCabinet,C,"SystemIo in title/demo: SELECT P1 with a 1M card whose code is CodeNumber copies this board's calendar and backup RAM to the card as cabinet CabinetNumber (a new board takes the next number, up to 10), DATA HAS BEEN STORED AT A MEMORY CARD., then SystemReturn. MAME (emulated card, SELECT through a read tap): card1m_save_a, card1m_save_b"
+C12B98,Card1MIdTextSave,C,"NEO-GEO, compared one letter per word at +$40 by Card1MSaveCabinet"
+C12BA0,Card1MSaveOkText,C,"SAVE OK (Card1MSaveCabinet, BIOS_COUNTRY_CODE = 0)"
+C12BB0,Card1MStoredText,C,"DATA HAS BEEN STORED AT A MEMORY CARD. (Card1MSaveCabinet, other countries; MAME: card1m_save_a)"

@@ -62,7 +62,7 @@ loc_C116D8:
 	bne.w	loc_C11778	| C116EC
 	tst.w	(Credits).l	| C116F0
 	beq.w	loc_C11778	| C116F6
-	tst.b	(bram_D00043).l	| C116FA
+	tst.b	(NoStartCompulsion).l	| C116FA
 	bne.w	loc_C11778	| C11700
 	move.b	(BIOS_SELECT_TIMER-A5_BASE,a5),d1	| C11704
 	beq.w	loc_C11728	| C11708
@@ -191,7 +191,7 @@ loc_C1184A:
 	beq.b	loc_C11888	| C1186C
 	tst.b	(ram_10FEC5-A5_BASE,a5)	| C1186E
 	bne.b	loc_C11888	| C11872
-	tst.b	(bram_D00043).l	| C11874
+	tst.b	(NoStartCompulsion).l	| C11874
 	bne.b	loc_C11888	| C1187A
 	moveq	#0x6,d1	| C1187C
 	move.b	#0x1,(ram_10FEC5).l	| C1187E
@@ -199,7 +199,7 @@ loc_C1184A:
 loc_C11888:
 	tst.w	(SlotNumberMode).l	| C11888
 	bne.b	loc_C118A2	| C1188E
-	tst.b	(bram_D00042).l	| C11890
+	tst.b	(GameSelectFree).l	| C11890
 	bne.b	loc_C118A2	| C11896
 	tst.w	(Credits).l	| C11898
 	beq.w	loc_C118C8	| C1189E

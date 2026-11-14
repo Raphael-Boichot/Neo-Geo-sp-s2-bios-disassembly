@@ -108,6 +108,17 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
 - A path no game takes (SYSTEM_INT2: a timer IRQ while the system ROM vectors are mapped) can be
   reached by a breakpoint that sets the game state at the right instruction (`DEBUG_CMDS`); such a run
   proves the code works, not that a game uses it: say so.
+- One name in two symbol files (a routine `BookPlayDays` and a RAM area `BookPlayDays`) is one assembler
+  symbol twice: the generator fell back to raw words. `tools/symbols.py` now refuses it.
+- MAME Lua: keep the object returned by `emu.add_machine_stop_notifier` (garbage collection drops the
+  subscription, so the card file was saved only in short runs); memory taps are dropped when the memory
+  map is rebuilt (vector or bank switch): install them again every frame.
+- MAME's memory card is 2 KB, 8-bit (high byte reads `$FF`, mirrored every `$1000`): code that expects the
+  1M 16-bit RAM card fails its RAM test. Emulate the card with read/write taps instead of forcing the code.
+  MAME has no MVS SELECT input either: a read tap on `REG_STATUS_B` gives it.
+- A 2 MB P1 (KOF '94) is loaded by MAME second half first: its header is at `$100000` in the file.
+- Some code waits for a board state, not a key: the 1M card recovery runs only with no cartridge and
+  Service held at power-on. Read the branch conditions before concluding that code is unreachable.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
   Text needs mostly letters and no long counting run, and is never looked for inside a named table.
 - A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.

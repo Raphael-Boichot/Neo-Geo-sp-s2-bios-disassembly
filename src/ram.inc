@@ -173,12 +173,14 @@
 	.equ	bram_D00035,0xD00035
 	.equ	bram_D00038,0xD00038
 	.equ	bram_D00039,0xD00039
-	.equ	bram_D0003A,0xD0003A
-	.equ	bram_D0003C,0xD0003C
-	.equ	bram_D00042,0xD00042
-	.equ	bram_D00043,0xD00043
-	.equ	bram_D00044,0xD00044
-	.equ	bram_D00046,0xD00046
+	.equ	Coin1Coins,0xD0003A
+	.equ	Coin1Credits,0xD0003B
+	.equ	Coin2Coins,0xD0003C
+	.equ	Coin2Credits,0xD0003D
+	.equ	GameSelectFree,0xD00042
+	.equ	NoStartCompulsion,0xD00043
+	.equ	StartCompulsionTime,0xD00044
+	.equ	DemoSoundOff,0xD00046
 	.equ	bram_D00047,0xD00047
 	.equ	bram_D00048,0xD00048
 	.equ	bram_D0004C,0xD0004C
@@ -189,7 +191,7 @@
 	.equ	bram_D0005D,0xD0005D
 	.equ	NeoClnSlot,0xD0005E
 	.equ	SlotNumberMode,0xD00060
-	.equ	bram_D00104,0xD00104
+	.equ	LastBootDate,0xD00104
 	.equ	bram_D00105,0xD00105
 	.equ	CurrentSlot,0xD00108
 	.equ	bram_D00109,0xD00109
@@ -198,22 +200,22 @@
 	.equ	bram_D00112,0xD00112
 	.equ	bram_D00116,0xD00116
 	.equ	bram_D0011A,0xD0011A
-	.equ	bram_D00122,0xD00122
+	.equ	BookDayIndex,0xD00122
 	.equ	SlotTable,0xD00124
 	.equ	bram_D00164,0xD00164
 	.equ	bram_D001A4,0xD001A4
 	.equ	bram_D001A8,0xD001A8
-	.equ	bram_D001AC,0xD001AC
-	.equ	bram_D001B0,0xD001B0
+	.equ	CodeNumber,0xD001AC
+	.equ	CabinetNumber,0xD001B0
 	.equ	bram_D00200,0xD00200
-	.equ	bram_D00220,0xD00220
-	.equ	bram_D002A0,0xD002A0
+	.equ	GameSoftDips,0xD00220
+	.equ	GameNames,0xD002A0
 	.equ	bram_D00320,0xD00320
 	.equ	bram_D08000,0xD08000
-	.equ	bram_D08320,0xD08320
-	.equ	bram_D09520,0xD09520
+	.equ	BookGameDays,0xD08320
+	.equ	BookGameMonths,0xD09520
 	.equ	bram_D09B20,0xD09B20
-	.equ	bram_D09BA0,0xD09BA0
-	.equ	bram_D09DE0,0xD09DE0
-	.equ	bram_D0A020,0xD0A020
-	.equ	bram_D0A0E0,0xD0A0E0
+	.equ	BookCoinDays,0xD09BA0
+	.equ	BookPlayDays,0xD09DE0
+	.equ	BookCoinMonths,0xD0A020
+	.equ	BookPlayMonths,0xD0A0E0

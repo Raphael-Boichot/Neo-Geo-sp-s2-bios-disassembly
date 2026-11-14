@@ -43,6 +43,13 @@ ROM_NAMES = load('rom_names.csv')
 REGISTERS = load('registers.csv')
 RAM = load('ram.csv')
 CART = load('cart_header.csv')
+_seen = {}
+for _file, _table in (('rom_names.csv', ROM_NAMES), ('registers.csv', REGISTERS), ('ram.csv', RAM),
+                      ('cart_header.csv', CART)):
+    for _name in _table.values():
+        if _name in _seen:   # one assembler symbol: a clash makes the generator fall back to raw words
+            raise SystemExit(f'name {_name} is in both {_seen[_name]} and {_file}')
+        _seen[_name] = _file
 BIOS_CALLS = ROM_NAMES          # kept for older callers
 ABS_SYMBOLS = dict(REGISTERS)
 ABS_SYMBOLS.update(RAM)

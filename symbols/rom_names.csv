@@ -571,5 +571,5 @@ C1F32C,EyecatchFixTiles,C,fix tile numbers of the eyecatcher text line
 C1F34A,EyecatchTextTiles,I,"fix words ($F0xx: palette F, tile xx) drawn one by one by an eyecatcher step (pointer in ram_10FCE2)"
 C1F3CA,HowToPlayPalettes,C,"HowToPlay: 14 palettes copied to $400000, followed by the animation data (pointer kept in ram_10FCEE)"
 C1F58A,FbiScreenPalette,C,palette 1 of the FBI screen
-C1F5AA,FbiScreen,C,"MESS_OUT tiles of the FBI seal screen (WINNERS DON'T USE DRUGS) shown for 300 frames after the eyecatcher on an MVS with country code USA (BIOS_COUNTRY_CODE 1); never with SP-S2 (forced, scenario eyecatcher_us)"
+C1F5AA,FbiScreen,C,"MESS_OUT list of board fix ROM tiles ($B01-$B68 in sfix.sfix, palette 1) of the FBI seal screen (WINNERS DON'T USE DRUGS) shown for 300 frames after the eyecatcher on an MVS with country code USA (BIOS_COUNTRY_CODE 1); never with SP-S2 (forced, scenario eyecatcher_us)"
 C1F652,JapanOnlyWarningText,C,"WARNING THIS GAME IS FOR USE IN JAPAN ONLY. .. shown for 300 frames after the eyecatcher with country code 0 (Japan); never with SP-S2 (forced, scenario eyecatcher_japan)"

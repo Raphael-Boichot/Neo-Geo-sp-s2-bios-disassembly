@@ -254,6 +254,15 @@ in the ROM but never shown; they were run with the code forced when the step sta
 
 ![Eyecatcher end with the country code forced to USA and to Japan](docs/eyecatcher_regions.png)
 
+Only the layout of the FBI screen is in the system ROM: `FbiScreen` is a MESS_OUT list of fix-layer
+tile numbers (`$B01-$B68` with palette 1, the seal by runs of increasing tiles, then the caption)
+and `FbiScreenPalette` its colours. Before drawing it the code selects the board's fix ROM
+(REG_BRDFIX), so the graphics come from `sfix.sfix`, the motherboard fix ROM of the MAME `neogeo`
+set: tiles `$B00-$B68` hold the seal and a caption font with only the letters of WINNERS DON'T USE
+DRUGS and WILLIAM S. SESSIONS, DIRECTOR, FBI. The JAPAN ONLY warning is plain text in the normal font.
+
+![Fix ROM tiles $B00-$B6F used by the FBI screen, with FbiScreenPalette](docs/sfix_fbi_tiles.png)
+
 ### Boot errors
 
 The power-on tests (`PowerOnTest`) stop on `BootError` with an error number in `d6`. Each fault was

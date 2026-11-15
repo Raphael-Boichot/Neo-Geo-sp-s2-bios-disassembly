@@ -1,9 +1,9 @@
 first,last,name,tag,note
-000,01F,EyecatchFixGraphics,I,"tiles 00-1F drawn by EyecatchFixMess (EyecatchFixTiles) during the eyecatcher"
-020,07F,Font8x8,I,"8x8 ASCII font, tile = character code (seen in the sheet)"
-080,0FF,Font8x8Kana,I,8x8 kana and symbols (seen in the sheet)
-100,1FF,Font8x16Upper,C,"upper halves of the 8x16 font: MESS_OUT command 8 with page 1 (the 01 08 before most BIOS texts) writes character c as tile $100+c, then $200+c below"
-200,2FF,Font8x16Lower,C,"lower halves of the 8x16 font (tile $200+c); the unused first rows hold SNK logo pieces"
+000,01F,EyecatchTextFont,C,"pieces of the eyecatcher lettering MAX 330 MEGA / PRO-GEAR SPEC (EyecatchTextTiles uses $005-$00F and $014-$01F here; its other pieces sit in free cells: $040, $05E-$060, $07C-$07F, $099-$09F, $0BA-$0BF, $0D9-$0DF, $0FA-$0FD, $100-$107)"
+020,0FF,Font8x8,I,"8x8 ASCII font ($020-$07F, tile = character code), kana and symbols (seen in the sheet); some free cells hold eyecatcher lettering"
+100,1FF,Font8x16Upper,C,"upper halves of the 8x16 font: MESS_OUT command 8 with page 1 (the 01 08 before most BIOS texts) writes character c as tile $100+c, then $200+c below; $100-$107 are eyecatcher lettering"
+200,21F,SnkLogo,C,"the blue SNK logo of the eyecatcher: EyecatchFixMess draws $200-$20F, $214-$21F, $240 and $25E as 3 rows of 10 tiles, palette F, at fix address $71F6"
+220,2FF,Font8x16Lower,C,lower halves of the 8x16 font (tile $200+c)
 300,4FF,Font8x16Alt,I,a second 8x16 font with kana (seen in the sheet)
 500,6FF,Kanji,I,"kanji glyphs, 8x16 (Japanese test-mode texts, seen in the sheet)"
 700,8FF,ColourGraphics,?,"colour pictures in the upper rows, more kana and kanji below; not matched to a screen yet"

@@ -91,7 +91,7 @@ C11168,SystemModeTable,C,"3 entries: SystemMode0, SystemMode1, SystemMode2"
 C11174,SystemMode0,C,"mode 0: selects the slot (SelectSlot), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)"
 C111A0,SystemMode1,C,"mode 1, eyecatcher: CART_EYECATCH_FLAG 0 runs the system ROM Eyecatcher, 1 calls the game (CallUser request 1), 2 skips to mode 2"
 C111EA,SystemMode2,C,"mode 2: only when SlotNumberMode is set, shows SLOT n (SlotText, CurrentSlot + 1) for up to 300 frames, ended early by SELECT P1 (bit 1 of BIOS_STATCHANGE_RAW); then CallUser with request 2 (demo), or 3 (title) when Credits is non-zero and $D00043 is 0"
-C17E26,Eyecatcher,C,"system ROM eyecatcher (NEO-GEO logo, MAX 330 MEGA, SNK), reached when CART_EYECATCH_FLAG is 0; MAME boot sequence"
+C17E26,Eyecatcher,C,"system ROM eyecatcher, reached when CART_EYECATCH_FLAG is 0: the NEO-GEO letters are sprites from the cartridge C ROM (bank CART_EYECATCH_BANK), MAX 330 MEGA / PRO-GEAR SPEC and the SNK logo are board fix ROM tiles (README, Eyecatcher assets); MAME boot sequence"
 C1850E,ReadControllers,C,"selects the joystick ports through REG_POUTPUT, reads REG_P1CNT/REG_P2CNT/REG_STATUS_B and updates BIOS_P1STATUS and the following input bytes"
 C126B4,MvsLedUpdate,I,MVS only: credit LED / marquee latch handling at the start of SystemIo
 C12BE6,PlayTimeCount,I,"MVS, while a game runs (BIOS_USER_MODE 2): every 60 frames adds 1 to a long in backup RAM ($D00048, through a4 = $D08000)"
@@ -474,7 +474,7 @@ C177EC,SoundTestPutCursor,C,MESS_OUT entry for the sound test cursor
 C1780A,SoundTestDrawItems,C,"sound test: draws the item lines, the playing one (ram_10FCE2) in another text"
 C17CD4,HwCalendarShowDate,C,"hardware-test calendar: prints month, day, year, hour, minute, second (PutMenuValueLine)"
 C182F0,EyecatchFadeStep,C,"next step of the eyecatcher colour fade: colour set from EyecatchFadeIndex[WorkIndexNew] (EyecatchSetColours)"
-C1830A,EyecatchSetSprites,C,"writes 18 sprite columns from VRAM address d0 (step $40): 4 tiles from a0 with attribute d1, then 28 empty tiles"
+C1830A,EyecatchSetSprites,C,"writes 18 sprite columns from VRAM address d0 (step $40): 4 tiles from a0 with attribute d1, then 28 empty tiles; the tile number is CART_EYECATCH_BANK x 256 + the byte, so the graphics come from the cartridge C ROM"
 C18346,EyecatchSetColours,C,"queues colour set d0 (12 bytes at EyecatchColourSets) for the next VBlank: 5 colours to $4001E2 and the backdrop $401FFE"
 C1F00E,EyecatchFadeIndex,C,colour set number for each step of the eyecatcher fade
 C1F03E,EyecatchColourSets,C,"12-byte colour sets (5 colours and the backdrop) of the eyecatcher fade"
@@ -564,11 +564,11 @@ C18F06,HowToPlayButton2Lit,C,"second button, pressed"
 C18F28,HowToPlayButton3Lit,C,"third button, pressed"
 C18F4E,HowToPlayButton4Lit,C,"fourth button, pressed"
 C1F02E,EyecatchFadeIndex2,C,second part of EyecatchFadeIndex (used by a later eyecatcher step)
-C1F27E,EyecatchLogoTiles1,C,tile numbers of the first sprite group of the eyecatcher logo (EyecatchSetSprites)
-C1F2C6,EyecatchLogoTiles2,C,tile numbers of the second sprite group
-C1F30E,EyecatchFixMess,C,MESS_OUT list writing EyecatchFixTiles at fix address $71F6
-C1F32C,EyecatchFixTiles,C,fix tile numbers of the eyecatcher text line
-C1F34A,EyecatchTextTiles,I,"fix words ($F0xx: palette F, tile xx) drawn one by one by an eyecatcher step (pointer in ram_10FCE2)"
+C1F27E,EyecatchLogoTiles1,C,"low bytes of the sprite tiles of the NEO-GEO letters, first group ($FF = empty): tile = CART_EYECATCH_BANK x 256 + byte, in the cartridge C ROM (Sengoku 2: bank $AF)"
+C1F2C6,EyecatchLogoTiles2,C,"low bytes of the sprite tiles of the NEO-GEO letters, second group (as EyecatchLogoTiles1)"
+C1F30E,EyecatchFixMess,C,"MESS_OUT list drawing the SNK logo: EyecatchFixTiles as 3 rows of 10 board fix ROM tiles $2xx with palette F, at fix address $71F6"
+C1F32C,EyecatchFixTiles,C,"low bytes of the 30 SNK logo tiles (board fix ROM $200-$20F, $214-$21F, $240, $25E)"
+C1F34A,EyecatchTextTiles,C,"MAX 330 MEGA / PRO-GEAR SPEC: 32 characters of 2 fix words each (palette F, board fix ROM tiles $005-$107), drawn one character every 4 frames from $71B0 (15 columns) and $7192 (17 columns)"
 C1F3CA,HowToPlayPalettes,C,"HowToPlay: 14 palettes copied to $400000, followed by the animation data (pointer kept in ram_10FCEE)"
 C1F58A,FbiScreenPalette,C,palette 1 of the FBI screen
 C1F5AA,FbiScreen,C,"MESS_OUT list of board fix ROM tiles ($B01-$B68 in sfix.sfix, palette 1) of the FBI seal screen (WINNERS DON'T USE DRUGS) shown for 300 frames after the eyecatcher on an MVS with country code USA (BIOS_COUNTRY_CODE 1); never with SP-S2 (forced, scenario eyecatcher_us)"

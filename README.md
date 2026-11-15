@@ -243,6 +243,22 @@ and the MVS SELECT buttons, which MAME does not map (`P1 Select` in `KEYS`, a re
 
 ![1M card: format, save, recover](docs/card1m_backup.png)
 
+### Eyecatcher assets
+
+The NEO-GEO / MAX 330 MEGA / SNK screen at boot (`Eyecatcher`, when the cartridge header byte
+`$114` is 0) is put together from three places:
+
+| Part | Where the graphics are | What the system ROM holds |
+|---|---|---|
+| NEO-GEO letters (sprites) | the cartridge's own sprite ROMs (C ROMs), tile bank = header byte `$115` (`CART_EYECATCH_BANK`); Sengoku 2: bank `$AF`, whose first rows are the letter pieces | which tile goes where (`EyecatchLogoTiles1/2`: low bytes, `$FF` = empty), the 18 sprite columns (`EyecatchSetSprites`), colours and fade (`EyecatchColourSets`), the animation (`EyecatchSteps`) |
+| MAX 330 MEGA / PRO-GEAR SPEC | board fix ROM `sfix.sfix`, an 8x16 lettering whose pieces fill free cells of tiles `$005-$107` | `EyecatchTextTiles`: 32 characters of two tiles each, palette F, drawn one character every 4 frames |
+| SNK logo (blue) | board fix ROM `sfix.sfix`, tiles `$200-$21F`, `$240`, `$25E` | `EyecatchFixMess` / `EyecatchFixTiles`: 3 rows of 10 tiles, palette F, at fix address `$71F6` |
+
+So a game that leaves the eyecatcher to the system ROM must carry the NEO-GEO letters in its own
+sprite ROMs; the rest ships with the board. Not checked: where the (R) mark comes from.
+
+![Eyecatcher in MAME, and the two fix-ROM parts rebuilt from gfx/sfix with the tile lists of the system ROM](docs/eyecatcher_assets.png)
+
 ### Region screens after the eyecatcher
 
 When the system ROM draws the eyecatcher, its last step looks at BIOS_COUNTRY_CODE: on an MVS with
@@ -350,9 +366,10 @@ sfix-source` regenerates the sheets from `roms/sfix.sfix`). What the tiles are, 
 
 | Tiles | Content | Tag |
 |---|---|---|
-| `$000-$01F` | drawn by the eyecatcher (`EyecatchFixTiles`) | I |
+| `$000-$01F` | pieces of the eyecatcher lettering MAX 330 MEGA / PRO-GEAR SPEC (more in free cells up to `$107`) | C |
 | `$020-$0FF` | 8x8 ASCII font, kana and symbols | I |
-| `$100-$2FF` | 8x16 font: upper halves at `$100`+c, lower halves at `$200`+c (MESS_OUT command 8, page 1: most BIOS texts); SNK logo pieces | C |
+| `$100-$1FF`, `$220-$2FF` | 8x16 font: upper halves at `$100`+c, lower halves at `$200`+c (MESS_OUT command 8, page 1: most BIOS texts) | C |
+| `$200-$21F` | the blue SNK logo of the eyecatcher | C |
 | `$300-$6FF` | a second 8x16 font with kana, kanji | I |
 | `$700-$8FF` | colour pictures, kana and kanji, not matched to a screen yet | ? |
 | `$900-$AFF` | another 8x16 font with kana | I |

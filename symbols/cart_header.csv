@@ -7,7 +7,7 @@ addr,name,tag,note
 00010E,CART_BACKUP_PTR,W,pointer to the game's backup RAM block (wiki 68k program header)
 000112,CART_BACKUP_SIZE,W,size of the backup RAM block (wiki 68k program header)
 000114,CART_EYECATCH_FLAG,W,"eyecatcher: 0 system ROM, 1 game, 2 none (wiki 68k program header)"
-000115,CART_EYECATCH_BANK,W,sprite bank of the eyecatcher logo (wiki 68k program header)
+000115,CART_EYECATCH_BANK,W,"sprite bank of the eyecatcher logo (wiki 68k program header): the NEO-GEO letters are tiles bank x 256 + EyecatchLogoTiles bytes in the cartridge's own C ROM (Sengoku 2: $AF)"
 000116,CART_SOFTDIP_JP,W,pointer to the Japanese soft DIP layout (wiki 68k program header)
 00011A,CART_SOFTDIP_US,W,pointer to the US soft DIP layout (wiki 68k program header)
 00011E,CART_SOFTDIP_EU,W,pointer to the European soft DIP layout (wiki 68k program header)

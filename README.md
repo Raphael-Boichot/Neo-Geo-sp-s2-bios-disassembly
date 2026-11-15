@@ -438,12 +438,18 @@ sfix-source` regenerates the sheets from `roms/sfix.sfix`). What the tiles are, 
 | `$100-$1FF`, `$220-$2FF` | 8x16 font: upper halves at `$100`+c, lower halves at `$200`+c (MESS_OUT command 8, page 1: most BIOS texts) | C |
 | `$200-$21F` | the blue SNK logo of the eyecatcher | C |
 | `$300-$6FF` | a second 8x16 font with kana, kanji | I |
-| `$700-$8FF` | colour pictures, kana and kanji, not matched to a screen yet | ? |
-| `$900-$AFF` | another 8x16 font with kana | I |
+| `$700-$77F`, `$800-$87F` | the HOW_TO_PLAY picture (panel, joystick, buttons A-D): upper halves at `$700`+n, lower halves at `$800`+n | C |
+| `$780-$7FF`, `$880-$8FF` | 8x16 kana and kanji (upper and lower halves); no SP-S2 list found using them | I |
+| `$900-$AFF` | 8x16 font of the HOW_TO_PLAY texts, written by the games (page 9) | C |
 | `$B00-$B68` | the FBI screen: seal and caption letters | C |
 | `$B69-$FFF` | unused (every byte `$FF`) | C |
 
 ![Board fix ROM, banks 0-B (grey levels = colour numbers)](docs/sfix_banks.png)
+
+The HOW_TO_PLAY tiles were matched by replaying the system ROM's MESS_OUT lists on a model of the fix
+layer (`tools/mess_render.py`); the result matches the MAME screen of NAM-1975:
+
+![HOW_TO_PLAY drawn from the system ROM lists and the fix ROM, and banks 7-8](docs/how_to_play_tiles.png)
 
 ### NEO-CLN cartridges (cartridge calendar)
 
@@ -478,6 +484,7 @@ scenario `nogo_cartridge`:
 |---|---|
 | [`src/`](src/) | Generated 68000 source (GNU as, Motorola syntax), ROM addresses in comments: `sp-s2.s` includes 14 modules (`header.s`, `tables.s`, `boot.s`, `system.s`, `power_on.s`, `calendar.s`, `card.s`, `boot_error.s`, `hardware_test.s`, `eyecatcher.s`, `video_io.s`, `how_to_play.s`, `test_mode.s`, `data_end.s`) |
 | [`gfx/sfix/`](gfx/sfix/) | The board fix ROM `sfix.sfix` as 16 indexed tile sheets (`make` rebuilds it) |
+| [`tools/mess_render.py`](tools/mess_render.py) | Replays MESS_OUT lists of the system ROM on a fix layer model: tiles used, picture |
 | [`tools/lo_rom.py`](tools/lo_rom.py) | The sprite shrink table `000-lo.lo` rebuilt from its rule (`make` builds it, `make check` compares it) |
 | [`src/neogeo.inc`](src/neogeo.inc), [`src/ram.inc`](src/ram.inc) | Registers, cartridge header, `A5_BASE`/`A4_BASE`; every RAM address used |
 | [`Makefile`](Makefile) | `make`, `make check`, `make fixsum`, `make source`, `make sfix-source` |

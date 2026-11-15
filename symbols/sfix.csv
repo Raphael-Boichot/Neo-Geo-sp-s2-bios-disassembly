@@ -6,7 +6,10 @@ first,last,name,tag,note
 220,2FF,Font8x16Lower,C,lower halves of the 8x16 font (tile $200+c)
 300,4FF,Font8x16Alt,I,a second 8x16 font with kana (seen in the sheet)
 500,6FF,Kanji,I,"kanji glyphs, 8x16 (Japanese test-mode texts, seen in the sheet)"
-700,8FF,ColourGraphics,?,"colour pictures in the upper rows, more kana and kanji below; not matched to a screen yet"
-900,AFF,Font8x16Thin,I,"another 8x16 font with kana (seen in the sheet)"
+700,77F,HowToPlayUpper,C,"HOW_TO_PLAY panel, joystick and buttons, upper halves ($700-$77E; $77F blank): HowToPlayScreen/Stick/Button lists with MESS_OUT command 8 page 7, palettes A-D; replayed by tools/mess_render.py and matching MAME (nam1975_how_to_play)"
+780,7FF,KanaKanjiUpper,I,"8x16 kana and kanji, upper halves (seen in the sheet); no SP-S2 MESS_OUT list found using them; $7FF blank, written by HowToPlayScreen (command 12) to clear rows"
+800,87F,HowToPlayLower,C,"HOW_TO_PLAY picture, lower halves of $700-$77F (command 8 writes tile + $100 on the second row)"
+880,8FF,KanaKanjiLower,I,"lower halves of $780-$7FF (seen in the sheet)"
+900,AFF,Font8x16Thin,C,"8x16 font with kana used for the HOW_TO_PLAY texts: HowToPlayScreen clears the three text lines with $920/$A20, palette 9, and games write their title and instructions with page 9 (NAM-1975: 99 08 NAM 1975, CONTROL HERO AND CURSOR, in its P ROM; seen in MAME)"
 B00,B68,FbiScreenTiles,C,"seal and caption letters of the FBI screen (FbiScreen in the system ROM; run forced, eyecatcher_us)"
 B69,FFF,Unused,C,"not used: every byte $FF"

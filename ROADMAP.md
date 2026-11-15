@@ -11,7 +11,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
 | L2 traced and run | 9,252 instructions traced; 8,088 ran in MAME (87.4 %) over 88 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
-| L3 names | 574 names (C 530, I 13, W 31), the 13 I and 16 RAM I in `symbols/doubts.csv`; 1,039 automatic labels left, all `loc_` |
+| L3 names | 574 names (C 530, I 13, W 31), the 13 I and 15 RAM I in `symbols/doubts.csv`; 1,039 automatic labels left, all `loc_` |
 | L4 RAM and registers | done: 273 RAM addresses used, all named (160 global names, 114 scoped), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
@@ -136,8 +136,10 @@ other versions: what in SP-S2 is common, what is special, and what its unused co
 - [x] Settle the doubts this can settle: the hidden programs are the AES boot menus (run in MAME),
       the debug monitor is the exception handler of the development and hotel ROMs, the scale and
       sine tables are read by the games, the leftovers are in every version
-- [ ] What the region byte and the system type change in SP-S2's own code paths
-- [ ] The routines SP-S2 changed against its closest relatives (US Ver. 1 and 2, Europe Ver. 1)
+- [x] What the region byte and the system type change in SP-S2's own code paths (docs/versions.md)
+- [x] The routines SP-S2 changed against its closest relatives (US Ver. 1 and 2, Europe Ver. 1):
+      one credit pool instead of one per player (US), slot merge, book keeping totals, 1M card list,
+      I/O check system bits added since Europe Ver. 1
 
 ## 7. The other ROMs of the BIOS set (L0-L3, L5)
 

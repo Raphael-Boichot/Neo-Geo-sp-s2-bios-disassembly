@@ -80,6 +80,63 @@ too: not an SP-S2 slip. The word `CardFormat` writes as the card format version 
 start of the code in every version. `HowToPlayFlag` is only ever cleared, `Card1MRecoverFlag` only
 ever written, and `Credits2` is read by the LED code and written by no SNK system ROM.
 
+## What SP-S2 changed against its closest relatives
+
+41 SP-S2 routines differ from at least one of US MVS Ver. 1 (`sp-e`), US MVS Ver. 2? (`sp-u2`) and
+Europe MVS Ver. 1 (`sp-s`); only 2 differ from all three (`HwTestIoCheck`, `CardUtilMoveMenuCursor`, a
+moved RAM variable). The differences fall into two groups.
+
+**Against the US versions: one credit pool instead of one per player (C).** The US versions count
+credits per player: coin slot 1 credits player 1 (`Credits`), coin slot 2 player 2 (`Credits2`), the
+service switch adds one to each, and a start takes from the player's own counter. SP-S2 (and the first
+European version) put every coin and service credit in `Credits` alone. MAME, Sengoku 2, coin 1, coin 2
+twice, service: US BIOS `Credits` 2 / `Credits2` 2, European BIOS `Credits` 4 / `Credits2` 0. This
+explains `Credits2`: SP-S2 kept the code that reads it (the second LED, the start compulsion) but no
+longer writes it. The routines concerned: `CountCoin`, `CountService`, `StartCreditCheck`,
+`CreditCheckPlayer`, `CreditCheck`, `DeductStartCredits`, `DeductPlayerCredit`, `CreditDownCount`,
+`SystemIoMvs`. US Ver. 2 also has, in `PlayTimeCount`, a call that runs only for NGH `$0002`
+(Baseball Stars Professional) and reads the game's RAM: a game patch SP-S2 does not have (I: not
+followed).
+
+**Against the first European version: features SP-S2 added (C for the code; the purpose from the
+code).** Europe Ver. 1 lacks these, and both US versions already have them:
+
+| Area | In SP-S2, not in Europe Ver. 1 |
+|---|---|
+| slots | the slot count from the board (`REG_SYSTYPE` bit 6 and `REG_STATUS_A` bit 5: 2, 4 or 6 slots, `SlotCount`) used by `PowerOnSetup`, `RegisterNewGame`, `BookNewDayPerGame` |
+| slot table | the merge of the new scan with the stored table: removed games listed, moved games keep their settings, new games dated (`SlotListRemoved`, `SlotKeepOuterEntries`, `SlotCopyMovedSettings`, `SlotTableStore`, `SlotDateNewGames`) |
+| book keeping | the TOTAL line and the per-game totals record on the game pages (`BookGame`, `BookPutTotal`, `BookGameTotals`), the months total of the PLAY page (`BookDrawPlayMonthsTotal`) |
+| 1M memory card | the cabinet list and restore on power-on (`IsCard1M`, `Card1MDrawSlots`, `Card1MRecoverDraw`, `Card1MRestore`); Europe Ver. 1 has a simpler `Card1MRecover` |
+| hardware test | the system bits on the I/O check screen (`HwTestIoCheck`, `IoCheckPutSystemBits`) |
+| hard DIP page | a table-driven list of the settings (`HardDipDraw`) |
+
+The rest are small: a backdrop colour taken from a ROM word, an `andi.w #$FF` added in `NextSlot`, RAM
+variables moved.
+
+## What the system type and the region change in SP-S2
+
+SP-S2's header says MVS (`SystemType` `$80`) and Europe (`SystemRegion` 2). `Reset` copies the two bytes
+to `BIOS_MVS_FLAG` and `BIOS_COUNTRY_CODE`; the test mode, the hardware test and `Card1MRecover` set them
+again (MVS, `SystemRegion`). Games may change the country code (Top Player's Golf and Baseball Stars
+copy it). 33 instructions of SP-S2 read or set them (C, all read in the code; the region screens and the
+two games run in MAME with the code forced):
+
+| Byte | Value | What changes |
+|---|---|---|
+| system type | AES (0) | no coins, credits, LEDs, book keeping or play time (`SystemIoMvs`, `StartCreditCheck`, `CreditCheck`, `SystemIo`); a START always starts |
+| | | eyecatcher: A-D or START skips it; on an MVS credits skip it instead; its music always plays (on an MVS only when DEMO SOUND is not WITHOUT) |
+| | | memory card: an unformatted card asks DO YOU WISH TO FORMAT? instead of formatting; messages wait for a button instead of 15 seconds |
+| | | HOW_TO_PLAY returns at once: it is an MVS-only service |
+| | | boot errors: one colour per error instead of a text (`AesErrorColours`) |
+| region | 0 Japan, 1 USA, 2 Europe | the soft DIP block of the cartridge used (`CART_SOFTDIP_JP/US/EU`): game names, settings pages (`GetSoftDipPointer`, `RegisterNewGame`, `SoftDipEditor`) |
+| | | the region byte written in the header of a formatted memory card and of a 1M cabinet card |
+| | 0 Japan | Japanese texts: YOUR CARD IS STILL INSERTED, SAVE OK, the CODE NUMBER screens |
+| country code | 1 USA, MVS | the FBI screen after the eyecatcher |
+| | 0 Japan | the JAPAN ONLY screen after the eyecatcher |
+
+So the same SP-S2 code covers both systems and three regions; the European header only selects
+European texts and soft DIP pages, and no region screen.
+
 ## How to redo it
 
     python3 tools/compare_bios.py <other ROMs...> --csv out.csv     every named routine

@@ -30,8 +30,9 @@ The two mechanical coin counters get one pulse per coin, one at a time: `CoinCou
 down from `$1F`, on (`REG_SETCC1`) while bit 4 is set, off (`REG_RESETCC1`) after (C).
 
 The two LED counters on the MVS show `Credits` and `Credits2`, one per frame (latches `$EF` and
-`$DF`). Nothing in the system ROM writes `Credits2`; the start compulsion reads the two bytes as a
-word, so it may be the second player's credits on some cabinet setups (I, `symbols/doubts.csv`).
+`$DF`). Nothing in SP-S2 writes `Credits2`: it is player 2's credits on the US MVS versions, which
+count credits per player; SP-S2 keeps one pool (docs/versions.md, C: MAME with the US and European
+BIOS). The start compulsion still reads the two bytes as a word.
 
 `SystemIoMvs` starts with a `bra` over a block that would show the next slot number on the slot
 LED every 4 frames (`$C126C4-$C126E9`): that block can never run (C: static; never seen in MAME).

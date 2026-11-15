@@ -150,7 +150,7 @@ D00021,CoinInputs,C,"REG_STATUS_A inverted, this frame: bit 0 coin 1, bit 1 coin
 D00022,CoinInputsNew,C,bits of CoinInputs that became 1 this frame (CountService tests bit 2)
 D00024,CoinCounts,C,"coins inserted toward the next credit, one byte per coin slot (CountCoin, which also adds 1 to CoinCounterPending, 8 bytes further, for the mechanical counter)"
 D0002C,CoinCounterPending,C,pulses still to send to each of the 2 mechanical coin counters (SystemIoMvs sends one at a time)
-D00035,Credits2,I,shown on the second LED counter instead of Credits on every other frame (SystemIoMvs); nothing in the code writes it
+D00035,Credits2,C,"player 2's credits on the US MVS versions, which count credits per player (coin 2 and service go there; MAME, US BIOS); SP-S2 counts one pool in Credits and never writes it, but still shows it on the second LED counter and reads it with Credits as a word (start compulsion). docs/versions.md"
 D00038,CoinCounterPulse,C,"countdown of the current coin counter pulse ($1F): bit 4 set = counter on (REG_SETCC1), else off (REG_RESETCC1)"
 D00039,CoinCounterIndex,C,coin counter (0 or 1) being pulsed
 D0004C,PlayTimeFrames,C,frame countdown (59) of the play time (PlayTimeCount adds a second to PlayTimeSeconds when it underflows)

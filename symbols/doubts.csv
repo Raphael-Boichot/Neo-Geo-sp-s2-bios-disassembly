@@ -16,7 +16,6 @@ D00058,EyecatchSlot,ram,I,"set by ScanSlots to the first slot whose CART_EYECATC
 D00109,BookSlot,ram,I,slot index used by the book keeping helpers and RegisterNewGame; also a loop counter at boot,read every writer again
 D09B20,BookGameTotals,ram,I,16-byte record per game: shown by BookGame; which fields are which not checked,a book keeping game page after several plays
 D0A1A0,BookGameHours,ram,I,"24 counters per game indexed by the software clock hour; the test mode never shows them",read in MAME after plays at different hours
-D00035,Credits2,ram,I,shown on the second LED counter; nothing in the system ROM writes it,"checked in the other SNK system ROMs (step 6): no SNK system ROM writes it; games not searched"
 10FDCA,BIOS_CRDPTR_LO,ram,I,CardUtilCopy copies it to BIOS_CRDSIZE after a CARD call: that the CARD function leaves the size there is not checked,a breakpoint on the CARD return in card_util_copy
 10FE8D,BiosScreenActive,ram,I,set while system screens run; the only reader is PlayCoinSound,coin inserted during each system screen
 10FEDB,SlotSwitching,ram,I,set around slot switches and card checks; the only reader is PlayCoinSound,coin inserted during a slot switch

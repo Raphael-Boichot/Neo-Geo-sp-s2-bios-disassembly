@@ -4,7 +4,7 @@
 | CardFillTest [C] unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears
 CardFillTest:
 	lea.l	(BiosWorkRam).l,a5	| C132B4
-	move.b	#0x0,(ram_108000).l	| C132BA
+	move.b	#0x0,(CardFillFile).l	| C132BA
 	move.w	#0x1234,(BIOS_CRDNGH-A5_BASE,a5)	| C132C2
 	lea.l	(WorkRamStart).l,a0	| C132C8
 	lea.l	(CardFillTestTitle,pc),a1	| C132CE
@@ -16,7 +16,7 @@ loc_C132DA:
 	move.w	#0x300,(BIOS_CRDF-A5_BASE,a5)	| C132DA
 	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C132E0
 	move.w	#0x40,(BIOS_CRDSIZE-A5_BASE,a5)	| C132E8
-	move.b	(ram_108000).l,(BIOS_CRDFILE-A5_BASE,a5)	| C132EE
+	move.b	(CardFillFile).l,(BIOS_CRDFILE-A5_BASE,a5)	| C132EE
 	jsr	(Card,pc)	| C132F6
 	nop	| C132FA
 	tst.b	(BIOS_CRDRESULT).l	| C132FC
@@ -26,16 +26,16 @@ loc_C132DA:
 loc_C1330A:
 	jmp	(loc_C1330A,pc)	| C1330A
 loc_C1330E:
-	addq.b	#0x1,(ram_100013).l	| C1330E
-	move.b	(ram_108000).l,d0	| C13314
+	addq.b	#0x1,(CardFillTitleLast).l	| C1330E
+	move.b	(CardFillFile).l,d0	| C13314
 	addq.b	#0x1,d0	| C1331A
 	cmpi.b	#0x10,d0	| C1331C
 	bcs.b	loc_C13330	| C13320
-	addq.b	#0x1,(ram_10FDCF-A5_BASE,a5)	| C13322
+	addq.b	#0x1,(BIOS_CRDNGH_LO-A5_BASE,a5)	| C13322
 	move.b	#0xC4,(WorkRamStart).l	| C13326
 	moveq	#0x0,d0	| C1332E
 loc_C13330:
-	move.b	d0,(ram_108000).l	| C13330
+	move.b	d0,(CardFillFile).l	| C13330
 	bra.b	loc_C132DA	| C13336
 | CardFillTestTitle [C] 20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save
 CardFillTestTitle:
@@ -46,7 +46,7 @@ Card:
 	lea.l	(BiosWorkRam).l,a5	| C1334C
 	pea.l	(loc_C133BA,pc)	| C13352
 	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C13356
-	move.b	#0xFF,(ram_10FCF4-A5_BASE,a5)	| C1335A
+	move.b	#0xFF,(CardRomType-A5_BASE,a5)	| C1335A
 	move.b	(REG_STATUS_B).l,d0	| C13360
 	andi.b	#0x30,d0	| C13366
 	beq.b	loc_C13374	| C1336A
@@ -81,7 +81,7 @@ CardError:
 	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C133C6
 	moveq	#0x0,d0	| C133CA
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C133CC
-	move.b	d0,(ram_10FDC7-A5_BASE,a5)	| C133D0
+	move.b	d0,(CardErrorResult-A5_BASE,a5)	| C133D0
 	subi.b	#0x81,d0	| C133D4
 	bcs.b	loc_C133E0	| C133D8
 	cmpi.b	#0x5,d0	| C133DA
@@ -100,11 +100,11 @@ loc_C1340A:
 	or.b	d1,d0	| C13414
 	move.b	(CardErrorTable,pc,d0.w),d0	| C13416
 	bmi.b	loc_C133E0	| C1341A
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C1341C
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C1341C
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C13424
-	clr.b	(ram_10FEBA-A5_BASE,a5)	| C13428
+	clr.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13428
 	pea.l	(loc_C1345A,pc)	| C1342C
-	move.w	(BIOS_SYSTEM_MODE-A5_BASE,a5),(ram_10FE8E-A5_BASE,a5)	| C13430
+	move.w	(BIOS_SYSTEM_MODE-A5_BASE,a5),(CardErrorSavedMode-A5_BASE,a5)	| C13430
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13436
 	move.w	#0x2000,sr	| C1343C
 	movea.l	(CardErrorHandlers,pc,d0.w),a0	| C13440
@@ -119,7 +119,7 @@ CardErrorHandlers:
 loc_C1345A:
 	jsr	(CardLock,pc)	| C1345A
 	jsr	(CardErrorRestoreScreen,pc)	| C1345E
-	move.w	(ram_10FE8E-A5_BASE,a5),(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13462
+	move.w	(CardErrorSavedMode-A5_BASE,a5),(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13462
 	rts	| C13468
 loc_C1346A:
 	lea.l	(CardNoDataText,pc),a4	| C1346A
@@ -158,14 +158,14 @@ loc_C13500:
 	move.l	#PushAnyButtonText,(a0)+	| C13510
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C13516
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C1351A
-	move.w	#0x384,(ram_10FE90-A5_BASE,a5)	| C13520
+	move.w	#0x384,(CardErrorTimer-A5_BASE,a5)	| C13520
 loc_C13526:
 	jsr	(WaitFrameGetP1P2,pc)	| C13526
 	andi.b	#0xF0,d0	| C1352A
 	bne.b	loc_C1353C	| C1352E
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C13530
 	beq.b	loc_C13526	| C13534
-	subq.w	#0x1,(ram_10FE90-A5_BASE,a5)	| C13536
+	subq.w	#0x1,(CardErrorTimer-A5_BASE,a5)	| C13536
 	bne.b	loc_C13526	| C1353A
 loc_C1353C:
 	rts	| C1353C
@@ -188,7 +188,7 @@ loc_C1356C:
 	btst.b	#0x4,d0	| C1356C
 	beq.b	loc_C13560	| C13570
 loc_C13572:
-	move.b	(BIOS_CRDF-A5_BASE,a5),(ram_10FDC5-A5_BASE,a5)	| C13572
+	move.b	(BIOS_CRDF-A5_BASE,a5),(BIOS_CARD_MODE-A5_BASE,a5)	| C13572
 	move.b	#0x0,(BIOS_CRDF-A5_BASE,a5)	| C13578
 	jsr	(Card,pc)	| C1357E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13582
@@ -196,7 +196,7 @@ loc_C13572:
 	lea.l	(CardCannotFormatText,pc),a4	| C13588
 	bra.w	loc_C13500	| C1358C
 loc_C13590:
-	move.b	(ram_10FDC5-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13590
+	move.b	(BIOS_CARD_MODE-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13590
 	jsr	(Card,pc)	| C13596
 	rts	| C1359A
 | CardFormatQuestionText [C] MEMORY CARD NOT FORMATTED, DO YOU WISH TO FORMAT? A BUTTON = YES B BUTTON = NO (AES only)
@@ -219,38 +219,38 @@ CardCannotFormatText:
 	dc.b	0xFF,0xFF,0x00,0x00
 | CardErrorFull [C] CardError for a full card: MEMORY CARD FULL, lists the data on the card page by page (6 lines, PREVIOUS PAGE / NEXT PAGE); A deletes the selected data and repeats the save (CardRestoreRequest), B skips it. Ran in MAME with CardFillTest (card_full_delete, card_full_exit)
 CardErrorFull:
-	move.b	(BIOS_CRDF-A5_BASE,a5),(ram_10FDC5-A5_BASE,a5)	| C1363E
-	move.w	(BIOS_CRDNGH-A5_BASE,a5),(ram_10FE98-A5_BASE,a5)	| C13644
-	move.w	(BIOS_CRDFILE-A5_BASE,a5),(ram_10FE9A-A5_BASE,a5)	| C1364A
-	move.l	(BIOS_CRDPTR-A5_BASE,a5),(ram_10FE92-A5_BASE,a5)	| C13650
-	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(ram_10FE96-A5_BASE,a5)	| C13656
+	move.b	(BIOS_CRDF-A5_BASE,a5),(BIOS_CARD_MODE-A5_BASE,a5)	| C1363E
+	move.w	(BIOS_CRDNGH-A5_BASE,a5),(CardSavedNgh-A5_BASE,a5)	| C13644
+	move.w	(BIOS_CRDFILE-A5_BASE,a5),(CardSavedFile-A5_BASE,a5)	| C1364A
+	move.l	(BIOS_CRDPTR-A5_BASE,a5),(CardSavedPtr-A5_BASE,a5)	| C13650
+	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(CardSavedSize-A5_BASE,a5)	| C13656
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C1365C
 loc_C13660:
-	move.l	#ram_10FE9C,(BIOS_CRDPTR-A5_BASE,a5)	| C13660
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C13660
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C13668
 	jsr	(Card,pc)	| C1366E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13672
 	beq.b	loc_C13660	| C13676
-	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(ram_10FEB0-A5_BASE,a5)	| C13678
-	subq.w	#0x1,(ram_10FEB0-A5_BASE,a5)	| C1367E
-	clr.w	(ram_10FEB2-A5_BASE,a5)	| C13682
-	clr.l	(ram_10FEB6-A5_BASE,a5)	| C13686
-	move.w	#0x384,(ram_10FE90-A5_BASE,a5)	| C1368A
+	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(DataListLast-A5_BASE,a5)	| C13678
+	subq.w	#0x1,(DataListLast-A5_BASE,a5)	| C1367E
+	clr.w	(DataListPageFirst-A5_BASE,a5)	| C13682
+	clr.l	(DataListCursor-A5_BASE,a5)	| C13686
+	move.w	#0x384,(CardErrorTimer-A5_BASE,a5)	| C1368A
 loc_C13690:
-	clr.w	(ram_10FEB4-A5_BASE,a5)	| C13690
+	clr.w	(DataListLine-A5_BASE,a5)	| C13690
 	jsr	(CardErrorSaveScreen,pc)	| C13694
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13698
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1369C
 	move.l	#CardFullText,(a0)+	| C136A0
-	tst.w	(ram_10FEB2-A5_BASE,a5)	| C136A6
+	tst.w	(DataListPageFirst-A5_BASE,a5)	| C136A6
 	beq.b	loc_C136B2	| C136AA
 	move.l	#PreviousPageText,(a0)+	| C136AC
 loc_C136B2:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C136B2
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C136B6
 loc_C136BC:
-	move.w	(ram_10FEB2-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C136BC
-	move.l	#ram_10FE9C,(BIOS_CRDPTR-A5_BASE,a5)	| C136C2
+	move.w	(DataListPageFirst-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C136BC
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C136C2
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C136CA
 	jsr	(Card,pc)	| C136D0
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C136D4
@@ -259,12 +259,12 @@ loc_C136BC:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C136E0
 	clr.l	(a0)+	| C136E4
 	move.w	#0x3,(a0)+	| C136E6
-	move.w	(ram_10FEB4-A5_BASE,a5),d0	| C136EA
+	move.w	(DataListLine-A5_BASE,a5),d0	| C136EA
 	add.w	d0,d0	| C136EE
 	addi.w	#0x716F,d0	| C136F0
 	move.w	d0,(a0)+	| C136F4
 	move.w	#0x109,(a0)+	| C136F6
-	lea.l	(ram_10FE9C-A5_BASE,a5),a1	| C136FA
+	lea.l	(CardTitleBuffer-A5_BASE,a5),a1	| C136FA
 	moveq	#0x9,d7	| C136FE
 loc_C13700:
 	move.w	(a1)+,(a0)+	| C13700
@@ -273,13 +273,13 @@ loc_C13700:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1370C
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C13710
 	jsr	(MessOut,pc)	| C13716
-	move.w	(ram_10FEB2-A5_BASE,a5),d0	| C1371A
+	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C1371A
 	addq.w	#0x1,d0	| C1371E
-	move.w	d0,(ram_10FEB2-A5_BASE,a5)	| C13720
-	cmp.w	(ram_10FEB0-A5_BASE,a5),d0	| C13724
+	move.w	d0,(DataListPageFirst-A5_BASE,a5)	| C13720
+	cmp.w	(DataListLast-A5_BASE,a5),d0	| C13724
 	bhi.b	loc_C1374C	| C13728
-	addq.w	#0x1,(ram_10FEB4-A5_BASE,a5)	| C1372A
-	move.w	(ram_10FEB4-A5_BASE,a5),d0	| C1372E
+	addq.w	#0x1,(DataListLine-A5_BASE,a5)	| C1372A
+	move.w	(DataListLine-A5_BASE,a5),d0	| C1372E
 	subq.w	#0x6,d0	| C13732
 	bne.b	loc_C136BC	| C13734
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13736
@@ -293,7 +293,7 @@ loc_C13750:
 	jsr	(WaitFrameGetP1P2,pc)	| C13750
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C13754
 	beq.b	loc_C13762	| C13758
-	subq.w	#0x1,(ram_10FE90-A5_BASE,a5)	| C1375A
+	subq.w	#0x1,(CardErrorTimer-A5_BASE,a5)	| C1375A
 	beq.w	loc_C137BC	| C1375E
 loc_C13762:
 	btst.b	#0x5,d0	| C13762
@@ -309,11 +309,11 @@ loc_C13762:
 	moveq	#-0x1,d1	| C13782
 loc_C13784:
 	move.w	d1,d0	| C13784
-	add.w	(ram_10FEB6-A5_BASE,a5),d0	| C13786
-	cmp.w	(ram_10FEB0-A5_BASE,a5),d0	| C1378A
+	add.w	(DataListCursor-A5_BASE,a5),d0	| C13786
+	cmp.w	(DataListLast-A5_BASE,a5),d0	| C1378A
 	bhi.b	loc_C13750	| C1378E
-	move.w	d0,(ram_10FEB8-A5_BASE,a5)	| C13790
-	add.w	(ram_10FEB4-A5_BASE,a5),d1	| C13794
+	move.w	d0,(DataListCursorNew-A5_BASE,a5)	| C13790
+	add.w	(DataListLine-A5_BASE,a5),d1	| C13794
 	cmpi.w	#0x6,d1	| C13798
 	bcs.b	loc_C1374C	| C1379C
 	tst.w	d1	| C1379E
@@ -323,32 +323,32 @@ loc_C13784:
 	divu.w	#0x6,d0	| C137AC
 	swap	d0	| C137B0
 	sub.w	d0,d2	| C137B2
-	move.w	d2,(ram_10FEB2-A5_BASE,a5)	| C137B4
+	move.w	d2,(DataListPageFirst-A5_BASE,a5)	| C137B4
 	bra.w	loc_C13690	| C137B8
 loc_C137BC:
 	jsr	(CardRestoreRequest,pc)	| C137BC
-	move.b	(ram_10FDC7-A5_BASE,a5),(BIOS_CRDRESULT-A5_BASE,a5)	| C137C0
+	move.b	(CardErrorResult-A5_BASE,a5),(BIOS_CRDRESULT-A5_BASE,a5)	| C137C0
 	rts	| C137C6
 loc_C137C8:
-	move.w	(ram_10FEB6-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C137C8
-	move.l	#ram_10FE9C,(BIOS_CRDPTR-A5_BASE,a5)	| C137CE
+	move.w	(DataListCursor-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C137C8
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C137CE
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C137D6
 	jsr	(Card,pc)	| C137DC
 	move.b	#0x4,(BIOS_CRDF-A5_BASE,a5)	| C137E0
 	jsr	(Card,pc)	| C137E6
 	jsr	(CardRestoreRequest,pc)	| C137EA
 	jsr	(Card,pc)	| C137EE
-	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(ram_10FDC7-A5_BASE,a5)	| C137F2
+	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(CardErrorResult-A5_BASE,a5)	| C137F2
 	cmpi.b	#0x84,(BIOS_CRDRESULT-A5_BASE,a5)	| C137F8
 	beq.w	CardErrorFull	| C137FE
 	rts	| C13802
 | CardRestoreRequest [C] CardErrorFull: puts the game's CARD request back (BIOS_CRDF from ram_10FDC5, BIOS_CRDPTR, CRDSIZE, CRDNGH, CRDFILE from ram_10FE92-ram_10FE9A) before the save is tried again or given up
 CardRestoreRequest:
-	move.b	(ram_10FDC5-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13804
-	move.l	(ram_10FE92-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1380A
-	move.w	(ram_10FE96-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C13810
-	move.w	(ram_10FE98-A5_BASE,a5),(BIOS_CRDNGH-A5_BASE,a5)	| C13816
-	move.w	(ram_10FE9A-A5_BASE,a5),(BIOS_CRDFILE-A5_BASE,a5)	| C1381C
+	move.b	(BIOS_CARD_MODE-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13804
+	move.l	(CardSavedPtr-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1380A
+	move.w	(CardSavedSize-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C13810
+	move.w	(CardSavedNgh-A5_BASE,a5),(BIOS_CRDNGH-A5_BASE,a5)	| C13816
+	move.w	(CardSavedFile-A5_BASE,a5),(BIOS_CRDFILE-A5_BASE,a5)	| C1381C
 	rts	| C13822
 | DataListMoveCursor [C] erases the list cursor (char $20) at the old line and draws it (char $11) at the new line ram_10FEB8; the card-full list and the card utility COPY/DELETE lists
 DataListMoveCursor:
@@ -359,7 +359,7 @@ DataListMoveCursor:
 	move.w	#0x20FF,d1	| C13830
 	jsr	(DataListPutCursor,pc)	| C13834
 	moveq	#0x0,d0	| C13838
-	move.w	(ram_10FEB8-A5_BASE,a5),(ram_10FEB6-A5_BASE,a5)	| C1383A
+	move.w	(DataListCursorNew-A5_BASE,a5),(DataListCursor-A5_BASE,a5)	| C1383A
 	move.w	#0x11FF,d1	| C13840
 	jsr	(DataListPutCursor,pc)	| C13844
 	clr.w	(a0)+	| C13848
@@ -369,10 +369,10 @@ DataListMoveCursor:
 | DataListPutCursor [C] MESS_OUT entry for the list cursor: line = ram_10FEB6 mod 6 (ram_10FEB4), character d1
 DataListPutCursor:
 	move.w	#0x3,(a0)+	| C13854
-	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C13858
+	move.w	(DataListCursor-A5_BASE,a5),d0	| C13858
 	divu.w	#0x6,d0	| C1385C
 	swap	d0	| C13860
-	move.w	d0,(ram_10FEB4-A5_BASE,a5)	| C13862
+	move.w	d0,(DataListLine-A5_BASE,a5)	| C13862
 	add.w	d0,d0	| C13866
 	addi.w	#0x712F,d0	| C13868
 	move.w	d0,(a0)+	| C1386C
@@ -411,9 +411,9 @@ WaitFrameGetP1P2:
 	or.b	(BIOS_P2CHANGE-A5_BASE,a5),d0	| C1395C
 	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C13960
 	bne.b	loc_C13984	| C13966
-	move.b	(ram_10FDA1-A5_BASE,a5),d0	| C13968
+	move.b	(BIOS_P3PREVIOUS-A5_BASE,a5),d0	| C13968
 	bclr.b	#0x7,d0	| C1396C
-	btst.b	#0x0,(ram_10FDA2-A5_BASE,a5)	| C13970
+	btst.b	#0x0,(BIOS_P3CURRENT-A5_BASE,a5)	| C13970
 	beq.b	loc_C1397C	| C13976
 	bset.b	#0x7,d0	| C13978
 loc_C1397C:
@@ -425,10 +425,10 @@ loc_C13984:
 	rts	| C13984
 | CardErrorSaveScreen [C] once per message (ram_10FEBA): copies the $500 fix-layer words to $10F300 (the BIOS work RAM below its variables), saves the colours $400002 and $400022, sets them to message colours and clears the fix layer
 CardErrorSaveScreen:
-	tst.b	(ram_10FEBA-A5_BASE,a5)	| C13986
+	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13986
 	bne.b	loc_C139E6	| C1398A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1398C
-	move.b	#0x1,(ram_10FEBA-A5_BASE,a5)	| C13990
+	move.b	#0x1,(CardErrorScreenSaved-A5_BASE,a5)	| C13990
 	lea.l	(REG_VRAMRW).l,a1	| C13996
 	move.w	#0x1,0x2(a1)	| C1399C
 	movea.l	a5,a0	| C139A2
@@ -450,10 +450,10 @@ loc_C139E6:
 	rts	| C139EA
 | CardErrorRestoreScreen [C] undoes CardErrorSaveScreen: writes the saved fix layer back, restores the two colours, clears ram_10FEBA (end of CardError)
 CardErrorRestoreScreen:
-	tst.b	(ram_10FEBA-A5_BASE,a5)	| C139EC
+	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C139EC
 	beq.b	loc_C13A3A	| C139F0
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C139F2
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C139F6
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C139F6
 	lea.l	(REG_VRAMRW).l,a1	| C139FE
 	move.w	#0x1,0x2(a1)	| C13A04
 	movea.l	a5,a0	| C13A0A
@@ -466,13 +466,13 @@ loc_C13A16:
 	move.l	(CardSavedColour1-A5_BASE,a5),(0x400002).l	| C13A22
 	move.l	(CardSavedColour2-A5_BASE,a5),(0x400022).l	| C13A2A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13A32
-	clr.b	(ram_10FEBA-A5_BASE,a5)	| C13A36
+	clr.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13A36
 loc_C13A3A:
 	rts	| C13A3A
 | ClearFixLayer [C] resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) and fills the $500 fix-layer words from VRAM $7000 with $20 (space); kicks the watchdog (REG_DIPSW write) in the loop
 ClearFixLayer:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13A3C
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C13A40
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C13A40
 	lea.l	(REG_VRAMRW).l,a1	| C13A48
 	move.w	#0x1,0x2(a1)	| C13A4E
 	move.w	#0x20,d0	| C13A54
@@ -780,7 +780,7 @@ loc_C13D5A:
 	cmp.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C13D6C
 	bne.b	loc_C13D82	| C13D70
 	move.w	0x4(a0),d0	| C13D72
-	cmp.b	(ram_10FDCF-A5_BASE,a5),d0	| C13D76
+	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C13D76
 	bne.b	loc_C13D82	| C13D7A
 	andi.w	#0xF,d1	| C13D7C
 	bset.b	d1,d5	| C13D80
@@ -800,7 +800,7 @@ loc_C13D8E:
 	bne.b	loc_C13DB8	| C13DA4
 	move.w	0x2(a0),d0	| C13DA6
 	lsr.w	#0x8,d0	| C13DAA
-	cmp.b	(ram_10FDCF-A5_BASE,a5),d0	| C13DAC
+	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C13DAC
 	bne.b	loc_C13DB8	| C13DB0
 	andi.w	#0xF,d1	| C13DB2
 	bset.b	d1,d5	| C13DB6
@@ -820,7 +820,7 @@ loc_C13DC4:
 	bne.b	loc_C13DEE	| C13DDA
 	move.w	0x4(a0),d0	| C13DDC
 	lsr.w	#0x8,d0	| C13DE0
-	cmp.b	(ram_10FDCF-A5_BASE,a5),d0	| C13DE2
+	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C13DE2
 	bne.b	loc_C13DEE	| C13DE6
 	andi.w	#0xF,d1	| C13DE8
 	bset.b	d1,d5	| C13DEC
@@ -1001,7 +1001,7 @@ loc_C13FC2:
 	beq.b	loc_C13FE6	| C13FCA
 	move.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C13FCC
 	move.w	d0,0x2(a4)	| C13FD0
-	move.b	(ram_10FDCF-A5_BASE,a5),d0	| C13FD4
+	move.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C13FD4
 	move.w	d0,0x4(a4)	| C13FD8
 	move.b	(BIOS_CRDFILE-A5_BASE,a5),d0	| C13FDC
 	move.w	d0,(a4)	| C13FE0
@@ -1091,7 +1091,7 @@ loc_C140C0:
 	lsl.w	#0x8,d0	| C140CE
 	move.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C140D0
 	move.w	d0,(a4)	| C140D4
-	move.b	(ram_10FDCF-A5_BASE,a5),d0	| C140D6
+	move.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C140D6
 	lsl.w	#0x8,d0	| C140DA
 	move.w	0x2(a4),d1	| C140DC
 	move.b	d1,d0	| C140E0
@@ -1193,7 +1193,7 @@ loc_C141DC:
 	lsl.w	#0x8,d0	| C141EA
 	move.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C141EC
 	move.w	d0,(a4)	| C141F0
-	move.b	(ram_10FDCF-A5_BASE,a5),d0	| C141F2
+	move.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C141F2
 	lsl.w	#0x8,d0	| C141F6
 	move.w	0x4(a4),d1	| C141F8
 	move.b	d1,d0	| C141FC
@@ -1305,7 +1305,7 @@ loc_C14324:
 	move.w	0x2(a0),d0	| C1432A
 	move.b	d0,(BIOS_CRDNGH-A5_BASE,a5)	| C1432E
 	move.w	0x4(a0),d0	| C14332
-	move.b	d0,(ram_10FDCF-A5_BASE,a5)	| C14336
+	move.b	d0,(BIOS_CRDNGH_LO-A5_BASE,a5)	| C14336
 	move.w	(a0),d0	| C1433A
 	bra.w	loc_C1439E	| C1433C
 loc_C14340:
@@ -1342,7 +1342,7 @@ loc_C14386:
 	dbra	d7,loc_C14370	| C14388
 	move.w	0x2(a0),d0	| C1438C
 	lsr.w	#0x8,d0	| C14390
-	move.b	d0,(ram_10FDCF-A5_BASE,a5)	| C14392
+	move.b	d0,(BIOS_CRDNGH_LO-A5_BASE,a5)	| C14392
 	move.w	(a0),d0	| C14396
 	move.b	d0,(BIOS_CRDNGH-A5_BASE,a5)	| C14398
 	lsr.w	#0x8,d0	| C1439C
@@ -1386,7 +1386,7 @@ loc_C143F4:
 	dbra	d7,loc_C143DC	| C143F6
 	move.w	0x4(a0),d0	| C143FA
 	lsr.w	#0x8,d0	| C143FE
-	move.b	d0,(ram_10FDCF-A5_BASE,a5)	| C14400
+	move.b	d0,(BIOS_CRDNGH_LO-A5_BASE,a5)	| C14400
 	move.w	(a0),d0	| C14404
 	move.b	d0,(BIOS_CRDNGH-A5_BASE,a5)	| C14406
 	lsr.w	#0x8,d0	| C1440A
@@ -1697,7 +1697,7 @@ loc_C146B4:
 	cmp.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C146C6
 	bne.b	loc_C146DC	| C146CA
 	move.w	0x4(a0),d0	| C146CC
-	cmp.b	(ram_10FDCF-A5_BASE,a5),d0	| C146D0
+	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C146D0
 	bne.b	loc_C146DC	| C146D4
 	cmp.b	(BIOS_CRDFILE-A5_BASE,a5),d1	| C146D6
 	beq.b	loc_C146E4	| C146DA
@@ -1720,7 +1720,7 @@ loc_C146EE:
 	bne.b	loc_C14712	| C146FE
 	move.w	0x2(a0),d0	| C14700
 	lsr.w	#0x8,d0	| C14704
-	cmp.b	(ram_10FDCF-A5_BASE,a5),d0	| C14706
+	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C14706
 	bne.b	loc_C14712	| C1470A
 	cmp.b	(BIOS_CRDFILE-A5_BASE,a5),d1	| C1470C
 	beq.b	loc_C1471A	| C14710
@@ -1745,7 +1745,7 @@ loc_C14726:
 	bne.b	loc_C1474A	| C14736
 	move.w	0x4(a0),d0	| C14738
 	lsr.w	#0x8,d0	| C1473C
-	cmp.b	(ram_10FDCF-A5_BASE,a5),d0	| C1473E
+	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C1473E
 	bne.b	loc_C1474A	| C14742
 	cmp.b	(BIOS_CRDFILE-A5_BASE,a5),d1	| C14744
 	beq.b	loc_C14752	| C14748
@@ -2025,7 +2025,7 @@ loc_C149DE:
 	bne.b	loc_C149C4	| C149E4
 	dbra	d7,loc_C149DE	| C149E6
 	move.w	0x10(a6),d0	| C149EA
-	move.b	d0,(ram_10FCF4-A5_BASE,a5)	| C149EE
+	move.b	d0,(CardRomType-A5_BASE,a5)	| C149EE
 	cmpi.b	#0x10,d0	| C149F2
 	bcc.b	loc_C149BC	| C149F6
 	move.w	0xC(a6),d0	| C149F8
@@ -2531,7 +2531,7 @@ loc_C150C8:
 	beq.b	loc_C150C8	| C150D8
 	jsr	(ReadCardDetect,pc)	| C150DA
 	bne.b	loc_C150C8	| C150DE
-	move.l	#ram_10FE9C,(BIOS_CRDPTR-A5_BASE,a5)	| C150E0
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C150E0
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C150E8
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C150EC
 	jsr	(Card,pc)	| C150F2
@@ -2586,7 +2586,7 @@ loc_C15178:
 loc_C1517A:
 	andi.b	#0x3,d0	| C1517A
 	beq.b	loc_C1516E	| C1517E
-	move.w	(ram_10FEB2-A5_BASE,a5),d1	| C15180
+	move.w	(DataListPageFirst-A5_BASE,a5),d1	| C15180
 	andi.b	#0x2,d0	| C15184
 	bne.b	loc_C151A8	| C15188
 	cmpi.w	#0x7,d1	| C1518A
@@ -2597,10 +2597,10 @@ loc_C1517A:
 	divu.w	#0x6,d1	| C1519A
 	swap	d1	| C1519E
 	sub.w	d1,d2	| C151A0
-	move.w	d2,(ram_10FEB2-A5_BASE,a5)	| C151A2
+	move.w	d2,(DataListPageFirst-A5_BASE,a5)	| C151A2
 	bra.b	loc_C15166	| C151A6
 loc_C151A8:
-	cmp.w	(ram_10FEB0-A5_BASE,a5),d1	| C151A8
+	cmp.w	(DataListLast-A5_BASE,a5),d1	| C151A8
 	bhi.b	loc_C1516E	| C151AC
 	bra.b	loc_C15166	| C151AE
 | CardUtilCopy [C] menu item 3. COPY A DATA: A copies the chosen data (C all of it) into RAM, CHANGE CARD AND PRESS A BUTTON, then saves it on the new card; THERE IS .. ALREADY IN THIS CARD if it holds that data, MEMORY CARD NOT FORMATTED. for a blank card. MAME (test build, cards swapped): card_util_copy, card_util_copy_same_card, card_util_copy_unformatted
@@ -2643,11 +2643,11 @@ loc_C151F0:
 	moveq	#-0x1,d1	| C15210
 loc_C15212:
 	move.w	d1,d0	| C15212
-	add.w	(ram_10FEB6-A5_BASE,a5),d0	| C15214
-	cmp.w	(ram_10FEB0-A5_BASE,a5),d0	| C15218
+	add.w	(DataListCursor-A5_BASE,a5),d0	| C15214
+	cmp.w	(DataListLast-A5_BASE,a5),d0	| C15218
 	bhi.b	loc_C151E4	| C1521C
-	move.w	d0,(ram_10FEB8-A5_BASE,a5)	| C1521E
-	add.w	(ram_10FEB4-A5_BASE,a5),d1	| C15222
+	move.w	d0,(DataListCursorNew-A5_BASE,a5)	| C1521E
+	add.w	(DataListLine-A5_BASE,a5),d1	| C15222
 	cmpi.w	#0x6,d1	| C15226
 	bcs.b	loc_C151E0	| C1522A
 	tst.w	d1	| C1522C
@@ -2657,16 +2657,16 @@ loc_C15212:
 	divu.w	#0x6,d0	| C15238
 	swap	d0	| C1523C
 	sub.w	d0,d2	| C1523E
-	move.w	d2,(ram_10FEB2-A5_BASE,a5)	| C15240
+	move.w	d2,(DataListPageFirst-A5_BASE,a5)	| C15240
 	bra.b	loc_C151D8	| C15244
 loc_C15246:
 	jsr	(ClearFixLayer,pc)	| C15246
 	lea.l	(CardUtilCopiedText,pc),a2	| C1524A
 	jsr	(CardUtilPutText,pc)	| C1524E
 	moveq	#0x0,d0	| C15252
-	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C15254
+	move.w	(DataListCursor-A5_BASE,a5),d0	| C15254
 	mulu.w	#0x18,d0	| C15258
-	movea.l	#ram_10C000,a1	| C1525C
+	movea.l	#CardUtilTitles,a1	| C1525C
 	adda.l	d0,a1	| C15262
 	jsr	(CardUtilDrawDataName,pc)	| C15264
 	nop	| C15268
@@ -2678,7 +2678,7 @@ loc_C15246:
 	jsr	(Card,pc)	| C15286
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C1528A
 	bne.w	loc_C151EE	| C1528E
-	move.w	(ram_10FDCA-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C15292
+	move.w	(BIOS_CRDPTR_LO-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C15292
 loc_C15298:
 	jsr	(WaitFrameGetP1,pc)	| C15298
 	btst.b	#0x5,d0	| C1529C
@@ -2687,7 +2687,7 @@ loc_C15298:
 	beq.b	loc_C15298	| C152A8
 	jsr	(ReadCardDetect,pc)	| C152AA
 	bne.b	loc_C15298	| C152AE
-	move.w	(BIOS_CRDFILE-A5_BASE,a5),(ram_10FE9A-A5_BASE,a5)	| C152B0
+	move.w	(BIOS_CRDFILE-A5_BASE,a5),(CardSavedFile-A5_BASE,a5)	| C152B0
 	move.b	#0x1,(BIOS_CRDF-A5_BASE,a5)	| C152B6
 	jsr	(Card,pc)	| C152BC
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C152C0
@@ -2697,7 +2697,7 @@ loc_C15298:
 	beq.w	loc_C1582C	| C152D0
 	move.w	(BIOS_CRDFILE-A5_BASE,a5),d0	| C152D4
 	moveq	#0x0,d1	| C152D8
-	move.b	(ram_10FE9A-A5_BASE,a5),d1	| C152DA
+	move.b	(CardSavedFile-A5_BASE,a5),d1	| C152DA
 	move.b	d1,(BIOS_CRDFILE-A5_BASE,a5)	| C152DE
 	btst.l	d1,d0	| C152E2
 	beq.w	loc_C1531E	| C152E4
@@ -2705,9 +2705,9 @@ loc_C15298:
 	lea.l	(CardUtilAlreadyText,pc),a2	| C152EC
 	jsr	(CardUtilPutText,pc)	| C152F0
 	moveq	#0x0,d0	| C152F4
-	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C152F6
+	move.w	(DataListCursor-A5_BASE,a5),d0	| C152F6
 	mulu.w	#0x18,d0	| C152FA
-	movea.l	#ram_10C000,a1	| C152FE
+	movea.l	#CardUtilTitles,a1	| C152FE
 	adda.l	d0,a1	| C15304
 	jsr	(CardUtilDrawDataName,pc)	| C15306
 	nop	| C1530A
@@ -2731,8 +2731,8 @@ loc_C15344:
 	lea.l	(CardUtilAllCopiedText,pc),a2	| C15348
 	jsr	(CardUtilPutText,pc)	| C1534C
 	lea.l	(WorkRamStart).l,a0	| C15350
-	movea.l	#ram_10C000,a1	| C15356
-	move.w	(ram_10FEB0-A5_BASE,a5),d7	| C1535C
+	movea.l	#CardUtilTitles,a1	| C15356
+	move.w	(DataListLast-A5_BASE,a5),d7	| C1535C
 loc_C15360:
 	lea.l	0x2(a0),a2	| C15360
 	move.l	a2,(BIOS_CRDPTR-A5_BASE,a5)	| C15364
@@ -2752,11 +2752,11 @@ loc_C15360:
 	move.w	a4,(a0)	| C153A2
 	movea.l	a3,a0	| C153A4
 	dbra	d7,loc_C15360	| C153A6
-	move.l	a0,(ram_10FEB2-A5_BASE,a5)	| C153AA
+	move.l	a0,(CopyAllPtr-A5_BASE,a5)	| C153AA
 	move.l	a0,(BIOS_CRDPTR-A5_BASE,a5)	| C153AE
 	move.b	#0x7,(BIOS_CRDF-A5_BASE,a5)	| C153B2
 	jsr	(Card,pc)	| C153B8
-	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(ram_10FEB6-A5_BASE,a5)	| C153BC
+	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(CopyAllResult-A5_BASE,a5)	| C153BC
 loc_C153C2:
 	jsr	(WaitFrameGetP1,pc)	| C153C2
 	btst.b	#0x5,d0	| C153C6
@@ -2765,7 +2765,7 @@ loc_C153C2:
 	beq.b	loc_C153C2	| C153D2
 	jsr	(ReadCardDetect,pc)	| C153D4
 	bne.b	loc_C153C2	| C153D8
-	move.l	#ram_10FE9C,(BIOS_CRDPTR-A5_BASE,a5)	| C153DA
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C153DA
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C153E2
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C153E6
 	jsr	(Card,pc)	| C153EC
@@ -2785,15 +2785,15 @@ loc_C15414:
 	jsr	(Card,pc)	| C1541A
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C1541E
 	bne.w	loc_C1582C	| C15422
-	tst.b	(ram_10FEB6-A5_BASE,a5)	| C15426
+	tst.b	(CopyAllResult-A5_BASE,a5)	| C15426
 	bne.b	loc_C1543C	| C1542A
-	move.l	(ram_10FEB2-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1542C
+	move.l	(CopyAllPtr-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1542C
 	move.b	#0x6,(BIOS_CRDF-A5_BASE,a5)	| C15432
 	jsr	(Card,pc)	| C15438
 loc_C1543C:
 	lea.l	(WorkRamStart).l,a0	| C1543C
-	movea.l	#ram_10C000,a1	| C15442
-	move.w	(ram_10FEB0-A5_BASE,a5),d7	| C15448
+	movea.l	#CardUtilTitles,a1	| C15442
+	move.w	(DataListLast-A5_BASE,a5),d7	| C15448
 loc_C1544C:
 	move.w	(a0)+,(BIOS_CRDSIZE-A5_BASE,a5)	| C1544C
 	move.l	a0,(BIOS_CRDPTR-A5_BASE,a5)	| C15450
@@ -2849,11 +2849,11 @@ loc_C154D0:
 	moveq	#-0x1,d1	| C154E8
 loc_C154EA:
 	move.w	d1,d0	| C154EA
-	add.w	(ram_10FEB6-A5_BASE,a5),d0	| C154EC
-	cmp.w	(ram_10FEB0-A5_BASE,a5),d0	| C154F0
+	add.w	(DataListCursor-A5_BASE,a5),d0	| C154EC
+	cmp.w	(DataListLast-A5_BASE,a5),d0	| C154F0
 	bhi.b	loc_C154C4	| C154F4
-	move.w	d0,(ram_10FEB8-A5_BASE,a5)	| C154F6
-	add.w	(ram_10FEB4-A5_BASE,a5),d1	| C154FA
+	move.w	d0,(DataListCursorNew-A5_BASE,a5)	| C154F6
+	add.w	(DataListLine-A5_BASE,a5),d1	| C154FA
 	cmpi.w	#0x6,d1	| C154FE
 	bcs.b	loc_C154C0	| C15502
 	tst.w	d1	| C15504
@@ -2863,16 +2863,16 @@ loc_C154EA:
 	divu.w	#0x6,d0	| C15510
 	swap	d0	| C15514
 	sub.w	d0,d2	| C15516
-	move.w	d2,(ram_10FEB2-A5_BASE,a5)	| C15518
+	move.w	d2,(DataListPageFirst-A5_BASE,a5)	| C15518
 	bra.b	loc_C154B8	| C1551C
 loc_C1551E:
 	jsr	(ClearFixLayer,pc)	| C1551E
 	lea.l	(CardUtilDeleteConfirmText,pc),a2	| C15522
 	jsr	(CardUtilPutText,pc)	| C15526
 	moveq	#0x0,d0	| C1552A
-	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C1552C
+	move.w	(DataListCursor-A5_BASE,a5),d0	| C1552C
 	mulu.w	#0x18,d0	| C15530
-	movea.l	#ram_10C000,a1	| C15534
+	movea.l	#CardUtilTitles,a1	| C15534
 	adda.l	d0,a1	| C1553A
 	jsr	(CardUtilDrawDataName,pc)	| C1553C
 	nop	| C15540
@@ -2916,9 +2916,9 @@ loc_C155BC:
 	move.b	#0x20,(a0)+	| C155BC
 	dbra	d7,loc_C155BC	| C155C0
 loc_C155C4:
-	clr.l	(ram_10FEB0-A5_BASE,a5)	| C155C4
-	move.l	#0x50005,(ram_10FEB4-A5_BASE,a5)	| C155C8
-	clr.w	(ram_10FEB8-A5_BASE,a5)	| C155D0
+	clr.l	(NameColumn-A5_BASE,a5)	| C155C4
+	move.l	#0x50005,(NameKey-A5_BASE,a5)	| C155C8
+	clr.w	(NameKeyMode-A5_BASE,a5)	| C155D0
 loc_C155D4:
 	jsr	(ClearFixLayer,pc)	| C155D4
 	lea.l	(CardUtilUserNameText,pc),a2	| C155D8
@@ -2937,16 +2937,16 @@ loc_C155FA:
 loc_C155FC:
 	btst.b	#0x4,d0	| C155FC
 	beq.w	loc_C156D8	| C15600
-	move.w	(ram_10FEB4-A5_BASE,a5),d1	| C15604
+	move.w	(NameKey-A5_BASE,a5),d1	| C15604
 	cmpi.w	#0x5,d1	| C15608
 	bcs.w	loc_C15638	| C1560C
 	lea.l	(WorkRamStart).l,a0	| C15610
-	move.w	(ram_10FEB0-A5_BASE,a5),d3	| C15616
+	move.w	(NameColumn-A5_BASE,a5),d3	| C15616
 	lea.l	(CardUtilKeyChars,pc),a1	| C1561A
 	move.b	-0x5(a1,d1.w),(a0,d3.w)	| C1561E
 	addq.w	#0x1,d3	| C15624
 	andi.w	#0xF,d3	| C15626
-	move.w	d3,(ram_10FEB2-A5_BASE,a5)	| C1562A
+	move.w	d3,(NameColumnNew-A5_BASE,a5)	| C1562A
 	jsr	(CardUtilDrawName,pc)	| C1562E
 	jsr	(CardUtilMoveNameCursor,pc)	| C15632
 	bra.b	loc_C155F0	| C15636
@@ -2970,32 +2970,32 @@ loc_C15656:
 	bne.w	loc_C1582C	| C1566C
 	rts	| C15670
 loc_C15672:
-	move.w	(ram_10FEB0-A5_BASE,a5),d0	| C15672
+	move.w	(NameColumn-A5_BASE,a5),d0	| C15672
 	subq.w	#0x1,d0	| C15676
 	bra.b	loc_C15680	| C15678
 loc_C1567A:
-	move.w	(ram_10FEB0-A5_BASE,a5),d0	| C1567A
+	move.w	(NameColumn-A5_BASE,a5),d0	| C1567A
 	addq.w	#0x1,d0	| C1567E
 loc_C15680:
 	andi.w	#0xF,d0	| C15680
-	move.w	d0,(ram_10FEB2-A5_BASE,a5)	| C15684
+	move.w	d0,(NameColumnNew-A5_BASE,a5)	| C15684
 	jsr	(CardUtilMoveNameCursor,pc)	| C15688
 	bra.w	loc_C155F0	| C1568C
 loc_C15690:
-	move.w	#0x5,(ram_10FEB6-A5_BASE,a5)	| C15690
-	cmpi.w	#0x1,(ram_10FEB8-A5_BASE,a5)	| C15696
+	move.w	#0x5,(NameKeyNew-A5_BASE,a5)	| C15690
+	cmpi.w	#0x1,(NameKeyMode-A5_BASE,a5)	| C15696
 	bcc.b	loc_C156A8	| C1569C
 loc_C1569E:
-	move.w	#0x1,(ram_10FEB8-A5_BASE,a5)	| C1569E
+	move.w	#0x1,(NameKeyMode-A5_BASE,a5)	| C1569E
 	bra.w	loc_C155D4	| C156A4
 loc_C156A8:
-	clr.w	(ram_10FEB8-A5_BASE,a5)	| C156A8
+	clr.w	(NameKeyMode-A5_BASE,a5)	| C156A8
 	bra.w	loc_C155D4	| C156AC
 loc_C156B0:
-	move.w	#0x5,(ram_10FEB6-A5_BASE,a5)	| C156B0
-	cmpi.w	#0x2,(ram_10FEB8-A5_BASE,a5)	| C156B6
+	move.w	#0x5,(NameKeyNew-A5_BASE,a5)	| C156B0
+	cmpi.w	#0x2,(NameKeyMode-A5_BASE,a5)	| C156B6
 	beq.b	loc_C1569E	| C156BC
-	move.w	#0x2,(ram_10FEB8-A5_BASE,a5)	| C156BE
+	move.w	#0x2,(NameKeyMode-A5_BASE,a5)	| C156BE
 	bra.w	loc_C155D4	| C156C4
 | CardUtilDirectionIndex [C] joystick bits (up/down/left/right) to the column of CardUtilKeyMoves
 CardUtilDirectionIndex:
@@ -3006,11 +3006,11 @@ loc_C156D8:
 	beq.w	loc_C155F0	| C156DE
 	move.b	(CardUtilDirectionIndex,pc,d0.w),d1	| C156E2
 	lea.l	(CardUtilKeyMoves,pc),a0	| C156E6
-	move.w	(ram_10FEB4-A5_BASE,a5),d0	| C156EA
+	move.w	(NameKey-A5_BASE,a5),d0	| C156EA
 	add.w	d0,d0	| C156EE
 	add.w	d0,d0	| C156F0
 	add.b	d1,d0	| C156F2
-	move.b	(a0,d0.w),(ram_10FEB7-A5_BASE,a5)	| C156F4
+	move.b	(a0,d0.w),(NameKeyNewLo-A5_BASE,a5)	| C156F4
 	bra.w	loc_C155EC	| C156FA
 | CardUtilNameCursor [C] FILE USER'S NAME: recolours the key under the old cursor (palette 0) and the new one (palette 1) on the fix layer (CardUtilKeyPositions)
 CardUtilNameCursor:
@@ -3019,11 +3019,11 @@ CardUtilNameCursor:
 	lea.l	(REG_VRAMRW).l,a2	| C15706
 	moveq	#0x0,d3	| C1570C
 	jsr	(CardUtilColourKey,pc)	| C1570E
-	move.w	(ram_10FEB6-A5_BASE,a5),(ram_10FEB4-A5_BASE,a5)	| C15712
+	move.w	(NameKeyNew-A5_BASE,a5),(NameKey-A5_BASE,a5)	| C15712
 	move.w	#0x1000,d3	| C15718
 | CardUtilColourKey [C] sets the palette bits d3 of the fix-layer characters of one key, from its position to the next space
 CardUtilColourKey:
-	move.w	(ram_10FEB4-A5_BASE,a5),d0	| C1571C
+	move.w	(NameKey-A5_BASE,a5),d0	| C1571C
 	add.w	d0,d0	| C15720
 	move.w	(a0,d0.w),-0x2(a2)	| C15722
 	nop	| C15728
@@ -3081,7 +3081,7 @@ CardUtilMoveNameCursor:
 	clr.l	(a0)+	| C157B0
 	moveq	#0x20,d3	| C157B2
 	jsr	(CardUtilPutNameCursor,pc)	| C157B4
-	move.w	(ram_10FEB2-A5_BASE,a5),(ram_10FEB0-A5_BASE,a5)	| C157B8
+	move.w	(NameColumnNew-A5_BASE,a5),(NameColumn-A5_BASE,a5)	| C157B8
 	moveq	#0x12,d3	| C157BE
 	jsr	(CardUtilPutNameCursor,pc)	| C157C0
 	clr.w	(a0)+	| C157C4
@@ -3091,7 +3091,7 @@ CardUtilMoveNameCursor:
 | CardUtilPutNameCursor [C] MESS_OUT entry for the name cursor under column ram_10FEB0
 CardUtilPutNameCursor:
 	move.w	#0x3,(a0)+	| C157D0
-	move.w	(ram_10FEB0-A5_BASE,a5),d0	| C157D4
+	move.w	(NameColumn-A5_BASE,a5),d0	| C157D4
 	lsl.w	#0x5,d0	| C157D8
 	addi.w	#0x71A8,d0	| C157DA
 	move.w	d0,(a0)+	| C157DE
@@ -3146,7 +3146,7 @@ loc_C15864:
 | CardUtilReadTitles [C] reads every data title on the card (CARD 5 until result $82) into a table at $10C000 (20-byte title, NGH, file number per entry); ram_10FEB0 = last index; with no data, shows the result's message
 CardUtilReadTitles:
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C15866
-	move.l	#ram_10C000,(BIOS_CRDPTR-A5_BASE,a5)	| C1586A
+	move.l	#CardUtilTitles,(BIOS_CRDPTR-A5_BASE,a5)	| C1586A
 loc_C15872:
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C15872
 	jsr	(Card,pc)	| C15878
@@ -3165,32 +3165,32 @@ loc_C158A0:
 	addq.l	#0x4,a7	| C158A0
 	bra.b	loc_C1582C	| C158A2
 loc_C158A4:
-	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(ram_10FEB0-A5_BASE,a5)	| C158A4
+	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(DataListLast-A5_BASE,a5)	| C158A4
 	beq.b	loc_C158A0	| C158AA
-	subq.w	#0x1,(ram_10FEB0-A5_BASE,a5)	| C158AC
-	clr.w	(ram_10FEB2-A5_BASE,a5)	| C158B0
-	clr.l	(ram_10FEB6-A5_BASE,a5)	| C158B4
+	subq.w	#0x1,(DataListLast-A5_BASE,a5)	| C158AC
+	clr.w	(DataListPageFirst-A5_BASE,a5)	| C158B0
+	clr.l	(DataListCursor-A5_BASE,a5)	| C158B4
 	rts	| C158B8
 | CardUtilDrawTitlePage [C] draws up to 6 titles of the $10C000 table from index ram_10FEB2, with PREVIOUS PAGE / NEXT PAGE
 CardUtilDrawTitlePage:
-	clr.w	(ram_10FEB4-A5_BASE,a5)	| C158BA
+	clr.w	(DataListLine-A5_BASE,a5)	| C158BA
 	jsr	(ClearFixLayer,pc)	| C158BE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C158C2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C158C6
 	move.l	a2,(a0)+	| C158CA
 	move.l	#CardUtilReturnText2,(a0)+	| C158CC
-	tst.w	(ram_10FEB2-A5_BASE,a5)	| C158D2
+	tst.w	(DataListPageFirst-A5_BASE,a5)	| C158D2
 	beq.b	loc_C158DE	| C158D6
 	move.l	#PreviousPageText,(a0)+	| C158D8
 loc_C158DE:
-	move.w	(ram_10FEB2-A5_BASE,a5),d0	| C158DE
+	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C158DE
 	mulu.w	#0x18,d0	| C158E2
-	movea.l	#ram_10C000,a1	| C158E6
+	movea.l	#CardUtilTitles,a1	| C158E6
 	adda.l	d0,a1	| C158EC
 	clr.l	(a0)+	| C158EE
 loc_C158F0:
 	move.w	#0x3,(a0)+	| C158F0
-	move.w	(ram_10FEB4-A5_BASE,a5),d0	| C158F4
+	move.w	(DataListLine-A5_BASE,a5),d0	| C158F4
 	add.w	d0,d0	| C158F8
 	addi.w	#0x716F,d0	| C158FA
 	move.w	d0,(a0)+	| C158FE
@@ -3201,16 +3201,16 @@ loc_C15906:
 	dbra	d7,loc_C15906	| C15908
 	move.w	#0xFF00,(a0)+	| C1590C
 	addq.l	#0x4,a1	| C15910
-	move.w	(ram_10FEB2-A5_BASE,a5),d0	| C15912
+	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C15912
 	addq.w	#0x1,d0	| C15916
-	move.w	d0,(ram_10FEB2-A5_BASE,a5)	| C15918
-	cmp.w	(ram_10FEB0-A5_BASE,a5),d0	| C1591C
+	move.w	d0,(DataListPageFirst-A5_BASE,a5)	| C15918
+	cmp.w	(DataListLast-A5_BASE,a5),d0	| C1591C
 	bls.b	loc_C15928	| C15920
 	clr.w	(a0)+	| C15922
 	bra.w	loc_C1593C	| C15924
 loc_C15928:
-	addq.w	#0x1,(ram_10FEB4-A5_BASE,a5)	| C15928
-	move.w	(ram_10FEB4-A5_BASE,a5),d0	| C1592C
+	addq.w	#0x1,(DataListLine-A5_BASE,a5)	| C15928
+	move.w	(DataListLine-A5_BASE,a5),d0	| C1592C
 	subq.w	#0x6,d0	| C15930
 	bne.b	loc_C158F0	| C15932
 	clr.w	(a0)+	| C15934
@@ -3227,9 +3227,9 @@ WaitFrameGetP1:
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C15950
 	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C15954
 	bne.b	loc_C15978	| C1595A
-	move.b	(ram_10FDA1-A5_BASE,a5),d0	| C1595C
+	move.b	(BIOS_P3PREVIOUS-A5_BASE,a5),d0	| C1595C
 	bclr.b	#0x7,d0	| C15960
-	btst.b	#0x0,(ram_10FDA2-A5_BASE,a5)	| C15964
+	btst.b	#0x0,(BIOS_P3CURRENT-A5_BASE,a5)	| C15964
 	beq.b	loc_C15970	| C1596A
 	bset.b	#0x7,d0	| C1596C
 loc_C15970:
@@ -3484,7 +3484,7 @@ MonitorAddressError:
 loc_C161A8:
 	ori.w	#0x700,sr	| C161A8
 	movem.l	d0-d7/a0-a6,(MonitorRegs).l	| C161AC
-	lea.l	(ram_10FF00).l,a0	| C161B4
+	lea.l	(MessBuffer).l,a0	| C161B4
 	clr.l	(a0)+	| C161BA
 	move.l	#0x1F0FF,(a0)+	| C161BC
 	move.w	#0x2002,(a0)+	| C161C2
@@ -3530,7 +3530,7 @@ MonitorSpurious:
 loc_C1623E:
 	ori.w	#0x700,sr	| C1623E
 	movem.l	d0-d7/a0-a6,(MonitorRegs).l	| C16242
-	lea.l	(ram_10FF00).l,a0	| C1624A
+	lea.l	(MessBuffer).l,a0	| C1624A
 loc_C16250:
 	lea.l	(BiosWorkRam).l,a5	| C16250
 	move	usp,a3	| C16256
@@ -4108,7 +4108,7 @@ loc_C16992:
 	clr.w	(a0)+	| C169B0
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C169B2
 	jsr	(MessOut,pc)	| C169B6
-	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C169BA
+	lea.l	(MessBuffer-A5_BASE,a5),a0	| C169BA
 	clr.l	(a0)+	| C169BE
 	move.l	#0x1F0FF,(a0)+	| C169C0
 	move.w	#0x2002,(a0)+	| C169C6

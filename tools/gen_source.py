@@ -85,7 +85,7 @@ class Gen:
         """Instructions where a4 = A4_BASE: from `lea $D08000,a4` until a4 is
         written again or the flow ends. A routine entry starts with a4 known
         only when every call or jump to it comes from a known point."""
-        seeds = set()
+        seeds = set(self.t.hints.get('a4', ()))   # entries proven by reading the code (tools/hints.txt)
         while True:
             known, on = set(), False
             for a in sorted(self.t.insn):

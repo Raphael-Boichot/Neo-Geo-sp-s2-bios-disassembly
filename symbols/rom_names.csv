@@ -74,7 +74,7 @@ C18462,ControllerSetup,W,target of CONTROLLER_SETUP
 C11A84,PowerOnTest,C,"boot tests: LED latches, then work RAM, backup RAM, palette banks 1/0 and VRAM (test number in d6), calendar, system ROM checksum, memory card; errors go to BootError"
 C11BA8,WorkRamTestLoop,C,when REG_DIPSW reads 0 (all hard DIPs on): shows WORK RAM TEST and repeats the RAM tests until a DIP is turned off
 C11D44,BootErrorMemCard,C,"d6 = 7 (MEMORY CARD ERROR), then BootError"
-C11D8C,BootErrorCalendar,C,"d6 = 5 (CALENDAR ERROR) when VBlankCount between two calendar pulses is outside $39-$3F (57-63 frames, about 1 s), then BootError"
+C11D8C,BootErrorCalendar,C,"d6 = 5 (CALENDAR ERROR) when BIOS_INT1_FRAME_COUNTER between two calendar pulses is outside $39-$3F (57-63 frames, about 1 s), then BootError"
 C11D94,WaitRtcPulse,C,"waits for a rising edge of bit 6 of REG_STATUS_A (calendar pulse, wiki register page)"
 C12D6C,RtcCommand,I,"sends the 4-bit command in d0 to the calendar chip, bit by bit through sub_C12DB0"
 C13134,MemTestBlock,I,"memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks"
@@ -157,7 +157,7 @@ C12E32,SetupCalendarAlt,C,"after CheckCalendarDate, writes BIOS_SECOND.. to the 
 C12EDE,RtcClockPulseAlt,C,"pulses the clock line of the NEO-CLN cartridge calendar: WriteRtcCtrlAlt 2 then 0. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
 C12EF8,CheckCalendarDate,C,"checks the date set in test mode (day against MonthDaysTable, February 29 days when year mod 4 = 0; d7 non-zero when invalid) and computes its weekday for the calendar chip: (days of the months before + day - 1 + YearWeekdayTable[year]) mod 7, 0 = Sunday; right for every date 1990-2089 (tools/check_weekday.py); runs before SetupCalendar"
 C11808,CreditCheckPlayer,C,"CreditCheck, per player: BCD credits in d0 minus the credits asked in (a0) (BIOS_CREDIT_DEC1, then BIOS_CREDIT_DEC2 by falling through); clears (a0) when there are not enough. In title/demo mode with DEC1 = 0, DEC2 is checked doubled ($C11816). Ran in MAME (game start)"
-C11836,CallDeductStartCredits,C,"jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSTEM_MODE_LO = 3)"
+C11836,CallDeductStartCredits,C,"jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSRET_STATUS = 3)"
 C1183C,DemoEndCheck,C,"SystemIo while BIOS_USER_MODE = 1 (title/demo): a first coin (credits, no free play) sets system mode 6, SELECT P1 / P2 (BIOS_STATCHANGE_RAW bits 1 / 3) mode 4 / 5; then CART_DEMO_END and SystemReturn. Also sets the LED latches. MAME: the coin path ran (coin_start); the SELECT path did not"
 C00400,SystemType,W,"system type byte, $80 = MVS (NeoGeoDev wiki System ROM); Reset copies the word $C00400 into BIOS_MVS_FLAG and BIOS_COUNTRY_CODE"
 C00401,SystemRegion,W,"region byte, 2 = Europe in SP-S2 (0 Japan, 1 USA; NeoGeoDev wiki System ROM); read by the test mode, the card code and GetSoftDipPointer"

@@ -98,3 +98,32 @@ addr,name,tag,first,last,note
 10FCE4,CabinetRowNew,C,C1B0A4,C1B4EF,SETTING UP THE CABINET: row the cursor moves to
 10FCE8,CabinetDrawFlags,I,C1B0A4,C1B4EF,"SETTING UP THE CABINET: 2 while all rows are drawn; bit 0 toggled for the blinking value"
 10FCDE,CardUtilMenuNew,C,C14EA2,C16197,"card utility menu: line the cursor moves to (WorkIndex holds the current one)"
+10FEB0,DataListLast,C,C1363E,C13943,"data lists (CardErrorFull, card utility): index of the last title"
+10FEB2,DataListPageFirst,C,C1363E,C13943,"data lists: index of the first title on the page"
+10FEB4,DataListLine,C,C1363E,C13943,"data lists: line on the page (0-5), also the line counter of a page drawing"
+10FEB6,DataListCursor,C,C1363E,C13943,"data lists: title under the cursor (drawn)"
+10FEB8,DataListCursorNew,C,C1363E,C13943,"data lists: title the cursor moves to"
+10FEB0,DataListLast,C,C1513E,C1539F,
+10FEB2,DataListPageFirst,C,C1513E,C1539F,
+10FEB4,DataListLine,C,C1513E,C1539F,
+10FEB6,DataListCursor,C,C1513E,C1539F,
+10FEB8,DataListCursorNew,C,C1513E,C1539F,
+10FEB2,CopyAllPtr,C,C153A0,C1543F,"card utility COPY: pointer into the title table kept across the card swap"
+10FEB6,CopyAllResult,C,C153A0,C1543F,card utility COPY: CARD result kept across the card swap
+10FEB0,DataListLast,C,C15440,C15577,
+10FEB2,DataListPageFirst,C,C15440,C15577,
+10FEB4,DataListLine,C,C15440,C15577,
+10FEB6,DataListCursor,C,C15440,C15577,
+10FEB8,DataListCursorNew,C,C15440,C15577,
+10FEB0,NameColumn,C,C15578,C157EB,"FILE USER'S NAME: column of the character cursor (drawn)"
+10FEB2,NameColumnNew,C,C15578,C157EB,FILE USER'S NAME: column the character cursor moves to
+10FEB4,NameKey,C,C15578,C157EB,FILE USER'S NAME: key under the keyboard cursor (drawn)
+10FEB6,NameKeyNew,C,C15578,C157EB,FILE USER'S NAME: key the keyboard cursor moves to
+10FEB7,NameKeyNewLo,C,C15578,C157EB,low byte of NameKeyNew (CardUtilDirectionIndex writes the next key)
+10FEB8,NameKeyMode,I,C15578,C157EB,"FILE USER'S NAME: 0, 1 or 2, set by two of the special keys (CardUtilNameKeyHandlers); meaning not found"
+10FEB0,DataListLast,C,C15866,C1599F,
+10FEB2,DataListPageFirst,C,C15866,C1599F,
+10FEB4,DataListLine,C,C15866,C1599F,
+10FEB6,DataListCursor,C,C15866,C1599F,
+10FD00,ScanSlotTable,C,C11DB0,C12043,"PowerOnSetup and ScanSlots: CART_NGH of each slot, 4 bytes per slot"
+10FEBD,HowToPlayFlag,I,C18930,C18B00,"cleared at the end of HowToPlay; nothing else uses it"

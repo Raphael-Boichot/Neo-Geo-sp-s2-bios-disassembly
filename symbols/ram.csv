@@ -40,11 +40,11 @@ addr,name,tag,note
 10FCD8,WorkIndex,C,"general word: test menu cursor line, hardware-test step (HwTestStepTable), 300-frame count set at $C11202"
 10FCDA,WorkIndexNew,C,test mode: new cursor line before TestMenuDrawCursor
 10FE8C,FrameWaitFlag,C,"set by WaitFrame, cleared by SystemInt1 (VBlank) after MessOut and SystemIo"
-10FD81,BIOS_SYSTEM_MODE_LO,I,"low byte of BIOS_SYSTEM_MODE, index of SystemModeTable"
-10FEE4,VBlankCount,C,byte incremented by SystemInt1 on every VBlank; PowerOnTest counts frames between calendar pulses with it
-10FEE3,Int1CountOnly,C,when non-zero SystemInt1 only increments VBlankCount (set during the calendar test)
-10FE88,FrameCounter,C,long incremented by every SystemIo call
-10FDDB,SelectTimerFrames,C,60-frame divider of BIOS_SELECT_TIMER in CheckPlayerStart (reloaded with $3B)
+10FD81,BIOS_SYSRET_STATUS,W,"NeoGeoDev wiki BIOS RAM locations: function code that SYSTEM_RETURN runs (0-6, SystemReturnModes); the low byte of the word BIOS_SYSTEM_MODE"
+10FEE4,BIOS_INT1_FRAME_COUNTER,W,"NeoGeoDev wiki BIOS RAM locations: frame counter of SystemInt1"
+10FEE3,BIOS_INT1_SKIP,W,"NeoGeoDev wiki BIOS RAM locations: when non-zero, SystemInt1 only does the calendar check"
+10FE88,BIOS_FRAME_COUNTER,W,"NeoGeoDev wiki BIOS RAM locations: long incremented by every SystemIo call"
+10FDDB,BIOS_COMPULSION_FRAME_TIMER,W,"NeoGeoDev wiki BIOS RAM locations: frame countdown (59) of the start compulsion; BIOS_SELECT_TIMER counts the seconds"
 D00034,Credits,I,"BCD credit count in backup RAM: CreditCheck subtracts from it with SBCD, SystemMode2 and CheckPlayerStart test it"
 D00108,CurrentSlot,C,backup RAM: slot number written by SwitchSlot together with REG_SLOT; SystemMode2 prints it as SLOT n
 D00124,SlotTable,I,"backup RAM: 4 bytes per slot, scanned by SelectSlot"
@@ -94,3 +94,68 @@ D001A4,BookGameMonthPtr,C,pointer to this month's record of the current game in 
 D001A8,BookGameHoursPtr,I,pointer to the current game's 24 hourly start counters (GetGameHourCountsPtr)
 D00200,BookGameDayCount,I,"one long per game index, +1 on each new day while the game is in a slot"
 D00320,GameBackupData,C,"$1000 bytes per game index: copy of the game's backup area (SaveGameBackupData, NextSlot)"
+10FDA0,BIOS_P3STATUS,W,"NeoGeoDev wiki BIOS RAM locations (P3 block, $10FDA0-$10FDA5); ControllerSetup writes it. With a mahjong controller on P1 (BIOS_P1STATUS 3), WaitFrameGetP1 reads its extra key rows from this block"
+10FDA1,BIOS_P3PREVIOUS,W,NeoGeoDev wiki BIOS RAM locations (P3 block); WaitFrameGetP1 reads it for a P1 mahjong controller
+10FDA2,BIOS_P3CURRENT,W,NeoGeoDev wiki BIOS RAM locations (P3 block); WaitFrameGetP1 writes it for a P1 mahjong controller
+10FDA6,BIOS_P4STATUS,W,"NeoGeoDev wiki BIOS RAM locations (P4 block, $10FDA6-$10FDAB); ControllerSetup writes it"
+10FDB2,BIOS_CREDIT_DEC3,W,NeoGeoDev wiki BIOS RAM locations: credits asked for player 3 (CreditCheck)
+10FDB6,BIOS_PLAYER_MOD1,W,"NeoGeoDev wiki BIOS RAM locations: player 1 status set by the game (0 never played, 1 playing, 2 continue shown, 3 game over); PlayTimeCount copies MOD1-4 to PlayerModPrevious each frame"
+10FDBA,PlayerModPrevious,C,"BIOS_PLAYER_MOD1-4 of the previous frame (PlayTimeCount): play time counts while P1 or P2 is 1 (playing); DeductStartCredits and CreditDownCount read it per player; CallUser clears it"
+10FDBB,PlayerModPrevious2,C,player 2 byte of PlayerModPrevious
+10FDC5,BIOS_CARD_MODE,W,"NeoGeoDev wiki BIOS RAM locations (""internal use?""): CardErrorFull keeps the CARD function in it and CardRestoreRequest puts it back in BIOS_CRDF; CardErrorNotFormatted reads and writes it"
+10FDC7,CardErrorResult,C,"CardError stores the CARD result here; CardErrorFull swaps it with BIOS_CRDRESULT around its own CARD calls"
+10FDCA,BIOS_CRDPTR_LO,I,"low word of BIOS_CRDPTR: CardUtilCopy copies it to BIOS_CRDSIZE after a CARD call (the size of the data read, kept there by the CARD function)"
+10FDCF,BIOS_CRDNGH_LO,W,low byte of BIOS_CRDNGH (NGH number); the directory search compares the two bytes one by one
+10FE8A,BIOS_FRAME_COUNTER_LO,W,low word of BIOS_FRAME_COUNTER (SoundSlotSwitch times its wait with it)
+10FE8B,BIOS_FRAME_COUNTER_LSB,W,"lowest byte of BIOS_FRAME_COUNTER: bit 0 picks which LED counter MvsLedUpdate refreshes, bit 6 paces the I/O check"
+10FE8D,BiosScreenActive,I,"$FF while a system ROM screen runs (test mode, hardware test, HOW_TO_PLAY, eyecatcher end, card check, 1M card recover), cleared after: PlayCoinSound then sends sound command $7F instead of calling the cartridge's coin sound"
+10FE8E,CardErrorSavedMode,C,CardError keeps BIOS_SYSTEM_MODE (word) here while it shows its message and puts it back at the end
+10FE90,CardErrorTimer,C,"frames left (900 = 15 s) before a card message ends by itself on an MVS (PushAnyButtonText, CardErrorFull)"
+10FE92,CardSavedPtr,C,CardErrorFull: the game's BIOS_CRDPTR (CardRestoreRequest puts it back)
+10FE96,CardSavedSize,C,CardErrorFull: the game's BIOS_CRDSIZE
+10FE98,CardSavedNgh,C,CardErrorFull: the game's BIOS_CRDNGH
+10FE9A,CardSavedFile,C,"CardErrorFull: the game's BIOS_CRDFILE; also the file number in CardUtilCopy"
+10FE9C,CardTitleBuffer,C,"buffer for a data title read with CARD 5 (CardErrorFull list, card utility FORMAT and COPY)"
+10FEBA,CardErrorScreenSaved,C,"1 while CardErrorSaveScreen holds the game's fix layer at $10F300; CardError clears it"
+10FEBB,IoCheckActive,C,"1 during the hardware-test I/O check: MvsLedUpdate leaves the LEDs to it, DemoEndCheck waits"
+10FEBC,TestModeActive,C,"1 in test mode, the hardware test and the 1M card recover: coins still give credits (CountCoin, CountService) but are not added to the book keeping, and the coin counters are not pulsed"
+10FEBF,BIOS_BRAM_USED,W,"NeoGeoDev wiki BIOS RAM locations: 1 while the system ROM is using backup RAM (unlocked), 0 otherwise"
+10FEC0,HowToPlayAnimPtr,C,HowToPlay: pointer into the animation data after HowToPlayPalettes
+10FEC4,HowToPlayAnimTimer,C,HowToPlay: frames left on the current animation step
+10FEC5,BIOS_TITLE_MODE,W,"NeoGeoDev wiki BIOS RAM locations: set to 1 by newer games in their USER title command; CheckSettingMode and DemoEndCheck test it"
+10FEC6,MessOutStackPtr,C,"MESS_OUT call stack pointer (MessOutCall pushes the list pointer, MessOutReturn pops it); MessOut resets it to MessOutStack"
+10FECA,MessOutStack,C,MESS_OUT call stack (MessOutCall / MessOutReturn)
+10FEDB,SlotSwitching,I,"1 while the slot is being switched or checked (CardStillInserted, SoundSlotSwitch): PlayCoinSound then plays no coin sound"
+10FEDC,BIOS_STATCURNT_RAW,W,NeoGeoDev wiki BIOS RAM locations: START and SELECT bits of every player (positive logic); ReadControllers writes it
+10FEDE,SysTypeInputs,C,"REG_SYSTYPE inverted, as read by MvsLedUpdate (bit 7: the test button)"
+10FEDF,SysTypeNew,C,"bits of SysTypeInputs that became 1 this frame: the test button pressed outside test mode jumps to TestModeEntry"
+10FEE0,CompulsionStart,I,"1 while the system ROM starts the game by itself because the start compulsion time ran out (CheckPlayerStart); cleared when the start is taken"
+10FEE1,BIOS_FRAME_SKIP,W,NeoGeoDev wiki BIOS RAM locations: frames to skip in the demo-end / start check; decremented by SystemIo
+10FEE2,CoinSoundCount,C,"coins whose sound is still to be played (MvsLedUpdate adds 1, PlayCoinSound plays one per frame)"
+10FEE6,Card1MRecoverFlag,I,set to 1 by Card1MRecover; nothing reads it
+10FEE8,SysP1Status,C,"the system ROM's own copy of the P1 input block (6 bytes, as BIOS_P1STATUS..), kept by CopyControllerState; a mahjong controller is turned into joystick bits"
+10FEEA,SysP1Current,C,inputs of P1 this frame in SysP1Status (Card1MRecover tests A-D held)
+10FEEB,SysP1Change,C,"P1 inputs just pressed, in SysP1Status (eyecatcher, HOW_TO_PLAY, code number, 1M card recover)"
+10FEEE,SysP2Status,C,"the system ROM's copy of the P2 input block (CopyControllerState)"
+10FF00,MessBuffer,C,"start of the MESS_OUT command buffer: BIOS_MESS_POINT is reset to it; the system screens also build their lists here"
+10FCD9,WorkIndexLo,C,low byte of WorkIndex
+10FCF4,CardRomType,I,"$FF after Card starts; for an SNK ROM card, the type byte of its header (+$10, IsSnkRomCard); CodeNumberWrite refuses a card whose high nibble is not 0"
+10FD8A,BIOS_GAME_DIP_06,I,"byte 6 of BIOS_GAME_DIP (the first option of the soft DIPs): NextSlot sets it to 1 when the cabinet's DEMO SOUND is off and the word BIOS_GAME_DIP held 5 before the copy (meaning not found)"
+100013,CardFillTitleLast,I,last byte of the title CardFillTest copies to WorkRamStart; +1 on each save
+108000,CardFillFile,I,file number counter of CardFillTest (0-15)
+10C000,CardUtilTitles,C,"card utility: the titles read from the card (24 bytes each: 20-byte title, NGH, file number; CardUtilReadTitles)"
+D00000,BackupRamStart,C,start of backup RAM (the power-on RAM test)
+D00020,CoinInputsPrevious,C,"REG_STATUS_A inverted, the frame before CoinInputs (MvsLedUpdate)"
+D00021,CoinInputs,C,"REG_STATUS_A inverted, this frame: bit 0 coin 1, bit 1 coin 2, bit 2 service (I/O check shows bits 0-2)"
+D00022,CoinInputsNew,C,bits of CoinInputs that became 1 this frame (CountService tests bit 2)
+D00024,CoinCounts,C,"coins inserted toward the next credit, one byte per coin slot (CountCoin, which also adds 1 to CoinCounterPending, 8 bytes further, for the mechanical counter)"
+D0002C,CoinCounterPending,C,"pulses still to send to each of the 2 mechanical coin counters (MvsLedUpdate sends one at a time)"
+D00035,Credits2,I,"shown on the second LED counter instead of Credits on every other frame (MvsLedUpdate); nothing in the code writes it"
+D00038,CoinCounterPulse,C,"countdown of the current coin counter pulse ($1F): bit 4 set = counter on (REG_SETCC1), else off (REG_RESETCC1)"
+D00039,CoinCounterIndex,C,coin counter (0 or 1) being pulsed
+D0004C,PlayTimeFrames,C,frame countdown (59) of the play time (PlayTimeCount adds a second to PlayTimeSeconds when it underflows)
+D00105,LastBootMonth,C,month byte of LastBootDate (a new month advances the monthly records)
+D08000,BramA4Base,C,"a4 points here for backup RAM accesses (lea BramA4Base,a4): names in the upper half are written (NAME-A4_BASE,a4)"
+D09B20,BookGameTotals,I,"16-byte record per game index: its totals (BookGame, NextSlot, SelectSlot)"
+D00045,StartCompulsionFrames,C,"second byte of the StartCompulsionTime word: 59, copied with it into BIOS_COMPULSION_FRAME_TIMER (the frames of the current second); both cabinet pages set it"
+D0A1A0,BookGameHours,I,"per game ($60 bytes each): 24 longs, the starts counted in each hour of the software clock (DeductPlayerCredit through BookGameHoursPtr); reached only through BookGameHoursTable; not shown by the test mode"

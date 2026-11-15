@@ -20,7 +20,7 @@ loc_C16B20:
 	move.w	d0,(REG_VRAMRW).l	| C16B20
 	dbra	d7,loc_C16B20	| C16B26
 	move.l	#0xEEE0000,(0x4001E2).l	| C16B2A
-	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C16B34
+	lea.l	(MessBuffer-A5_BASE,a5),a0	| C16B34
 	move.w	(ErrorNumber-A5_BASE,a5),d0	| C16B38
 	lsl.w	#0x2,d0	| C16B3C
 	lea.l	(BootErrorMessages,pc),a1	| C16B3E

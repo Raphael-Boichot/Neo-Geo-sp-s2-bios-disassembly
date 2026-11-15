@@ -104,7 +104,7 @@ loc_C110E2:
 	bra.w	loc_C1102C	| C11132
 | BiosStart [I] after the tests: MESS_OUT buffer, ControllerSetup, then SystemModeDispatch
 BiosStart:
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C11136
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C11136
 	jsr	(ControllerSetup,pc)	| C1113E
 | SystemModeDispatch [C] resets the stack, then jumps through SystemModeTable by the low byte of BIOS_SYSTEM_MODE
 SystemModeDispatch:
@@ -113,7 +113,7 @@ SystemModeDispatch:
 	lea.l	(BiosWorkRam).l,a5	| C1114E
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C11154
 	moveq	#0x0,d0	| C1115A
-	move.b	(BIOS_SYSTEM_MODE_LO-A5_BASE,a5),d0	| C1115C
+	move.b	(BIOS_SYSRET_STATUS-A5_BASE,a5),d0	| C1115C
 	lsl.w	#0x2,d0	| C11160
 	movea.l	(SystemModeTable,pc,d0.w),a0	| C11162
 	jmp	(a0)	| C11166
@@ -124,9 +124,9 @@ SystemModeTable:
 	dc.l	SystemMode2
 | SystemMode0 [C] mode 0: selects the slot (SelectSlot), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)
 SystemMode0:
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11174
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C11174
 	jsr	(SelectSlot,pc)	| C1117A
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1117E
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C1117E
 	cmpi.b	#0x8,(BookSlot).l	| C11182
 	beq.w	loc_C11368	| C1118A
 	jsr	(LoadGameSoftDips,pc)	| C1118E
@@ -136,7 +136,7 @@ SystemMode0:
 	bra.w	CallUser	| C1119C
 | SystemMode1 [C] mode 1, eyecatcher: CART_EYECATCH_FLAG 0 runs the system ROM Eyecatcher, 1 calls the game (CallUser request 1), 2 skips to mode 2
 SystemMode1:
-	move.b	#0xA,(ram_10FEE1-A5_BASE,a5)	| C111A0
+	move.b	#0xA,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C111A0
 	clr.b	(BIOS_USER_MODE-A5_BASE,a5)	| C111A6
 	clr.b	(LedSlotDisplay-A5_BASE,a5)	| C111AA
 	move.b	(CART_EYECATCH_FLAG).w,d0	| C111AE
@@ -148,7 +148,7 @@ SystemMode1:
 	bra.w	CallUser	| C111BE
 loc_C111C2:
 	move.b	#0x1,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C111C2
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C111C8
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C111C8
 	jmp	(Eyecatcher).l	| C111CC
 loc_C111D2:
 	move.w	#0x2,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C111D2
@@ -162,12 +162,12 @@ SlotText:
 SystemMode2:
 	tst.w	(SlotNumberMode).l	| C111EA
 	beq.w	loc_C11260	| C111F0
-	move.b	#0xFF,(ram_10FEE1).l	| C111F4
+	move.b	#0xFF,(BIOS_FRAME_SKIP).l	| C111F4
 	move.b	d0,(REG_SWPBIOS).l	| C111FC
 	move.w	#0x12C,(WorkIndex-A5_BASE,a5)	| C11202
 	move.l	#0xEEE0000,(0x400002).l	| C11208
 	move.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C11212
-	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C11218
+	lea.l	(MessBuffer-A5_BASE,a5),a0	| C11218
 	move.l	#SlotText,(a0)+	| C1121C
 	clr.l	(a0)+	| C11222
 	move.w	#0x5,(a0)+	| C11224
@@ -188,7 +188,7 @@ loc_C1124E:
 	subq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C1125A
 	bne.b	loc_C1124E	| C1125E
 loc_C11260:
-	move.b	#0xA,(ram_10FEE1-A5_BASE,a5)	| C11260
+	move.b	#0xA,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11260
 	move.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C11266
 	move.b	#0x2,d1	| C1126C
 	move.b	d1,d0	| C11270
@@ -199,8 +199,8 @@ loc_C11260:
 	move.b	#0x3,d0	| C11282
 | CallUser [C] hands over to the game: BIOS_USER_REQUEST = d0, BIOS_SYSTEM_MODE = d1 | $80, cartridge vectors (REG_SWPROM), backup RAM locked, jmp CART_USER
 CallUser:
-	clr.l	(ram_10FDB6-A5_BASE,a5)	| C11286
-	clr.l	(ram_10FDBA-A5_BASE,a5)	| C1128A
+	clr.l	(BIOS_PLAYER_MOD1-A5_BASE,a5)	| C11286
+	clr.l	(PlayerModPrevious-A5_BASE,a5)	| C1128A
 	move.w	#0x7,(REG_IRQACK).l	| C1128E
 	move.w	#0x2000,sr	| C11296
 	move.b	#0x3,(REG_SOUND).l	| C1129A
@@ -210,13 +210,13 @@ CallUser:
 	move.b	d0,(BIOS_USER_REQUEST-A5_BASE,a5)	| C112B2
 	ori.b	#0x80,d1	| C112B6
 	move.b	d1,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C112BA
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C112BE
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C112BE
 	move.b	d0,(REG_SWPROM).l	| C112C2
 	move.b	d0,(REG_SRAMLOCK).l	| C112C8
 	jmp	(CART_USER).w	| C112CE
 | SystemReturn [W] target of SYSTEM_RETURN
 SystemReturn:
-	move.b	#0xFF,(ram_10FEE1).l	| C112D2
+	move.b	#0xFF,(BIOS_FRAME_SKIP).l	| C112D2
 	move.w	#0x4000,(REG_LSPCMODE).l	| C112DA
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE).l	| C112E2
 	move.b	d0,(REG_DIPSW).l	| C112EA
@@ -248,13 +248,13 @@ loc_C11326:
 	jsr	(ControllerSetup,pc)	| C1134A
 	lea.l	(BiosWorkRam).l,a5	| C1134E
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C11354
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C11358
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C11358
 	jsr	(ClearFixLayer,pc)	| C11360
 	jsr	(LspFirst,pc)	| C11364
 loc_C11368:
 	pea.l	(SystemModeDispatch,pc)	| C11368
 	moveq	#0x0,d0	| C1136C
-	move.b	(BIOS_SYSTEM_MODE_LO-A5_BASE,a5),d0	| C1136E
+	move.b	(BIOS_SYSRET_STATUS-A5_BASE,a5),d0	| C1136E
 	lsl.w	#0x2,d0	| C11372
 	movea.l	(SystemReturnModes,pc,d0.w),a0	| C11374
 	jmp	(a0)	| C11378
@@ -268,7 +268,7 @@ SystemReturnModes:
 	dc.l	loc_C114E2
 	dc.l	loc_C114FC
 loc_C11396:
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11396
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C11396
 	move.b	(BookSlot).l,d0	| C1139C
 	cmpi.b	#0x8,d0	| C113A2
 	beq.b	CheckSettingMode	| C113A6
@@ -283,9 +283,9 @@ loc_C11396:
 	bcc.b	CheckSettingMode	| C113CE
 	bra.b	loc_C113D8	| C113D0
 loc_C113D2:
-	move.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C113D2
+	move.b	#0x1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C113D2
 loc_C113D8:
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C113D8
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C113D8
 	rts	| C113DC
 | CheckSettingMode [C] reads hard DIP 1 (bit 0 of REG_DIPSW, 0 = on) and branches to TestModeEntry when it is on; MAME: setting mode DIP opens test mode
 CheckSettingMode:
@@ -302,27 +302,27 @@ CheckSettingMode:
 	move.b	d0,(REG_SRAMLOCK).l	| C11410
 	bra.b	loc_C113D2	| C11416
 loc_C11418:
-	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11418
+	move.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C11418
 	jsr	(NextSlot,pc)	| C1141E
 	move.b	(CurrentSlot).l,d5	| C11422
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C11428
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C11428
 	jsr	(WriteLedData,pc)	| C1142C
 	rts	| C11430
 loc_C11432:
-	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11432
+	move.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C11432
 	move.b	(CurrentSlot).l,d5	| C11438
 	jsr	(WriteLedData,pc)	| C1143E
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11442
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C11442
 	jsr	(LoadCurrentSlot,pc)	| C11448
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1144C
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C1144C
 	rts	| C11450
 loc_C11452:
-	clr.b	(ram_10FEC5-A5_BASE,a5)	| C11452
+	clr.b	(BIOS_TITLE_MODE-A5_BASE,a5)	| C11452
 	jsr	(BookAddPlayTime,pc)	| C11456
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1145A
-	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11460
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C1145A
+	move.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C11460
 	jsr	(SaveGameBackupData,pc)	| C11466
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1146A
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C1146A
 	tst.b	(NoStartCompulsion).l	| C1146E
 	bne.b	loc_C11486	| C11474
 	tst.w	(Credits).l	| C11476
@@ -336,46 +336,46 @@ loc_C11486:
 loc_C11498:
 	rts	| C11498
 loc_C1149A:
-	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1149A
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114A0
+	move.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C1149A
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C114A0
 	jsr	(SaveGameBackupData,pc)	| C114A6
 	jsr	(NextSlot,pc)	| C114AA
 	move.b	(EyecatchSlot).l,d0	| C114AE
 	cmp.b	(CurrentSlot).l,d0	| C114B4
 	bne.b	loc_C114C2	| C114BA
-	move.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114BC
+	move.b	#0x1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C114BC
 loc_C114C2:
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114C2
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C114C2
 	rts	| C114C6
 loc_C114C8:
-	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114C8
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114CE
+	move.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C114C8
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C114CE
 	jsr	(SaveGameBackupData,pc)	| C114D4
 	jsr	(NextSlot,pc)	| C114D8
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114DC
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C114DC
 	rts	| C114E0
 loc_C114E2:
-	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114E2
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114E8
+	move.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C114E2
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C114E8
 	jsr	(SaveGameBackupData,pc)	| C114EE
 	jsr	(PreviousSlot,pc)	| C114F2
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114F6
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C114F6
 	rts	| C114FA
 loc_C114FC:
-	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114FC
+	move.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C114FC
 	rts	| C11502
 | CardStillInserted [C] system mode 3 (back from the game) while a memory card is still inserted (REG_STATUS_B bits 4-5 = 0): maps the system ROM vectors and fix, shows YOUR CARD IS STILL INSERTED. (CardStillInsertedTextJp when BIOS_COUNTRY_CODE = 0), flashes palette entry $400002 for up to 256 frames or until the card is removed, then maps the cartridge back. Ran in MAME after the Sengoku 2 card save
 CardStillInserted:
 	move.w	#0x2700,sr	| C11504
 	jsr	(SoundSlotSwitch,pc)	| C11508
-	move.b	#0x1,(ram_10FEDB-A5_BASE,a5)	| C1150C
+	move.b	#0x1,(SlotSwitching-A5_BASE,a5)	| C1150C
 	move.w	#0x2000,sr	| C11512
 	jsr	(WaitFrame,pc)	| C11516
 	move.b	d0,(REG_SWPBIOS).l	| C1151A
 	move.b	d0,(REG_BRDFIX).l	| C11520
 	move.b	#0x3,(REG_SOUND).l	| C11526
-	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C1152E
-	clr.b	(ram_10FEDB-A5_BASE,a5)	| C11534
+	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C1152E
+	clr.b	(SlotSwitching-A5_BASE,a5)	| C11534
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C11538
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1153C
 	lea.l	(CardStillInsertedTextJp,pc),a1	| C11540
@@ -408,14 +408,14 @@ loc_C11596:
 	move.w	#0x0,(0x400002).l	| C11596
 	move.w	#0x2700,sr	| C1159E
 	jsr	(SoundSlotSwitch,pc)	| C115A2
-	move.b	#0x1,(ram_10FEDB-A5_BASE,a5)	| C115A6
+	move.b	#0x1,(SlotSwitching-A5_BASE,a5)	| C115A6
 	move.w	#0x2000,sr	| C115AC
 	jsr	(WaitFrame,pc)	| C115B0
 	move.b	d0,(REG_CRTFIX).l	| C115B4
 	move.b	d0,(REG_SWPROM).l	| C115BA
 	move.b	#0x3,(REG_SOUND).l	| C115C0
-	clr.b	(ram_10FE8D-A5_BASE,a5)	| C115C8
-	clr.b	(ram_10FEDB-A5_BASE,a5)	| C115CC
+	clr.b	(BiosScreenActive-A5_BASE,a5)	| C115C8
+	clr.b	(SlotSwitching-A5_BASE,a5)	| C115CC
 	rts	| C115D0
 | CardStillInsertedTextJp [C] Japanese text of CardStillInserted (BIOS_COUNTRY_CODE = 0), MESS_OUT format
 CardStillInsertedTextJp:

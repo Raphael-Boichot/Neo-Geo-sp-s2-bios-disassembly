@@ -27,7 +27,7 @@ loc_C17E4C:
 loc_C17E7E:
 	jmp	(SystemReturn).l	| C17E7E
 loc_C17E84:
-	move.b	(ram_10FEEB-A5_BASE,a5),d0	| C17E84
+	move.b	(SysP1Change-A5_BASE,a5),d0	| C17E84
 	andi.b	#0xF0,d0	| C17E88
 	bne.b	loc_C17E7E	| C17E8C
 	btst.b	#0x0,(BIOS_STATCHANGE-A5_BASE,a5)	| C17E8E
@@ -292,7 +292,7 @@ loc_C1822A:
 loc_C1822C:
 	jsr	(SoundSlotSwitch,pc)	| C1822C
 	jsr	(WaitFrame,pc)	| C18230
-	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C18234
+	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C18234
 	move.b	d0,(REG_SWPBIOS).l	| C1823A
 	move.b	d0,(REG_BRDFIX).l	| C18240
 	clr.l	(0x400002).l	| C18246
@@ -335,7 +335,7 @@ loc_C182AE:
 	move.b	#0x3,(REG_SOUND).l	| C182D2
 	move.b	d0,(REG_CRTFIX).l	| C182DA
 	move.b	d0,(REG_SWPROM).l	| C182E0
-	clr.b	(ram_10FE8D-A5_BASE,a5)	| C182E6
+	clr.b	(BiosScreenActive-A5_BASE,a5)	| C182E6
 loc_C182EA:
 	jmp	(SystemReturn).l	| C182EA
 | EyecatchFadeStep [C] next step of the eyecatcher colour fade: colour set from EyecatchFadeIndex[WorkIndexNew] (EyecatchSetColours)

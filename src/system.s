@@ -5,7 +5,7 @@
 SystemInt1:
 	move.w	#0x4,(REG_IRQACK).l	| C11646
 	move.b	d0,(REG_DIPSW).l	| C1164E
-	tst.b	(Int1CountOnly).l	| C11654
+	tst.b	(BIOS_INT1_SKIP).l	| C11654
 	bne.b	loc_C11672	| C1165A
 	movem.l	d0-d7/a0-a6,-(a7)	| C1165C
 	jsr	(MessOut,pc)	| C11660
@@ -13,21 +13,21 @@ SystemInt1:
 	clr.b	(FrameWaitFlag).l	| C11668
 	movem.l	(a7)+,d0-d7/a0-a6	| C1166E
 loc_C11672:
-	addq.b	#0x1,(VBlankCount).l	| C11672
+	addq.b	#0x1,(BIOS_INT1_FRAME_COUNTER).l	| C11672
 	rte	| C11678
 | SystemIo [W] target of SYSTEM_IO
 SystemIo:
 	lea.l	(BiosWorkRam).l,a5	| C1167A
-	addq.l	#0x1,(FrameCounter-A5_BASE,a5)	| C11680
+	addq.l	#0x1,(BIOS_FRAME_COUNTER-A5_BASE,a5)	| C11680
 	jsr	(MvsLedUpdate,pc)	| C11684
 	jsr	(ReadControllers,pc)	| C11688
 	tst.w	(SystemIoBuildFlag).l	| C1168C
 	bne.w	loc_C11696	| C11692
 loc_C11696:
-	tst.b	(ram_10FEE1-A5_BASE,a5)	| C11696
+	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11696
 	bmi.b	loc_C116B2	| C1169A
 	beq.b	loc_C116A4	| C1169C
-	subq.b	#0x1,(ram_10FEE1-A5_BASE,a5)	| C1169E
+	subq.b	#0x1,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C1169E
 	bra.b	loc_C116B2	| C116A2
 loc_C116A4:
 	tst.b	(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C116A4
@@ -67,16 +67,16 @@ loc_C116D8:
 	bne.w	loc_C11778	| C11700
 	move.b	(BIOS_SELECT_TIMER-A5_BASE,a5),d1	| C11704
 	beq.w	loc_C11728	| C11708
-	subq.b	#0x1,(SelectTimerFrames-A5_BASE,a5)	| C1170C
+	subq.b	#0x1,(BIOS_COMPULSION_FRAME_TIMER-A5_BASE,a5)	| C1170C
 	bpl.w	loc_C11778	| C11710
-	move.b	#0x3B,(SelectTimerFrames-A5_BASE,a5)	| C11714
+	move.b	#0x3B,(BIOS_COMPULSION_FRAME_TIMER-A5_BASE,a5)	| C11714
 	sub.b	d2,d2	| C1171A
 	moveq	#0x1,d2	| C1171C
 	sbcd	d2,d1	| C1171E
 	move.b	d1,(BIOS_SELECT_TIMER-A5_BASE,a5)	| C11720
 	bne.w	loc_C11778	| C11724
 loc_C11728:
-	move.b	#0x1,(ram_10FEE0-A5_BASE,a5)	| C11728
+	move.b	#0x1,(CompulsionStart-A5_BASE,a5)	| C11728
 	moveq	#0x1,d0	| C1172E
 	tst.b	(Credits).l	| C11730
 	bne.b	loc_C1173A	| C11736
@@ -92,10 +92,10 @@ loc_C1173A:
 	move.b	(BIOS_START_FLAG-A5_BASE,a5),d0	| C11756
 	andi.b	#0xF,d0	| C1175A
 	beq.b	loc_C11778	| C1175E
-	move.b	#0x1,(ram_10FEE1-A5_BASE,a5)	| C11760
+	move.b	#0x1,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11760
 	clr.w	(BIOS_SELECT_TIMER-A5_BASE,a5)	| C11766
-	clr.b	(ram_10FEE0-A5_BASE,a5)	| C1176A
-	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1176E
+	clr.b	(CompulsionStart-A5_BASE,a5)	| C1176A
+	move.b	#0x3,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C1176E
 	jsr	(CallDeductStartCredits,pc)	| C11774
 loc_C11778:
 	rts	| C11778
@@ -136,7 +136,7 @@ CreditCheck:
 	lea.l	(BiosWorkRam).l,a5	| C117CE
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C117D4
 	beq.w	loc_C11814	| C117D8
-	clr.w	(ram_10FDB2-A5_BASE,a5)	| C117DC
+	clr.w	(BIOS_CREDIT_DEC3-A5_BASE,a5)	| C117DC
 	move.b	(REG_DIPSW).l,d0	| C117E0
 	andi.b	#0x40,d0	| C117E6
 	beq.b	loc_C11814	| C117EA
@@ -169,35 +169,35 @@ loc_C11816:
 | CreditDown [C] target of CREDIT_DOWN (wiki); MAME: King of the Monsters 2 calls it after CREDIT_CHECK when one player picks PLAYER1 PLAYER2 vs COMPUTER (credits 02 -> 01, the second player's credit)
 CreditDown:
 	lea.l	(BiosWorkRam).l,a5	| C11820
-	clr.b	(ram_10FEE0-A5_BASE,a5)	| C11826
-	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1182A
+	clr.b	(CompulsionStart-A5_BASE,a5)	| C11826
+	move.b	#0x3,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C1182A
 	jsr	(CreditDownCount,pc)	| C11830
 	rts	| C11834
-| CallDeductStartCredits [C] jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSTEM_MODE_LO = 3)
+| CallDeductStartCredits [C] jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSRET_STATUS = 3)
 CallDeductStartCredits:
 	jsr	(DeductStartCredits,pc)	| C11836
 	rts	| C1183A
 | DemoEndCheck [C] SystemIo while BIOS_USER_MODE = 1 (title/demo): a first coin (credits, no free play) sets system mode 6, SELECT P1 / P2 (BIOS_STATCHANGE_RAW bits 1 / 3) mode 4 / 5; then CART_DEMO_END and SystemReturn. Also sets the LED latches. MAME: the coin path ran (coin_start); the SELECT path did not
 DemoEndCheck:
-	tst.b	(ram_10FEBB-A5_BASE,a5)	| C1183C
+	tst.b	(IoCheckActive-A5_BASE,a5)	| C1183C
 	bne.b	loc_C1184A	| C11840
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11842
 loc_C1184A:
-	tst.b	(ram_10FEE1-A5_BASE,a5)	| C1184A
+	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C1184A
 	bne.w	loc_C118C8	| C1184E
 	move.b	(BIOS_USER_MODE-A5_BASE,a5),d0	| C11852
 	cmpi.b	#0x1,d0	| C11856
 	bne.w	loc_C118C8	| C1185A
-	tst.b	(ram_10FEE0-A5_BASE,a5)	| C1185E
+	tst.b	(CompulsionStart-A5_BASE,a5)	| C1185E
 	bne.w	loc_C118AE	| C11862
 	tst.w	(Credits).l	| C11866
 	beq.b	loc_C11888	| C1186C
-	tst.b	(ram_10FEC5-A5_BASE,a5)	| C1186E
+	tst.b	(BIOS_TITLE_MODE-A5_BASE,a5)	| C1186E
 	bne.b	loc_C11888	| C11872
 	tst.b	(NoStartCompulsion).l	| C11874
 	bne.b	loc_C11888	| C1187A
 	moveq	#0x6,d1	| C1187C
-	move.b	#0x1,(ram_10FEC5).l	| C1187E
+	move.b	#0x1,(BIOS_TITLE_MODE).l	| C1187E
 	bra.b	loc_C118B8	| C11886
 loc_C11888:
 	tst.w	(SlotNumberMode).l	| C11888
@@ -216,8 +216,8 @@ loc_C118AE:
 	beq.b	loc_C118B8	| C118B4
 	moveq	#0x5,d1	| C118B6
 loc_C118B8:
-	clr.b	(ram_10FEE0-A5_BASE,a5)	| C118B8
-	move.b	d1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C118BC
+	clr.b	(CompulsionStart-A5_BASE,a5)	| C118B8
+	move.b	d1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C118BC
 	jsr	(CART_DEMO_END).w	| C118C0
 	jmp	(SystemReturn,pc)	| C118C4
 loc_C118C8:

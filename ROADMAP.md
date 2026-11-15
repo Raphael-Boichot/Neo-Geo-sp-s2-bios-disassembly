@@ -12,7 +12,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
 | L2 traced and run | 9,252 instructions traced; 7,368 ran in MAME (79.6 %) over 81 scenarios, 6,558 without the forced ones; nothing ran outside the trace |
 | L3 names | 574 names (C 476, I 67, W 31); 1,039 automatic labels left, all `loc_` |
-| L4 RAM and registers | 225 RAM addresses used, 95 named; 30 backup RAM accesses through a4 left raw |
+| L4 RAM and registers | done: 273 RAM addresses used, all named (161 global names, 114 scoped), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
 
@@ -95,12 +95,14 @@ builds; `tools/fault_scenarios.py` (30 scenarios) says which runs are forced.
 
 Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reached 2026-11-15); left: the I review and the doubts list.
 
-## 4. RAM, backup RAM and leftovers (L4)
+## 4. RAM, backup RAM and leftovers (L4): done
 
-- [ ] Name every work RAM variable used (130 automatic), checking all readers and writers first
-- [ ] Backup RAM map at `$D00000`: board settings, soft DIPs per game, game names, book keeping rings and
-      code/cabinet numbers are named; still to map: `$D0011A`, `$D09B20`, the slot data, the card area
-- [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one
+- [x] Name every work RAM variable used: 273 named, 0 automatic (2026-11-15); NeoGeoDev wiki names where
+      the wiki has one (BIOS RAM locations), screen-scoped names where the BIOS reuses an area
+- [x] Backup RAM map at `$D00000`: every area named (README, Backup RAM map); `$D0A4A0-$D0FFFF` unused
+- [x] The 30 backup RAM accesses through a4 that could not be proven: all in the cabinet row handlers
+      (both pages), reached through a table after `lea BramA4Base,a4`; proven by reading the callers
+      (`a4` hints in `tools/hints.txt`)
 - [x] The 4 `move.l #$100000`: `$100000` is named `WorkRamStart` (work RAM start, RAM tests, the card
       utility's card buffer); `tools/stats.py` reports 0 raw RAM operands
 - [x] Card utility dispatch `$C150A6`: the tracer now finds the table load 2 instructions before the

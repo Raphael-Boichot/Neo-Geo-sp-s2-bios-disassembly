@@ -43,11 +43,11 @@ loc_C170E8:
 	movem.l	d0-d3,-(a0)	| C170F4
 	dbra	d7,loc_C170E8	| C170F8
 	lea.l	(BiosWorkRam).l,a5	| C170FC
-	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C17102
-	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C17108
+	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C17102
+	move.b	#0x1,(TestModeActive-A5_BASE,a5)	| C17108
 	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1710E
 	move.b	#0x80,(BIOS_MVS_FLAG).l	| C17116
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C1711E
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C1711E
 	move.b	d0,(REG_NOSHADOW).l	| C17126
 	move.w	#0x7,(REG_IRQACK).l	| C1712C
 	move.w	#0x2000,sr	| C17134
@@ -180,7 +180,7 @@ ColorBarsText:
 | HwTestIoCheck [C] draws the I/O CHECK screen; MAME screen 3
 HwTestIoCheck:
 	jsr	(ClearFixLayer,pc)	| C17390
-	move.b	#0x1,(ram_10FEBB).l	| C17394
+	move.b	#0x1,(IoCheckActive).l	| C17394
 	clr.b	(IoCheckLedCount-A5_BASE,a5)	| C1739C
 	clr.b	(WorkIndexNew-A5_BASE,a5)	| C173A0
 	moveq	#0x2,d0	| C173A4
@@ -209,18 +209,18 @@ loc_C173C2:
 HwTestIoCheckFrame:
 	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C173F6
 	beq.b	loc_C1740A	| C173FC
-	clr.b	(ram_10FEBB-A5_BASE,a5)	| C173FE
+	clr.b	(IoCheckActive-A5_BASE,a5)	| C173FE
 	move.w	#0x6,(WorkIndex-A5_BASE,a5)	| C17402
 	rts	| C17408
 loc_C1740A:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1740A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1740E
 	clr.l	(a0)+	| C17412
-	move.b	(ram_10FEDC-A5_BASE,a5),d0	| C17414
+	move.b	(BIOS_STATCURNT_RAW-A5_BASE,a5),d0	| C17414
 	move.b	(BIOS_P1CURRENT).l,d1	| C17418
 	move.w	#0x71A9,d2	| C1741E
 	jsr	(IoCheckPutPlayerBits,pc)	| C17422
-	move.b	(ram_10FEDC-A5_BASE,a5),d0	| C17426
+	move.b	(BIOS_STATCURNT_RAW-A5_BASE,a5),d0	| C17426
 	lsr.b	#0x2,d0	| C1742A
 	move.b	(BIOS_P2CURRENT).l,d1	| C1742C
 	move.w	#0x7209,d2	| C17432
@@ -237,7 +237,7 @@ loc_C1740A:
 	rts	| C1745E
 | IoCheckNextSlotLed [C] I/O check: every 64 frames shows the next slot number (1 to the slot count) on the slot LED (IoCheckShowSlot)
 IoCheckNextSlotLed:
-	move.b	(ram_10FE8B-A5_BASE,a5),d0	| C17460
+	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C17460
 	andi.b	#0x3F,d0	| C17464
 	bne.b	loc_C17480	| C17468
 	move.b	(WorkIndexNew-A5_BASE,a5),d0	| C1746A
@@ -252,7 +252,7 @@ loc_C17480:
 	rts	| C17480
 | IoCheckNextLedCount [C] I/O check: every 64 frames adds 11 (BCD) to the LED test count (00, 11 .. 99) and shows it on both LED counters
 IoCheckNextLedCount:
-	move.b	(ram_10FE8B-A5_BASE,a5),d0	| C17482
+	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C17482
 	andi.b	#0x3F,d0	| C17486
 	bne.b	loc_C174A6	| C1748A
 	sub.b	d0,d0	| C1748C
@@ -277,11 +277,11 @@ IoCheckPutSystemBits:
 	not.b	d0	| C174C2
 	btst.b	#0x7,d0	| C174C4
 	jsr	(PutBitChar,pc)	| C174C8
-	btst.b	#0x0,(bram_D00021).l	| C174CC
+	btst.b	#0x0,(CoinInputs).l	| C174CC
 	jsr	(PutBitChar,pc)	| C174D4
-	btst.b	#0x1,(bram_D00021).l	| C174D8
+	btst.b	#0x1,(CoinInputs).l	| C174D8
 	jsr	(PutBitChar,pc)	| C174E0
-	btst.b	#0x2,(bram_D00021).l	| C174E4
+	btst.b	#0x2,(CoinInputs).l	| C174E4
 	jsr	(PutBitChar,pc)	| C174EC
 	rts	| C174F0
 | PutBitChar [C] appends 0 if the Z flag is set on entry, else 1 (I/O check)

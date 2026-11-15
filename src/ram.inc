@@ -1,21 +1,20 @@
 | RAM used by the system ROM - generated; names come from symbols/ram.csv
 
 	.equ	WorkRamStart,0x100000
-	.equ	ram_100013,0x100013
-	.equ	ram_108000,0x108000
-	.equ	ram_10C000,0x10C000
+	.equ	CardFillTitleLast,0x100013
+	.equ	CardFillFile,0x108000
+	.equ	CardUtilTitles,0x10C000
 	.equ	BiosWorkRam,0x10F300
 	.equ	WorkIndex,0x10FCD8
-	.equ	ram_10FCD9,0x10FCD9
+	.equ	WorkIndexLo,0x10FCD9
 	.equ	WorkIndexNew,0x10FCDA
-	.equ	ram_10FCF4,0x10FCF4
-	.equ	ram_10FD00,0x10FD00
+	.equ	CardRomType,0x10FCF4
 	.equ	BIOS_SYSTEM_MODE,0x10FD80
-	.equ	BIOS_SYSTEM_MODE_LO,0x10FD81
+	.equ	BIOS_SYSRET_STATUS,0x10FD81
 	.equ	BIOS_MVS_FLAG,0x10FD82
 	.equ	BIOS_COUNTRY_CODE,0x10FD83
 	.equ	BIOS_GAME_DIP,0x10FD84
-	.equ	ram_10FD8A,0x10FD8A
+	.equ	BIOS_GAME_DIP_06,0x10FD8A
 	.equ	BIOS_P1STATUS,0x10FD94
 	.equ	BIOS_P1PREVIOUS,0x10FD95
 	.equ	BIOS_P1CURRENT,0x10FD96
@@ -28,32 +27,32 @@
 	.equ	BIOS_P2CHANGE,0x10FD9D
 	.equ	BIOS_P2REPEAT,0x10FD9E
 	.equ	BIOS_P2TIMER,0x10FD9F
-	.equ	ram_10FDA0,0x10FDA0
-	.equ	ram_10FDA1,0x10FDA1
-	.equ	ram_10FDA2,0x10FDA2
-	.equ	ram_10FDA6,0x10FDA6
+	.equ	BIOS_P3STATUS,0x10FDA0
+	.equ	BIOS_P3PREVIOUS,0x10FDA1
+	.equ	BIOS_P3CURRENT,0x10FDA2
+	.equ	BIOS_P4STATUS,0x10FDA6
 	.equ	BIOS_STATCURNT,0x10FDAC
 	.equ	BIOS_STATCHANGE,0x10FDAD
 	.equ	BIOS_USER_REQUEST,0x10FDAE
 	.equ	BIOS_USER_MODE,0x10FDAF
 	.equ	BIOS_CREDIT_DEC1,0x10FDB0
 	.equ	BIOS_CREDIT_DEC2,0x10FDB1
-	.equ	ram_10FDB2,0x10FDB2
+	.equ	BIOS_CREDIT_DEC3,0x10FDB2
 	.equ	BIOS_START_FLAG,0x10FDB4
-	.equ	ram_10FDB6,0x10FDB6
-	.equ	ram_10FDBA,0x10FDBA
-	.equ	ram_10FDBB,0x10FDBB
+	.equ	BIOS_PLAYER_MOD1,0x10FDB6
+	.equ	PlayerModPrevious,0x10FDBA
+	.equ	PlayerModPrevious2,0x10FDBB
 	.equ	BIOS_MESS_POINT,0x10FDBE
 	.equ	BIOS_MESS_BUSY,0x10FDC2
 	.equ	BIOS_CRDF,0x10FDC4
-	.equ	ram_10FDC5,0x10FDC5
+	.equ	BIOS_CARD_MODE,0x10FDC5
 	.equ	BIOS_CRDRESULT,0x10FDC6
-	.equ	ram_10FDC7,0x10FDC7
+	.equ	CardErrorResult,0x10FDC7
 	.equ	BIOS_CRDPTR,0x10FDC8
-	.equ	ram_10FDCA,0x10FDCA
+	.equ	BIOS_CRDPTR_LO,0x10FDCA
 	.equ	BIOS_CRDSIZE,0x10FDCC
 	.equ	BIOS_CRDNGH,0x10FDCE
-	.equ	ram_10FDCF,0x10FDCF
+	.equ	BIOS_CRDNGH_LO,0x10FDCF
 	.equ	BIOS_CRDFILE,0x10FDD0
 	.equ	BIOS_YEAR,0x10FDD2
 	.equ	BIOS_MONTH,0x10FDD3
@@ -63,63 +62,56 @@
 	.equ	BIOS_MINUTE,0x10FDD7
 	.equ	BIOS_SECOND,0x10FDD8
 	.equ	BIOS_SELECT_TIMER,0x10FDDA
-	.equ	SelectTimerFrames,0x10FDDB
+	.equ	BIOS_COMPULSION_FRAME_TIMER,0x10FDDB
 	.equ	BIOS_DEVMODE,0x10FE80
-	.equ	FrameCounter,0x10FE88
-	.equ	ram_10FE8A,0x10FE8A
-	.equ	ram_10FE8B,0x10FE8B
+	.equ	BIOS_FRAME_COUNTER,0x10FE88
+	.equ	BIOS_FRAME_COUNTER_LO,0x10FE8A
+	.equ	BIOS_FRAME_COUNTER_LSB,0x10FE8B
 	.equ	FrameWaitFlag,0x10FE8C
-	.equ	ram_10FE8D,0x10FE8D
-	.equ	ram_10FE8E,0x10FE8E
-	.equ	ram_10FE90,0x10FE90
-	.equ	ram_10FE92,0x10FE92
-	.equ	ram_10FE96,0x10FE96
-	.equ	ram_10FE98,0x10FE98
-	.equ	ram_10FE9A,0x10FE9A
-	.equ	ram_10FE9C,0x10FE9C
-	.equ	ram_10FEB0,0x10FEB0
-	.equ	ram_10FEB2,0x10FEB2
-	.equ	ram_10FEB4,0x10FEB4
-	.equ	ram_10FEB6,0x10FEB6
-	.equ	ram_10FEB7,0x10FEB7
-	.equ	ram_10FEB8,0x10FEB8
-	.equ	ram_10FEBA,0x10FEBA
-	.equ	ram_10FEBB,0x10FEBB
-	.equ	ram_10FEBC,0x10FEBC
-	.equ	ram_10FEBD,0x10FEBD
-	.equ	ram_10FEBF,0x10FEBF
-	.equ	ram_10FEC0,0x10FEC0
-	.equ	ram_10FEC4,0x10FEC4
-	.equ	ram_10FEC5,0x10FEC5
-	.equ	ram_10FEC6,0x10FEC6
-	.equ	ram_10FECA,0x10FECA
-	.equ	ram_10FEDB,0x10FEDB
-	.equ	ram_10FEDC,0x10FEDC
+	.equ	BiosScreenActive,0x10FE8D
+	.equ	CardErrorSavedMode,0x10FE8E
+	.equ	CardErrorTimer,0x10FE90
+	.equ	CardSavedPtr,0x10FE92
+	.equ	CardSavedSize,0x10FE96
+	.equ	CardSavedNgh,0x10FE98
+	.equ	CardSavedFile,0x10FE9A
+	.equ	CardTitleBuffer,0x10FE9C
+	.equ	CardErrorScreenSaved,0x10FEBA
+	.equ	IoCheckActive,0x10FEBB
+	.equ	TestModeActive,0x10FEBC
+	.equ	BIOS_BRAM_USED,0x10FEBF
+	.equ	HowToPlayAnimPtr,0x10FEC0
+	.equ	HowToPlayAnimTimer,0x10FEC4
+	.equ	BIOS_TITLE_MODE,0x10FEC5
+	.equ	MessOutStackPtr,0x10FEC6
+	.equ	MessOutStack,0x10FECA
+	.equ	SlotSwitching,0x10FEDB
+	.equ	BIOS_STATCURNT_RAW,0x10FEDC
 	.equ	BIOS_STATCHANGE_RAW,0x10FEDD
-	.equ	ram_10FEDE,0x10FEDE
-	.equ	ram_10FEDF,0x10FEDF
-	.equ	ram_10FEE0,0x10FEE0
-	.equ	ram_10FEE1,0x10FEE1
-	.equ	ram_10FEE2,0x10FEE2
-	.equ	Int1CountOnly,0x10FEE3
-	.equ	VBlankCount,0x10FEE4
-	.equ	ram_10FEE6,0x10FEE6
-	.equ	ram_10FEE8,0x10FEE8
-	.equ	ram_10FEEA,0x10FEEA
-	.equ	ram_10FEEB,0x10FEEB
-	.equ	ram_10FEEE,0x10FEEE
-	.equ	ram_10FF00,0x10FF00
-	.equ	bram_D00000,0xD00000
+	.equ	SysTypeInputs,0x10FEDE
+	.equ	SysTypeNew,0x10FEDF
+	.equ	CompulsionStart,0x10FEE0
+	.equ	BIOS_FRAME_SKIP,0x10FEE1
+	.equ	CoinSoundCount,0x10FEE2
+	.equ	BIOS_INT1_SKIP,0x10FEE3
+	.equ	BIOS_INT1_FRAME_COUNTER,0x10FEE4
+	.equ	Card1MRecoverFlag,0x10FEE6
+	.equ	SysP1Status,0x10FEE8
+	.equ	SysP1Current,0x10FEEA
+	.equ	SysP1Change,0x10FEEB
+	.equ	SysP2Status,0x10FEEE
+	.equ	MessBuffer,0x10FF00
+	.equ	BackupRamStart,0xD00000
 	.equ	BackupRamSignature,0xD00010
-	.equ	bram_D00020,0xD00020
-	.equ	bram_D00021,0xD00021
-	.equ	bram_D00022,0xD00022
-	.equ	bram_D00024,0xD00024
-	.equ	bram_D0002C,0xD0002C
+	.equ	CoinInputsPrevious,0xD00020
+	.equ	CoinInputs,0xD00021
+	.equ	CoinInputsNew,0xD00022
+	.equ	CoinCounts,0xD00024
+	.equ	CoinCounterPending,0xD0002C
 	.equ	Credits,0xD00034
-	.equ	bram_D00035,0xD00035
-	.equ	bram_D00038,0xD00038
-	.equ	bram_D00039,0xD00039
+	.equ	Credits2,0xD00035
+	.equ	CoinCounterPulse,0xD00038
+	.equ	CoinCounterIndex,0xD00039
 	.equ	Coin1Coins,0xD0003A
 	.equ	Coin1Credits,0xD0003B
 	.equ	Coin2Coins,0xD0003C
@@ -127,10 +119,11 @@
 	.equ	GameSelectFree,0xD00042
 	.equ	NoStartCompulsion,0xD00043
 	.equ	StartCompulsionTime,0xD00044
+	.equ	StartCompulsionFrames,0xD00045
 	.equ	DemoSoundOff,0xD00046
 	.equ	SlotCount,0xD00047
 	.equ	PlayTimeSeconds,0xD00048
-	.equ	bram_D0004C,0xD0004C
+	.equ	PlayTimeFrames,0xD0004C
 	.equ	EyecatchSlot,0xD00058
 	.equ	ClockHour4,0xD0005A
 	.equ	ClockMinute,0xD0005B
@@ -139,7 +132,7 @@
 	.equ	NeoClnSlot,0xD0005E
 	.equ	SlotNumberMode,0xD00060
 	.equ	LastBootDate,0xD00104
-	.equ	bram_D00105,0xD00105
+	.equ	LastBootMonth,0xD00105
 	.equ	CurrentSlot,0xD00108
 	.equ	BookSlot,0xD00109
 	.equ	BookGameTodayPtr,0xD0010A
@@ -158,14 +151,15 @@
 	.equ	GameSoftDips,0xD00220
 	.equ	GameNames,0xD002A0
 	.equ	GameBackupData,0xD00320
-	.equ	bram_D08000,0xD08000
+	.equ	BramA4Base,0xD08000
 	.equ	BookGameDays,0xD08320
 	.equ	BookGameMonths,0xD09520
-	.equ	bram_D09B20,0xD09B20
+	.equ	BookGameTotals,0xD09B20
 	.equ	BookCoinDays,0xD09BA0
 	.equ	BookPlayDays,0xD09DE0
 	.equ	BookCoinMonths,0xD0A020
 	.equ	BookPlayMonths,0xD0A0E0
+	.equ	BookGameHours,0xD0A1A0
 
 | names valid in one part of the code only (symbols/ram_scoped.csv)
 	.equ	BookRecords,0x10F500
@@ -224,6 +218,7 @@
 	.equ	CardSavedSp,0x10FD00
 	.equ	ErrorAddress,0x10FD00
 	.equ	MonitorRegs,0x10FD00
+	.equ	ScanSlotTable,0x10FD00
 	.equ	SoftDipTimeColumn,0x10FD00
 	.equ	CalendarMonthWeekday,0x10FD01
 	.equ	SoftDipTimeColumnLo,0x10FD01
@@ -267,3 +262,17 @@
 	.equ	MonitorDigitLo,0x10FD77
 	.equ	MonitorFrames,0x10FD78
 	.equ	MonitorFramesLo,0x10FD79
+	.equ	DataListLast,0x10FEB0
+	.equ	NameColumn,0x10FEB0
+	.equ	CopyAllPtr,0x10FEB2
+	.equ	DataListPageFirst,0x10FEB2
+	.equ	NameColumnNew,0x10FEB2
+	.equ	DataListLine,0x10FEB4
+	.equ	NameKey,0x10FEB4
+	.equ	CopyAllResult,0x10FEB6
+	.equ	DataListCursor,0x10FEB6
+	.equ	NameKeyNew,0x10FEB6
+	.equ	NameKeyNewLo,0x10FEB7
+	.equ	DataListCursorNew,0x10FEB8
+	.equ	NameKeyMode,0x10FEB8
+	.equ	HowToPlayFlag,0x10FEBD

@@ -70,8 +70,8 @@ ControllerSetup:
 	moveq	#0x0,d0	| C18472
 	move.b	d0,(BIOS_P1STATUS-A5_BASE,a5)	| C18474
 	move.b	d0,(BIOS_P2STATUS-A5_BASE,a5)	| C18478
-	move.b	d0,(ram_10FDA0-A5_BASE,a5)	| C1847C
-	move.b	d0,(ram_10FDA6-A5_BASE,a5)	| C18480
+	move.b	d0,(BIOS_P3STATUS-A5_BASE,a5)	| C1847C
+	move.b	d0,(BIOS_P4STATUS-A5_BASE,a5)	| C18480
 	move.b	(REG_DIPSW).l,d0	| C18484
 	andi.b	#0x4,d0	| C1848A
 	bne.b	loc_C18496	| C1848E
@@ -128,7 +128,7 @@ ReadControllers:
 	andi.b	#0xF,d2	| C18556
 	or.b	d1,d2	| C1855A
 	not.b	d2	| C1855C
-	move.b	(ram_10FEDC).l,d3	| C1855E
+	move.b	(BIOS_STATCURNT_RAW).l,d3	| C1855E
 	eor.b	d2,d3	| C18564
 	and.b	d2,d3	| C18566
 	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C18568
@@ -152,7 +152,7 @@ loc_C1857C:
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C185A0
 	moveq	#0x3,d0	| C185A4
 	jsr	(MahjongStartFilter,pc)	| C185A6
-	move.b	d2,(ram_10FEDC-A5_BASE,a5)	| C185AA
+	move.b	d2,(BIOS_STATCURNT_RAW-A5_BASE,a5)	| C185AA
 	move.b	d3,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C185AE
 	andi.b	#0x55,d2	| C185B2
 	andi.b	#0x55,d3	| C185B6
@@ -160,10 +160,10 @@ loc_C1857C:
 	move.b	d3,(BIOS_STATCHANGE-A5_BASE,a5)	| C185BE
 	move.b	#0x0,(REG_POUTPUT).l	| C185C2
 	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C185CA
-	lea.l	(ram_10FEE8-A5_BASE,a5),a1	| C185CE
+	lea.l	(SysP1Status-A5_BASE,a5),a1	| C185CE
 	jsr	(CopyControllerState,pc)	| C185D2
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C185D6
-	lea.l	(ram_10FEEE-A5_BASE,a5),a1	| C185DA
+	lea.l	(SysP2Status-A5_BASE,a5),a1	| C185DA
 | CopyControllerState [C] copies a player's status block (BIOS_P1STATUS..) to ram_10FEE8/ram_10FEEE; a mahjong controller (status 3, wiki) is converted to joystick bits first
 CopyControllerState:
 	cmpi.b	#0x3,(a0)	| C185DE
@@ -298,15 +298,15 @@ MessOut:
 	tst.b	(BIOS_MESS_BUSY).l	| C1871E
 	bne.b	loc_C1875E	| C18724
 	addq.b	#0x1,(BIOS_MESS_BUSY).l	| C18726
-	move.l	#ram_10FECA,(ram_10FEC6).l	| C1872C
-	lea.l	(ram_10FF00).l,a0	| C18736
+	move.l	#MessOutStack,(MessOutStackPtr).l	| C1872C
+	lea.l	(MessBuffer).l,a0	| C18736
 	lea.l	(REG_VRAMADDR).l,a6	| C1873C
 	lea.l	0x2(a6),a4	| C18742
 loc_C18746:
 	cmpa.l	(BIOS_MESS_POINT).l,a0	| C18746
 	bcs.b	loc_C18760	| C1874C
 loc_C1874E:
-	move.l	#ram_10FF00,(BIOS_MESS_POINT).l	| C1874E
+	move.l	#MessBuffer,(BIOS_MESS_POINT).l	| C1874E
 	clr.b	(BIOS_MESS_BUSY).l	| C18758
 loc_C1875E:
 	rts	| C1875E
@@ -368,16 +368,16 @@ MessOutAddress:
 | MessOutCall [C] MESS_OUT command 10: runs another list (pointer pushed at ram_10FEC6)
 MessOutCall:
 	move.l	(a1)+,d0	| C187DA
-	movea.l	(ram_10FEC6).l,a3	| C187DC
+	movea.l	(MessOutStackPtr).l,a3	| C187DC
 	move.l	a1,(a3)+	| C187E2
-	move.l	a3,(ram_10FEC6).l	| C187E4
+	move.l	a3,(MessOutStackPtr).l	| C187E4
 	movea.l	d0,a1	| C187EA
 	rts	| C187EC
 | MessOutReturn [C] MESS_OUT command 11: back from MessOutCall
 MessOutReturn:
-	movea.l	(ram_10FEC6).l,a3	| C187EE
+	movea.l	(MessOutStackPtr).l,a3	| C187EE
 	movea.l	-(a3),a1	| C187F4
-	move.l	a3,(ram_10FEC6).l	| C187F6
+	move.l	a3,(MessOutStackPtr).l	| C187F6
 	rts	| C187FC
 | MessOutRepeat [C] MESS_OUT command 12: writes one word d1 times
 MessOutRepeat:

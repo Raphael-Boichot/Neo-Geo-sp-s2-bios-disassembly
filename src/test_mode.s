@@ -48,11 +48,11 @@ loc_C19008:
 	move.l	#0xEEE0000,(0x400002).l	| C1901C
 	move.l	#0xE000000,(0x400022).l	| C19026
 	lea.l	(BiosWorkRam).l,a5	| C19030
-	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C19036
-	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C1903C
+	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C19036
+	move.b	#0x1,(TestModeActive-A5_BASE,a5)	| C1903C
 	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C19042
 	move.b	#0x80,(BIOS_MVS_FLAG).l	| C1904A
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C19052
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C19052
 	move.b	d0,(REG_NOSHADOW).l	| C1905A
 	move.w	#0x7,(REG_IRQACK).l	| C19060
 	move.w	#0x2000,sr	| C19068
@@ -213,7 +213,7 @@ loc_C192D2:
 	jsr	(CodeNumberDraw,pc)	| C192E8
 loc_C192EC:
 	jsr	(WaitFrame,pc)	| C192EC
-	move.b	(ram_10FEEB-A5_BASE,a5),d0	| C192F0
+	move.b	(SysP1Change-A5_BASE,a5),d0	| C192F0
 	btst.b	#0x6,d0	| C192F4
 	beq.b	loc_C192FC	| C192F8
 	rts	| C192FA
@@ -291,7 +291,7 @@ CodeNumberWrite:
 	jsr	(Card,pc)	| C193CC
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C193D0
 	beq.w	loc_C19546	| C193D4
-	move.b	(ram_10FCF4-A5_BASE,a5),d0	| C193D8
+	move.b	(CardRomType-A5_BASE,a5),d0	| C193D8
 	andi.b	#0xF0,d0	| C193DC
 	beq.w	loc_C19546	| C193E0
 	cmpi.b	#0x20,d0	| C193E4
@@ -380,7 +380,7 @@ loc_C194BE:
 	move.l	d0,0x70(a6)	| C194E8
 	move.w	#0x0,0x74(a6)	| C194EC
 loc_C194F2:
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C194F2
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C194F2
 	move.b	d0,(REG_SRAMUNLOCK).l	| C194F8
 	move.l	(CodeNumberEdit-A5_BASE,a5),d0	| C194FE
 	andi.l	#0xF0F0F0F,d0	| C19502
@@ -779,14 +779,14 @@ CalendarText:
 | TestSoftDip [C] menu item: SETTING UP THE CABINET (soft DIP) screen; ran only in that MAME scenario
 TestSoftDip:
 	jsr	(SoundSlotSwitch,pc)	| C19B76
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C19B7A
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C19B7A
 	moveq	#0x0,d0	| C19B80
 	move.w	#0x1D,d7	| C19B82
 	movea.l	a5,a0	| C19B86
 loc_C19B88:
 	move.l	d0,(a0)+	| C19B88
 	dbra	d7,loc_C19B88	| C19B8A
-	lea.l	(bram_D08000).l,a4	| C19B8E
+	lea.l	(BramA4Base).l,a4	| C19B8E
 	moveq	#0x0,d6	| C19B94
 	move.w	d6,d5	| C19B96
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C19B98
@@ -851,7 +851,7 @@ loc_C19C42:
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C19C46
 	btst.b	#0x6,d0	| C19C4A
 	beq.b	loc_C19C56	| C19C4E
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C19C50
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C19C50
 	rts	| C19C54
 loc_C19C56:
 	btst.b	#0x4,d0	| C19C56
@@ -918,7 +918,7 @@ CabinetSettingsOld:
 loc_C19D1A:
 	jsr	(CabinetOldDrawRow,pc)	| C19D1A
 	jsr	(MessOut,pc)	| C19D1E
-	lea.l	(bram_D08000).l,a4	| C19D22
+	lea.l	(BramA4Base).l,a4	| C19D22
 	addq.w	#0x1,(CabinetOldRow-A5_BASE,a5)	| C19D28
 	cmpi.w	#0x4,(CabinetOldRow-A5_BASE,a5)	| C19D2C
 	bne.b	loc_C19D1A	| C19D32
@@ -975,7 +975,7 @@ loc_C19DBA:
 	bne.b	loc_C19DCA	| C19DC6
 	moveq	#-0x1,d1	| C19DC8
 loc_C19DCA:
-	lea.l	-0x7FC6(a4),a3	| C19DCA
+	lea.l	(Coin1Coins-A4_BASE,a4),a3	| C19DCA
 	move.w	(CabinetOldRow-A5_BASE,a5),d0	| C19DCE
 	add.w	d0,d0	| C19DD2
 	adda.l	d0,a3	| C19DD4
@@ -995,7 +995,7 @@ loc_C19DF0:
 	move.b	d0,(a3)	| C19DF0
 | CabinetOldDrawCoin [C] CabinetSettingsOld: draws the coin rate
 CabinetOldDrawCoin:
-	lea.l	-0x7FC6(a4),a3	| C19DF2
+	lea.l	(Coin1Coins-A4_BASE,a4),a3	| C19DF2
 	moveq	#0x0,d2	| C19DF6
 	move.w	#0x7008,d6	| C19DF8
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19DFC
@@ -1046,19 +1046,19 @@ loc_C19E7A:
 	andi.b	#0x30,d0	| C19E7E
 	beq.w	loc_C19EBC	| C19E82
 	move.b	d0,(REG_SRAMUNLOCK).l	| C19E86
-	move.b	-0x7FBE(a4),d0	| C19E8C
+	move.b	(GameSelectFree-A4_BASE,a4),d0	| C19E8C
 	beq.b	loc_C19E96	| C19E90
 	moveq	#0x0,d0	| C19E92
 	bra.b	loc_C19E98	| C19E94
 loc_C19E96:
 	moveq	#0x1,d0	| C19E96
 loc_C19E98:
-	move.b	d0,-0x7FBE(a4)	| C19E98
+	move.b	d0,(GameSelectFree-A4_BASE,a4)	| C19E98
 loc_C19E9C:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19E9C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19EA0
 	lea.l	(CabinetOldCreditedText,pc),a1	| C19EA4
-	tst.b	-0x7FBE(a4)	| C19EA8
+	tst.b	(GameSelectFree-A4_BASE,a4)	| C19EA8
 	beq.b	loc_C19EB2	| C19EAC
 	lea.l	(CabinetOldAnytimeText,pc),a1	| C19EAE
 loc_C19EB2:
@@ -1087,28 +1087,28 @@ loc_C19EF6:
 	bne.b	loc_C19F14	| C19F0E
 	move.b	#0x99,d1	| C19F10
 loc_C19F14:
-	move.b	-0x7FBC(a4),d2	| C19F14
+	move.b	(StartCompulsionTime-A4_BASE,a4),d2	| C19F14
 loc_C19F18:
 	sub.b	d0,d0	| C19F18
 	abcd	d1,d2	| C19F1A
 	cmpi.b	#0x60,d2	| C19F1C
 	bcc.b	loc_C19F18	| C19F20
-	move.b	d2,-0x7FBC(a4)	| C19F22
-	move.b	#0x3B,-0x7FBB(a4)	| C19F26
-	clr.b	-0x7FBD(a4)	| C19F2C
+	move.b	d2,(StartCompulsionTime-A4_BASE,a4)	| C19F22
+	move.b	#0x3B,(StartCompulsionFrames-A4_BASE,a4)	| C19F26
+	clr.b	(NoStartCompulsion-A4_BASE,a4)	| C19F2C
 	tst.b	d2	| C19F30
 	bne.b	loc_C19F3A	| C19F32
-	move.b	#0x1,-0x7FBD(a4)	| C19F34
+	move.b	#0x1,(NoStartCompulsion-A4_BASE,a4)	| C19F34
 loc_C19F3A:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19F3A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19F3E
-	tst.b	-0x7FBD(a4)	| C19F42
+	tst.b	(NoStartCompulsion-A4_BASE,a4)	| C19F42
 	bne.w	loc_C19F82	| C19F46
 	clr.l	(a0)+	| C19F4A
 	move.w	#0x3,(a0)+	| C19F4C
 	move.w	#0x738E,(a0)+	| C19F50
 	move.w	#0x108,(a0)+	| C19F54
-	move.b	-0x7FBC(a4),d0	| C19F58
+	move.b	(StartCompulsionTime-A4_BASE,a4),d0	| C19F58
 	jsr	(ByteToHex,pc)	| C19F5C
 	move.b	d0,(a0)+	| C19F60
 	move.b	d1,(a0)+	| C19F62
@@ -1137,19 +1137,19 @@ loc_C19FA2:
 	andi.b	#0x30,d0	| C19FA6
 	beq.w	loc_C19FE4	| C19FAA
 	move.b	d0,(REG_SRAMUNLOCK).l	| C19FAE
-	move.b	-0x7FBA(a4),d0	| C19FB4
+	move.b	(DemoSoundOff-A4_BASE,a4),d0	| C19FB4
 	beq.b	loc_C19FBE	| C19FB8
 	moveq	#0x0,d0	| C19FBA
 	bra.b	loc_C19FC0	| C19FBC
 loc_C19FBE:
 	moveq	#0x1,d0	| C19FBE
 loc_C19FC0:
-	move.b	d0,-0x7FBA(a4)	| C19FC0
+	move.b	d0,(DemoSoundOff-A4_BASE,a4)	| C19FC0
 loc_C19FC4:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19FC4
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19FC8
 	lea.l	(CabinetOldEachGameText,pc),a1	| C19FCC
-	tst.b	-0x7FBA(a4)	| C19FD0
+	tst.b	(DemoSoundOff-A4_BASE,a4)	| C19FD0
 	beq.b	loc_C19FDA	| C19FD4
 	lea.l	(CabinetOldNoDemoSoundText,pc),a1	| C19FD6
 loc_C19FDA:
@@ -1224,7 +1224,7 @@ CabinetOldText:
 SoftDipEditor:
 	jsr	(SoundSlotSwitch).l	| C1A106
 	jsr	(WaitFrame,pc)	| C1A10C
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1A110
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C1A110
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1A116
 	move.w	#0x2700,sr	| C1A11C
 	move.w	(SoftDipGameLine-A5_BASE,a5),d0	| C1A120
@@ -1318,7 +1318,7 @@ loc_C1A1F6:
 	move.b	d5,(REG_BRDFIX).l	| C1A1F6
 	move.w	#0x2000,sr	| C1A1FC
 	move.w	d7,(SoftDipRowCount-A5_BASE,a5)	| C1A200
-	lea.l	(bram_D08000).l,a4	| C1A204
+	lea.l	(BramA4Base).l,a4	| C1A204
 	movea.l	(SoftDipGameEntry-A5_BASE,a5),a0	| C1A20A
 	move.w	0x2(a0),d0	| C1A20E
 	lsl.w	#0x4,d0	| C1A212
@@ -1334,7 +1334,7 @@ loc_C1A1F6:
 loc_C1A230:
 	jsr	(ClearFixLayer,pc)	| C1A230
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A234
-	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C1A238
+	lea.l	(MessBuffer-A5_BASE,a5),a0	| C1A238
 	clr.l	(a0)+	| C1A23C
 	move.w	#0x3,(a0)+	| C1A23E
 	move.w	#0x7144,(a0)+	| C1A242
@@ -1769,7 +1769,7 @@ SoftDipCursorRow:
 | SoftDipSave [C] C in SoftDipEditor: copies BIOS_GAME_DIP back to the game's 16 bytes in GameSoftDips
 SoftDipSave:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1A71E
-	lea.l	(bram_D08000).l,a4	| C1A724
+	lea.l	(BramA4Base).l,a4	| C1A724
 	movea.l	(SoftDipGameEntry-A5_BASE,a5),a0	| C1A72A
 	move.w	0x2(a0),d0	| C1A72E
 	lsl.w	#0x4,d0	| C1A732
@@ -1785,14 +1785,14 @@ SoftDipSave:
 TestBookKeeping:
 	clr.w	(BookListCursor-A5_BASE,a5)	| C1A74A
 loc_C1A74E:
-	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1A74E
+	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C1A74E
 	moveq	#0x0,d0	| C1A754
 	move.w	#0x27,d7	| C1A756
 	movea.l	a5,a0	| C1A75A
 loc_C1A75C:
 	move.l	d0,(a0)+	| C1A75C
 	dbra	d7,loc_C1A75C	| C1A75E
-	lea.l	(bram_D08000).l,a4	| C1A762
+	lea.l	(BramA4Base).l,a4	| C1A762
 	moveq	#0x0,d6	| C1A768
 	move.w	d6,d5	| C1A76A
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C1A76C
@@ -1856,7 +1856,7 @@ loc_C1A816:
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C1A81A
 	btst.b	#0x6,d0	| C1A81E
 	beq.b	loc_C1A82A	| C1A822
-	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1A824
+	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C1A824
 	rts	| C1A828
 loc_C1A82A:
 	btst.b	#0x4,d0	| C1A82A
@@ -1914,7 +1914,7 @@ BookKeepingSelect:
 	bra.w	BookGame	| C1A8D4
 | BookCabinetCoin [C] CABINET/COIN page: COIN1, COIN2, SERVICE for the last 7 days; A pages to January-June, July-December + TOTAL
 BookCabinetCoin:
-	lea.l	(bram_D08000).l,a4	| C1A8D8
+	lea.l	(BramA4Base).l,a4	| C1A8D8
 	lea.l	(BookRecords-A5_BASE,a5),a1	| C1A8DE
 	lea.l	(BookCoinDays-A4_BASE,a4),a2	| C1A8E2
 	move.b	(BookDayIndex-A4_BASE,a4),d0	| C1A8E6
@@ -2013,7 +2013,7 @@ loc_C1A9C2:
 	rts	| C1A9FE
 | BookCabinetPlay [C] CABINET/PLAY page: PLAY, CONT., AV.TIME for the last 7 days, then the months
 BookCabinetPlay:
-	lea.l	(bram_D08000).l,a4	| C1AA00
+	lea.l	(BramA4Base).l,a4	| C1AA00
 	lea.l	(BookRecords-A5_BASE,a5),a1	| C1AA06
 	lea.l	(BookPlayDays-A4_BASE,a4),a2	| C1AA0A
 	move.b	(BookDayIndex-A4_BASE,a4),d0	| C1AA0E
@@ -2132,7 +2132,7 @@ loc_C1AB28:
 	rts	| C1AB64
 | BookGame [C] book keeping page of one game (slot line of the list): same layout as CABINET/PLAY from BookGameDays / BookGameMonths
 BookGame:
-	lea.l	(bram_D08000).l,a4	| C1AB66
+	lea.l	(BramA4Base).l,a4	| C1AB66
 	movea.l	a5,a1	| C1AB6C
 	move.w	(BookListCursor-A5_BASE,a5),d0	| C1AB6E
 	subq.w	#0x2,d0	| C1AB72
@@ -2159,7 +2159,7 @@ BookGame:
 	adda.l	d6,a2	| C1ABB6
 	jsr	(BookCopyMonths,pc)	| C1ABB8
 	lsl.w	#0x4,d1	| C1ABBC
-	lea.l	(bram_D09B20-A4_BASE,a4),a2	| C1ABBE
+	lea.l	(BookGameTotals-A4_BASE,a4),a2	| C1ABBE
 	lea.l	(a2,d1.w),a2	| C1ABC2
 	move.l	(a2)+,(a1)+	| C1ABC6
 	move.l	(a2)+,(a1)+	| C1ABC8
@@ -2522,7 +2522,7 @@ CabinetSettings:
 loc_C1B0C8:
 	jsr	(CabinetDrawRow,pc)	| C1B0C8
 	jsr	(MessOut,pc)	| C1B0CC
-	lea.l	(bram_D08000).l,a4	| C1B0D0
+	lea.l	(BramA4Base).l,a4	| C1B0D0
 	addq.w	#0x1,(CabinetRow-A5_BASE,a5)	| C1B0D6
 	cmpi.w	#0x5,(CabinetRow-A5_BASE,a5)	| C1B0DA
 	bne.b	loc_C1B0C8	| C1B0E0
@@ -2581,7 +2581,7 @@ loc_C1B170:
 	bne.b	loc_C1B180	| C1B17C
 	moveq	#-0x1,d1	| C1B17E
 loc_C1B180:
-	lea.l	-0x7FC6(a4),a3	| C1B180
+	lea.l	(Coin1Coins-A4_BASE,a4),a3	| C1B180
 	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B184
 	add.w	d0,d0	| C1B188
 	adda.l	d0,a3	| C1B18A
@@ -2610,7 +2610,7 @@ CabinetDrawCoin2:
 	bra.b	loc_C1B1C4	| C1B1B8
 | CabinetDrawCoin1 [C] CabinetSettings: draws the COIN1 rate
 CabinetDrawCoin1:
-	lea.l	-0x7FC6(a4),a3	| C1B1BA
+	lea.l	(Coin1Coins-A4_BASE,a4),a3	| C1B1BA
 	move.w	#0x7008,d6	| C1B1BE
 	moveq	#0x0,d2	| C1B1C2
 loc_C1B1C4:
@@ -2662,19 +2662,19 @@ loc_C1B242:
 	andi.b	#0x30,d0	| C1B246
 	beq.w	loc_C1B284	| C1B24A
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1B24E
-	move.b	-0x7FBE(a4),d0	| C1B254
+	move.b	(GameSelectFree-A4_BASE,a4),d0	| C1B254
 	beq.b	loc_C1B25E	| C1B258
 	moveq	#0x0,d0	| C1B25A
 	bra.b	loc_C1B260	| C1B25C
 loc_C1B25E:
 	moveq	#0x1,d0	| C1B25E
 loc_C1B260:
-	move.b	d0,-0x7FBE(a4)	| C1B260
+	move.b	d0,(GameSelectFree-A4_BASE,a4)	| C1B260
 loc_C1B264:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B264
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1B268
 	lea.l	(CabinetCreditedText,pc),a1	| C1B26C
-	tst.b	-0x7FBE(a4)	| C1B270
+	tst.b	(GameSelectFree-A4_BASE,a4)	| C1B270
 	beq.b	loc_C1B27A	| C1B274
 	lea.l	(CabinetFreeText,pc),a1	| C1B276
 loc_C1B27A:
@@ -2703,28 +2703,28 @@ loc_C1B2BE:
 	bne.b	loc_C1B2DC	| C1B2D6
 	move.b	#0x99,d1	| C1B2D8
 loc_C1B2DC:
-	move.b	-0x7FBC(a4),d2	| C1B2DC
+	move.b	(StartCompulsionTime-A4_BASE,a4),d2	| C1B2DC
 loc_C1B2E0:
 	sub.b	d0,d0	| C1B2E0
 	abcd	d1,d2	| C1B2E2
 	cmpi.b	#0x60,d2	| C1B2E4
 	bcc.b	loc_C1B2E0	| C1B2E8
-	move.b	d2,-0x7FBC(a4)	| C1B2EA
-	move.b	#0x3B,-0x7FBB(a4)	| C1B2EE
-	clr.b	-0x7FBD(a4)	| C1B2F4
+	move.b	d2,(StartCompulsionTime-A4_BASE,a4)	| C1B2EA
+	move.b	#0x3B,(StartCompulsionFrames-A4_BASE,a4)	| C1B2EE
+	clr.b	(NoStartCompulsion-A4_BASE,a4)	| C1B2F4
 	tst.b	d2	| C1B2F8
 	bne.b	loc_C1B302	| C1B2FA
-	move.b	#0x1,-0x7FBD(a4)	| C1B2FC
+	move.b	#0x1,(NoStartCompulsion-A4_BASE,a4)	| C1B2FC
 loc_C1B302:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B302
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1B306
-	tst.b	-0x7FBD(a4)	| C1B30A
+	tst.b	(NoStartCompulsion-A4_BASE,a4)	| C1B30A
 	bne.w	loc_C1B34A	| C1B30E
 	clr.l	(a0)+	| C1B312
 	move.w	#0x3,(a0)+	| C1B314
 	move.w	#0x7391,(a0)+	| C1B318
 	move.w	#0x108,(a0)+	| C1B31C
-	move.b	-0x7FBC(a4),d0	| C1B320
+	move.b	(StartCompulsionTime-A4_BASE,a4),d0	| C1B320
 	jsr	(ByteToHex,pc)	| C1B324
 	move.b	d0,(a0)+	| C1B328
 	move.b	d1,(a0)+	| C1B32A
@@ -2753,19 +2753,19 @@ loc_C1B36A:
 	andi.b	#0x30,d0	| C1B36E
 	beq.w	loc_C1B3AC	| C1B372
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1B376
-	move.b	-0x7FBA(a4),d0	| C1B37C
+	move.b	(DemoSoundOff-A4_BASE,a4),d0	| C1B37C
 	beq.b	loc_C1B386	| C1B380
 	moveq	#0x0,d0	| C1B382
 	bra.b	loc_C1B388	| C1B384
 loc_C1B386:
 	moveq	#0x1,d0	| C1B386
 loc_C1B388:
-	move.b	d0,-0x7FBA(a4)	| C1B388
+	move.b	d0,(DemoSoundOff-A4_BASE,a4)	| C1B388
 loc_C1B38C:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B38C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1B390
 	lea.l	(CabinetEachGameText,pc),a1	| C1B394
-	tst.b	-0x7FBA(a4)	| C1B398
+	tst.b	(DemoSoundOff-A4_BASE,a4)	| C1B398
 	beq.b	loc_C1B3A2	| C1B39C
 	lea.l	(CabinetNoDemoSoundText,pc),a1	| C1B39E
 loc_C1B3A2:
@@ -2883,12 +2883,12 @@ loc_C1B572:
 	move.l	#0xE000000,(0x400022).l	| C1B590
 	lea.l	(BiosWorkRam).l,a5	| C1B59A
 	jsr	(ControllerSetup).l	| C1B5A0
-	move.b	#0x1,(ram_10FEE6-A5_BASE,a5)	| C1B5A6
-	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C1B5AC
-	move.b	#0x1,(ram_10FEBC-A5_BASE,a5)	| C1B5B2
+	move.b	#0x1,(Card1MRecoverFlag-A5_BASE,a5)	| C1B5A6
+	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C1B5AC
+	move.b	#0x1,(TestModeActive-A5_BASE,a5)	| C1B5B2
 	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1B5B8
 	move.b	#0x80,(BIOS_MVS_FLAG).l	| C1B5C0
-	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C1B5C8
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C1B5C8
 	move.b	d0,(REG_NOSHADOW).l	| C1B5D0
 	move.w	#0x7,(REG_IRQACK).l	| C1B5D6
 	move.w	#0x2000,sr	| C1B5DE
@@ -2913,11 +2913,11 @@ loc_C1B61C:
 	jsr	(IsCard1M,pc)	| C1B626
 	tst.b	d5	| C1B62A
 	beq.b	loc_C1B5E8	| C1B62C
-	move.b	(ram_10FEEA-A5_BASE,a5),d0	| C1B62E
+	move.b	(SysP1Current-A5_BASE,a5),d0	| C1B62E
 	andi.b	#0xF0,d0	| C1B632
 	cmpi.b	#0xF0,d0	| C1B636
 	beq.w	Card1MRestore	| C1B63A
-	move.b	(ram_10FEEB-A5_BASE,a5),d0	| C1B63E
+	move.b	(SysP1Change-A5_BASE,a5),d0	| C1B63E
 	andi.b	#0x3,d0	| C1B642
 	beq.b	loc_C1B61C	| C1B646
 	lea.l	(0x800000).l,a6	| C1B648
@@ -2942,7 +2942,7 @@ Card1MRecoverDraw:
 	move.w	#0x3,(a0)+	| C1B680
 	move.w	#0x72C6,(a0)+	| C1B684
 	move.w	#0x108,(a0)+	| C1B688
-	move.b	(ram_10FCD9-A5_BASE,a5),d0	| C1B68C
+	move.b	(WorkIndexLo-A5_BASE,a5),d0	| C1B68C
 	ori.b	#0x30,d0	| C1B690
 	move.b	d0,(a0)+	| C1B694
 	move.b	#0xFF,(a0)+	| C1B696
@@ -3036,7 +3036,7 @@ loc_C1B7A0:
 	rts	| C1B7A8
 | Card1MRestore [C] A+B+C+D in Card1MRecover: copies the cabinet's data from the card to backup RAM (CodeNumber, CabinetNumber, BookLastDate.., $D0011A, $D00200, $D08320 blocks), marks the slots, RECOVER OK
 Card1MRestore:
-	lea.l	(bram_D08000).l,a4	| C1B7AA
+	lea.l	(BramA4Base).l,a4	| C1B7AA
 	move.w	#0x2700,sr	| C1B7B0
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1B7B4
 	move.w	(WorkIndex-A5_BASE,a5),d0	| C1B7BA

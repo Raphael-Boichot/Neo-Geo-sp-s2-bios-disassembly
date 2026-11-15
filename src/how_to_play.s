@@ -14,7 +14,7 @@ HowToPlay:
 	jsr	(WaitFrame,pc)	| C18940
 	move.w	#0x2700,sr	| C18944
 	move.b	#0x3,(REG_SOUND).l	| C18948
-	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C18950
+	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C18950
 	move.b	d0,(REG_SWPBIOS).l	| C18956
 	move.b	d0,(REG_BRDFIX).l	| C1895C
 	move.w	#0x2000,sr	| C18962
@@ -28,7 +28,7 @@ loc_C18976:
 	clr.w	(0x401FFE).l	| C18984
 	jsr	(LspFirst,pc)	| C1898A
 	move.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1898E
-	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C18994
+	lea.l	(MessBuffer-A5_BASE,a5),a0	| C18994
 	move.l	#HowToPlayScreen,(a0)+	| C18998
 	move.l	#HowToPlayStick,(a0)+	| C1899E
 	move.l	#HowToPlayButton1,(a0)+	| C189A4
@@ -41,7 +41,7 @@ loc_C18976:
 	bra.w	loc_C189E6	| C189C8
 loc_C189CC:
 	jsr	(WaitFrame,pc)	| C189CC
-	move.b	(ram_10FEEB-A5_BASE,a5),d0	| C189D0
+	move.b	(SysP1Change-A5_BASE,a5),d0	| C189D0
 	or.b	(BIOS_P2CHANGE-A5_BASE,a5),d0	| C189D4
 	andi.b	#0xF0,d0	| C189D8
 	bne.w	loc_C18AA4	| C189DC
@@ -108,13 +108,13 @@ loc_C18A72:
 loc_C18A82:
 	cmpi.b	#0xFF,d0	| C18A82
 	beq.b	loc_C18A94	| C18A86
-	move.b	d0,(ram_10FEC4-A5_BASE,a5)	| C18A88
-	move.l	a1,(ram_10FEC0-A5_BASE,a5)	| C18A8C
+	move.b	d0,(HowToPlayAnimTimer-A5_BASE,a5)	| C18A88
+	move.l	a1,(HowToPlayAnimPtr-A5_BASE,a5)	| C18A8C
 	bra.w	loc_C189EA	| C18A90
 loc_C18A94:
-	subq.b	#0x1,(ram_10FEC4-A5_BASE,a5)	| C18A94
+	subq.b	#0x1,(HowToPlayAnimTimer-A5_BASE,a5)	| C18A94
 	beq.w	loc_C189EA	| C18A98
-	movea.l	(ram_10FEC0-A5_BASE,a5),a1	| C18A9C
+	movea.l	(HowToPlayAnimPtr-A5_BASE,a5),a1	| C18A9C
 	bra.w	loc_C189EA	| C18AA0
 loc_C18AA4:
 	clr.l	(0x400002).l	| C18AA4
@@ -122,10 +122,10 @@ loc_C18AA4:
 	jsr	(SoundSlotSwitch,pc)	| C18AAE
 	jsr	(WaitFrame,pc)	| C18AB2
 	move.b	#0x3,(REG_SOUND).l	| C18AB6
-	clr.b	(ram_10FEBD-A5_BASE,a5)	| C18ABE
+	clr.b	(HowToPlayFlag-A5_BASE,a5)	| C18ABE
 	move.b	d0,(REG_CRTFIX).l	| C18AC2
 	move.b	d0,(REG_SWPROM).l	| C18AC8
-	clr.b	(ram_10FE8D-A5_BASE,a5)	| C18ACE
+	clr.b	(BiosScreenActive-A5_BASE,a5)	| C18ACE
 	bset.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C18AD2
 loc_C18AD8:
 	rts	| C18AD8

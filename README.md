@@ -5,7 +5,7 @@
 Disassembly of the Neo Geo MVS system ROM **SP-S2** (Europe MVS V2, the default BIOS in MAME), with a
 source tree that rebuilds the ROM byte for byte. The long-term goal is a custom system ROM built on it, maybe.
 
-**Status: L0, L1 and L5 done, L4 nearly (30 backup RAM accesses left), L2 measured (79.6 % of the code
+**Status: L0, L1, L4 and L5 done, L2 measured (79.6 % of the code
 ran in MAME, 70.9 % without forced runs), L3 names done for routines and data (574 names; only `loc_` labels left automatic)** (2026-11-15): `src/sp-s2.s` assembles to the original
 ROM (SHA-1 below); the BIOS has been run in MAME (screens below, levels in the table).
 
@@ -231,6 +231,38 @@ a value (held: repeat), Left/Right pick a column or digit, C goes back, D sets (
   (`CabinetSettingsOld`, C: no reference, never ran).
 
 ![Test mode settings screens](docs/test_mode_settings.png)
+
+### Backup RAM map
+
+The 64 KB backup RAM at `$D00000` (battery-backed on the MVS board) holds the board's settings, its
+counters and up to 8 games (a game index per slot, `SlotTable`). Names in `symbols/ram.csv`; the code
+reaches the upper half through a4 = `$D08000` (`BramA4Base`), written `(NAME-A4_BASE,a4)`.
+
+| Address | Size | Content |
+|---|---|---|
+| `$D00000` | `$10` | start of the RAM test area (`BackupRamStart`) |
+| `$D00010` | `$10` | `BackupRamSignature` (BACKUP RAM OK !): wrong at power-on = `ClearBackupRam`, which zeroes all 64 KB and writes the defaults |
+| `$D00020-$D0003D` | | coin inputs (previous, current, new), coins toward a credit, coin counter pulses, `Credits` (BCD), `Credits2`, coin rates `Coin1Coins`.. |
+| `$D00042-$D00047` | | cabinet settings: game select, start compulsion (flag, seconds, frames), demo sound; `SlotCount` |
+| `$D00048-$D0005D` | | play time (seconds, frames), `EyecatchSlot`, the software clock (hour x 4, minute, second, frames) |
+| `$D0005E-$D00061` | | `NeoClnSlot`, `SlotNumberMode` (cartridge ID cases) |
+| `$D00104-$D00123` | | `LastBootDate`, `CurrentSlot`, `BookSlot`, book keeping pointers (today, month, game), day indexes |
+| `$D00124` | `$40` | `SlotTable`: per slot, the NGH, the settings index and the date (+`$20`) |
+| `$D00164` | `$40` | `RemovedGames`: games no longer in a slot |
+| `$D001A4-$D001B1` | | game book keeping pointers, `CodeNumber`, `CabinetNumber` |
+| `$D00200` | 8 x 4 | `BookGameDayCount`: days each game spent in a slot |
+| `$D00220` | 8 x `$10` | `GameSoftDips`: soft DIP settings per game |
+| `$D002A0` | 8 x `$10` | `GameNames`: game name per game |
+| `$D00320` | 8 x `$1000` | `GameBackupData`: copy of each game's own backup area (`CART_BACKUP_PTR`) |
+| `$D08320` | 8 x `$240` | `BookGameDays`: 36 daily records per game |
+| `$D09520` | 8 x `$C0` | `BookGameMonths`: 12 monthly records per game |
+| `$D09B20` | 8 x `$10` | `BookGameTotals` |
+| `$D09BA0` | `$240` | `BookCoinDays`: CABINET/COIN, 36 days |
+| `$D09DE0` | `$240` | `BookPlayDays`: CABINET/PLAY, 36 days |
+| `$D0A020` | `$C0` | `BookCoinMonths`: 12 months |
+| `$D0A0E0` | `$C0` | `BookPlayMonths`: 12 months |
+| `$D0A1A0` | 8 x `$60` | `BookGameHours`: starts per hour of the day, per game (not shown by the test mode) |
+| `$D0A4A0-$D0FFFF` | | no use found in the system ROM (only cleared with the rest) |
 
 ### 1M memory card: cabinet backup and recovery
 
@@ -477,7 +509,7 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 | L1 every byte typed | done by the tracer: code 32,966 B, data 21,383 B (text as `.ascii`, ROM pointers as `dc.l label`), free 76,723 B; three numeric tables identified (scaling tables at `$C02000`/`$C03000`, sine table at `$C04000`, tag I); the unreferenced controller test and memory card utility traced from their pointer tables, and the debug monitor from its 8 exception entry points (`tools/hints.txt`) |
 | L2 code traced and run | 15 code-pointer tables followed; indirect jumps: `jmp (a6)` at `$C131A8` (return through a6 during the RAM test) the only one left (`tools/stats.py`); the card utility dispatch at `$C150A6` is found by the tracer. MAME, 81 scenarios with 11 games and with no cartridge (Sengoku 2: boot, coins and START, hardware test, every test-mode screen with every key and book keeping over three dates (`tools/test_mode_scenarios.py`), calendar set, memory card blank/formatted, played by a bot to level 2 then save, load and delete, and with its header ID patched to NEO-CLN or to N 0 O 0 G 0 O 0; the hidden-programs build: card utility with COPY between two cards, write-protected card, controller test; NAM-1975: HOW_TO_PLAY, and HOW_TO_PLAY with the timer interrupt forced on; Magician Lord: start; King of the Monsters 2: P2 join, continue, co-op start; King of the Monsters: co-op start; League Bowling: game type choice (CREDIT_DOWN), blank card (CARD_ERROR formats it), write-protected card; Riding Hero, Top Player's Golf, Alpha Mission II: soft DIP editor; Sengoku 2 and no cartridge: the 1M card cabinet backup with an emulated card; forced (`tools/fault_scenarios.py`): the 9 boot errors and the AES form, the debug monitor (test build, every command), the checksum slot and the card fill loop (test builds), CREDIT_DOWN in Top Player's Golf and Baseball Stars with the US country code, the FBI and JAPAN ONLY screens after the eyecatcher): 7,368 of 9,252 instructions ran (79.6 %), 6,558 without the forced runs; nothing ran outside the static trace. All 8 CARD functions and HOW_TO_PLAY ran; the work RAM test loop ran (all hard DIPs on). Never run: the monitor entries for MONITOR ENTRY, uninitialised and spurious interrupts, the older power-on tests (`PowerOnTestOld`), `ChecksumCompare` and the older cabinet page `CabinetSettingsOld` (219 instructions nothing reaches) |
 | L3 names | 574 routines, tables and data blocks named (C 476, I 67, W 31) in `symbols/rom_names.csv`: the 17 BIOS call slots (wiki names, W) and their targets, and the 8 CARD functions; all ran in MAME (SYSTEM_INT2 only when forced, the checksum slot only from a test build); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and the NEO-CLN cartridge calendar), test mode (every routine, table and text of `test_mode.s`), the 1M card cabinet backup, hardware test, the unreferenced controller test and memory card utility, the boot errors, the debug monitor, the card error handlers, the card format and file system helpers (three card types), the slot scan and slot table merge, coins and the software clock, the controller reading, the MESS_OUT command handlers, the most-called helpers (C from code reading, MAME screens and coverage); some I. Only the 1,039 `loc_` labels (branch targets inside routines) are still automatic: no `sub_`, `dat_` or `tbl_` left |
-| L4 RAM and registers | no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)` where a4 is proven (30 accesses left raw where a4 cannot be proven). 225 RAM addresses used: 95 named (W/C/I), 130 automatic (board settings, code number, cabinet number, book keeping areas and pointers, slot count, software clock); `$100000` is `WorkRamStart` (also the card utility's card buffer); 18 cartridge header fields named |
+| L4 RAM and registers | done: no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)`, a4 proven by the generator or, for the 8 cabinet row handlers reached through a table, by reading the callers (`a4` hints). All 273 RAM addresses used are named: `symbols/ram.csv` has 161 names (W 60 from the NeoGeoDev wiki, C 80, I 21) and `symbols/ram_scoped.csv` 114 names valid in one part of the code only (`symbols/ram_scoped.csv`: the BIOS reuses `$10FC00-$10FD7F` and the card screen variables per screen). Backup RAM map above; 18 cartridge header fields named |
 | L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |
 | L6 understanding | started: boot sequence, every test-mode and hardware-test screen (with their settings), the 1M card cabinet backup, the hidden programs, card save/load/delete and card errors, boot errors, the debug monitor, HOW_TO_PLAY, CREDIT_DOWN and SYSTEM_INT2 run in MAME and linked to their routines (README sections above); screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); no written reference per subsystem yet |
 

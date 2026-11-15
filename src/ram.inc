@@ -5,70 +5,11 @@
 	.equ	ram_108000,0x108000
 	.equ	ram_10C000,0x10C000
 	.equ	BiosWorkRam,0x10F300
-	.equ	ram_10F500,0x10F500
-	.equ	ram_10FC00,0x10FC00
-	.equ	ram_10FC04,0x10FC04
-	.equ	ram_10FC24,0x10FC24
-	.equ	ram_10FC48,0x10FC48
-	.equ	ram_10FC6C,0x10FC6C
-	.equ	ram_10FC90,0x10FC90
-	.equ	ram_10FC91,0x10FC91
-	.equ	ram_10FCB4,0x10FCB4
-	.equ	ram_10FCB5,0x10FCB5
 	.equ	WorkIndex,0x10FCD8
 	.equ	ram_10FCD9,0x10FCD9
 	.equ	WorkIndexNew,0x10FCDA
-	.equ	ram_10FCDB,0x10FCDB
-	.equ	ram_10FCDC,0x10FCDC
-	.equ	ram_10FCDE,0x10FCDE
-	.equ	ram_10FCDF,0x10FCDF
-	.equ	ram_10FCE0,0x10FCE0
-	.equ	ram_10FCE2,0x10FCE2
-	.equ	ram_10FCE4,0x10FCE4
-	.equ	ram_10FCE6,0x10FCE6
-	.equ	ram_10FCE7,0x10FCE7
-	.equ	ram_10FCE8,0x10FCE8
-	.equ	ram_10FCEC,0x10FCEC
-	.equ	ram_10FCEE,0x10FCEE
-	.equ	ram_10FCF2,0x10FCF2
 	.equ	ram_10FCF4,0x10FCF4
 	.equ	ram_10FD00,0x10FD00
-	.equ	ram_10FD01,0x10FD01
-	.equ	ram_10FD02,0x10FD02
-	.equ	ram_10FD04,0x10FD04
-	.equ	ram_10FD06,0x10FD06
-	.equ	ram_10FD08,0x10FD08
-	.equ	ram_10FD0A,0x10FD0A
-	.equ	ram_10FD0E,0x10FD0E
-	.equ	ram_10FD10,0x10FD10
-	.equ	ram_10FD14,0x10FD14
-	.equ	ram_10FD15,0x10FD15
-	.equ	ram_10FD16,0x10FD16
-	.equ	ram_10FD3C,0x10FD3C
-	.equ	ram_10FD40,0x10FD40
-	.equ	ram_10FD44,0x10FD44
-	.equ	ram_10FD48,0x10FD48
-	.equ	ram_10FD4A,0x10FD4A
-	.equ	ram_10FD4C,0x10FD4C
-	.equ	ram_10FD4E,0x10FD4E
-	.equ	ram_10FD52,0x10FD52
-	.equ	ram_10FD5E,0x10FD5E
-	.equ	ram_10FD5F,0x10FD5F
-	.equ	ram_10FD62,0x10FD62
-	.equ	ram_10FD63,0x10FD63
-	.equ	ram_10FD64,0x10FD64
-	.equ	ram_10FD66,0x10FD66
-	.equ	ram_10FD67,0x10FD67
-	.equ	ram_10FD6A,0x10FD6A
-	.equ	ram_10FD6B,0x10FD6B
-	.equ	ram_10FD6C,0x10FD6C
-	.equ	ram_10FD6E,0x10FD6E
-	.equ	ram_10FD70,0x10FD70
-	.equ	ram_10FD74,0x10FD74
-	.equ	ram_10FD76,0x10FD76
-	.equ	ram_10FD77,0x10FD77
-	.equ	ram_10FD78,0x10FD78
-	.equ	ram_10FD79,0x10FD79
 	.equ	BIOS_SYSTEM_MODE,0x10FD80
 	.equ	BIOS_SYSTEM_MODE_LO,0x10FD81
 	.equ	BIOS_MVS_FLAG,0x10FD82
@@ -225,3 +166,104 @@
 	.equ	BookPlayDays,0xD09DE0
 	.equ	BookCoinMonths,0xD0A020
 	.equ	BookPlayMonths,0xD0A0E0
+
+| names valid in one part of the code only (symbols/ram_scoped.csv)
+	.equ	BookRecords,0x10F500
+	.equ	SoftDipDefinition,0x10F500
+	.equ	CodeNumberEdit,0x10FC00
+	.equ	EyecatchXPos,0x10FC00
+	.equ	SoftDipRows,0x10FC00
+	.equ	CodeNumberDigit,0x10FC04
+	.equ	EyecatchXPos2,0x10FC24
+	.equ	EyecatchYPos,0x10FC48
+	.equ	EyecatchYPos2,0x10FC6C
+	.equ	EyecatchShrink,0x10FC90
+	.equ	EyecatchShrinkV,0x10FC91
+	.equ	EyecatchShrink2,0x10FCB4
+	.equ	EyecatchShrink2V,0x10FCB5
+	.equ	IoCheckSlotCount,0x10FCDB
+	.equ	CardStillInsertedTimer,0x10FCDC
+	.equ	EyecatchTimer,0x10FCDC
+	.equ	BookListCursor,0x10FCDE
+	.equ	CardUtilMenuNew,0x10FCDE
+	.equ	EyecatchCharCount,0x10FCDE
+	.equ	HardDipLast,0x10FCDE
+	.equ	IoCheckLedCount,0x10FCDE
+	.equ	ListCursor,0x10FCDE
+	.equ	SoftDipGameLine,0x10FCDE
+	.equ	SoundTestCursor,0x10FCDE
+	.equ	SoundTestCursorNew,0x10FCDF
+	.equ	BookListCursorNew,0x10FCE0
+	.equ	EyecatchCharAddress,0x10FCE0
+	.equ	ListCursorNew,0x10FCE0
+	.equ	BookPage,0x10FCE2
+	.equ	CabinetOldRow,0x10FCE2
+	.equ	CabinetRow,0x10FCE2
+	.equ	EyecatchCharPointer,0x10FCE2
+	.equ	SoftDipRow,0x10FCE2
+	.equ	SoundTestPlaying,0x10FCE2
+	.equ	CabinetOldRowNew,0x10FCE4
+	.equ	CabinetRowNew,0x10FCE4
+	.equ	SoftDipRowNew,0x10FCE4
+	.equ	BookListGameCount,0x10FCE6
+	.equ	EyecatchColoursPending,0x10FCE6
+	.equ	ListGameCount,0x10FCE6
+	.equ	BookListLineCount,0x10FCE7
+	.equ	ListLineCount,0x10FCE7
+	.equ	BookGameEntry,0x10FCE8
+	.equ	CabinetDrawFlags,0x10FCE8
+	.equ	CabinetOldDrawFlags,0x10FCE8
+	.equ	EyecatchColoursPointer,0x10FCE8
+	.equ	SoftDipGameEntry,0x10FCE8
+	.equ	LedSlotDisplay,0x10FCEC
+	.equ	SoftDipRowCount,0x10FCEC
+	.equ	HowToPlayPointer,0x10FCEE
+	.equ	SoftDipFirstRow,0x10FCEE
+	.equ	HowToPlayTimer,0x10FCF2
+	.equ	CalendarYearBin,0x10FD00
+	.equ	CardSavedSp,0x10FD00
+	.equ	ErrorAddress,0x10FD00
+	.equ	MonitorRegs,0x10FD00
+	.equ	SoftDipTimeColumn,0x10FD00
+	.equ	CalendarMonthWeekday,0x10FD01
+	.equ	SoftDipTimeColumnLo,0x10FD01
+	.equ	CalendarDayBin,0x10FD02
+	.equ	CardDirectory,0x10FD04
+	.equ	ErrorWritten,0x10FD04
+	.equ	ErrorRead,0x10FD06
+	.equ	CardDirEntries,0x10FD08
+	.equ	ErrorNumber,0x10FD08
+	.equ	CardFat,0x10FD0A
+	.equ	CardFatSize,0x10FD0E
+	.equ	CardDataStart,0x10FD10
+	.equ	MonitorRegsD4,0x10FD10
+	.equ	CardType,0x10FD14
+	.equ	CardTypeLo,0x10FD15
+	.equ	CardSize,0x10FD16
+	.equ	MonitorSavedSsp,0x10FD3C
+	.equ	MonitorSavedUsp,0x10FD40
+	.equ	MonitorSavedPc,0x10FD44
+	.equ	MonitorSavedSr,0x10FD48
+	.equ	MonitorFrameWord,0x10FD4A
+	.equ	MonitorCause,0x10FD4C
+	.equ	CardSavedColour1,0x10FD4E
+	.equ	MonitorSavedColour,0x10FD4E
+	.equ	NewDateFlag,0x10FD4E
+	.equ	CardSavedColour2,0x10FD52
+	.equ	MonitorMemAddress,0x10FD5E
+	.equ	MonitorMemAddressBytes,0x10FD5F
+	.equ	MonitorVramAddress,0x10FD62
+	.equ	MonitorVramAddressBytes,0x10FD63
+	.equ	MonitorVramAddressWord,0x10FD64
+	.equ	MonitorEditAddress,0x10FD66
+	.equ	MonitorEditAddressBytes,0x10FD67
+	.equ	MonitorEditVram,0x10FD6A
+	.equ	MonitorEditVramBytes,0x10FD6B
+	.equ	MonitorEditVramWord,0x10FD6C
+	.equ	MonitorRegisterIndex,0x10FD6E
+	.equ	MonitorValue,0x10FD70
+	.equ	MonitorCommand,0x10FD74
+	.equ	MonitorDigit,0x10FD76
+	.equ	MonitorDigitLo,0x10FD77
+	.equ	MonitorFrames,0x10FD78
+	.equ	MonitorFramesLo,0x10FD79

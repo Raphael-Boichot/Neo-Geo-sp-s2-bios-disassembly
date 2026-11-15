@@ -236,7 +236,7 @@ loc_C11DEA:
 	dbra	d7,loc_C11DEA	| C11DEC
 	jsr	(ReadCalendar,pc)	| C11DF0
 	move.l	(BIOS_HOUR-A5_BASE,a5),(ClockHour4-A4_BASE,a4)	| C11DF4
-	move.b	#0x1,(ram_10FD4E-A5_BASE,a5)	| C11DFA
+	move.b	#0x1,(NewDateFlag-A5_BASE,a5)	| C11DFA
 	lea.l	(BIOS_YEAR-A5_BASE,a5),a0	| C11E00
 	lea.l	(LastBootDate-A4_BASE,a4),a1	| C11E04
 	moveq	#0x2,d7	| C11E08
@@ -244,7 +244,7 @@ loc_C11E0A:
 	cmpm.b	(a0)+,(a1)+	| C11E0A
 	bne.b	loc_C11E1A	| C11E0C
 	dbra	d7,loc_C11E0A	| C11E0E
-	clr.b	(ram_10FD4E-A5_BASE,a5)	| C11E12
+	clr.b	(NewDateFlag-A5_BASE,a5)	| C11E12
 	bra.w	loc_C11E8C	| C11E16
 loc_C11E1A:
 	move.b	(bram_D00105-A4_BASE,a4),(a5)	| C11E1A
@@ -318,7 +318,7 @@ loc_C11EC2:
 	jsr	(SlotCopyMovedSettings,pc)	| C11EFE
 	jsr	(SlotTableStore,pc)	| C11F02
 	jsr	(SlotDateNewGames,pc)	| C11F06
-	tst.b	(ram_10FD4E-A5_BASE,a5)	| C11F0A
+	tst.b	(NewDateFlag-A5_BASE,a5)	| C11F0A
 	beq.b	loc_C11F14	| C11F0E
 	jsr	(BookNewDayPerGame,pc)	| C11F10
 loc_C11F14:
@@ -994,15 +994,15 @@ loc_C126BC:
 	move.b	(ram_10FE8B-A5_BASE,a5),d0	| C126C4
 	andi.b	#0x3,d0	| C126C8
 	bne.b	loc_C126EA	| C126CC
-	move.b	(ram_10FCEC-A5_BASE,a5),d5	| C126CE
+	move.b	(LedSlotDisplay-A5_BASE,a5),d5	| C126CE
 	jsr	(WriteLedData,pc)	| C126D2
-	move.b	(ram_10FCEC-A5_BASE,a5),d0	| C126D6
+	move.b	(LedSlotDisplay-A5_BASE,a5),d0	| C126D6
 	addq.b	#0x1,d0	| C126DA
 	cmp.b	(SlotCount).l,d0	| C126DC
 	bcs.b	loc_C126E6	| C126E2
 	moveq	#0x0,d0	| C126E4
 loc_C126E6:
-	move.b	d0,(ram_10FCEC-A5_BASE,a5)	| C126E6
+	move.b	d0,(LedSlotDisplay-A5_BASE,a5)	| C126E6
 loc_C126EA:
 	tst.b	(ram_10FEBB-A5_BASE,a5)	| C126EA
 	bne.b	loc_C126F8	| C126EE

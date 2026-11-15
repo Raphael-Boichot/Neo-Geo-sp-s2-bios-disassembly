@@ -138,7 +138,7 @@ SystemMode0:
 SystemMode1:
 	move.b	#0xA,(ram_10FEE1-A5_BASE,a5)	| C111A0
 	clr.b	(BIOS_USER_MODE-A5_BASE,a5)	| C111A6
-	clr.b	(ram_10FCEC-A5_BASE,a5)	| C111AA
+	clr.b	(LedSlotDisplay-A5_BASE,a5)	| C111AA
 	move.b	(CART_EYECATCH_FLAG).w,d0	| C111AE
 	beq.b	loc_C111C2	| C111B2
 	subq.b	#0x1,d0	| C111B4
@@ -386,15 +386,15 @@ loc_C1154E:
 	move.l	a1,(a0)+	| C1154E
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C11550
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C11554
-	move.w	#0x100,(ram_10FCDC-A5_BASE,a5)	| C11558
+	move.w	#0x100,(CardStillInsertedTimer-A5_BASE,a5)	| C11558
 loc_C1155E:
 	jsr	(WaitFrame,pc)	| C1155E
 	move.b	(REG_STATUS_B).l,d0	| C11562
 	andi.b	#0x30,d0	| C11568
 	bne.w	loc_C11596	| C1156C
-	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C11570
+	move.w	(CardStillInsertedTimer-A5_BASE,a5),d0	| C11570
 	subq.w	#0x1,d0	| C11574
-	move.w	d0,(ram_10FCDC-A5_BASE,a5)	| C11576
+	move.w	d0,(CardStillInsertedTimer-A5_BASE,a5)	| C11576
 	beq.w	loc_C11596	| C1157A
 	moveq	#0x0,d1	| C1157E
 	andi.w	#0x1F,d0	| C11580

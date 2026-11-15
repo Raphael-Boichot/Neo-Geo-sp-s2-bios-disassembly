@@ -208,8 +208,8 @@ loc_C192D2:
 	move.l	a1,(a0)+	| C192D2
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C192D4
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C192D8
-	move.l	(CodeNumber).l,(ram_10FC00-A5_BASE,a5)	| C192DC
-	clr.l	(ram_10FC04-A5_BASE,a5)	| C192E4
+	move.l	(CodeNumber).l,(CodeNumberEdit-A5_BASE,a5)	| C192DC
+	clr.l	(CodeNumberDigit-A5_BASE,a5)	| C192E4
 	jsr	(CodeNumberDraw,pc)	| C192E8
 loc_C192EC:
 	jsr	(WaitFrame,pc)	| C192EC
@@ -229,8 +229,8 @@ loc_C192FC:
 	bne.b	loc_C1931C	| C19316
 	move.b	#0x99,d1	| C19318
 loc_C1931C:
-	lea.l	(ram_10FC00-A5_BASE,a5),a0	| C1931C
-	move.w	(ram_10FC04-A5_BASE,a5),d0	| C19320
+	lea.l	(CodeNumberEdit-A5_BASE,a5),a0	| C1931C
+	move.w	(CodeNumberDigit-A5_BASE,a5),d0	| C19320
 	move.b	(a0,d0.w),d2	| C19324
 	sub.w	d3,d3	| C19328
 	abcd	d1,d2	| C1932A
@@ -247,10 +247,10 @@ loc_C19340:
 	bne.b	loc_C1934A	| C19346
 	moveq	#-0x1,d0	| C19348
 loc_C1934A:
-	move.w	(ram_10FC04-A5_BASE,a5),d1	| C1934A
+	move.w	(CodeNumberDigit-A5_BASE,a5),d1	| C1934A
 	add.w	d0,d1	| C1934E
 	andi.w	#0x3,d1	| C19350
-	move.w	d1,(ram_10FC04-A5_BASE,a5)	| C19354
+	move.w	d1,(CodeNumberDigit-A5_BASE,a5)	| C19354
 | CodeNumberDraw [C] draws the 4 code digits (ram_10FC00), the one under the cursor highlighted; was named TestCodeNumberCard until the card part was found at CodeNumberWrite
 CodeNumberDraw:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19358
@@ -258,12 +258,12 @@ CodeNumberDraw:
 	clr.l	(a0)+	| C19360
 	move.w	#0x720A,d6	| C19362
 	moveq	#0x0,d7	| C19366
-	lea.l	(ram_10FC00-A5_BASE,a5),a1	| C19368
+	lea.l	(CodeNumberEdit-A5_BASE,a5),a1	| C19368
 loc_C1936C:
 	move.w	#0x3,(a0)+	| C1936C
 	move.w	d6,(a0)+	| C19370
 	move.w	#0x108,(a0)+	| C19372
-	cmp.w	(ram_10FC04-A5_BASE,a5),d7	| C19376
+	cmp.w	(CodeNumberDigit-A5_BASE,a5),d7	| C19376
 	bne.b	loc_C19382	| C1937A
 	move.w	#0x1108,-0x2(a0)	| C1937C
 loc_C19382:
@@ -375,14 +375,14 @@ loc_C194BE:
 	move.b	d0,(REG_CRDUNLOCK1).l	| C194CC
 	move.b	d0,(REG_CRDUNLOCK2).l	| C194D2
 	lea.l	(0x800000).l,a6	| C194D8
-	move.l	(ram_10FC00-A5_BASE,a5),d0	| C194DE
+	move.l	(CodeNumberEdit-A5_BASE,a5),d0	| C194DE
 	andi.l	#0xF0F0F0F,d0	| C194E2
 	move.l	d0,0x70(a6)	| C194E8
 	move.w	#0x0,0x74(a6)	| C194EC
 loc_C194F2:
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C194F2
 	move.b	d0,(REG_SRAMUNLOCK).l	| C194F8
-	move.l	(ram_10FC00-A5_BASE,a5),d0	| C194FE
+	move.l	(CodeNumberEdit-A5_BASE,a5),d0	| C194FE
 	andi.l	#0xF0F0F0F,d0	| C19502
 	move.l	d0,(CodeNumber).l	| C19508
 	move.w	#0xFFFF,(CabinetNumber).l	| C1950E
@@ -482,7 +482,7 @@ TestHardDip:
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19710
 	move.b	(REG_DIPSW).l,d0	| C19714
 	not.b	d0	| C1971A
-	move.b	d0,(ram_10FCDE-A5_BASE,a5)	| C1971C
+	move.b	d0,(HardDipLast-A5_BASE,a5)	| C1971C
 	jsr	(HardDipDraw,pc)	| C19720
 loc_C19724:
 	jsr	(WaitFrame,pc)	| C19724
@@ -492,16 +492,16 @@ loc_C19724:
 loc_C19732:
 	move.b	(REG_DIPSW).l,d0	| C19732
 	not.b	d0	| C19738
-	cmp.b	(ram_10FCDE-A5_BASE,a5),d0	| C1973A
+	cmp.b	(HardDipLast-A5_BASE,a5),d0	| C1973A
 	beq.b	loc_C19724	| C1973E
-	move.b	d0,(ram_10FCDE-A5_BASE,a5)	| C19740
+	move.b	d0,(HardDipLast-A5_BASE,a5)	| C19740
 	pea.l	(loc_C19724,pc)	| C19744
 | HardDipDraw [C] draws the hard DIP rows from HardDipRows: one digit per bit of the mask (. elsewhere), then the matching value text
 HardDipDraw:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19748
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1974C
 	clr.l	(a0)+	| C19750
-	move.b	(ram_10FCDE-A5_BASE,a5),d7	| C19752
+	move.b	(HardDipLast-A5_BASE,a5),d7	| C19752
 	move.w	#0x700C,d6	| C19756
 	lea.l	(HardDipRows,pc),a1	| C1975A
 loc_C1975E:
@@ -809,13 +809,13 @@ loc_C19BC2:
 	addq.b	#0x1,d6	| C19BC4
 	cmp.b	(SlotCount-A4_BASE,a4),d6	| C19BC6
 	bcs.b	loc_C19BA2	| C19BCA
-	move.b	d5,(ram_10FCE6-A5_BASE,a5)	| C19BCC
+	move.b	d5,(ListGameCount-A5_BASE,a5)	| C19BCC
 	addq.b	#0x1,d5	| C19BD0
-	move.b	d5,(ram_10FCE7-A5_BASE,a5)	| C19BD2
-	clr.w	(ram_10FCDE-A5_BASE,a5)	| C19BD6
+	move.b	d5,(ListLineCount-A5_BASE,a5)	| C19BD2
+	clr.w	(ListCursor-A5_BASE,a5)	| C19BD6
 loc_C19BDA:
 	jsr	(ClearFixLayer,pc)	| C19BDA
-	move.b	(ram_10FCE6-A5_BASE,a5),d5	| C19BDE
+	move.b	(ListGameCount-A5_BASE,a5),d5	| C19BDE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19BE2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C19BE6
 	move.l	#SoftDipListText,(a0)+	| C19BEA
@@ -843,7 +843,7 @@ loc_C19BF4:
 	clr.w	(a0)+	| C19C2E
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C19C30
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19C34
-	move.w	(ram_10FCDE-A5_BASE,a5),(ram_10FCE0-A5_BASE,a5)	| C19C38
+	move.w	(ListCursor-A5_BASE,a5),(ListCursorNew-A5_BASE,a5)	| C19C38
 loc_C19C3E:
 	jsr	(SoftDipListCursor,pc)	| C19C3E
 loc_C19C42:
@@ -863,10 +863,10 @@ loc_C19C56:
 	bne.b	loc_C19C6E	| C19C6A
 	moveq	#-0x1,d1	| C19C6C
 loc_C19C6E:
-	add.w	(ram_10FCDE-A5_BASE,a5),d1	| C19C6E
-	cmp.b	(ram_10FCE7-A5_BASE,a5),d1	| C19C72
+	add.w	(ListCursor-A5_BASE,a5),d1	| C19C6E
+	cmp.b	(ListLineCount-A5_BASE,a5),d1	| C19C72
 	bcc.b	loc_C19C42	| C19C76
-	move.w	d1,(ram_10FCE0-A5_BASE,a5)	| C19C78
+	move.w	d1,(ListCursorNew-A5_BASE,a5)	| C19C78
 	bra.b	loc_C19C3E	| C19C7C
 | SoftDipListCursor [C] TestSoftDip list: erases the cursor at the old line, draws it at the new one
 SoftDipListCursor:
@@ -875,7 +875,7 @@ SoftDipListCursor:
 	clr.l	(a0)+	| C19C86
 	move.w	#0x20FF,d1	| C19C88
 	jsr	(SoftDipListCursorRow,pc)	| C19C8C
-	move.w	(ram_10FCE0-A5_BASE,a5),(ram_10FCDE-A5_BASE,a5)	| C19C90
+	move.w	(ListCursorNew-A5_BASE,a5),(ListCursor-A5_BASE,a5)	| C19C90
 	move.w	#0x11FF,d1	| C19C96
 	jsr	(SoftDipListCursorRow,pc)	| C19C9A
 	clr.w	(a0)+	| C19C9E
@@ -885,7 +885,7 @@ SoftDipListCursor:
 | SoftDipListCursorRow [C] cursor character (d1) at list line ram_10FCDE
 SoftDipListCursorRow:
 	move.w	#0x3,(a0)+	| C19CAA
-	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C19CAE
+	move.w	(ListCursor-A5_BASE,a5),d0	| C19CAE
 	move.w	d0,d2	| C19CB2
 	add.w	d0,d0	| C19CB4
 	add.w	d0,d2	| C19CB6
@@ -902,7 +902,7 @@ SoftDipListText:
 | SoftDipListSelect [C] A on the TestSoftDip list: line 0 opens CabinetSettings, a slot line SoftDipEditor
 SoftDipListSelect:
 	pea.l	(loc_C19BDA,pc)	| C19CE6
-	tst.w	(ram_10FCDE-A5_BASE,a5)	| C19CEA
+	tst.w	(ListCursor-A5_BASE,a5)	| C19CEA
 	bne.w	SoftDipEditor	| C19CEE
 	jmp	(CabinetSettings,pc)	| C19CF2
 | CabinetSettingsOld [C] unreferenced: an older 4-row cabinet page (COIN RATE, GAME SELECT ONLY WHEN CREDITED / ANYTIME, GAME START COMPULSION, DEMO SOUND) after the jmp to CabinetSettings; nothing jumps here and it never ran in MAME
@@ -913,17 +913,17 @@ CabinetSettingsOld:
 	move.l	#CabinetOldText,(a0)+	| C19D02
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C19D08
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19D0C
-	clr.l	(ram_10FCE2-A5_BASE,a5)	| C19D10
-	move.b	#0x2,(ram_10FCE8-A5_BASE,a5)	| C19D14
+	clr.l	(CabinetOldRow-A5_BASE,a5)	| C19D10
+	move.b	#0x2,(CabinetOldDrawFlags-A5_BASE,a5)	| C19D14
 loc_C19D1A:
 	jsr	(CabinetOldDrawRow,pc)	| C19D1A
 	jsr	(MessOut,pc)	| C19D1E
 	lea.l	(bram_D08000).l,a4	| C19D22
-	addq.w	#0x1,(ram_10FCE2-A5_BASE,a5)	| C19D28
-	cmpi.w	#0x4,(ram_10FCE2-A5_BASE,a5)	| C19D2C
+	addq.w	#0x1,(CabinetOldRow-A5_BASE,a5)	| C19D28
+	cmpi.w	#0x4,(CabinetOldRow-A5_BASE,a5)	| C19D2C
 	bne.b	loc_C19D1A	| C19D32
-	clr.l	(ram_10FCE2-A5_BASE,a5)	| C19D34
-	clr.b	(ram_10FCE8-A5_BASE,a5)	| C19D38
+	clr.l	(CabinetOldRow-A5_BASE,a5)	| C19D34
+	clr.b	(CabinetOldDrawFlags-A5_BASE,a5)	| C19D38
 loc_C19D3C:
 	jsr	(CabinetOldCursor,pc)	| C19D3C
 	jsr	(CabinetOldDrawCoin,pc)	| C19D40
@@ -941,14 +941,14 @@ loc_C19D54:
 	bne.b	loc_C19D66	| C19D62
 	moveq	#-0x1,d1	| C19D64
 loc_C19D66:
-	add.w	(ram_10FCE2-A5_BASE,a5),d1	| C19D66
+	add.w	(CabinetOldRow-A5_BASE,a5),d1	| C19D66
 	cmpi.w	#0x4,d1	| C19D6A
 	bcc.b	loc_C19D44	| C19D6E
-	move.w	d1,(ram_10FCE4-A5_BASE,a5)	| C19D70
+	move.w	d1,(CabinetOldRowNew-A5_BASE,a5)	| C19D70
 	bra.b	loc_C19D3C	| C19D74
 loc_C19D76:
 	pea.l	(loc_C19D44,pc)	| C19D76
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C19D7A
+	move.w	(CabinetOldRow-A5_BASE,a5),d0	| C19D7A
 	add.w	d0,d0	| C19D7E
 	add.w	d0,d0	| C19D80
 	movea.l	(CabinetOldRowTable,pc,d0.w),a0	| C19D82
@@ -966,7 +966,7 @@ loc_C19D98:
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C19DA4
 	andi.b	#0xC,d0	| C19DA8
 	beq.w	loc_C19E2C	| C19DAC
-	bchg.b	#0x0,(ram_10FCE8-A5_BASE,a5)	| C19DB0
+	bchg.b	#0x0,(CabinetOldDrawFlags-A5_BASE,a5)	| C19DB0
 	bra.w	CabinetOldDrawCoin	| C19DB6
 loc_C19DBA:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C19DBA
@@ -976,10 +976,10 @@ loc_C19DBA:
 	moveq	#-0x1,d1	| C19DC8
 loc_C19DCA:
 	lea.l	-0x7FC6(a4),a3	| C19DCA
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C19DCE
+	move.w	(CabinetOldRow-A5_BASE,a5),d0	| C19DCE
 	add.w	d0,d0	| C19DD2
 	adda.l	d0,a3	| C19DD4
-	btst.b	#0x0,(ram_10FCE8-A5_BASE,a5)	| C19DD6
+	btst.b	#0x0,(CabinetOldDrawFlags-A5_BASE,a5)	| C19DD6
 	beq.b	loc_C19DE0	| C19DDC
 	addq.l	#0x1,a3	| C19DDE
 loc_C19DE0:
@@ -1020,9 +1020,9 @@ CabinetOldDrawCoinPart:
 	add.w	d6,d4	| C19E32
 	move.w	d4,(a0)+	| C19E34
 	move.w	#0x108,(a0)+	| C19E36
-	cmp.b	(ram_10FCE8-A5_BASE,a5),d7	| C19E3A
+	cmp.b	(CabinetOldDrawFlags-A5_BASE,a5),d7	| C19E3A
 	bne.b	loc_C19E4C	| C19E3E
-	cmp.w	(ram_10FCE2-A5_BASE,a5),d2	| C19E40
+	cmp.w	(CabinetOldRow-A5_BASE,a5),d2	| C19E40
 	bne.b	loc_C19E4C	| C19E44
 	move.w	#0x1108,-0x2(a0)	| C19E46
 loc_C19E4C:
@@ -1170,7 +1170,7 @@ CabinetOldEachGameText:
 	dc.b	0xFF,0x00,0x00
 | CabinetOldDrawRow [C] CabinetSettingsOld: draws row ram_10FCE2 through CabinetOldDrawTable
 CabinetOldDrawRow:
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A01E
+	move.w	(CabinetOldRow-A5_BASE,a5),d0	| C1A01E
 	add.w	d0,d0	| C1A022
 	add.w	d0,d0	| C1A024
 	movea.l	(CabinetOldDrawTable,pc,d0.w),a0	| C1A026
@@ -1188,7 +1188,7 @@ CabinetOldCursor:
 	clr.l	(a0)+	| C1A044
 	move.w	#0x20FF,d1	| C1A046
 	jsr	(CabinetOldCursorRow,pc)	| C1A04A
-	move.w	(ram_10FCE4-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1A04E
+	move.w	(CabinetOldRowNew-A5_BASE,a5),(CabinetOldRow-A5_BASE,a5)	| C1A04E
 	move.w	#0x11FF,d1	| C1A054
 	jsr	(CabinetOldCursorRow,pc)	| C1A058
 	clr.w	(a0)+	| C1A05C
@@ -1198,7 +1198,7 @@ CabinetOldCursor:
 | CabinetOldCursorRow [C] CabinetSettingsOld: cursor character at a row
 CabinetOldCursorRow:
 	move.w	#0x3,(a0)+	| C1A068
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A06C
+	move.w	(CabinetOldRow-A5_BASE,a5),d0	| C1A06C
 	move.w	d0,d2	| C1A070
 	add.w	d0,d0	| C1A072
 	add.w	d0,d2	| C1A074
@@ -1227,12 +1227,12 @@ SoftDipEditor:
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1A110
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1A116
 	move.w	#0x2700,sr	| C1A11C
-	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C1A120
+	move.w	(SoftDipGameLine-A5_BASE,a5),d0	| C1A120
 	subq.w	#0x1,d0	| C1A124
 	mulu.w	#0x14,d0	| C1A126
 	movea.l	a5,a0	| C1A12A
 	lea.l	(a0,d0.w),a0	| C1A12C
-	move.l	a0,(ram_10FCE8-A5_BASE,a5)	| C1A130
+	move.l	a0,(SoftDipGameEntry-A5_BASE,a5)	| C1A130
 	move.w	(a0),d5	| C1A134
 	move.b	d5,(REG_SLOT).l	| C1A136
 	move.b	d5,(REG_CRTFIX).l	| C1A13C
@@ -1244,8 +1244,8 @@ SoftDipEditor:
 	movea.l	d0,a2	| C1A154
 	movea.l	(a2),a1	| C1A156
 	lea.l	0x10(a1),a1	| C1A158
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1A15C
-	lea.l	(ram_10FC00-A5_BASE,a5),a6	| C1A160
+	lea.l	(SoftDipDefinition-A5_BASE,a5),a2	| C1A15C
+	lea.l	(SoftDipRows-A5_BASE,a5),a6	| C1A160
 	movea.l	a2,a3	| C1A164
 	moveq	#0x0,d7	| C1A166
 	move.l	(a1)+,(a3)+	| C1A168
@@ -1317,9 +1317,9 @@ loc_C1A1DC:
 loc_C1A1F6:
 	move.b	d5,(REG_BRDFIX).l	| C1A1F6
 	move.w	#0x2000,sr	| C1A1FC
-	move.w	d7,(ram_10FCEC-A5_BASE,a5)	| C1A200
+	move.w	d7,(SoftDipRowCount-A5_BASE,a5)	| C1A200
 	lea.l	(bram_D08000).l,a4	| C1A204
-	movea.l	(ram_10FCE8-A5_BASE,a5),a0	| C1A20A
+	movea.l	(SoftDipGameEntry-A5_BASE,a5),a0	| C1A20A
 	move.w	0x2(a0),d0	| C1A20E
 	lsl.w	#0x4,d0	| C1A212
 	lea.l	(GameSoftDips-A4_BASE,a4),a0	| C1A214
@@ -1329,8 +1329,8 @@ loc_C1A1F6:
 	move.l	(a0)+,(a1)+	| C1A222
 	move.l	(a0)+,(a1)+	| C1A224
 	move.l	(a0)+,(a1)+	| C1A226
-	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1A228
-	clr.w	(ram_10FCEE-A5_BASE,a5)	| C1A22C
+	clr.l	(SoftDipRow-A5_BASE,a5)	| C1A228
+	clr.w	(SoftDipFirstRow-A5_BASE,a5)	| C1A22C
 loc_C1A230:
 	jsr	(ClearFixLayer,pc)	| C1A230
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A234
@@ -1339,7 +1339,7 @@ loc_C1A230:
 	move.w	#0x3,(a0)+	| C1A23E
 	move.w	#0x7144,(a0)+	| C1A242
 	move.w	#0x108,(a0)+	| C1A246
-	movea.l	(ram_10FCE8-A5_BASE,a5),a1	| C1A24A
+	movea.l	(SoftDipGameEntry-A5_BASE,a5),a1	| C1A24A
 	move.l	0x4(a1),(a0)+	| C1A24E
 	move.l	0x8(a1),(a0)+	| C1A252
 	move.l	0xC(a1),(a0)+	| C1A256
@@ -1347,14 +1347,14 @@ loc_C1A230:
 	move.w	#0xFF00,(a0)+	| C1A25E
 	move.w	#0x3,(a0)+	| C1A262
 	move.w	#0x70C7,(a0)+	| C1A266
-	move.w	(ram_10FCEE-A5_BASE,a5),d7	| C1A26A
+	move.w	(SoftDipFirstRow-A5_BASE,a5),d7	| C1A26A
 	moveq	#0x7,d6	| C1A26E
 loc_C1A270:
-	cmp.w	(ram_10FCEC-A5_BASE,a5),d7	| C1A270
+	cmp.w	(SoftDipRowCount-A5_BASE,a5),d7	| C1A270
 	bcc.w	loc_C1A2DC	| C1A274
 	moveq	#0x0,d0	| C1A278
 	moveq	#0x0,d4	| C1A27A
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1A27C
+	lea.l	(SoftDipDefinition-A5_BASE,a5),a2	| C1A27C
 	lea.l	0x10(a2),a3	| C1A280
 loc_C1A284:
 	cmp.b	d0,d7	| C1A284
@@ -1400,20 +1400,20 @@ loc_C1A2DC:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1A2E0
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A2E4
 	jsr	(MessOut,pc)	| C1A2E8
-	clr.l	(ram_10FD00-A5_BASE,a5)	| C1A2EC
+	clr.l	(SoftDipTimeColumn-A5_BASE,a5)	| C1A2EC
 	moveq	#0x7,d7	| C1A2F0
-	move.w	(ram_10FCEE-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1A2F2
+	move.w	(SoftDipFirstRow-A5_BASE,a5),(SoftDipRow-A5_BASE,a5)	| C1A2F2
 loc_C1A2F8:
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A2F8
-	cmp.w	(ram_10FCEC-A5_BASE,a5),d0	| C1A2FC
+	move.w	(SoftDipRow-A5_BASE,a5),d0	| C1A2F8
+	cmp.w	(SoftDipRowCount-A5_BASE,a5),d0	| C1A2FC
 	bcc.w	loc_C1A31A	| C1A300
 	jsr	(SoftDipDrawValue,pc)	| C1A304
-	addq.w	#0x1,(ram_10FCE2-A5_BASE,a5)	| C1A308
+	addq.w	#0x1,(SoftDipRow-A5_BASE,a5)	| C1A308
 	dbra	d7,loc_C1A2F8	| C1A30C
 	jsr	(MessOut,pc)	| C1A310
-	move.w	(ram_10FCE4-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1A314
+	move.w	(SoftDipRowNew-A5_BASE,a5),(SoftDipRow-A5_BASE,a5)	| C1A314
 loc_C1A31A:
-	move.w	(ram_10FCE4-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1A31A
+	move.w	(SoftDipRowNew-A5_BASE,a5),(SoftDipRow-A5_BASE,a5)	| C1A31A
 	jsr	(SoftDipCursor,pc)	| C1A320
 loc_C1A324:
 	jsr	(WaitFrame,pc)	| C1A324
@@ -1428,20 +1428,20 @@ loc_C1A324:
 	bne.b	loc_C1A348	| C1A344
 	moveq	#-0x1,d1	| C1A346
 loc_C1A348:
-	add.w	(ram_10FCE2-A5_BASE,a5),d1	| C1A348
-	cmp.w	(ram_10FCEC-A5_BASE,a5),d1	| C1A34C
+	add.w	(SoftDipRow-A5_BASE,a5),d1	| C1A348
+	cmp.w	(SoftDipRowCount-A5_BASE,a5),d1	| C1A34C
 	bcc.b	loc_C1A324	| C1A350
-	move.w	d1,(ram_10FCE4-A5_BASE,a5)	| C1A352
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A356
+	move.w	d1,(SoftDipRowNew-A5_BASE,a5)	| C1A352
+	move.w	(SoftDipRow-A5_BASE,a5),d0	| C1A356
 	eor.w	d1,d0	| C1A35A
 	andi.b	#0x8,d0	| C1A35C
 	beq.b	loc_C1A36E	| C1A360
 	andi.b	#0xF8,d1	| C1A362
-	move.w	d1,(ram_10FCEE-A5_BASE,a5)	| C1A366
+	move.w	d1,(SoftDipFirstRow-A5_BASE,a5)	| C1A366
 	bra.w	loc_C1A230	| C1A36A
 loc_C1A36E:
-	lea.l	(ram_10FC00-A5_BASE,a5),a6	| C1A36E
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A372
+	lea.l	(SoftDipRows-A5_BASE,a5),a6	| C1A36E
+	move.w	(SoftDipRow-A5_BASE,a5),d0	| C1A372
 	add.w	d0,d0	| C1A376
 	add.w	d0,d0	| C1A378
 	cmpi.w	#0x2,(a6,d0.w)	| C1A37A
@@ -1449,8 +1449,8 @@ loc_C1A36E:
 	jsr	(SoftDipDrawValue,pc)	| C1A382
 loc_C1A386:
 	jsr	(SoftDipCursor,pc)	| C1A386
-	lea.l	(ram_10FC00-A5_BASE,a5),a6	| C1A38A
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A38E
+	lea.l	(SoftDipRows-A5_BASE,a5),a6	| C1A38A
+	move.w	(SoftDipRow-A5_BASE,a5),d0	| C1A38E
 	add.w	d0,d0	| C1A392
 	add.w	d0,d0	| C1A394
 	cmpi.w	#0x2,(a6,d0.w)	| C1A396
@@ -1459,9 +1459,9 @@ loc_C1A386:
 loc_C1A3A2:
 	bra.b	loc_C1A324	| C1A3A2
 loc_C1A3A4:
-	move.w	(ram_10FCE2-A5_BASE,a5),d6	| C1A3A4
+	move.w	(SoftDipRow-A5_BASE,a5),d6	| C1A3A4
 	lea.l	(BIOS_GAME_DIP-A5_BASE,a5),a1	| C1A3A8
-	lea.l	(ram_10FC00-A5_BASE,a5),a6	| C1A3AC
+	lea.l	(SoftDipRows-A5_BASE,a5),a6	| C1A3AC
 	add.w	d6,d6	| C1A3B0
 	add.w	d6,d6	| C1A3B2
 	move.w	(a6,d6.w),d5	| C1A3B4
@@ -1469,7 +1469,7 @@ loc_C1A3A4:
 	bcc.w	loc_C1A3D6	| C1A3BC
 	andi.b	#0xC,d1	| C1A3C0
 	beq.w	loc_C1A3D6	| C1A3C4
-	bchg.b	#0x0,(ram_10FD01-A5_BASE,a5)	| C1A3C8
+	bchg.b	#0x0,(SoftDipTimeColumnLo-A5_BASE,a5)	| C1A3C8
 	jsr	(SoftDipDrawValue,pc)	| C1A3CE
 	bra.w	loc_C1A324	| C1A3D2
 loc_C1A3D6:
@@ -1487,7 +1487,7 @@ loc_C1A3D6:
 	moveq	#-0x1,d1	| C1A3FE
 loc_C1A400:
 	move.w	0x2(a6,d6.w),d3	| C1A400
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1A404
+	lea.l	(SoftDipDefinition-A5_BASE,a5),a2	| C1A404
 	move.b	(a2,d3.w),d0	| C1A408
 	andi.b	#0xF,d0	| C1A40C
 	add.b	(a1,d3.w),d1	| C1A410
@@ -1509,7 +1509,7 @@ loc_C1A42C:
 	bne.b	loc_C1A43C	| C1A436
 	move.b	#0x99,d1	| C1A438
 loc_C1A43C:
-	tst.w	(ram_10FD00-A5_BASE,a5)	| C1A43C
+	tst.w	(SoftDipTimeColumn-A5_BASE,a5)	| C1A43C
 	bne.w	loc_C1A45A	| C1A440
 	move.b	(a1,d6.w),d0	| C1A444
 loc_C1A448:
@@ -1569,11 +1569,11 @@ SoftDipDrawValue:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1A4C6
 	clr.l	(a0)+	| C1A4CA
 	move.w	#0x3,(a0)+	| C1A4CC
-	move.w	(ram_10FCE2-A5_BASE,a5),d6	| C1A4D0
+	move.w	(SoftDipRow-A5_BASE,a5),d6	| C1A4D0
 	move.w	d6,d0	| C1A4D4
 	add.w	d6,d6	| C1A4D6
 	add.w	d6,d6	| C1A4D8
-	lea.l	(ram_10FC00-A5_BASE,a5),a6	| C1A4DA
+	lea.l	(SoftDipRows-A5_BASE,a5),a6	| C1A4DA
 	move.w	(a6,d6.w),d5	| C1A4DE
 	move.w	0x2(a6,d6.w),d6	| C1A4E2
 	andi.w	#0x7,d0	| C1A4E6
@@ -1582,7 +1582,7 @@ SoftDipDrawValue:
 	move.w	d0,(a0)+	| C1A4F2
 	move.w	#0x308,(a0)+	| C1A4F4
 	moveq	#0x0,d0	| C1A4F8
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1A4FA
+	lea.l	(SoftDipDefinition-A5_BASE,a5),a2	| C1A4FA
 	lea.l	0x10(a2),a3	| C1A4FE
 loc_C1A502:
 	cmp.b	d0,d5	| C1A502
@@ -1727,10 +1727,10 @@ loc_C1A654:
 	bra.w	loc_C1A5D4	| C1A6AA
 | SoftDipPutBcd [C] two BCD digits, highlighted when the row and column are under the cursor
 SoftDipPutBcd:
-	move.w	(ram_10FCE2-A5_BASE,a5),d1	| C1A6AE
-	cmp.w	(ram_10FCE4-A5_BASE,a5),d1	| C1A6B2
+	move.w	(SoftDipRow-A5_BASE,a5),d1	| C1A6AE
+	cmp.w	(SoftDipRowNew-A5_BASE,a5),d1	| C1A6B2
 	bne.b	loc_C1A6C4	| C1A6B6
-	cmp.w	(ram_10FD00-A5_BASE,a5),d2	| C1A6B8
+	cmp.w	(SoftDipTimeColumn-A5_BASE,a5),d2	| C1A6B8
 	bne.b	loc_C1A6C4	| C1A6BC
 	move.w	#0x1108,-0x2(a0)	| C1A6BE
 loc_C1A6C4:
@@ -1746,7 +1746,7 @@ SoftDipCursor:
 	clr.l	(a0)+	| C1A6DA
 	move.w	#0x20FF,d1	| C1A6DC
 	jsr	(SoftDipCursorRow,pc)	| C1A6E0
-	move.w	(ram_10FCE4-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1A6E4
+	move.w	(SoftDipRowNew-A5_BASE,a5),(SoftDipRow-A5_BASE,a5)	| C1A6E4
 	move.w	#0x11FF,d1	| C1A6EA
 	jsr	(SoftDipCursorRow,pc)	| C1A6EE
 	clr.w	(a0)+	| C1A6F2
@@ -1756,7 +1756,7 @@ SoftDipCursor:
 | SoftDipCursorRow [C] cursor character (d1) at row ram_10FCE2 of the page
 SoftDipCursorRow:
 	move.w	#0x3,(a0)+	| C1A6FE
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A702
+	move.w	(SoftDipRow-A5_BASE,a5),d0	| C1A702
 	andi.b	#0x7,d0	| C1A706
 	move.w	d0,d2	| C1A70A
 	add.w	d0,d0	| C1A70C
@@ -1770,7 +1770,7 @@ SoftDipCursorRow:
 SoftDipSave:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1A71E
 	lea.l	(bram_D08000).l,a4	| C1A724
-	movea.l	(ram_10FCE8-A5_BASE,a5),a0	| C1A72A
+	movea.l	(SoftDipGameEntry-A5_BASE,a5),a0	| C1A72A
 	move.w	0x2(a0),d0	| C1A72E
 	lsl.w	#0x4,d0	| C1A732
 	lea.l	(GameSoftDips-A4_BASE,a4),a0	| C1A734
@@ -1783,7 +1783,7 @@ SoftDipSave:
 	rts	| C1A748
 | TestBookKeeping [C] menu item: book keeping screen (CABINET/COIN, CABINET/PLAY); ran only in that MAME scenario
 TestBookKeeping:
-	clr.w	(ram_10FCDE-A5_BASE,a5)	| C1A74A
+	clr.w	(BookListCursor-A5_BASE,a5)	| C1A74A
 loc_C1A74E:
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1A74E
 	moveq	#0x0,d0	| C1A754
@@ -1815,11 +1815,11 @@ loc_C1A796:
 	addq.b	#0x1,d6	| C1A798
 	cmpi.b	#0x8,d6	| C1A79A
 	bcs.b	loc_C1A776	| C1A79E
-	move.b	d5,(ram_10FCE6-A5_BASE,a5)	| C1A7A0
+	move.b	d5,(BookListGameCount-A5_BASE,a5)	| C1A7A0
 	addq.b	#0x2,d5	| C1A7A4
-	move.b	d5,(ram_10FCE7-A5_BASE,a5)	| C1A7A6
+	move.b	d5,(BookListLineCount-A5_BASE,a5)	| C1A7A6
 	jsr	(ClearFixLayer,pc)	| C1A7AA
-	move.b	(ram_10FCE6-A5_BASE,a5),d5	| C1A7AE
+	move.b	(BookListGameCount-A5_BASE,a5),d5	| C1A7AE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A7B2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1A7B6
 	move.l	#BookKeepingListText,(a0)+	| C1A7BA
@@ -1848,7 +1848,7 @@ loc_C1A7C4:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1A800
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A804
 	jsr	(MessOut,pc)	| C1A808
-	move.w	(ram_10FCDE-A5_BASE,a5),(ram_10FCE0-A5_BASE,a5)	| C1A80C
+	move.w	(BookListCursor-A5_BASE,a5),(BookListCursorNew-A5_BASE,a5)	| C1A80C
 loc_C1A812:
 	jsr	(BookKeepingCursor,pc)	| C1A812
 loc_C1A816:
@@ -1868,10 +1868,10 @@ loc_C1A82A:
 	bne.b	loc_C1A842	| C1A83E
 	moveq	#-0x1,d1	| C1A840
 loc_C1A842:
-	add.w	(ram_10FCDE-A5_BASE,a5),d1	| C1A842
-	cmp.b	(ram_10FCE7-A5_BASE,a5),d1	| C1A846
+	add.w	(BookListCursor-A5_BASE,a5),d1	| C1A842
+	cmp.b	(BookListLineCount-A5_BASE,a5),d1	| C1A846
 	bcc.b	loc_C1A816	| C1A84A
-	move.w	d1,(ram_10FCE0-A5_BASE,a5)	| C1A84C
+	move.w	d1,(BookListCursorNew-A5_BASE,a5)	| C1A84C
 	bra.b	loc_C1A812	| C1A850
 | BookKeepingCursor [C] TestBookKeeping list: erases the cursor at the old line, draws it at the new one
 BookKeepingCursor:
@@ -1880,7 +1880,7 @@ BookKeepingCursor:
 	clr.l	(a0)+	| C1A85A
 	move.w	#0x20FF,d1	| C1A85C
 	jsr	(BookKeepingCursorRow,pc)	| C1A860
-	move.w	(ram_10FCE0-A5_BASE,a5),(ram_10FCDE-A5_BASE,a5)	| C1A864
+	move.w	(BookListCursorNew-A5_BASE,a5),(BookListCursor-A5_BASE,a5)	| C1A864
 	move.w	#0x11FF,d1	| C1A86A
 	jsr	(BookKeepingCursorRow,pc)	| C1A86E
 	clr.w	(a0)+	| C1A872
@@ -1890,7 +1890,7 @@ BookKeepingCursor:
 | BookKeepingCursorRow [C] cursor character (d1) at list line ram_10FCDE
 BookKeepingCursorRow:
 	move.w	#0x3,(a0)+	| C1A87E
-	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C1A882
+	move.w	(BookListCursor-A5_BASE,a5),d0	| C1A882
 	add.w	d0,d0	| C1A886
 	addi.w	#0x7085,d0	| C1A888
 	move.w	d0,(a0)+	| C1A88C
@@ -1907,7 +1907,7 @@ BookKeepingListText:
 | BookKeepingSelect [C] A on the TestBookKeeping list: CABINET/COIN, CABINET/PLAY or a game
 BookKeepingSelect:
 	pea.l	(loc_C1A74E,pc)	| C1A8C0
-	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C1A8C4
+	move.w	(BookListCursor-A5_BASE,a5),d0	| C1A8C4
 	beq.w	BookCabinetCoin	| C1A8C8
 	cmpi.w	#0x1,d0	| C1A8CC
 	beq.w	BookCabinetPlay	| C1A8D0
@@ -1915,13 +1915,13 @@ BookKeepingSelect:
 | BookCabinetCoin [C] CABINET/COIN page: COIN1, COIN2, SERVICE for the last 7 days; A pages to January-June, July-December + TOTAL
 BookCabinetCoin:
 	lea.l	(bram_D08000).l,a4	| C1A8D8
-	lea.l	(ram_10F500-A5_BASE,a5),a1	| C1A8DE
+	lea.l	(BookRecords-A5_BASE,a5),a1	| C1A8DE
 	lea.l	(BookCoinDays-A4_BASE,a4),a2	| C1A8E2
 	move.b	(BookDayIndex-A4_BASE,a4),d0	| C1A8E6
 	jsr	(BookCopyDays,pc)	| C1A8EA
 	lea.l	(BookCoinMonths-A4_BASE,a4),a2	| C1A8EE
 	jsr	(BookCopyMonths,pc)	| C1A8F2
-	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1A8F6
+	clr.l	(BookPage-A5_BASE,a5)	| C1A8F6
 loc_C1A8FA:
 	jsr	(ClearFixLayer,pc)	| C1A8FA
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A8FE
@@ -1931,8 +1931,8 @@ loc_C1A8FA:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1A912
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A916
 	jsr	(MessOut,pc)	| C1A91A
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1A91E
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A922
+	lea.l	(BookRecords-A5_BASE,a5),a2	| C1A91E
+	move.w	(BookPage-A5_BASE,a5),d0	| C1A922
 	bne.b	loc_C1A930	| C1A926
 	jsr	(BookDrawCoinDays,pc)	| C1A928
 	bra.w	loc_C1A944	| C1A92C
@@ -1954,17 +1954,17 @@ loc_C1A944:
 loc_C1A954:
 	btst.b	#0x4,d0	| C1A954
 	beq.b	loc_C1A944	| C1A958
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1A95A
+	move.w	(BookPage-A5_BASE,a5),d0	| C1A95A
 	addq.w	#0x1,d0	| C1A95E
 	cmpi.w	#0x3,d0	| C1A960
 	bne.b	loc_C1A968	| C1A964
 	moveq	#0x0,d0	| C1A966
 loc_C1A968:
-	move.w	d0,(ram_10FCE2-A5_BASE,a5)	| C1A968
+	move.w	d0,(BookPage-A5_BASE,a5)	| C1A968
 	bra.b	loc_C1A8FA	| C1A96C
 | BookDrawCoinDays [C] CABINET/COIN: 7 daily rows
 BookDrawCoinDays:
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1A96E
+	lea.l	(BookRecords-A5_BASE,a5),a2	| C1A96E
 	move.w	#0x7009,d5	| C1A972
 	moveq	#0x6,d6	| C1A976
 loc_C1A978:
@@ -2014,13 +2014,13 @@ loc_C1A9C2:
 | BookCabinetPlay [C] CABINET/PLAY page: PLAY, CONT., AV.TIME for the last 7 days, then the months
 BookCabinetPlay:
 	lea.l	(bram_D08000).l,a4	| C1AA00
-	lea.l	(ram_10F500-A5_BASE,a5),a1	| C1AA06
+	lea.l	(BookRecords-A5_BASE,a5),a1	| C1AA06
 	lea.l	(BookPlayDays-A4_BASE,a4),a2	| C1AA0A
 	move.b	(BookDayIndex-A4_BASE,a4),d0	| C1AA0E
 	jsr	(BookCopyDays,pc)	| C1AA12
 	lea.l	(BookPlayMonths-A4_BASE,a4),a2	| C1AA16
 	jsr	(BookCopyMonths,pc)	| C1AA1A
-	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1AA1E
+	clr.l	(BookPage-A5_BASE,a5)	| C1AA1E
 loc_C1AA22:
 	jsr	(ClearFixLayer,pc)	| C1AA22
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1AA26
@@ -2030,8 +2030,8 @@ loc_C1AA22:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1AA3A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1AA3E
 	jsr	(MessOut,pc)	| C1AA42
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1AA46
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1AA4A
+	lea.l	(BookRecords-A5_BASE,a5),a2	| C1AA46
+	move.w	(BookPage-A5_BASE,a5),d0	| C1AA4A
 	bne.b	loc_C1AA58	| C1AA4E
 	jsr	(BookDrawPlayDays,pc)	| C1AA50
 	bra.w	loc_C1AA6C	| C1AA54
@@ -2053,17 +2053,17 @@ loc_C1AA6C:
 loc_C1AA7C:
 	btst.b	#0x4,d0	| C1AA7C
 	beq.b	loc_C1AA6C	| C1AA80
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1AA82
+	move.w	(BookPage-A5_BASE,a5),d0	| C1AA82
 	addq.w	#0x1,d0	| C1AA86
 	cmpi.w	#0x3,d0	| C1AA88
 	bne.b	loc_C1AA90	| C1AA8C
 	moveq	#0x0,d0	| C1AA8E
 loc_C1AA90:
-	move.w	d0,(ram_10FCE2-A5_BASE,a5)	| C1AA90
+	move.w	d0,(BookPage-A5_BASE,a5)	| C1AA90
 	bra.b	loc_C1AA22	| C1AA94
 | BookDrawPlayDays [C] CABINET/PLAY and game pages: 7 daily rows
 BookDrawPlayDays:
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1AA96
+	lea.l	(BookRecords-A5_BASE,a5),a2	| C1AA96
 	move.w	#0x7009,d5	| C1AA9A
 	moveq	#0x6,d6	| C1AA9E
 loc_C1AAA0:
@@ -2134,7 +2134,7 @@ loc_C1AB28:
 BookGame:
 	lea.l	(bram_D08000).l,a4	| C1AB66
 	movea.l	a5,a1	| C1AB6C
-	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C1AB6E
+	move.w	(BookListCursor-A5_BASE,a5),d0	| C1AB6E
 	subq.w	#0x2,d0	| C1AB72
 	mulu.w	#0x14,d0	| C1AB74
 	lea.l	(a1,d0.w),a1	| C1AB78
@@ -2142,7 +2142,7 @@ BookGame:
 	move.b	0x3(a1),d0	| C1AB7E
 	move.w	d0,d6	| C1AB82
 	addq.l	#0x4,a1	| C1AB84
-	move.l	a1,(ram_10FCE8-A5_BASE,a5)	| C1AB86
+	move.l	a1,(BookGameEntry-A5_BASE,a5)	| C1AB86
 	moveq	#0x0,d1	| C1AB8A
 	move.w	d0,d1	| C1AB8C
 	mulu.w	#0x240,d0	| C1AB8E
@@ -2151,7 +2151,7 @@ BookGame:
 	addi.l	#BookGameDayIndex,d1	| C1AB9A
 	movea.l	d1,a3	| C1ABA0
 	move.b	(a3),d0	| C1ABA2
-	lea.l	(ram_10F500-A5_BASE,a5),a1	| C1ABA4
+	lea.l	(BookRecords-A5_BASE,a5),a1	| C1ABA4
 	jsr	(BookCopyDays,pc)	| C1ABA8
 	move.w	d6,d1	| C1ABAC
 	mulu.w	#0xC0,d6	| C1ABAE
@@ -2165,7 +2165,7 @@ BookGame:
 	move.l	(a2)+,(a1)+	| C1ABC8
 	move.l	(a2)+,(a1)+	| C1ABCA
 	move.l	(a2)+,(a1)+	| C1ABCC
-	clr.w	(ram_10FCE2-A5_BASE,a5)	| C1ABCE
+	clr.w	(BookPage-A5_BASE,a5)	| C1ABCE
 loc_C1ABD2:
 	jsr	(ClearFixLayer,pc)	| C1ABD2
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1ABD6
@@ -2176,7 +2176,7 @@ loc_C1ABD2:
 	move.w	#0x3,(a0)+	| C1ABEC
 	move.w	#0x7143,(a0)+	| C1ABF0
 	move.w	#0x108,(a0)+	| C1ABF4
-	movea.l	(ram_10FCE8-A5_BASE,a5),a1	| C1ABF8
+	movea.l	(BookGameEntry-A5_BASE,a5),a1	| C1ABF8
 	move.l	(a1)+,(a0)+	| C1ABFC
 	move.l	(a1)+,(a0)+	| C1ABFE
 	move.l	(a1)+,(a0)+	| C1AC00
@@ -2186,8 +2186,8 @@ loc_C1ABD2:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1AC0A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1AC0E
 	jsr	(MessOut,pc)	| C1AC12
-	lea.l	(ram_10F500-A5_BASE,a5),a2	| C1AC16
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1AC1A
+	lea.l	(BookRecords-A5_BASE,a5),a2	| C1AC16
+	move.w	(BookPage-A5_BASE,a5),d0	| C1AC1A
 	bne.b	loc_C1AC28	| C1AC1E
 	jsr	(BookDrawPlayDays,pc)	| C1AC20
 	bra.w	loc_C1AC3C	| C1AC24
@@ -2209,13 +2209,13 @@ loc_C1AC3C:
 loc_C1AC4C:
 	btst.b	#0x4,d0	| C1AC4C
 	beq.b	loc_C1AC3C	| C1AC50
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1AC52
+	move.w	(BookPage-A5_BASE,a5),d0	| C1AC52
 	addq.w	#0x1,d0	| C1AC56
 	cmpi.w	#0x3,d0	| C1AC58
 	bne.b	loc_C1AC60	| C1AC5C
 	moveq	#0x0,d0	| C1AC5E
 loc_C1AC60:
-	move.w	d0,(ram_10FCE2-A5_BASE,a5)	| C1AC60
+	move.w	d0,(BookPage-A5_BASE,a5)	| C1AC60
 	bra.w	loc_C1ABD2	| C1AC64
 | BookPutDate [C] MMM/DD date label of a daily row
 BookPutDate:
@@ -2517,17 +2517,17 @@ CabinetSettings:
 	move.l	#CabinetText,(a0)+	| C1B0B0
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1B0B6
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B0BA
-	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1B0BE
-	move.b	#0x2,(ram_10FCE8-A5_BASE,a5)	| C1B0C2
+	clr.l	(CabinetRow-A5_BASE,a5)	| C1B0BE
+	move.b	#0x2,(CabinetDrawFlags-A5_BASE,a5)	| C1B0C2
 loc_C1B0C8:
 	jsr	(CabinetDrawRow,pc)	| C1B0C8
 	jsr	(MessOut,pc)	| C1B0CC
 	lea.l	(bram_D08000).l,a4	| C1B0D0
-	addq.w	#0x1,(ram_10FCE2-A5_BASE,a5)	| C1B0D6
-	cmpi.w	#0x5,(ram_10FCE2-A5_BASE,a5)	| C1B0DA
+	addq.w	#0x1,(CabinetRow-A5_BASE,a5)	| C1B0D6
+	cmpi.w	#0x5,(CabinetRow-A5_BASE,a5)	| C1B0DA
 	bne.b	loc_C1B0C8	| C1B0E0
-	clr.l	(ram_10FCE2-A5_BASE,a5)	| C1B0E2
-	clr.b	(ram_10FCE8-A5_BASE,a5)	| C1B0E6
+	clr.l	(CabinetRow-A5_BASE,a5)	| C1B0E2
+	clr.b	(CabinetDrawFlags-A5_BASE,a5)	| C1B0E6
 loc_C1B0EA:
 	jsr	(CabinetCursor,pc)	| C1B0EA
 	jsr	(CabinetDrawCoin1,pc)	| C1B0EE
@@ -2546,14 +2546,14 @@ loc_C1B106:
 	bne.b	loc_C1B118	| C1B114
 	moveq	#-0x1,d1	| C1B116
 loc_C1B118:
-	add.w	(ram_10FCE2-A5_BASE,a5),d1	| C1B118
+	add.w	(CabinetRow-A5_BASE,a5),d1	| C1B118
 	cmpi.w	#0x5,d1	| C1B11C
 	bcc.b	loc_C1B0F6	| C1B120
-	move.w	d1,(ram_10FCE4-A5_BASE,a5)	| C1B122
+	move.w	d1,(CabinetRowNew-A5_BASE,a5)	| C1B122
 	bra.b	loc_C1B0EA	| C1B126
 loc_C1B128:
 	pea.l	(loc_C1B0F6,pc)	| C1B128
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1B12C
+	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B12C
 	add.w	d0,d0	| C1B130
 	add.w	d0,d0	| C1B132
 	movea.l	(CabinetRowTable,pc,d0.w),a0	| C1B134
@@ -2572,7 +2572,7 @@ loc_C1B14E:
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C1B15A
 	andi.b	#0xC,d0	| C1B15E
 	beq.w	loc_C1B1F4	| C1B162
-	bchg.b	#0x0,(ram_10FCE8-A5_BASE,a5)	| C1B166
+	bchg.b	#0x0,(CabinetDrawFlags-A5_BASE,a5)	| C1B166
 	bra.w	loc_C1B1A8	| C1B16C
 loc_C1B170:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1B170
@@ -2582,10 +2582,10 @@ loc_C1B170:
 	moveq	#-0x1,d1	| C1B17E
 loc_C1B180:
 	lea.l	-0x7FC6(a4),a3	| C1B180
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1B184
+	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B184
 	add.w	d0,d0	| C1B188
 	adda.l	d0,a3	| C1B18A
-	btst.b	#0x0,(ram_10FCE8-A5_BASE,a5)	| C1B18C
+	btst.b	#0x0,(CabinetDrawFlags-A5_BASE,a5)	| C1B18C
 	beq.b	loc_C1B196	| C1B192
 	addq.l	#0x1,a3	| C1B194
 loc_C1B196:
@@ -2600,7 +2600,7 @@ loc_C1B19E:
 loc_C1B1A6:
 	move.b	d0,(a3)	| C1B1A6
 loc_C1B1A8:
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1B1A8
+	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B1A8
 	beq.b	CabinetDrawCoin1	| C1B1AC
 | CabinetDrawCoin2 [C] CabinetSettings: draws the COIN2 rate
 CabinetDrawCoin2:
@@ -2636,9 +2636,9 @@ CabinetDrawCoinPart:
 	add.w	d6,d4	| C1B1FA
 	move.w	d4,(a0)+	| C1B1FC
 	move.w	#0x108,(a0)+	| C1B1FE
-	cmp.b	(ram_10FCE8-A5_BASE,a5),d7	| C1B202
+	cmp.b	(CabinetDrawFlags-A5_BASE,a5),d7	| C1B202
 	bne.b	loc_C1B214	| C1B206
-	cmp.w	(ram_10FCE2-A5_BASE,a5),d2	| C1B208
+	cmp.w	(CabinetRow-A5_BASE,a5),d2	| C1B208
 	bne.b	loc_C1B214	| C1B20C
 	move.w	#0x1108,-0x2(a0)	| C1B20E
 loc_C1B214:
@@ -2786,7 +2786,7 @@ CabinetEachGameText:
 	dc.b	0xFF,0x00,0x00
 | CabinetDrawRow [C] CabinetSettings: draws row ram_10FCE2 through CabinetDrawTable
 CabinetDrawRow:
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1B3E6
+	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B3E6
 	add.w	d0,d0	| C1B3EA
 	add.w	d0,d0	| C1B3EC
 	movea.l	(CabinetDrawTable,pc,d0.w),a0	| C1B3EE
@@ -2805,7 +2805,7 @@ CabinetCursor:
 	clr.l	(a0)+	| C1B410
 	move.w	#0x20FF,d1	| C1B412
 	jsr	(CabinetCursorRow,pc)	| C1B416
-	move.w	(ram_10FCE4-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1B41A
+	move.w	(CabinetRowNew-A5_BASE,a5),(CabinetRow-A5_BASE,a5)	| C1B41A
 	move.w	#0x11FF,d1	| C1B420
 	jsr	(CabinetCursorRow,pc)	| C1B424
 	clr.w	(a0)+	| C1B428
@@ -2815,7 +2815,7 @@ CabinetCursor:
 | CabinetCursorRow [C] cursor character (d1) at row ram_10FCE2
 CabinetCursorRow:
 	move.w	#0x3,(a0)+	| C1B434
-	move.w	(ram_10FCE2-A5_BASE,a5),d0	| C1B438
+	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B438
 	move.w	d0,d2	| C1B43C
 	add.w	d0,d0	| C1B43E
 	add.w	d0,d2	| C1B440

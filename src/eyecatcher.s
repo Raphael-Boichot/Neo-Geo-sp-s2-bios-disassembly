@@ -7,7 +7,7 @@ Eyecatcher:
 	lea.l	(BiosWorkRam).l,a5	| C17E2E
 	moveq	#0x0,d0	| C17E34
 	move.w	d0,(WorkIndex-A5_BASE,a5)	| C17E36
-	move.w	d0,(ram_10FCE6-A5_BASE,a5)	| C17E3A
+	move.w	d0,(EyecatchColoursPending-A5_BASE,a5)	| C17E3A
 	move.b	d0,(REG_NOSHADOW).l	| C17E3E
 	andi.w	#0xF0FF,sr	| C17E44
 	jsr	(WaitFrame,pc)	| C17E48
@@ -33,16 +33,16 @@ loc_C17E84:
 	btst.b	#0x0,(BIOS_STATCHANGE-A5_BASE,a5)	| C17E8E
 	bne.b	loc_C17E7E	| C17E94
 loc_C17E96:
-	tst.w	(ram_10FCE6-A5_BASE,a5)	| C17E96
+	tst.w	(EyecatchColoursPending-A5_BASE,a5)	| C17E96
 	beq.b	loc_C17EBA	| C17E9A
-	movea.l	(ram_10FCE8-A5_BASE,a5),a0	| C17E9C
+	movea.l	(EyecatchColoursPointer-A5_BASE,a5),a0	| C17E9C
 	lea.l	(0x4001E2).l,a1	| C17EA0
 	moveq	#0x4,d6	| C17EA6
 loc_C17EA8:
 	move.w	(a0)+,(a1)+	| C17EA8
 	dbra	d6,loc_C17EA8	| C17EAA
 	move.w	(a0),(0x401FFE).l	| C17EAE
-	clr.w	(ram_10FCE6).l	| C17EB4
+	clr.w	(EyecatchColoursPending).l	| C17EB4
 loc_C17EBA:
 	move.w	(WorkIndex-A5_BASE,a5),d0	| C17EBA
 	lsl.w	#0x2,d0	| C17EBE
@@ -111,17 +111,17 @@ loc_C17FAC:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17FB2
 	move.l	#EyecatchFixMess,(a0)+	| C17FB6
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17FBC
-	lea.l	(ram_10FC48-A5_BASE,a5),a0	| C17FC0
+	lea.l	(EyecatchYPos-A5_BASE,a5),a0	| C17FC0
 	move.w	#0xE404,(a0)+	| C17FC4
 	moveq	#0x44,d0	| C17FC8
 	moveq	#0x22,d7	| C17FCA
 loc_C17FCC:
 	move.w	d0,(a0)+	| C17FCC
 	dbra	d7,loc_C17FCC	| C17FCE
-	clr.w	(ram_10FC6C-A5_BASE,a5)	| C17FD2
-	move.w	#0x4B80,(ram_10FC00-A5_BASE,a5)	| C17FD6
+	clr.w	(EyecatchYPos2-A5_BASE,a5)	| C17FD2
+	move.w	#0x4B80,(EyecatchXPos-A5_BASE,a5)	| C17FD6
 	move.w	#0xFF,d0	| C17FDC
-	lea.l	(ram_10FC90-A5_BASE,a5),a0	| C17FE0
+	lea.l	(EyecatchShrink-A5_BASE,a5),a0	| C17FE0
 	moveq	#0x11,d7	| C17FE4
 loc_C17FE6:
 	move.w	d0,(a0)+	| C17FE6
@@ -133,13 +133,13 @@ loc_C17FF2:
 	dbra	d7,loc_C17FF2	| C17FF4
 	move.w	#0x0,d0	| C17FF8
 	bsr.w	EyecatchSetColours	| C17FFC
-	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C18000
+	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C18000
 	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C18006
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1800C
 	rts	| C18010
 loc_C18012:
-	addq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C18012
-	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C18016
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18012
+	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C18016
 	cmpi.w	#0x5,d0	| C1801A
 	bne.b	loc_C18036	| C1801E
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C18020
@@ -151,10 +151,10 @@ loc_C1802E:
 loc_C18036:
 	andi.w	#0x1,d0	| C18036
 	bne.b	loc_C18072	| C1803A
-	lea.l	(ram_10FC90-A5_BASE,a5),a0	| C1803C
-	move.w	(ram_10FC00-A5_BASE,a5),d1	| C18040
+	lea.l	(EyecatchShrink-A5_BASE,a5),a0	| C1803C
+	move.w	(EyecatchXPos-A5_BASE,a5),d1	| C18040
 	subi.w	#0x480,d1	| C18044
-	move.w	d1,(ram_10FC00-A5_BASE,a5)	| C18048
+	move.w	d1,(EyecatchXPos-A5_BASE,a5)	| C18048
 	move.w	(a0),d0	| C1804C
 	addi.w	#0x100,d0	| C1804E
 	moveq	#0x11,d7	| C18052
@@ -164,58 +164,58 @@ loc_C18054:
 	cmpi.w	#0xFFF,d0	| C1805A
 	bne.b	loc_C18072	| C1805E
 	move.w	#0x0,(WorkIndexNew-A5_BASE,a5)	| C18060
-	move.w	#0xA,(ram_10FCDC-A5_BASE,a5)	| C18066
+	move.w	#0xA,(EyecatchTimer-A5_BASE,a5)	| C18066
 	move.w	#0x2,(WorkIndex-A5_BASE,a5)	| C1806C
 loc_C18072:
 	rts	| C18072
 loc_C18074:
-	subq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C18074
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18074
 	bne.b	loc_C18080	| C18078
 	move.w	#0x3,(WorkIndex-A5_BASE,a5)	| C1807A
 loc_C18080:
 	rts	| C18080
 loc_C18082:
-	addq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C18082
-	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C18086
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18082
+	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C18086
 	andi.w	#0x1,d0	| C1808A
 	bne.b	loc_C180DA	| C1808E
 	jsr	(EyecatchFadeStep,pc)	| C18090
-	subi.w	#0x100,(ram_10FC48-A5_BASE,a5)	| C18094
-	subi.b	#0x10,(ram_10FC91-A5_BASE,a5)	| C1809A
+	subi.w	#0x100,(EyecatchYPos-A5_BASE,a5)	| C18094
+	subi.b	#0x10,(EyecatchShrinkV-A5_BASE,a5)	| C1809A
 	bcc.b	loc_C180DA	| C180A0
-	move.w	#0xF00,(ram_10FCB4-A5_BASE,a5)	| C180A2
-	move.w	(ram_10FC48-A5_BASE,a5),(ram_10FC6C-A5_BASE,a5)	| C180A8
-	move.w	#0x6404,(ram_10FC48-A5_BASE,a5)	| C180AE
-	move.w	#0x800,(ram_10FC24-A5_BASE,a5)	| C180B4
+	move.w	#0xF00,(EyecatchShrink2-A5_BASE,a5)	| C180A2
+	move.w	(EyecatchYPos-A5_BASE,a5),(EyecatchYPos2-A5_BASE,a5)	| C180A8
+	move.w	#0x6404,(EyecatchYPos-A5_BASE,a5)	| C180AE
+	move.w	#0x800,(EyecatchXPos2-A5_BASE,a5)	| C180B4
 	move.w	#0x4,(WorkIndex-A5_BASE,a5)	| C180BA
-	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C180C0
-	move.w	#0x0,(ram_10FCDE-A5_BASE,a5)	| C180C6
-	move.w	#0x71B0,(ram_10FCE0-A5_BASE,a5)	| C180CC
-	move.l	#EyecatchTextTiles,(ram_10FCE2-A5_BASE,a5)	| C180D2
+	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C180C0
+	move.w	#0x0,(EyecatchCharCount-A5_BASE,a5)	| C180C6
+	move.w	#0x71B0,(EyecatchCharAddress-A5_BASE,a5)	| C180CC
+	move.l	#EyecatchTextTiles,(EyecatchCharPointer-A5_BASE,a5)	| C180D2
 loc_C180DA:
 	rts	| C180DA
 loc_C180DC:
-	addq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C180DC
-	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C180E0
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C180DC
+	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C180E0
 	andi.w	#0x1,d0	| C180E4
 	bne.b	loc_C18118	| C180E8
 	jsr	(EyecatchFadeStep,pc)	| C180EA
-	addi.w	#0x100,(ram_10FC6C-A5_BASE,a5)	| C180EE
-	move.b	(ram_10FCB5-A5_BASE,a5),d0	| C180F4
+	addi.w	#0x100,(EyecatchYPos2-A5_BASE,a5)	| C180EE
+	move.b	(EyecatchShrink2V-A5_BASE,a5),d0	| C180F4
 	bne.b	loc_C180FE	| C180F8
 	move.b	#0xFF,d0	| C180FA
 loc_C180FE:
 	addi.b	#0x10,d0	| C180FE
-	move.b	d0,(ram_10FCB5-A5_BASE,a5)	| C18102
+	move.b	d0,(EyecatchShrink2V-A5_BASE,a5)	| C18102
 	cmpi.b	#0xFF,d0	| C18106
 	bne.b	loc_C18118	| C1810A
-	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C1810C
+	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C1810C
 	move.w	#0x5,(WorkIndex-A5_BASE,a5)	| C18112
 loc_C18118:
 	rts	| C18118
 loc_C1811A:
-	addq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C1811A
-	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C1811E
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C1811A
+	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C1811E
 	andi.w	#0x3,d0	| C18122
 	bne.w	loc_C18192	| C18126
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1812A
@@ -224,39 +224,39 @@ loc_C1811A:
 	move.l	#0x3010002,(a0)+	| C18138
 	move.w	#0x102,(a0)+	| C1813E
 	move.w	#0x3,(a0)+	| C18142
-	move.w	(ram_10FCE0-A5_BASE,a5),(a0)+	| C18146
+	move.w	(EyecatchCharAddress-A5_BASE,a5),(a0)+	| C18146
 	move.w	#0x4,(a0)+	| C1814A
-	move.l	(ram_10FCE2-A5_BASE,a5),(a0)+	| C1814E
+	move.l	(EyecatchCharPointer-A5_BASE,a5),(a0)+	| C1814E
 	move.w	#0x0,(a0)+	| C18152
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C18156
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1815A
-	addq.l	#0x4,(ram_10FCE2-A5_BASE,a5)	| C1815E
-	addi.w	#0x20,(ram_10FCE0-A5_BASE,a5)	| C18162
-	addq.w	#0x1,(ram_10FCDE-A5_BASE,a5)	| C18168
-	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C1816C
+	addq.l	#0x4,(EyecatchCharPointer-A5_BASE,a5)	| C1815E
+	addi.w	#0x20,(EyecatchCharAddress-A5_BASE,a5)	| C18162
+	addq.w	#0x1,(EyecatchCharCount-A5_BASE,a5)	| C18168
+	move.w	(EyecatchCharCount-A5_BASE,a5),d0	| C1816C
 	cmpi.w	#0xF,d0	| C18170
 	bne.b	loc_C1817C	| C18174
-	move.w	#0x7192,(ram_10FCE0-A5_BASE,a5)	| C18176
+	move.w	#0x7192,(EyecatchCharAddress-A5_BASE,a5)	| C18176
 loc_C1817C:
-	move.w	(ram_10FCDE-A5_BASE,a5),d0	| C1817C
+	move.w	(EyecatchCharCount-A5_BASE,a5),d0	| C1817C
 	cmpi.w	#0x20,d0	| C18180
 	bne.b	loc_C18192	| C18184
 	move.w	#0x6,(WorkIndex-A5_BASE,a5)	| C18186
-	move.w	#0x14,(ram_10FCDC-A5_BASE,a5)	| C1818C
+	move.w	#0x14,(EyecatchTimer-A5_BASE,a5)	| C1818C
 loc_C18192:
 	rts	| C18192
 loc_C18194:
-	subq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C18194
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18194
 	bne.b	loc_C181AC	| C18198
 	move.w	#0x7,(WorkIndex-A5_BASE,a5)	| C1819A
-	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C181A0
+	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C181A0
 	move.w	#0x0,(WorkIndexNew-A5_BASE,a5)	| C181A6
 loc_C181AC:
 	rts	| C181AC
 loc_C181AE:
-	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C181AE
+	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C181AE
 	addq.w	#0x1,d0	| C181B2
-	move.w	d0,(ram_10FCDC-A5_BASE,a5)	| C181B4
+	move.w	d0,(EyecatchTimer-A5_BASE,a5)	| C181B4
 	andi.w	#0x1,d0	| C181B8
 	bne.b	loc_C18206	| C181BC
 	move.w	(WorkIndexNew-A5_BASE,a5),d1	| C181BE
@@ -271,13 +271,13 @@ loc_C181AE:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C181E2
 	move.w	#0x7469,(REG_VRAMADDR).l	| C181E6
 	move.w	#0x7B,(REG_VRAMRW).l	| C181EE
-	move.w	#0xB4,(ram_10FCDC-A5_BASE,a5)	| C181F6
+	move.w	#0xB4,(EyecatchTimer-A5_BASE,a5)	| C181F6
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C181FC
 	move.w	#0x8,(WorkIndex-A5_BASE,a5)	| C18200
 loc_C18206:
 	rts	| C18206
 loc_C18208:
-	subq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C18208
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18208
 	bne.b	loc_C1822A	| C1820C
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1820E
 	beq.b	loc_C1821C	| C18212
@@ -309,7 +309,7 @@ loc_C1825A:
 loc_C18272:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C18272
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18276
-	move.w	#0x12C,(ram_10FCDC-A5_BASE,a5)	| C1827A
+	move.w	#0x12C,(EyecatchTimer-A5_BASE,a5)	| C1827A
 	move.w	#0x9,(WorkIndex-A5_BASE,a5)	| C18280
 	rts	| C18286
 loc_C18288:
@@ -320,7 +320,7 @@ loc_C18288:
 	move.l	#JapanOnlyWarningText,(a0)+	| C1829E
 	bra.b	loc_C18272	| C182A4
 loc_C182A6:
-	subq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C182A6
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C182A6
 	beq.b	loc_C182AE	| C182AA
 	rts	| C182AC
 loc_C182AE:
@@ -376,6 +376,6 @@ EyecatchSetColours:
 	move.w	#0xC,d1	| C18346
 	mulu.w	d1,d0	| C1834A
 	addi.l	#EyecatchColourSets,d0	| C1834C
-	move.l	d0,(ram_10FCE8-A5_BASE,a5)	| C18352
-	move.w	#0x1,(ram_10FCE6-A5_BASE,a5)	| C18356
+	move.l	d0,(EyecatchColoursPointer-A5_BASE,a5)	| C18352
+	move.w	#0x1,(EyecatchColoursPending-A5_BASE,a5)	| C18356
 	rts	| C1835C

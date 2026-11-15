@@ -181,7 +181,7 @@ ColorBarsText:
 HwTestIoCheck:
 	jsr	(ClearFixLayer,pc)	| C17390
 	move.b	#0x1,(ram_10FEBB).l	| C17394
-	clr.b	(ram_10FCDE-A5_BASE,a5)	| C1739C
+	clr.b	(IoCheckLedCount-A5_BASE,a5)	| C1739C
 	clr.b	(WorkIndexNew-A5_BASE,a5)	| C173A0
 	moveq	#0x2,d0	| C173A4
 	move.b	(REG_SYSTYPE).l,d1	| C173A6
@@ -193,7 +193,7 @@ HwTestIoCheck:
 	bne.b	loc_C173C2	| C173BE
 	moveq	#0x4,d0	| C173C0
 loc_C173C2:
-	move.b	d0,(ram_10FCDB-A5_BASE,a5)	| C173C2
+	move.b	d0,(IoCheckSlotCount-A5_BASE,a5)	| C173C2
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C173C6
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C173CA
 	move.l	#IoCheckText,(a0)+	| C173CE
@@ -242,7 +242,7 @@ IoCheckNextSlotLed:
 	bne.b	loc_C17480	| C17468
 	move.b	(WorkIndexNew-A5_BASE,a5),d0	| C1746A
 	addq.b	#0x1,d0	| C1746E
-	cmp.b	(ram_10FCDB-A5_BASE,a5),d0	| C17470
+	cmp.b	(IoCheckSlotCount-A5_BASE,a5),d0	| C17470
 	bcs.b	loc_C17478	| C17474
 	moveq	#0x0,d0	| C17476
 loc_C17478:
@@ -257,12 +257,12 @@ IoCheckNextLedCount:
 	bne.b	loc_C174A6	| C1748A
 	sub.b	d0,d0	| C1748C
 	moveq	#0x11,d1	| C1748E
-	move.b	(ram_10FCDE-A5_BASE,a5),d0	| C17490
+	move.b	(IoCheckLedCount-A5_BASE,a5),d0	| C17490
 	abcd	d1,d0	| C17494
 	bcc.b	loc_C1749A	| C17496
 	moveq	#0x0,d0	| C17498
 loc_C1749A:
-	move.b	d0,(ram_10FCDE-A5_BASE,a5)	| C1749A
+	move.b	d0,(IoCheckLedCount-A5_BASE,a5)	| C1749A
 	jsr	(IoCheckShowLed1,pc)	| C1749E
 	jsr	(IoCheckShowLed2,pc)	| C174A2
 loc_C174A6:
@@ -349,13 +349,13 @@ IoCheckShowSlot:
 	rts	| C1758E
 | IoCheckShowLed1 [C] the LED test count on the first LED counter (latch $EF) and on screen
 IoCheckShowLed1:
-	move.b	(ram_10FCDE-A5_BASE,a5),d0	| C17590
+	move.b	(IoCheckLedCount-A5_BASE,a5),d0	| C17590
 	move.b	#0xEF,d1	| C17594
 	move.w	#0x7314,d2	| C17598
 	bra.w	loc_C175B8	| C1759C
 | IoCheckShowLed2 [C] the LED test count on the second LED counter (latch $DF, digit order reversed) and on screen
 IoCheckShowLed2:
-	move.b	(ram_10FCDE-A5_BASE,a5),d0	| C175A0
+	move.b	(IoCheckLedCount-A5_BASE,a5),d0	| C175A0
 	nbcd.b	d0	| C175A4
 	move.b	d0,d1	| C175A6
 	andi.b	#0xF,d1	| C175A8
@@ -434,8 +434,8 @@ HwTestSound:
 	move.l	#SoundTestText,(a0)+	| C17736
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1773C
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17740
-	clr.w	(ram_10FCDE-A5_BASE,a5)	| C17744
-	clr.b	(ram_10FCE2-A5_BASE,a5)	| C17748
+	clr.w	(SoundTestCursor-A5_BASE,a5)	| C17744
+	clr.b	(SoundTestPlaying-A5_BASE,a5)	| C17748
 	jsr	(SoundTestDrawItems,pc)	| C1774C
 	jsr	(SoundTestMoveCursor,pc)	| C17750
 	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17754
@@ -451,9 +451,9 @@ loc_C17770:
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C17770
 	btst.b	#0x4,d0	| C17774
 	beq.w	loc_C177A0	| C17778
-	move.b	(ram_10FCDE-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1777C
+	move.b	(SoundTestCursor-A5_BASE,a5),(SoundTestPlaying-A5_BASE,a5)	| C1777C
 	jsr	(SoundTestDrawItems,pc)	| C17782
-	move.b	(ram_10FCE2-A5_BASE,a5),d0	| C17786
+	move.b	(SoundTestPlaying-A5_BASE,a5),d0	| C17786
 	beq.w	loc_C178CE	| C1778A
 	andi.w	#0xF,d0	| C1778E
 	move.b	(SoundTestCommands,pc,d0.w),(REG_SOUND).l	| C17792
@@ -472,10 +472,10 @@ loc_C177A8:
 	bne.b	loc_C177B2	| C177AE
 	moveq	#-0x1,d1	| C177B0
 loc_C177B2:
-	add.b	(ram_10FCDE-A5_BASE,a5),d1	| C177B2
+	add.b	(SoundTestCursor-A5_BASE,a5),d1	| C177B2
 	cmpi.b	#0x4,d1	| C177B6
 	bcc.b	loc_C177A6	| C177BA
-	move.b	d1,(ram_10FCDF-A5_BASE,a5)	| C177BC
+	move.b	d1,(SoundTestCursorNew-A5_BASE,a5)	| C177BC
 | SoundTestMoveCursor [C] sound test: erases the cursor at the old item and draws it at ram_10FCDF
 SoundTestMoveCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C177C0
@@ -483,7 +483,7 @@ SoundTestMoveCursor:
 	clr.l	(a0)+	| C177C8
 	move.w	#0x20FF,d1	| C177CA
 	jsr	(SoundTestPutCursor,pc)	| C177CE
-	move.b	(ram_10FCDF-A5_BASE,a5),(ram_10FCDE-A5_BASE,a5)	| C177D2
+	move.b	(SoundTestCursorNew-A5_BASE,a5),(SoundTestCursor-A5_BASE,a5)	| C177D2
 	move.w	#0x11FF,d1	| C177D8
 	jsr	(SoundTestPutCursor,pc)	| C177DC
 	clr.w	(a0)+	| C177E0
@@ -494,7 +494,7 @@ SoundTestMoveCursor:
 SoundTestPutCursor:
 	move.w	#0x3,(a0)+	| C177EC
 	moveq	#0x0,d0	| C177F0
-	move.b	(ram_10FCDE-A5_BASE,a5),d0	| C177F2
+	move.b	(SoundTestCursor-A5_BASE,a5),d0	| C177F2
 	move.w	d0,d2	| C177F6
 	add.w	d0,d0	| C177F8
 	add.w	d0,d2	| C177FA
@@ -514,7 +514,7 @@ SoundTestDrawItems:
 	moveq	#0x0,d7	| C17820
 loc_C17822:
 	move.l	(a1),d1	| C17822
-	cmp.b	(ram_10FCE2-A5_BASE,a5),d7	| C17824
+	cmp.b	(SoundTestPlaying-A5_BASE,a5),d7	| C17824
 	beq.b	loc_C1782E	| C17828
 	move.l	0x4(a1),d1	| C1782A
 loc_C1782E:

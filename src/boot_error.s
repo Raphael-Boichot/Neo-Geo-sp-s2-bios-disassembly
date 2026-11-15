@@ -7,10 +7,10 @@ BootError:
 	move.w	#0x7,(REG_IRQACK).l	| C16AE0
 	tst.b	(SystemType).l	| C16AE8
 	beq.w	BootErrorAes	| C16AEE
-	move.l	a0,(ram_10FD00-A5_BASE,a5)	| C16AF2
-	move.w	d0,(ram_10FD04-A5_BASE,a5)	| C16AF6
-	move.w	d1,(ram_10FD06-A5_BASE,a5)	| C16AFA
-	move.w	d6,(ram_10FD08-A5_BASE,a5)	| C16AFE
+	move.l	a0,(ErrorAddress-A5_BASE,a5)	| C16AF2
+	move.w	d0,(ErrorWritten-A5_BASE,a5)	| C16AF6
+	move.w	d1,(ErrorRead-A5_BASE,a5)	| C16AFA
+	move.w	d6,(ErrorNumber-A5_BASE,a5)	| C16AFE
 	move.w	#0x7000,(REG_VRAMADDR).l	| C16B02
 	move.b	d0,(REG_DIPSW).l	| C16B0A
 	move.w	#0x1,(REG_VRAMMOD).l	| C16B10
@@ -21,13 +21,13 @@ loc_C16B20:
 	dbra	d7,loc_C16B20	| C16B26
 	move.l	#0xEEE0000,(0x4001E2).l	| C16B2A
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C16B34
-	move.w	(ram_10FD08-A5_BASE,a5),d0	| C16B38
+	move.w	(ErrorNumber-A5_BASE,a5),d0	| C16B38
 	lsl.w	#0x2,d0	| C16B3C
 	lea.l	(BootErrorMessages,pc),a1	| C16B3E
 	move.l	(a1,d0.w),(a0)+	| C16B42
 	cmpi.w	#0x14,d0	| C16B46
 	bcc.w	loc_C16B96	| C16B4A
-	lea.l	(ram_10FD00-A5_BASE,a5),a1	| C16B4E
+	lea.l	(ErrorAddress-A5_BASE,a5),a1	| C16B4E
 	clr.l	(a0)+	| C16B52
 	move.l	#0x1F0FF,(a0)+	| C16B54
 	move.w	#0x2002,(a0)+	| C16B5A

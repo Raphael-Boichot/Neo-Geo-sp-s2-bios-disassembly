@@ -60,7 +60,7 @@ SetupCalendar:
 	jsr	(RtcSendByte,pc)	| C12D1C
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12D20
 	jsr	(RtcSendByte,pc)	| C12D24
-	move.b	(ram_10FD01-A5_BASE,a5),d0	| C12D28
+	move.b	(CalendarMonthWeekday-A5_BASE,a5),d0	| C12D28
 	jsr	(RtcSendByte,pc)	| C12D2C
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12D30
 	jsr	(RtcSendByte,pc)	| C12D34
@@ -173,7 +173,7 @@ SetupCalendarAlt:
 	jsr	(RtcSendByteAlt,pc)	| C12E5C
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12E60
 	jsr	(RtcSendByteAlt,pc)	| C12E64
-	move.b	(ram_10FD01-A5_BASE,a5),d0	| C12E68
+	move.b	(CalendarMonthWeekday-A5_BASE,a5),d0	| C12E68
 	jsr	(RtcSendByteAlt,pc)	| C12E6C
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12E70
 	jsr	(RtcSendByteAlt,pc)	| C12E74
@@ -232,14 +232,14 @@ CheckCalendarDate:
 	lea.l	(MonthDaysTable,pc),a1	| C12EF8
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12EFC
 	jsr	(BcdToBinary,pc)	| C12F00
-	move.b	d0,(ram_10FD00-A5_BASE,a5)	| C12F04
+	move.b	d0,(CalendarYearBin-A5_BASE,a5)	| C12F04
 	move.w	d0,d1	| C12F08
 	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C12F0A
 	jsr	(BcdToBinary,pc)	| C12F0E
 	move.w	d0,d2	| C12F12
 	move.w	d2,d3	| C12F14
 	lsl.b	#0x4,d0	| C12F16
-	move.b	d0,(ram_10FD01-A5_BASE,a5)	| C12F18
+	move.b	d0,(CalendarMonthWeekday-A5_BASE,a5)	| C12F18
 	cmpi.b	#0x2,d3	| C12F1C
 	bne.b	loc_C12F2C	| C12F20
 	move.b	d1,d0	| C12F22
@@ -249,7 +249,7 @@ CheckCalendarDate:
 loc_C12F2C:
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12F2C
 	jsr	(BcdToBinary,pc)	| C12F30
-	move.b	d0,(ram_10FD02-A5_BASE,a5)	| C12F34
+	move.b	d0,(CalendarDayBin-A5_BASE,a5)	| C12F34
 	cmp.b	(a1,d3.w),d0	| C12F38
 	bhi.w	loc_C12F84	| C12F3C
 	moveq	#0x0,d6	| C12F40
@@ -274,12 +274,12 @@ loc_C12F62:
 loc_C12F68:
 	add.w	d0,d7	| C12F68
 	subq.w	#0x1,d7	| C12F6A
-	move.b	(ram_10FD00-A5_BASE,a5),d0	| C12F6C
+	move.b	(CalendarYearBin-A5_BASE,a5),d0	| C12F6C
 	move.b	(YearWeekdayTable,pc,d0.w),d0	| C12F70
 	add.w	d0,d7	| C12F74
 	divu.w	#0x7,d7	| C12F76
 	swap	d7	| C12F7A
-	add.b	d7,(ram_10FD01-A5_BASE,a5)	| C12F7C
+	add.b	d7,(CalendarMonthWeekday-A5_BASE,a5)	| C12F7C
 	moveq	#0x0,d7	| C12F80
 	rts	| C12F82
 loc_C12F84:

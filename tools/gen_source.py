@@ -77,6 +77,7 @@ class Gen:
         self.labels = {}
         self.ptr_longs = set()     # data offsets holding a ROM pointer
         self.ram_used = {}         # RAM address -> name used in the source
+        self.ram_scoped_used = {}  # scoped RAM name -> address (symbols/ram_scoped.csv)
         self.collect()
         self.a4_known = self.track_a4()
 
@@ -174,7 +175,14 @@ class Gen:
                 self.want(v, 'data')
 
     def ram(self, v):
-        name = S.RAM.get(v) or f'{ram_kind(v)}_{v:06X}'
+        name = S.RAM.get(v)
+        if name is None:
+            here = getattr(self, 'cur_addr', None)
+            for a, first, last, n in S.RAM_SCOPED:
+                if a == v and here is not None and first <= here <= last:
+                    self.ram_scoped_used[n] = v
+                    return n
+            name = f'{ram_kind(v)}_{v:06X}'
         self.ram_used[v] = name
         return name
 
@@ -190,6 +198,7 @@ class Gen:
 
     # ------------------------------------------------------- instructions
     def conv(self, ins):
+        self.cur_addr = ins.address
         mn, op = ins.mnemonic, ins.op_str
         t = self.t
         if ins.operands and ins.operands[-1].type == T.m.M68K_OP_BR_DISP:
@@ -356,14 +365,19 @@ def write_inc(path):
         f.write(f'| backup RAM base, held in a4 after lea $D08000,a4\n\t.equ\tA4_BASE,0x{A4_BASE:06X}\n')
 
 
-def write_ram_inc(path, used):
+def write_ram_inc(path, used, scoped=None):
     """Every RAM address the source uses: names from symbols/ram.csv, else
     ram_XXXXXX (work RAM) / bram_XXXXXX (backup RAM)."""
     with open(path, 'w') as f:
         f.write('| RAM used by the system ROM - generated; names come from symbols/ram.csv\n\n')
         for v in sorted(set(used) | set(S.RAM)):
-            n = S.RAM.get(v) or used[v]
-            f.write(f'\t.equ\t{n},0x{v:06X}\n')
+            if v in S.RAM or v in used:
+                n = S.RAM.get(v) or used[v]
+                f.write(f'\t.equ\t{n},0x{v:06X}\n')
+        if scoped:
+            f.write('\n| names valid in one part of the code only (symbols/ram_scoped.csv)\n')
+            for n, v in sorted(scoped.items(), key=lambda x: (x[1], x[0])):
+                f.write(f'\t.equ\t{n},0x{v:06X}\n')
 
 
 LIST_RE = re.compile(r'^\s*\d+\s+([0-9a-f]{4,5})\s.*\|\s([0-9A-F]{6})(?::|\s*$)')
@@ -413,7 +427,7 @@ def main():
     src_path = os.path.join(out_dir, 'sp-s2.s')
     for it in range(5000):
         open(src_path, 'w').write(g.generate(fallback))
-        write_ram_inc(os.path.join(out_dir, 'ram.inc'), g.ram_used)
+        write_ram_inc(os.path.join(out_dir, 'ram.inc'), g.ram_used, g.ram_scoped_used)
         img, err, lst = assemble(out_dir, 'sp-s2.s', want_listing=True)
         if img is None:
             # assembler rejected lines: fall back on every instruction it names

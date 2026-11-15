@@ -8,7 +8,8 @@ Usage: test_mode_scenarios.py list
 All scenarios start in test mode ("Setting Mode" DIP on, MODE=dip): the menu is up at about frame 400.
 Keys (seen in MAME): Up/Down move, A/B change a value (held: repeat), Left/Right change the column or
 digit, C goes back, D sets (code number, calendar). Inputs are described in tools/mame_inputs.lua.
-The card1m_* scenarios emulate a 1 Mbit RAM card (CARD1M in tools/mame_inputs.lua) and must run in order.
+The card1m_* scenarios emulate a 1 Mbit RAM card (CARD1M in tools/mame_inputs.lua) and must run in order,
+as must book_days_* then test_book_keeping_days (book keeping data on three days in two months).
 Environment: CARD_DIR (where card images and chained backup RAM are written, default .), FORMATTED_CARD (a card image
 formatted by a game, for the card scenarios), PLAYED_NVRAM (a MAME nvram folder after a few played
 credits, for test_book_keeping_played).
@@ -144,6 +145,29 @@ def menu_exit():
     return k, dips
 
 
+def play_after(k, frames=1500):
+    """Coins, START and A taps for a played credit, from the current frame."""
+    for _ in range(3):
+        k.tap('Coin 1', 30)
+    k.tap('1 Player Start', 200)
+    for f in range(k.t, k.t + frames, 45):
+        k.k.append(f'{f}:P1 A')
+    k.t += frames
+    return k
+
+
+def calendar_then_play(field_keys):
+    """SETTING UP THE CALENDAR: field_keys change the date, D sets it, then EXIT with the Setting Mode
+    DIP turned off: the BIOS boots the game on the new date, which is then played."""
+    k = Keys().menu(5)
+    for key in field_keys:
+        k.tap(key, 40)
+    k.tap('D', 60).tap('C', 80).tap('Down', 30)
+    dips = f'{k.t}:Setting Mode=1'
+    k.wait(30).tap('A', 600)
+    return play_after(k), dips
+
+
 def scenarios():
     sc = {}
     for game in ('sengoku2', 'ridhero', 'alpham2', 'tpgolf'):
@@ -177,6 +201,17 @@ def scenarios():
                                        'MEMCARD': 'card', 'MEMCARD_AT': '0', 'CARD1M': 'chain',
                                        'NVRAM': 'from:card1m_save_a'})
     sc['test_calendar_fields'] = ('sengoku2', calendar().env())
+    # Book keeping over several days and months, run in this order (backup RAM passed through CARD_DIR):
+    # the date is set back one month in test mode and a credit is played, then back one day, then today;
+    # the book keeping pages are then shown. MAME's calendar starts from the host date (dates below for
+    # a run on 2026-11-15: 10/15, 11/14, 11/15).
+    k, dips = calendar_then_play(['B'])
+    sc['book_days_month_before'] = ('sengoku2', k.env(DIPS=dips, NVRAM='keep'))
+    k, dips = calendar_then_play(['Right', 'B'])
+    sc['book_days_day_before'] = ('sengoku2', k.env(DIPS=dips, NVRAM='from:book_days_month_before'))
+    k = play_after(Keys(600))
+    sc['book_days_today'] = ('sengoku2', dict(k.env(NVRAM='from:book_days_day_before'), MODE='boot'))
+    sc['test_book_keeping_days'] = ('sengoku2', book_keeping().env(NVRAM='from:book_days_today'))
     k, dips = menu_exit()
     sc['test_menu_exit'] = ('sengoku2', k.env(DIPS=dips))
     return sc

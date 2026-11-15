@@ -43,9 +43,35 @@ ROM_NAMES = load('rom_names.csv')
 REGISTERS = load('registers.csv')
 RAM = load('ram.csv')
 CART = load('cart_header.csv')
+
+
+def load_scoped(name):
+    """symbols/ram_scoped.csv: RAM shared by several subsystems (the BIOS reuses its work areas per
+    screen): addr,name,tag,first,last,note - the name applies to instructions from first to last."""
+    rows = []
+    path = os.path.join(ROOT, name)
+    if not os.path.exists(path):
+        return rows
+    with open(path, newline='') as f:
+        for r in csv.DictReader(f):
+            if r['tag'] not in ('W', 'C', 'I', '?'):
+                raise SystemExit(f'{name}: bad tag {r["tag"]!r} at {r["addr"]}')
+            rows.append((int(r['addr'], 16), int(r['first'], 16), int(r['last'], 16), r['name']))
+    for i, (a, f1, l1, n1) in enumerate(rows):
+        if a in RAM:
+            raise SystemExit(f'{name}: {a:06X} has a global name in ram.csv')
+        for a2, f2, l2, n2 in rows[i + 1:]:
+            if n1 == n2 and a != a2:
+                raise SystemExit(f'{name}: name {n1} used for two addresses')
+            if a == a2 and f1 <= l2 and f2 <= l1:
+                raise SystemExit(f'{name}: {a:06X} scopes {n1} and {n2} overlap')
+    return rows
+
+
+RAM_SCOPED = load_scoped('ram_scoped.csv')
 _seen = {}
 for _file, _table in (('rom_names.csv', ROM_NAMES), ('registers.csv', REGISTERS), ('ram.csv', RAM),
-                      ('cart_header.csv', CART)):
+                      ('cart_header.csv', CART), ('ram_scoped.csv', {a: n for a, _, _, n in RAM_SCOPED})):
     for _name in _table.values():
         if _name in _seen:   # one assembler symbol: a clash makes the generator fall back to raw words
             raise SystemExit(f'name {_name} is in both {_seen[_name]} and {_file}')

@@ -37,7 +37,7 @@ loc_C18976:
 	move.l	#HowToPlayButton4,(a0)+	| C189B6
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C189BC
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C189C0
-	move.l	a5,(ram_10FCEE-A5_BASE,a5)	| C189C4
+	move.l	a5,(HowToPlayPointer-A5_BASE,a5)	| C189C4
 	bra.w	loc_C189E6	| C189C8
 loc_C189CC:
 	jsr	(WaitFrame,pc)	| C189CC
@@ -45,10 +45,10 @@ loc_C189CC:
 	or.b	(BIOS_P2CHANGE-A5_BASE,a5),d0	| C189D4
 	andi.b	#0xF0,d0	| C189D8
 	bne.w	loc_C18AA4	| C189DC
-	subq.w	#0x1,(ram_10FCF2-A5_BASE,a5)	| C189E0
+	subq.w	#0x1,(HowToPlayTimer-A5_BASE,a5)	| C189E0
 	bne.b	loc_C189CC	| C189E4
 loc_C189E6:
-	movea.l	(ram_10FCEE-A5_BASE,a5),a1	| C189E6
+	movea.l	(HowToPlayPointer-A5_BASE,a5),a1	| C189E6
 loc_C189EA:
 	move.l	(a1)+,d0	| C189EA
 	beq.w	loc_C18AA4	| C189EC
@@ -59,8 +59,8 @@ loc_C189F0:
 	bcs.w	loc_C18A2A	| C18A00
 	cmpi.l	#0x300,d0	| C18A04
 	bcs.w	loc_C18A58	| C18A0A
-	move.w	(a1)+,(ram_10FCF2-A5_BASE,a5)	| C18A0E
-	move.l	a1,(ram_10FCEE-A5_BASE,a5)	| C18A12
+	move.w	(a1)+,(HowToPlayTimer-A5_BASE,a5)	| C18A0E
+	move.l	a1,(HowToPlayPointer-A5_BASE,a5)	| C18A12
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18A16
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C18A1A
 	move.l	d0,(a0)+	| C18A1E
@@ -84,8 +84,8 @@ loc_C18A44:
 loc_C18A48:
 	move.l	(a1)+,d0	| C18A48
 	bne.b	loc_C189F0	| C18A4A
-	move.w	(a1)+,(ram_10FCF2-A5_BASE,a5)	| C18A4C
-	move.l	a1,(ram_10FCEE-A5_BASE,a5)	| C18A50
+	move.w	(a1)+,(HowToPlayTimer-A5_BASE,a5)	| C18A4C
+	move.l	a1,(HowToPlayPointer-A5_BASE,a5)	| C18A50
 	bra.w	loc_C189CC	| C18A54
 loc_C18A58:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18A58

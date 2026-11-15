@@ -45,7 +45,7 @@ CardFillTestTitle:
 Card:
 	lea.l	(BiosWorkRam).l,a5	| C1334C
 	pea.l	(loc_C133BA,pc)	| C13352
-	move.l	a7,(ram_10FD00-A5_BASE,a5)	| C13356
+	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C13356
 	move.b	#0xFF,(ram_10FCF4-A5_BASE,a5)	| C1335A
 	move.b	(REG_STATUS_B).l,d0	| C13360
 	andi.b	#0x30,d0	| C13366
@@ -78,7 +78,7 @@ loc_C133BA:
 | CardError [C] target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch
 CardError:
 	lea.l	(BiosWorkRam).l,a5	| C133C0
-	move.l	a7,(ram_10FD00-A5_BASE,a5)	| C133C6
+	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C133C6
 	moveq	#0x0,d0	| C133CA
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C133CC
 	move.b	d0,(ram_10FDC7-A5_BASE,a5)	| C133D0
@@ -441,8 +441,8 @@ loc_C139AE:
 	move.w	d0,(a0)+	| C139B8
 	dbra	d7,loc_C139AE	| C139BA
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C139BE
-	move.l	(0x400002).l,(ram_10FD4E-A5_BASE,a5)	| C139C2
-	move.l	(0x400022).l,(ram_10FD52-A5_BASE,a5)	| C139CA
+	move.l	(0x400002).l,(CardSavedColour1-A5_BASE,a5)	| C139C2
+	move.l	(0x400022).l,(CardSavedColour2-A5_BASE,a5)	| C139CA
 	move.l	#0xEEE0000,(0x400002).l	| C139D2
 	move.l	#0xE000000,(0x400022).l	| C139DC
 loc_C139E6:
@@ -463,8 +463,8 @@ loc_C13A16:
 	move.b	d0,(REG_DIPSW).l	| C13A16
 	move.w	(a0)+,(a1)	| C13A1C
 	dbra	d7,loc_C13A16	| C13A1E
-	move.l	(ram_10FD4E-A5_BASE,a5),(0x400002).l	| C13A22
-	move.l	(ram_10FD52-A5_BASE,a5),(0x400022).l	| C13A2A
+	move.l	(CardSavedColour1-A5_BASE,a5),(0x400002).l	| C13A22
+	move.l	(CardSavedColour2-A5_BASE,a5),(0x400022).l	| C13A2A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13A32
 	clr.b	(ram_10FEBA-A5_BASE,a5)	| C13A36
 loc_C13A3A:
@@ -494,9 +494,9 @@ loc_C13A80:
 	rts	| C13A86
 loc_C13A88:
 	jsr	(CardDetect,pc)	| C13A88
-	move.w	d6,(ram_10FD16-A5_BASE,a5)	| C13A8C
+	move.w	d6,(CardSize-A5_BASE,a5)	| C13A8C
 	beq.b	loc_C13A80	| C13A90
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C13A92
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13A92
 	beq.w	loc_C13AA4	| C13A96
 	bmi.w	loc_C13C32	| C13A9A
 	jsr	(CardLayoutWord,pc)	| C13A9E
@@ -510,10 +510,10 @@ loc_C13AA8:
 loc_C13AAE:
 	move.w	d0,(a0)+	| C13AAE
 	dbra	d7,loc_C13AAE	| C13AB0
-	move.w	(ram_10FD16-A5_BASE,a5),d1	| C13AB4
+	move.w	(CardSize-A5_BASE,a5),d1	| C13AB4
 	lsr.w	#0x8,d1	| C13AB8
 	move.w	d1,(a0)+	| C13ABA
-	move.w	(ram_10FD16-A5_BASE,a5),(a0)+	| C13ABC
+	move.w	(CardSize-A5_BASE,a5),(a0)+	| C13ABC
 	move.w	(CardFormatVersion,pc),(a0)+	| C13AC0
 	move.w	d0,(a0)+	| C13AC4
 	move.w	d0,(a0)+	| C13AC6
@@ -532,30 +532,30 @@ loc_C13ADC:
 	dbra	d7,loc_C13ADC	| C13AE2
 	move.b	(SystemRegion).l,d0	| C13AE6
 	move.w	d0,(a0)	| C13AEC
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C13AEE
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13AEE
 	bne.w	loc_C13B8A	| C13AF2
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C13AF6
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C13AFA
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13AF6
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13AFA
 	move.w	#0xFF,d0	| C13AFE
 loc_C13B02:
 	move.w	d0,(a0)	| C13B02
 	addq.l	#0x8,a0	| C13B04
 	dbra	d7,loc_C13B02	| C13B06
 	move.b	d0,(REG_DIPSW).l	| C13B0A
-	move.l	(ram_10FD10-A5_BASE,a5),d6	| C13B10
+	move.l	(CardDataStart-A5_BASE,a5),d6	| C13B10
 	sub.l	a6,d6	| C13B14
 	lsr.w	#0x7,d6	| C13B16
 	subq.w	#0x1,d6	| C13B18
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13B1A
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13B1A
 	jsr	(CardFormatFatByte,pc)	| C13B1E
 	moveq	#0x0,d0	| C13B22
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C13B24
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13B28
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C13B24
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13B28
 	adda.l	d0,a0	| C13B2C
 	jsr	(CardFormatFatByte,pc)	| C13B2E
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13B32
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13B32
 	moveq	#0x0,d0	| C13B36
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C13B38
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C13B38
 	lsr.w	#0x1,d7	| C13B3C
 	subq.w	#0x1,d7	| C13B3E
 	move.w	d7,d6	| C13B40
@@ -577,7 +577,7 @@ CardSumByte:
 | CardFormatFatByte [C] 8-bit card: clears one FAT copy (ram_10FD0E bytes at a0) and marks the first d6+1 blocks (header, directory, FATs) as used (2)
 CardFormatFatByte:
 	movem.l	a0,-(a7)	| C13B66
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C13B6A
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C13B6A
 	lsr.w	#0x1,d7	| C13B6E
 	subq.w	#0x1,d7	| C13B70
 	moveq	#0x0,d0	| C13B72
@@ -593,27 +593,27 @@ loc_C13B82:
 	rts	| C13B88
 loc_C13B8A:
 	move.w	#0x1,0x12(a6)	| C13B8A
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C13B90
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C13B94
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13B90
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13B94
 	move.w	#0xFF00,d0	| C13B98
 loc_C13B9C:
 	move.w	d0,(a0)	| C13B9C
 	addq.l	#0x4,a0	| C13B9E
 	dbra	d7,loc_C13B9C	| C13BA0
 	move.b	d0,(REG_DIPSW).l	| C13BA4
-	move.l	(ram_10FD10-A5_BASE,a5),d6	| C13BAA
+	move.l	(CardDataStart-A5_BASE,a5),d6	| C13BAA
 	sub.l	a6,d6	| C13BAE
 	lsr.w	#0x6,d6	| C13BB0
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13BB2
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13BB2
 	jsr	(CardFormatFatWord,pc)	| C13BB6
 	moveq	#0x0,d0	| C13BBA
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C13BBC
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13BC0
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C13BBC
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13BC0
 	adda.l	d0,a0	| C13BC4
 	jsr	(CardFormatFatWord,pc)	| C13BC6
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13BCA
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13BCA
 	moveq	#0x0,d0	| C13BCE
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C13BD0
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C13BD0
 	lsr.w	#0x1,d7	| C13BD4
 	subq.w	#0x1,d7	| C13BD6
 	move.w	d7,d6	| C13BD8
@@ -637,7 +637,7 @@ CardSumWord:
 | CardFormatFatWord [I] 16-bit card: like CardFormatFatByte with two FAT entries per word
 CardFormatFatWord:
 	movem.l	a0,-(a7)	| C13C02
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C13C06
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C13C06
 	lsr.w	#0x1,d7	| C13C0A
 	subq.w	#0x1,d7	| C13C0C
 	moveq	#0x0,d0	| C13C0E
@@ -665,7 +665,7 @@ loc_C13C3C:
 	move.l	d0,(a0)+	| C13C3C
 	dbra	d7,loc_C13C3C	| C13C3E
 	move.w	#0x1,0xC(a6)	| C13C42
-	move.w	(ram_10FD16-A5_BASE,a5),(a0)	| C13C48
+	move.w	(CardSize-A5_BASE,a5),(a0)	| C13C48
 	addq.l	#0x4,a0	| C13C4C
 	moveq	#0x0,d1	| C13C4E
 	move.b	(CardFormatVersionLo,pc),d1	| C13C50
@@ -688,27 +688,27 @@ loc_C13C70:
 	dbra	d7,loc_C13C70	| C13C76
 	move.b	(SystemRegion).l,d0	| C13C7A
 	move.w	d0,(a0)	| C13C80
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C13C82
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C13C86
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13C82
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13C86
 	move.w	#0xFF00,d0	| C13C8A
 loc_C13C8E:
 	move.w	d0,(a0)	| C13C8E
 	addq.l	#0x8,a0	| C13C90
 	dbra	d7,loc_C13C8E	| C13C92
 	move.b	d0,(REG_DIPSW).l	| C13C96
-	move.l	(ram_10FD10-A5_BASE,a5),d6	| C13C9C
+	move.l	(CardDataStart-A5_BASE,a5),d6	| C13C9C
 	sub.l	a6,d6	| C13CA0
 	lsr.w	#0x6,d6	| C13CA2
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13CA4
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13CA4
 	jsr	(CardFormatFatSparse,pc)	| C13CA8
 	moveq	#0x0,d0	| C13CAC
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C13CAE
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13CB2
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C13CAE
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13CB2
 	adda.l	d0,a0	| C13CB6
 	jsr	(CardFormatFatSparse,pc)	| C13CB8
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C13CBC
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13CBC
 	moveq	#0x0,d0	| C13CC0
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C13CC2
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C13CC2
 	lsr.w	#0x1,d7	| C13CC6
 	subq.w	#0x1,d7	| C13CC8
 	move.w	d7,d6	| C13CCA
@@ -736,7 +736,7 @@ CardSumSparse:
 | CardFormatFatSparse [I] card type $80 (16-bit card answering on every other word, CardDetect): like CardFormatFatWord with a 4-byte step
 CardFormatFatSparse:
 	movem.l	a0,-(a7)	| C13CFE
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C13D02
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C13D02
 	lsr.w	#0x1,d7	| C13D06
 	subq.w	#0x1,d7	| C13D08
 	moveq	#0x0,d0	| C13D0A
@@ -765,10 +765,10 @@ CardDataSearch:
 	beq.b	loc_C13D44	| C13D40
 	rts	| C13D42
 loc_C13D44:
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C13D44
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13D44
 	moveq	#0x0,d5	| C13D48
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C13D4A
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C13D4E
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13D4A
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13D4E
 	bmi.w	loc_C13DC4	| C13D52
 	bne.w	loc_C13D8E	| C13D56
 loc_C13D5A:
@@ -841,7 +841,7 @@ loc_C13E06:
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13E0A
 	bne.b	loc_C13E04	| C13E0E
 	andi.b	#0xF,(BIOS_CRDFILE-A5_BASE,a5)	| C13E10
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C13E16
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13E16
 	bmi.w	loc_C13EB0	| C13E1A
 	jsr	(CardFindEntry,pc)	| C13E1E
 	tst.w	d3	| C13E22
@@ -851,8 +851,8 @@ loc_C13E06:
 loc_C13E2E:
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C13E2E
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d7	| C13E32
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C13E36
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C13E3A
+	movea.l	(CardFat-A5_BASE,a5),a1	| C13E36
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13E3A
 	bne.w	loc_C13E74	| C13E3E
 	move.w	0x6(a0),d3	| C13E42
 	jsr	(CardBlockAddressByte,pc)	| C13E46
@@ -905,7 +905,7 @@ loc_C13EB0:
 loc_C13EC0:
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C13EC0
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d7	| C13EC4
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C13EC8
+	movea.l	(CardFat-A5_BASE,a5),a1	| C13EC8
 	move.w	0x4(a0),d3	| C13ECC
 	jsr	(CardBlockAddressSparse,pc)	| C13ED0
 	moveq	#0x1F,d6	| C13ED4
@@ -949,10 +949,10 @@ loc_C13F2A:
 	bne.b	loc_C13F28	| C13F32
 	andi.b	#0xF,(BIOS_CRDFILE-A5_BASE,a5)	| C13F34
 	jsr	(CardUnlock,pc)	| C13F3A
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C13F3E
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C13F42
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C13F46
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C13F4A
+	movea.l	(CardFat-A5_BASE,a5),a1	| C13F3E
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13F42
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13F46
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13F4A
 	bmi.w	loc_C14104	| C13F4E
 	bne.w	loc_C13FF8	| C13F52
 	jsr	(CardFindFreeEntryByte,pc)	| C13F56
@@ -1224,7 +1224,7 @@ loc_C14240:
 	jsr	(CardCheckFat,pc)	| C14240
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14244
 	bne.b	loc_C1423E	| C14248
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C1424A
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C1424A
 	bmi.w	loc_C14290	| C1424E
 	jsr	(CardFindEntry,pc)	| C14252
 	tst.w	d3	| C14256
@@ -1233,8 +1233,8 @@ loc_C14240:
 	rts	| C14260
 loc_C14262:
 	jsr	(CardUnlock,pc)	| C14262
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C14266
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C1426A
+	movea.l	(CardFat-A5_BASE,a5),a1	| C14266
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C1426A
 	bne.b	loc_C14280	| C1426E
 	move.w	#0xFF,(a0)	| C14270
 	move.w	0x6(a0),d3	| C14274
@@ -1253,7 +1253,7 @@ loc_C14290:
 	rts	| C1429E
 loc_C142A0:
 	jsr	(CardUnlock,pc)	| C142A0
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C142A4
+	movea.l	(CardFat-A5_BASE,a5),a1	| C142A4
 	move.w	#0xFF00,(a0)	| C142A8
 	move.w	0x4(a0),d3	| C142AC
 	jsr	(CardFreeChainSparse,pc)	| C142B0
@@ -1272,9 +1272,9 @@ loc_C142C4:
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C142CE
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d6	| C142D2
 	addq.w	#0x1,d6	| C142D6
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C142D8
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C142DC
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C142E0
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C142D8
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C142DC
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C142E0
 	bmi.w	loc_C143AC	| C142E4
 	bne.w	loc_C14340	| C142E8
 loc_C142EC:
@@ -1290,7 +1290,7 @@ loc_C142FE:
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C14304
 	rts	| C1430A
 loc_C1430C:
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C1430C
+	movea.l	(CardFat-A5_BASE,a5),a1	| C1430C
 	move.w	0x6(a0),d3	| C14310
 	jsr	(CardBlockAddressByte,pc)	| C14314
 	moveq	#0x13,d7	| C14318
@@ -1322,7 +1322,7 @@ loc_C14354:
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C1435A
 	rts	| C14360
 loc_C14362:
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C14362
+	movea.l	(CardFat-A5_BASE,a5),a1	| C14362
 	move.w	0x2(a0),d3	| C14366
 	jsr	(CardBlockAddressWord,pc)	| C1436A
 	moveq	#0x9,d7	| C1436E
@@ -1365,7 +1365,7 @@ loc_C143C0:
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C143C6
 	rts	| C143CC
 loc_C143CE:
-	movea.l	(ram_10FD0A-A5_BASE,a5),a1	| C143CE
+	movea.l	(CardFat-A5_BASE,a5),a1	| C143CE
 	move.w	0x4(a0),d3	| C143D2
 	jsr	(CardBlockAddressSparse,pc)	| C143D6
 	moveq	#0x9,d7	| C143DA
@@ -1404,7 +1404,7 @@ loc_C1442A:
 	rts	| C1442A
 loc_C1442C:
 	jsr	(CardUnlock,pc)	| C1442C
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C14430
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C14430
 	bmi.w	loc_C14450	| C14434
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14438
 	lea.l	0x1E(a6),a3	| C1443C
@@ -1433,7 +1433,7 @@ CardLoadUserName:
 	jsr	(IsSnkRomCard,pc)	| C14472
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14476
 	bne.b	loc_C1442A	| C1447A
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C1447C
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C1447C
 	bmi.w	loc_C144AE	| C14480
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14484
 	lea.l	0x1E(a6),a3	| C14488
@@ -1545,7 +1545,7 @@ loc_C14572:
 CardFindFreeBlockByte:
 	swap	d7	| C14588
 	moveq	#0x0,d3	| C1458A
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C1458C
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C1458C
 loc_C14590:
 	move.b	d0,(REG_DIPSW).l	| C14590
 	move.w	(a1,d3.w),d0	| C14596
@@ -1560,7 +1560,7 @@ loc_C145A4:
 CardFindFreeBlockWord:
 	swap	d7	| C145A8
 	moveq	#0x0,d3	| C145AA
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C145AC
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C145AC
 loc_C145B0:
 	move.b	d0,(REG_DIPSW).l	| C145B0
 	move.w	(a1,d3.w),d0	| C145B6
@@ -1583,7 +1583,7 @@ loc_C145D4:
 CardFindFreeBlockSparse:
 	swap	d7	| C145D8
 	moveq	#0x0,d3	| C145DA
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C145DC
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C145DC
 loc_C145E0:
 	move.b	d0,(REG_DIPSW).l	| C145E0
 	add.w	d3,d3	| C145E6
@@ -1684,10 +1684,10 @@ CardBlockAddressSparse:
 | CardFindEntry [C] searches the directory for the entry of BIOS_CRDNGH (two bytes) and BIOS_CRDFILE: d3 = 0 and a0 = entry when found, else d3 = -1; 8-bit card (8-byte entries) or 16-bit card (4-byte entries)
 CardFindEntry:
 	moveq	#0x0,d3	| C146A2
-	tst.w	(ram_10FD14-A5_BASE,a5)	| C146A4
+	tst.w	(CardType-A5_BASE,a5)	| C146A4
 	bne.w	loc_C146E6	| C146A8
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C146AC
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C146B0
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C146AC
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C146B0
 loc_C146B4:
 	move.b	d0,(REG_DIPSW).l	| C146B4
 	move.w	(a0),d1	| C146BA
@@ -1708,8 +1708,8 @@ loc_C146DC:
 loc_C146E4:
 	rts	| C146E4
 loc_C146E6:
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C146E6
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C146EA
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C146E6
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C146EA
 loc_C146EE:
 	move.w	(a0),d1	| C146EE
 	lsr.w	#0x8,d1	| C146F0
@@ -1733,8 +1733,8 @@ loc_C1471A:
 | CardFindEntrySparse [I] card type $80 form of CardFindEntry
 CardFindEntrySparse:
 	moveq	#0x0,d3	| C1471C
-	movea.l	(ram_10FD04-A5_BASE,a5),a0	| C1471E
-	move.w	(ram_10FD08-A5_BASE,a5),d7	| C14722
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C1471E
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C14722
 loc_C14726:
 	move.w	(a0),d1	| C14726
 	lsr.w	#0x8,d1	| C14728
@@ -1757,11 +1757,11 @@ loc_C14752:
 	rts	| C14752
 | CardCheckFat [C] checks the checksums of both FAT copies (card header +$1A, +$1C): a bad copy is rewritten from the good one, both bad = result $83; one routine per card type (8-bit here, 16-bit at loc_C14814, type $80 at loc_C148D0)
 CardCheckFat:
-	tst.b	(ram_10FD15-A5_BASE,a5)	| C14754
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C14754
 	bmi.w	loc_C148D0	| C14758
 	bne.w	loc_C14814	| C1475C
 	moveq	#0x0,d5	| C14760
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14762
+	movea.l	(CardFat-A5_BASE,a5),a0	| C14762
 	jsr	(CardFatSumByte,pc)	| C14766
 	move.w	0x1A(a6),d1	| C1476A
 	cmp.b	d0,d1	| C1476E
@@ -1785,10 +1785,10 @@ loc_C14798:
 loc_C1479A:
 	move.b	d0,(REG_DIPSW).l	| C1479A
 	jsr	(CardUnlock,pc)	| C147A0
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C147A4
+	movea.l	(CardFat-A5_BASE,a5),a0	| C147A4
 	movea.l	a0,a1	| C147A8
 	moveq	#0x0,d0	| C147AA
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C147AC
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C147AC
 	move.w	d0,d7	| C147B0
 	lsr.w	#0x1,d7	| C147B2
 	subq.w	#0x1,d7	| C147B4
@@ -1805,10 +1805,10 @@ loc_C147BA:
 loc_C147CE:
 	move.b	d0,(REG_DIPSW).l	| C147CE
 	jsr	(CardUnlock,pc)	| C147D4
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C147D8
+	movea.l	(CardFat-A5_BASE,a5),a0	| C147D8
 	movea.l	a0,a1	| C147DC
 	moveq	#0x0,d0	| C147DE
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C147E0
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C147E0
 	move.w	d0,d7	| C147E4
 	lsr.w	#0x1,d7	| C147E6
 	subq.w	#0x1,d7	| C147E8
@@ -1822,7 +1822,7 @@ loc_C147EC:
 CardFatSumByte:
 	move.b	d0,(REG_DIPSW).l	| C147FA
 	moveq	#0x0,d0	| C14800
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C14802
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C14802
 	lsr.w	#0x1,d7	| C14806
 	subq.w	#0x1,d7	| C14808
 loc_C1480A:
@@ -1832,7 +1832,7 @@ loc_C1480A:
 	rts	| C14812
 loc_C14814:
 	moveq	#0x0,d5	| C14814
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14816
+	movea.l	(CardFat-A5_BASE,a5),a0	| C14816
 	jsr	(CardFatSumWord,pc)	| C1481A
 	move.w	0x1A(a6),d1	| C1481E
 	cmp.b	d0,d1	| C14822
@@ -1856,10 +1856,10 @@ loc_C1484C:
 loc_C1484E:
 	move.b	d0,(REG_DIPSW).l	| C1484E
 	jsr	(CardUnlock,pc)	| C14854
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14858
+	movea.l	(CardFat-A5_BASE,a5),a0	| C14858
 	movea.l	a0,a1	| C1485C
 	moveq	#0x0,d0	| C1485E
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C14860
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C14860
 	move.w	d0,d7	| C14864
 	lsr.w	#0x1,d7	| C14866
 	subq.w	#0x1,d7	| C14868
@@ -1878,10 +1878,10 @@ loc_C1486E:
 loc_C14886:
 	move.b	d0,(REG_DIPSW).l	| C14886
 	jsr	(CardUnlock,pc)	| C1488C
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14890
+	movea.l	(CardFat-A5_BASE,a5),a0	| C14890
 	movea.l	a0,a1	| C14894
 	moveq	#0x0,d0	| C14896
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C14898
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C14898
 	move.w	d0,d7	| C1489C
 	lsr.w	#0x1,d7	| C1489E
 	subq.w	#0x1,d7	| C148A0
@@ -1895,7 +1895,7 @@ loc_C148A4:
 CardFatSumWord:
 	move.b	d0,(REG_DIPSW).l	| C148B2
 	moveq	#0x0,d0	| C148B8
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C148BA
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C148BA
 	lsr.w	#0x1,d7	| C148BE
 	subq.w	#0x1,d7	| C148C0
 loc_C148C2:
@@ -1907,7 +1907,7 @@ loc_C148C2:
 	rts	| C148CE
 loc_C148D0:
 	moveq	#0x0,d5	| C148D0
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C148D2
+	movea.l	(CardFat-A5_BASE,a5),a0	| C148D2
 	jsr	(CardFatSumSparse,pc)	| C148D6
 	move.w	0x1C(a6),d1	| C148DA
 	lsr.w	#0x8,d1	| C148DE
@@ -1932,10 +1932,10 @@ loc_C1490A:
 loc_C1490C:
 	move.b	d0,(REG_DIPSW).l	| C1490C
 	jsr	(CardUnlock,pc)	| C14912
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14916
+	movea.l	(CardFat-A5_BASE,a5),a0	| C14916
 	movea.l	a0,a1	| C1491A
 	moveq	#0x0,d0	| C1491C
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C1491E
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C1491E
 	move.w	d0,d7	| C14922
 	lsr.w	#0x1,d7	| C14924
 	subq.w	#0x1,d7	| C14926
@@ -1959,10 +1959,10 @@ loc_C1492C:
 loc_C1494E:
 	move.b	d0,(REG_DIPSW).l	| C1494E
 	jsr	(CardUnlock,pc)	| C14954
-	movea.l	(ram_10FD0A-A5_BASE,a5),a0	| C14958
+	movea.l	(CardFat-A5_BASE,a5),a0	| C14958
 	movea.l	a0,a1	| C1495C
 	moveq	#0x0,d0	| C1495E
-	move.w	(ram_10FD0E-A5_BASE,a5),d0	| C14960
+	move.w	(CardFatSize-A5_BASE,a5),d0	| C14960
 	move.w	d0,d7	| C14964
 	lsr.w	#0x1,d7	| C14966
 	subq.w	#0x1,d7	| C14968
@@ -1982,7 +1982,7 @@ loc_C1496C:
 CardFatSumSparse:
 	move.b	d0,(REG_DIPSW).l	| C14986
 	moveq	#0x0,d0	| C1498C
-	move.w	(ram_10FD0E-A5_BASE,a5),d7	| C1498E
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C1498E
 	lsr.w	#0x1,d7	| C14992
 	subq.w	#0x1,d7	| C14994
 loc_C14996:
@@ -2035,23 +2035,23 @@ loc_C149DE:
 	lsl.w	#0x8,d6	| C14A06
 	move.w	0x16(a6),d5	| C14A08
 	move.b	d5,d6	| C14A0C
-	move.w	d6,(ram_10FD16-A5_BASE,a5)	| C14A0E
+	move.w	d6,(CardSize-A5_BASE,a5)	| C14A0E
 	move.w	0x12(a6),d0	| C14A12
 	andi.w	#0xFF,d0	| C14A16
-	move.w	d0,(ram_10FD14-A5_BASE,a5)	| C14A1A
+	move.w	d0,(CardType-A5_BASE,a5)	| C14A1A
 	beq.w	CardLayoutByte	| C14A1E
 	bra.w	CardLayoutWord	| C14A22
 loc_C14A26:
 	move.w	0x14(a6),d6	| C14A26
-	move.w	d6,(ram_10FD16-A5_BASE,a5)	| C14A2A
+	move.w	d6,(CardSize-A5_BASE,a5)	| C14A2A
 	move.w	#0x80,d0	| C14A2E
-	move.w	d0,(ram_10FD14-A5_BASE,a5)	| C14A32
+	move.w	d0,(CardType-A5_BASE,a5)	| C14A32
 	bra.w	CardLayoutByte	| C14A36
 | CardDetect [C] finds the card type and size: an SNK ROM card from its header; else writes $AAAA/$5555 patterns: 8-bit card (ram_10FD15 = 0, size in $1000 steps up to $8000), 16-bit card (1, $800 steps up to $4000) or a 16-bit card on every other word ($80); then tests the whole card with $55/$AA and address patterns; d6 = size (0 = none or failed). Called by CardFormat
 CardDetect:
 	movea.l	a6,a0	| C14A3A
 	moveq	#0x0,d6	| C14A3C
-	move.w	d6,(ram_10FD14-A5_BASE,a5)	| C14A3E
+	move.w	d6,(CardType-A5_BASE,a5)	| C14A3E
 	lea.l	(SnkRomCardId,pc),a1	| C14A42
 	moveq	#0x3,d7	| C14A46
 loc_C14A48:
@@ -2064,7 +2064,7 @@ loc_C14A48:
 loc_C14A56:
 	adda.l	(a1)+,a6	| C14A56
 	move.w	(a1)+,d6	| C14A58
-	move.w	d6,(ram_10FD14-A5_BASE,a5)	| C14A5A
+	move.w	d6,(CardType-A5_BASE,a5)	| C14A5A
 	rts	| C14A5E
 loc_C14A60:
 	jsr	(CardUnlock,pc)	| C14A60
@@ -2177,7 +2177,7 @@ loc_C14B6A:
 	beq.b	loc_C14B86	| C14B82
 	rts	| C14B84
 loc_C14B86:
-	move.w	#0x1,(ram_10FD14-A5_BASE,a5)	| C14B86
+	move.w	#0x1,(CardType-A5_BASE,a5)	| C14B86
 	move.l	#0x800,d5	| C14B8C
 loc_C14B92:
 	move.b	d0,(REG_DIPSW).l	| C14B92
@@ -2257,7 +2257,7 @@ loc_C14C4E:
 	beq.b	loc_C14C5C	| C14C58
 	rts	| C14C5A
 loc_C14C5C:
-	move.w	#0x80,(ram_10FD14-A5_BASE,a5)	| C14C5C
+	move.w	#0x80,(CardType-A5_BASE,a5)	| C14C5C
 	move.l	#0x1000,d5	| C14C62
 loc_C14C68:
 	move.b	d0,(REG_DIPSW).l	| C14C68
@@ -2344,13 +2344,13 @@ CardLayoutByte:
 loc_C14D3A:
 	move.l	a6,d0	| C14D3A
 	add.l	(a0)+,d0	| C14D3C
-	move.l	d0,(ram_10FD04-A5_BASE,a5)	| C14D3E
-	move.w	(a0)+,(ram_10FD08-A5_BASE,a5)	| C14D42
+	move.l	d0,(CardDirectory-A5_BASE,a5)	| C14D3E
+	move.w	(a0)+,(CardDirEntries-A5_BASE,a5)	| C14D42
 	add.l	(a0)+,d0	| C14D46
-	move.l	d0,(ram_10FD0A-A5_BASE,a5)	| C14D48
-	move.w	(a0)+,(ram_10FD0E-A5_BASE,a5)	| C14D4C
+	move.l	d0,(CardFat-A5_BASE,a5)	| C14D48
+	move.w	(a0)+,(CardFatSize-A5_BASE,a5)	| C14D4C
 	add.l	(a0),d0	| C14D50
-	move.l	d0,(ram_10FD10-A5_BASE,a5)	| C14D52
+	move.l	d0,(CardDataStart-A5_BASE,a5)	| C14D52
 	rts	| C14D56
 | CardLayoutTableByte [C] 16-byte rows per $1000 bytes of card: directory offset, entries-1, FAT offset, FAT size, data offset (8-bit card and type $80)
 CardLayoutTableByte:
@@ -2473,7 +2473,7 @@ CardUtility:
 	moveq	#0x0,d0	| C1502C
 	move.w	d0,(WorkIndex-A5_BASE,a5)	| C1502E
 	move.w	d0,(WorkIndexNew-A5_BASE,a5)	| C15032
-	move.w	d0,(ram_10FCDE-A5_BASE,a5)	| C15036
+	move.w	d0,(CardUtilMenuNew-A5_BASE,a5)	| C15036
 	move.w	#0x2000,sr	| C1503A
 loc_C1503E:
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C1503E
@@ -2500,7 +2500,7 @@ loc_C1507E:
 	add.w	(WorkIndex-A5_BASE,a5),d1	| C1507E
 	cmpi.w	#0x6,d1	| C15082
 	bcc.b	loc_C15064	| C15086
-	move.w	d1,(ram_10FCDE-A5_BASE,a5)	| C15088
+	move.w	d1,(CardUtilMenuNew-A5_BASE,a5)	| C15088
 	bra.b	loc_C15060	| C1508C
 loc_C1508E:
 	jsr	(ClearFixLayer,pc)	| C1508E
@@ -3262,7 +3262,7 @@ CardUtilMoveMenuCursor:
 	move.w	#0x20FF,d1	| C159AC
 	jsr	(CardUtilPutMenuCursor,pc)	| C159B0
 	moveq	#0x0,d0	| C159B4
-	move.w	(ram_10FCDE-A5_BASE,a5),(WorkIndex-A5_BASE,a5)	| C159B6
+	move.w	(CardUtilMenuNew-A5_BASE,a5),(WorkIndex-A5_BASE,a5)	| C159B6
 	move.w	#0x11FF,d1	| C159BC
 	jsr	(CardUtilPutMenuCursor,pc)	| C159C0
 	clr.w	(a0)+	| C159C4
@@ -3476,14 +3476,14 @@ CardUtilWriteProtectedText:
 	dc.b	0xFF,0xFF,0x00,0x00
 | MonitorEntry [C] debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (tbl_C163AC); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset)
 MonitorEntry:
-	clr.w	(ram_10FD4C).l	| C16198
+	clr.w	(MonitorCause).l	| C16198
 	bra.b	loc_C161A8	| C1619E
 | MonitorAddressError [C] debug monitor, code 4 ADDRESS ERROR: also prints the extra words of the bus/address error frame (access address, instruction)
 MonitorAddressError:
-	move.w	#0x4,(ram_10FD4C).l	| C161A0
+	move.w	#0x4,(MonitorCause).l	| C161A0
 loc_C161A8:
 	ori.w	#0x700,sr	| C161A8
-	movem.l	d0-d7/a0-a6,(ram_10FD00).l	| C161AC
+	movem.l	d0-d7/a0-a6,(MonitorRegs).l	| C161AC
 	lea.l	(ram_10FF00).l,a0	| C161B4
 	clr.l	(a0)+	| C161BA
 	move.l	#0x1F0FF,(a0)+	| C161BC
@@ -3506,59 +3506,59 @@ loc_C161A8:
 	bra.b	loc_C16250	| C16202
 | MonitorIllegal [C] debug monitor, code 8 ILLEGAL INSTRUCTION
 MonitorIllegal:
-	move.w	#0x8,(ram_10FD4C).l	| C16204
+	move.w	#0x8,(MonitorCause).l	| C16204
 	bra.b	loc_C1623E	| C1620C
 | MonitorPrivilege [C] debug monitor, code $C PRIVILEGE VIOLATION
 MonitorPrivilege:
-	move.w	#0xC,(ram_10FD4C).l	| C1620E
+	move.w	#0xC,(MonitorCause).l	| C1620E
 	bra.b	loc_C1623E	| C16216
 | MonitorTrace [C] debug monitor, code $10 TRACE
 MonitorTrace:
-	move.w	#0x10,(ram_10FD4C).l	| C16218
+	move.w	#0x10,(MonitorCause).l	| C16218
 	bra.b	loc_C1623E	| C16220
 | MonitorUnassigned [C] debug monitor, code $14 UNASSIGNED
 MonitorUnassigned:
-	move.w	#0x14,(ram_10FD4C).l	| C16222
+	move.w	#0x14,(MonitorCause).l	| C16222
 	bra.b	loc_C1623E	| C1622A
 | MonitorUninitialized [C] debug monitor, code $18 UNINITIALIZED INTERRUPT
 MonitorUninitialized:
-	move.w	#0x18,(ram_10FD4C).l	| C1622C
+	move.w	#0x18,(MonitorCause).l	| C1622C
 	bra.b	loc_C1623E	| C16234
 | MonitorSpurious [C] debug monitor, code $1C SPURIOUS INTERRUPT
 MonitorSpurious:
-	move.w	#0x1C,(ram_10FD4C).l	| C16236
+	move.w	#0x1C,(MonitorCause).l	| C16236
 loc_C1623E:
 	ori.w	#0x700,sr	| C1623E
-	movem.l	d0-d7/a0-a6,(ram_10FD00).l	| C16242
+	movem.l	d0-d7/a0-a6,(MonitorRegs).l	| C16242
 	lea.l	(ram_10FF00).l,a0	| C1624A
 loc_C16250:
 	lea.l	(BiosWorkRam).l,a5	| C16250
 	move	usp,a3	| C16256
-	move.l	a3,(ram_10FD40-A5_BASE,a5)	| C16258
-	move.w	(a7)+,(ram_10FD48-A5_BASE,a5)	| C1625C
-	move.l	(a7)+,(ram_10FD44-A5_BASE,a5)	| C16260
-	move.l	a7,(ram_10FD3C-A5_BASE,a5)	| C16264
-	clr.w	(ram_10FD4A-A5_BASE,a5)	| C16268
-	move.l	(0x4001E2).l,(ram_10FD4E-A5_BASE,a5)	| C1626C
+	move.l	a3,(MonitorSavedUsp-A5_BASE,a5)	| C16258
+	move.w	(a7)+,(MonitorSavedSr-A5_BASE,a5)	| C1625C
+	move.l	(a7)+,(MonitorSavedPc-A5_BASE,a5)	| C16260
+	move.l	a7,(MonitorSavedSsp-A5_BASE,a5)	| C16264
+	clr.w	(MonitorFrameWord-A5_BASE,a5)	| C16268
+	move.l	(0x4001E2).l,(MonitorSavedColour-A5_BASE,a5)	| C1626C
 	move.l	#0xEEE0000,(0x4001E2).l	| C16274
 	move.b	d0,(REG_NOSHADOW).l	| C1627E
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C16284
 	lea.l	(MonitorCauseTexts,pc),a1	| C16288
-	move.w	(ram_10FD4C-A5_BASE,a5),d0	| C1628C
+	move.w	(MonitorCause-A5_BASE,a5),d0	| C1628C
 	move.l	(a1,d0.w),(a0)+	| C16290
 	jsr	(MonitorShowRegisters,pc)	| C16294
 	move.b	d0,(REG_DIPSW).l	| C16298
-	clr.w	(ram_10FD74-A5_BASE,a5)	| C1629E
-	move.l	#WorkRamStart,(ram_10FD5E-A5_BASE,a5)	| C162A2
-	move.l	#WorkRamStart,(ram_10FD66-A5_BASE,a5)	| C162AA
-	clr.l	(ram_10FD62-A5_BASE,a5)	| C162B2
-	clr.l	(ram_10FD6A-A5_BASE,a5)	| C162B6
-	clr.w	(ram_10FD6E-A5_BASE,a5)	| C162BA
-	btst.b	#0x7,(ram_10FD48-A5_BASE,a5)	| C162BE
+	clr.w	(MonitorCommand-A5_BASE,a5)	| C1629E
+	move.l	#WorkRamStart,(MonitorMemAddress-A5_BASE,a5)	| C162A2
+	move.l	#WorkRamStart,(MonitorEditAddress-A5_BASE,a5)	| C162AA
+	clr.l	(MonitorVramAddress-A5_BASE,a5)	| C162B2
+	clr.l	(MonitorEditVram-A5_BASE,a5)	| C162B6
+	clr.w	(MonitorRegisterIndex-A5_BASE,a5)	| C162BA
+	btst.b	#0x7,(MonitorSavedSr-A5_BASE,a5)	| C162BE
 	beq.b	loc_C162CE	| C162C4
-	move.w	#0x5,(ram_10FD74).l	| C162C6
+	move.w	#0x5,(MonitorCommand).l	| C162C6
 loc_C162CE:
-	move.w	(ram_10FD74-A5_BASE,a5),d0	| C162CE
+	move.w	(MonitorCommand-A5_BASE,a5),d0	| C162CE
 	cmpi.w	#0x2,d0	| C162D2
 	bcs.b	loc_C16310	| C162D6
 	cmpi.w	#0x5,d0	| C162D8
@@ -3566,22 +3566,22 @@ loc_C162CE:
 	cmpi.w	#0x3,d0	| C162DE
 	beq.b	loc_C162F8	| C162E2
 	bcc.b	loc_C162F0	| C162E4
-	movea.l	(ram_10FD66-A5_BASE,a5),a6	| C162E6
-	move.w	(a6),(ram_10FD70-A5_BASE,a5)	| C162EA
+	movea.l	(MonitorEditAddress-A5_BASE,a5),a6	| C162E6
+	move.w	(a6),(MonitorValue-A5_BASE,a5)	| C162EA
 	bra.b	loc_C16310	| C162EE
 loc_C162F0:
-	move.l	(ram_10FD00-A5_BASE,a5),(ram_10FD70-A5_BASE,a5)	| C162F0
+	move.l	(MonitorRegs-A5_BASE,a5),(MonitorValue-A5_BASE,a5)	| C162F0
 	bra.b	loc_C16310	| C162F6
 loc_C162F8:
-	move.w	(ram_10FD6C-A5_BASE,a5),(REG_VRAMADDR).l	| C162F8
+	move.w	(MonitorEditVramWord-A5_BASE,a5),(REG_VRAMADDR).l	| C162F8
 	nop	| C16300
 	nop	| C16302
 	nop	| C16304
 	nop	| C16306
-	move.w	(REG_VRAMRW).l,(ram_10FD70-A5_BASE,a5)	| C16308
+	move.w	(REG_VRAMRW).l,(MonitorValue-A5_BASE,a5)	| C16308
 loc_C16310:
-	clr.w	(ram_10FD76-A5_BASE,a5)	| C16310
-	move.b	(MonitorDigitCount,pc,d0.w),(ram_10FD77-A5_BASE,a5)	| C16314
+	clr.w	(MonitorDigit-A5_BASE,a5)	| C16310
+	move.b	(MonitorDigitCount,pc,d0.w),(MonitorDigitLo-A5_BASE,a5)	| C16314
 	lsl.w	#0x2,d0	| C1631A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1631C
 	move.l	#MonitorCommandLine,(a0)+	| C16320
@@ -3610,9 +3610,9 @@ loc_C16362:
 	bne.b	loc_C16362	| C1636C
 	jsr	(MessOut,pc)	| C1636E
 	lea.l	(BiosWorkRam).l,a5	| C16372
-	addq.w	#0x1,(ram_10FD78-A5_BASE,a5)	| C16378
+	addq.w	#0x1,(MonitorFrames-A5_BASE,a5)	| C16378
 	jsr	(ReadControllers,pc)	| C1637C
-	move.w	(ram_10FD74-A5_BASE,a5),d0	| C16380
+	move.w	(MonitorCommand-A5_BASE,a5),d0	| C16380
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16384
 	btst.b	#0x4,d3	| C16388
 	beq.b	loc_C163A0	| C1638C
@@ -3621,7 +3621,7 @@ loc_C16362:
 	bcs.b	loc_C16398	| C16394
 	moveq	#0x0,d0	| C16396
 loc_C16398:
-	move.w	d0,(ram_10FD74-A5_BASE,a5)	| C16398
+	move.w	d0,(MonitorCommand-A5_BASE,a5)	| C16398
 	bra.w	loc_C162CE	| C1639C
 loc_C163A0:
 	pea.l	(MonitorLoop,pc)	| C163A0
@@ -3639,7 +3639,7 @@ MonitorCommandTable:
 	dc.l	MonitorRun
 | MonitorDisplayMemory [C] command 0: Left/Right pick the digit, Up/Down change the address by MonitorAddressSteps, C dumps 8 lines of 8 bytes
 MonitorDisplayMemory:
-	lea.l	(ram_10FD5F-A5_BASE,a5),a1	| C163C8
+	lea.l	(MonitorMemAddressBytes-A5_BASE,a5),a1	| C163C8
 	jsr	(MonitorPutAddress,pc)	| C163CC
 	jsr	(MonitorDrawDigitCursor,pc)	| C163D0
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C163D4
@@ -3650,7 +3650,7 @@ MonitorDisplayMemory:
 	bne.b	loc_C163EA	| C163E6
 	moveq	#-0x1,d2	| C163E8
 loc_C163EA:
-	add.w	(ram_10FD76-A5_BASE,a5),d2	| C163EA
+	add.w	(MonitorDigit-A5_BASE,a5),d2	| C163EA
 	bpl.b	loc_C163F2	| C163EE
 	moveq	#0x4,d2	| C163F0
 loc_C163F2:
@@ -3658,14 +3658,14 @@ loc_C163F2:
 	bcs.b	loc_C163FA	| C163F6
 	moveq	#0x0,d2	| C163F8
 loc_C163FA:
-	move.w	d2,(ram_10FD76-A5_BASE,a5)	| C163FA
+	move.w	d2,(MonitorDigit-A5_BASE,a5)	| C163FA
 	rts	| C163FE
 loc_C16400:
 	moveq	#0x3,d3	| C16400
 	and.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16402
 	beq.w	loc_C16442	| C16406
-	move.l	(ram_10FD5E-A5_BASE,a5),d0	| C1640A
-	move.w	(ram_10FD76-A5_BASE,a5),d2	| C1640E
+	move.l	(MonitorMemAddress-A5_BASE,a5),d0	| C1640A
+	move.w	(MonitorDigit-A5_BASE,a5),d2	| C1640E
 	lsl.w	#0x2,d2	| C16412
 	move.l	(MonitorAddressSteps,pc,d2.w),d2	| C16414
 	andi.b	#0x1,d3	| C16418
@@ -3674,7 +3674,7 @@ loc_C16400:
 loc_C16420:
 	add.l	d2,d0	| C16420
 	andi.l	#0xFFFFFF,d0	| C16422
-	move.l	d0,(ram_10FD5E-A5_BASE,a5)	| C16428
+	move.l	d0,(MonitorMemAddress-A5_BASE,a5)	| C16428
 	rts	| C1642C
 | MonitorAddressSteps [C] address steps per digit: $100000, $10000, $1000, $100, $40
 MonitorAddressSteps:
@@ -3685,7 +3685,7 @@ loc_C16442:
 	bne.b	loc_C1644C	| C16448
 	rts	| C1644A
 loc_C1644C:
-	movea.l	(ram_10FD5E-A5_BASE,a5),a1	| C1644C
+	movea.l	(MonitorMemAddress-A5_BASE,a5),a1	| C1644C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16450
 	clr.l	(a0)+	| C16454
 	move.l	#0x1F0FF,(a0)+	| C16456
@@ -3709,7 +3709,7 @@ loc_C1646E:
 	rts	| C16496
 | MonitorDisplayVram [C] command 1: like MonitorDisplayMemory on video RAM (REG_VRAMADDR / REG_VRAMRW)
 MonitorDisplayVram:
-	lea.l	(ram_10FD63-A5_BASE,a5),a1	| C16498
+	lea.l	(MonitorVramAddressBytes-A5_BASE,a5),a1	| C16498
 	jsr	(MonitorPutAddress,pc)	| C1649C
 	jsr	(MonitorDrawDigitCursor,pc)	| C164A0
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C164A4
@@ -3720,7 +3720,7 @@ MonitorDisplayVram:
 	bne.b	loc_C164BA	| C164B6
 	moveq	#-0x1,d2	| C164B8
 loc_C164BA:
-	add.w	(ram_10FD76-A5_BASE,a5),d2	| C164BA
+	add.w	(MonitorDigit-A5_BASE,a5),d2	| C164BA
 	cmpi.w	#0x1,d2	| C164BE
 	bne.b	loc_C164C6	| C164C2
 	moveq	#0x4,d2	| C164C4
@@ -3729,14 +3729,14 @@ loc_C164C6:
 	bcs.b	loc_C164CE	| C164CA
 	moveq	#0x2,d2	| C164CC
 loc_C164CE:
-	move.w	d2,(ram_10FD76-A5_BASE,a5)	| C164CE
+	move.w	d2,(MonitorDigit-A5_BASE,a5)	| C164CE
 	rts	| C164D2
 loc_C164D4:
 	moveq	#0x3,d3	| C164D4
 	and.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C164D6
 	beq.w	loc_C16536	| C164DA
-	move.l	(ram_10FD62-A5_BASE,a5),d0	| C164DE
-	move.w	(ram_10FD76-A5_BASE,a5),d2	| C164E2
+	move.l	(MonitorVramAddress-A5_BASE,a5),d0	| C164DE
+	move.w	(MonitorDigit-A5_BASE,a5),d2	| C164E2
 	lsl.w	#0x2,d2	| C164E6
 	move.l	(MonitorVramSteps,pc,d2.w),d2	| C164E8
 	andi.b	#0x1,d3	| C164EC
@@ -3758,7 +3758,7 @@ loc_C16504:
 loc_C16516:
 	move.l	#0x8560,d0	| C16516
 loc_C1651C:
-	move.l	d0,(ram_10FD62-A5_BASE,a5)	| C1651C
+	move.l	d0,(MonitorVramAddress-A5_BASE,a5)	| C1651C
 	rts	| C16520
 | MonitorVramSteps [C] debug monitor DISPLAY V-RAM: value added for each address digit
 MonitorVramSteps:
@@ -3770,7 +3770,7 @@ loc_C16536:
 	rts	| C1653E
 loc_C16540:
 	lea.l	(REG_VRAMRW).l,a1	| C16540
-	move.w	(ram_10FD64-A5_BASE,a5),d3	| C16546
+	move.w	(MonitorVramAddressWord-A5_BASE,a5),d3	| C16546
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1654A
 	clr.l	(a0)+	| C1654E
 	move.l	#0x1F0FF,(a0)+	| C16550
@@ -3812,7 +3812,7 @@ MonitorPutHexByte:
 	rts	| C165B0
 | MonitorModifyMemory [C] command 2: address and value digits, C writes the value to memory (ran in MAME, monitor test build)
 MonitorModifyMemory:
-	lea.l	(ram_10FD67-A5_BASE,a5),a1	| C165B2
+	lea.l	(MonitorEditAddressBytes-A5_BASE,a5),a1	| C165B2
 	jsr	(MonitorPutAddress,pc)	| C165B6
 	moveq	#0x1,d7	| C165BA
 	jsr	(MonitorPutValue,pc)	| C165BC
@@ -3825,7 +3825,7 @@ MonitorModifyMemory:
 	bne.b	loc_C165DA	| C165D6
 	moveq	#-0x1,d2	| C165D8
 loc_C165DA:
-	add.w	(ram_10FD76-A5_BASE,a5),d2	| C165DA
+	add.w	(MonitorDigit-A5_BASE,a5),d2	| C165DA
 	bpl.b	loc_C165E2	| C165DE
 	moveq	#0x9,d2	| C165E0
 loc_C165E2:
@@ -3833,27 +3833,27 @@ loc_C165E2:
 	bcs.b	loc_C165EA	| C165E6
 	moveq	#0x0,d2	| C165E8
 loc_C165EA:
-	move.w	d2,(ram_10FD76-A5_BASE,a5)	| C165EA
+	move.w	d2,(MonitorDigit-A5_BASE,a5)	| C165EA
 	rts	| C165EE
 loc_C165F0:
 	moveq	#0x3,d3	| C165F0
 	and.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C165F2
 	beq.w	loc_C1665C	| C165F6
-	move.w	(ram_10FD76-A5_BASE,a5),d2	| C165FA
+	move.w	(MonitorDigit-A5_BASE,a5),d2	| C165FA
 	lsl.w	#0x2,d2	| C165FE
 	move.l	(MonitorMemorySteps,pc,d2.w),d2	| C16600
 	andi.b	#0x1,d3	| C16604
 	beq.b	loc_C1660C	| C16608
 	neg.l	d2	| C1660A
 loc_C1660C:
-	cmpi.w	#0x6,(ram_10FD76-A5_BASE,a5)	| C1660C
+	cmpi.w	#0x6,(MonitorDigit-A5_BASE,a5)	| C1660C
 	bcc.w	loc_C16656	| C16612
-	move.l	(ram_10FD66-A5_BASE,a5),d0	| C16616
+	move.l	(MonitorEditAddress-A5_BASE,a5),d0	| C16616
 	add.l	d2,d0	| C1661A
 	andi.l	#0xFFFFFF,d0	| C1661C
-	move.l	d0,(ram_10FD66-A5_BASE,a5)	| C16622
+	move.l	d0,(MonitorEditAddress-A5_BASE,a5)	| C16622
 	movea.l	d0,a1	| C16626
-	move.w	(a1),(ram_10FD70-A5_BASE,a5)	| C16628
+	move.w	(a1),(MonitorValue-A5_BASE,a5)	| C16628
 	rts	| C1662C
 | MonitorMemorySteps [C] MODIFY MEMORY: value added for each digit (6 address digits, then the value digits)
 MonitorMemorySteps:
@@ -3861,18 +3861,18 @@ MonitorMemorySteps:
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x02,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
 loc_C16656:
-	add.w	d2,(ram_10FD70-A5_BASE,a5)	| C16656
+	add.w	d2,(MonitorValue-A5_BASE,a5)	| C16656
 	rts	| C1665A
 loc_C1665C:
 	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C1665C
 	beq.b	loc_C1666C	| C16662
-	movea.l	(ram_10FD66-A5_BASE,a5),a1	| C16664
-	move.w	(ram_10FD70-A5_BASE,a5),(a1)	| C16668
+	movea.l	(MonitorEditAddress-A5_BASE,a5),a1	| C16664
+	move.w	(MonitorValue-A5_BASE,a5),(a1)	| C16668
 loc_C1666C:
 	rts	| C1666C
 | MonitorModifyVram [C] command 3: address and value digits, C writes the value to video RAM (ran in MAME, monitor test build)
 MonitorModifyVram:
-	lea.l	(ram_10FD6B-A5_BASE,a5),a1	| C1666E
+	lea.l	(MonitorEditVramBytes-A5_BASE,a5),a1	| C1666E
 	jsr	(MonitorPutAddress,pc)	| C16672
 	moveq	#0x1,d7	| C16676
 	jsr	(MonitorPutValue,pc)	| C16678
@@ -3885,8 +3885,8 @@ MonitorModifyVram:
 	bne.b	loc_C16696	| C16692
 	moveq	#0xA,d2	| C16694
 loc_C16696:
-	add.w	(ram_10FD76-A5_BASE,a5),d2	| C16696
-	move.b	(MonitorVramDigitMoves,pc,d2.w),(ram_10FD77-A5_BASE,a5)	| C1669A
+	add.w	(MonitorDigit-A5_BASE,a5),d2	| C16696
+	move.b	(MonitorVramDigitMoves,pc,d2.w),(MonitorDigitLo-A5_BASE,a5)	| C1669A
 	rts	| C166A0
 | MonitorVramDigitMoves [C] MODIFY V-RAM: next digit for Left/Right
 MonitorVramDigitMoves:
@@ -3896,16 +3896,16 @@ loc_C166B6:
 	moveq	#0x3,d3	| C166B6
 	and.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C166B8
 	beq.w	loc_C16752	| C166BC
-	move.w	(ram_10FD76-A5_BASE,a5),d2	| C166C0
+	move.w	(MonitorDigit-A5_BASE,a5),d2	| C166C0
 	lsl.w	#0x2,d2	| C166C4
 	move.l	(MonitorModifyVramSteps,pc,d2.w),d2	| C166C6
 	andi.b	#0x1,d3	| C166CA
 	beq.b	loc_C166D2	| C166CE
 	neg.l	d2	| C166D0
 loc_C166D2:
-	cmpi.w	#0x6,(ram_10FD76-A5_BASE,a5)	| C166D2
+	cmpi.w	#0x6,(MonitorDigit-A5_BASE,a5)	| C166D2
 	bcc.w	loc_C1674C	| C166D8
-	move.l	(ram_10FD6A-A5_BASE,a5),d0	| C166DC
+	move.l	(MonitorEditVram-A5_BASE,a5),d0	| C166DC
 loc_C166E0:
 	add.l	d2,d0	| C166E0
 	bmi.b	loc_C16702	| C166E2
@@ -3922,13 +3922,13 @@ loc_C166F0:
 loc_C16702:
 	move.l	#0x857F,d0	| C16702
 loc_C16708:
-	move.l	d0,(ram_10FD6A-A5_BASE,a5)	| C16708
+	move.l	d0,(MonitorEditVram-A5_BASE,a5)	| C16708
 	move.w	d0,(REG_VRAMADDR).l	| C1670C
 	nop	| C16712
 	nop	| C16714
 	nop	| C16716
 	nop	| C16718
-	move.w	(REG_VRAMRW).l,(ram_10FD70-A5_BASE,a5)	| C1671A
+	move.w	(REG_VRAMRW).l,(MonitorValue-A5_BASE,a5)	| C1671A
 	rts	| C16722
 | MonitorModifyVramSteps [C] MODIFY V-RAM: value added for each digit
 MonitorModifyVramSteps:
@@ -3936,13 +3936,13 @@ MonitorModifyVramSteps:
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
 loc_C1674C:
-	add.w	d2,(ram_10FD70-A5_BASE,a5)	| C1674C
+	add.w	d2,(MonitorValue-A5_BASE,a5)	| C1674C
 	rts	| C16750
 loc_C16752:
 	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C16752
 	beq.b	loc_C1676A	| C16758
-	move.w	(ram_10FD6C-A5_BASE,a5),(REG_VRAMADDR).l	| C1675A
-	move.w	(ram_10FD70-A5_BASE,a5),(REG_VRAMRW).l	| C16762
+	move.w	(MonitorEditVramWord-A5_BASE,a5),(REG_VRAMADDR).l	| C1675A
+	move.w	(MonitorValue-A5_BASE,a5),(REG_VRAMRW).l	| C16762
 loc_C1676A:
 	rts	| C1676A
 | MonitorModifyRegister [C] command 4: picks a saved register (d0-a7, SR, PC) and changes it in the save area at $10FD00 (ran in MAME, monitor test build)
@@ -3952,10 +3952,10 @@ MonitorModifyRegister:
 	move.l	#0x1F0FF,(a0)+	| C16772
 	move.l	#0x370CE,(a0)+	| C16778
 	move.w	#0x7,(a0)+	| C1677E
-	move.w	(ram_10FD6E-A5_BASE,a5),d0	| C16782
-	btst.b	#0x4,(ram_10FD79-A5_BASE,a5)	| C16786
+	move.w	(MonitorRegisterIndex-A5_BASE,a5),d0	| C16782
+	btst.b	#0x4,(MonitorFramesLo-A5_BASE,a5)	| C16786
 	beq.b	loc_C16796	| C1678C
-	tst.w	(ram_10FD76-A5_BASE,a5)	| C1678E
+	tst.w	(MonitorDigit-A5_BASE,a5)	| C1678E
 	bne.b	loc_C16796	| C16792
 	moveq	#0x13,d0	| C16794
 loc_C16796:
@@ -3967,7 +3967,7 @@ loc_C16796:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C167A4
 	moveq	#0x3,d7	| C167A8
 	jsr	(MonitorPutValue,pc)	| C167AA
-	tst.w	(ram_10FD76-A5_BASE,a5)	| C167AE
+	tst.w	(MonitorDigit-A5_BASE,a5)	| C167AE
 	beq.b	loc_C167B8	| C167B2
 	jsr	(MonitorDrawDigitCursor,pc)	| C167B4
 loc_C167B8:
@@ -3979,8 +3979,8 @@ loc_C167B8:
 	bne.b	loc_C167CE	| C167CA
 	moveq	#0xE,d0	| C167CC
 loc_C167CE:
-	add.w	(ram_10FD76-A5_BASE,a5),d0	| C167CE
-	move.b	(MonitorRegisterDigitMoves,pc,d0.w),(ram_10FD77-A5_BASE,a5)	| C167D2
+	add.w	(MonitorDigit-A5_BASE,a5),d0	| C167CE
+	move.b	(MonitorRegisterDigitMoves,pc,d0.w),(MonitorDigitLo-A5_BASE,a5)	| C167D2
 	rts	| C167D8
 | MonitorRegisterDigitMoves [C] MODIFY REGISTER: next digit for Left/Right
 MonitorRegisterDigitMoves:
@@ -3990,14 +3990,14 @@ loc_C167F6:
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C167F6
 	andi.b	#0x3,d3	| C167FA
 	beq.w	loc_C1686C	| C167FE
-	move.w	(ram_10FD76-A5_BASE,a5),d0	| C16802
+	move.w	(MonitorDigit-A5_BASE,a5),d0	| C16802
 	bne.w	loc_C16856	| C16806
 	moveq	#0x1,d1	| C1680A
 	btst.b	#0x0,d3	| C1680C
 	bne.b	loc_C16814	| C16810
 	moveq	#-0x1,d1	| C16812
 loc_C16814:
-	add.w	(ram_10FD6E-A5_BASE,a5),d1	| C16814
+	add.w	(MonitorRegisterIndex-A5_BASE,a5),d1	| C16814
 	bpl.b	loc_C1681C	| C16818
 	moveq	#0x12,d1	| C1681A
 loc_C1681C:
@@ -4005,10 +4005,10 @@ loc_C1681C:
 	bcs.b	loc_C16824	| C16820
 	moveq	#0x0,d1	| C16822
 loc_C16824:
-	move.w	d1,(ram_10FD6E-A5_BASE,a5)	| C16824
+	move.w	d1,(MonitorRegisterIndex-A5_BASE,a5)	| C16824
 	lsl.w	#0x2,d1	| C16828
-	lea.l	(ram_10FD00-A5_BASE,a5),a4	| C1682A
-	move.l	(a4,d1.w),(ram_10FD70-A5_BASE,a5)	| C1682E
+	lea.l	(MonitorRegs-A5_BASE,a5),a4	| C1682A
+	move.l	(a4,d1.w),(MonitorValue-A5_BASE,a5)	| C1682E
 	rts	| C16834
 | MonitorRegisterSteps [C] MODIFY REGISTER: value added for each value digit
 MonitorRegisterSteps:
@@ -4022,16 +4022,16 @@ loc_C16856:
 	bne.b	loc_C16866	| C16862
 	neg.l	d1	| C16864
 loc_C16866:
-	add.l	d1,(ram_10FD70-A5_BASE,a5)	| C16866
+	add.l	d1,(MonitorValue-A5_BASE,a5)	| C16866
 	rts	| C1686A
 loc_C1686C:
 	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C1686C
 	beq.b	loc_C16890	| C16872
 	jsr	(MessOut,pc)	| C16874
-	move.w	(ram_10FD6E-A5_BASE,a5),d0	| C16878
+	move.w	(MonitorRegisterIndex-A5_BASE,a5),d0	| C16878
 	lsl.w	#0x2,d0	| C1687C
-	lea.l	(ram_10FD00-A5_BASE,a5),a4	| C1687E
-	move.l	(ram_10FD70-A5_BASE,a5),(a4,d0.w)	| C16882
+	lea.l	(MonitorRegs-A5_BASE,a5),a4	| C1687E
+	move.l	(MonitorValue-A5_BASE,a5),(a4,d0.w)	| C16882
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16888
 	jsr	(MonitorShowRegisters,pc)	| C1688C
 loc_C16890:
@@ -4049,17 +4049,17 @@ MonitorTraceCommand:
 	bne.b	loc_C168EC	| C168E8
 	rts	| C168EA
 loc_C168EC:
-	bset.b	#0x7,(ram_10FD48-A5_BASE,a5)	| C168EC
+	bset.b	#0x7,(MonitorSavedSr-A5_BASE,a5)	| C168EC
 | MonitorReturn [C] restores the fix layer palette, USP, SP, the exception frame and d0-a6 from the save area, then rte
 MonitorReturn:
 	jsr	(FixClear).l	| C168F2
-	move.l	(ram_10FD4E-A5_BASE,a5),(0x4001E2).l	| C168F8
-	movea.l	(ram_10FD40-A5_BASE,a5),a3	| C16900
+	move.l	(MonitorSavedColour-A5_BASE,a5),(0x4001E2).l	| C168F8
+	movea.l	(MonitorSavedUsp-A5_BASE,a5),a3	| C16900
 	move	a3,usp	| C16904
-	movea.l	(ram_10FD3C-A5_BASE,a5),a7	| C16906
-	move.l	(ram_10FD44-A5_BASE,a5),-(a7)	| C1690A
-	move.w	(ram_10FD48-A5_BASE,a5),-(a7)	| C1690E
-	movem.l	(ram_10FD00).l,d0-d7/a0-a6	| C16912
+	movea.l	(MonitorSavedSsp-A5_BASE,a5),a7	| C16906
+	move.l	(MonitorSavedPc-A5_BASE,a5),-(a7)	| C1690A
+	move.w	(MonitorSavedSr-A5_BASE,a5),-(a7)	| C1690E
+	movem.l	(MonitorRegs).l,d0-d7/a0-a6	| C16912
 	rte	| C1691A
 | MonitorRun [C] command 6: C returns from the exception (MonitorReturn)
 MonitorRun:
@@ -4068,13 +4068,13 @@ MonitorRun:
 	rts	| C16924
 | MonitorDrawDigitCursor [C] blinks a cursor under the digit being edited (MonitorDigitCursorPositions)
 MonitorDrawDigitCursor:
-	btst.b	#0x4,(ram_10FD79-A5_BASE,a5)	| C16926
+	btst.b	#0x4,(MonitorFramesLo-A5_BASE,a5)	| C16926
 	beq.b	loc_C16956	| C1692C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1692E
 	clr.l	(a0)+	| C16932
 	move.l	#0x1F0FF,(a0)+	| C16934
 	move.w	#0x3,(a0)+	| C1693A
-	move.w	(ram_10FD76-A5_BASE,a5),d0	| C1693E
+	move.w	(MonitorDigit-A5_BASE,a5),d0	| C1693E
 	add.w	d0,d0	| C16942
 	move.w	(MonitorDigitCursorPositions,pc,d0.w),(a0)+	| C16944
 	move.w	#0x7,(a0)+	| C16948
@@ -4095,7 +4095,7 @@ MonitorShowRegisters:
 	move.w	#0x2002,(a0)+	| C1697C
 	move.l	#0x37067,(a0)+	| C16980
 	move.w	#0x7,(a0)+	| C16986
-	lea.l	(ram_10FD00).l,a1	| C1698A
+	lea.l	(MonitorRegs).l,a1	| C1698A
 	moveq	#0x3,d7	| C16990
 loc_C16992:
 	jsr	(PutHexByte,pc)	| C16992
@@ -4113,7 +4113,7 @@ loc_C16992:
 	move.l	#0x1F0FF,(a0)+	| C169C0
 	move.w	#0x2002,(a0)+	| C169C6
 	move.l	#0x37068,(a0)+	| C169CA
-	lea.l	(ram_10FD10-A5_BASE,a5),a1	| C169D0
+	lea.l	(MonitorRegsD4-A5_BASE,a5),a1	| C169D0
 	moveq	#0x2,d7	| C169D4
 loc_C169D6:
 	move.w	#0x7,(a0)+	| C169D6
@@ -4163,7 +4163,7 @@ loc_C16A64:
 	rts	| C16A76
 | MonitorPutValue [C] d7+1 hex bytes of the edited value
 MonitorPutValue:
-	lea.l	(ram_10FD70-A5_BASE,a5),a1	| C16A78
+	lea.l	(MonitorValue-A5_BASE,a5),a1	| C16A78
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16A7C
 	clr.l	(a0)+	| C16A80
 	move.l	#0x1F0FF,(a0)+	| C16A82

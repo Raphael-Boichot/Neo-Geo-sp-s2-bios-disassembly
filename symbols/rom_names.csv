@@ -66,7 +66,7 @@ C12CF2,SetupCalendar,C,target of SETUP_CALENDAR (wiki); MAME: runs when D is pre
 C1334C,Card,C,"target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]"
 C133C0,CardError,C,"target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch"
 C18914,HowToPlay,C,"target of HOW_TO_PLAY (wiki); MAME: NAM-1975, Mahjong Kyoretsuden and Baseball Stars Professional call it after START (joystick and buttons animated, the game captions); none of the other 15 checked games references it"
-C16C0E,ChecksumLoop,W,target of the checksum slot at $C0047A
+C16C0E,ChecksumLoop,C,"target of the checksum slot at $C0047A (CHECKSUM_LOOP): adds every byte of the cartridge P ROM (CART_PROM_SIZE bytes, kicking the watchdog), subtracts the header byte $186, writes the result to $186 and WorkRamStart, then loops until the watchdog resets the system. Nothing calls the slot; ran in MAME from a test build (scenario checksum_loop: Sengoku 2, 1 MB summed in 207 frames, sum $EF, reset 8 frames later)"
 C1835E,FixClear,W,target of FIX_CLEAR
 C1839A,LspFirst,W,target of LSP_1ST (clear sprites)
 C1871E,MessOut,W,target of MESS_OUT
@@ -114,14 +114,14 @@ C12912,DeductStartCredits,C,after CART_PLAYER_START: for P1 and P2 (DeductPlayer
 C12934,DeductPlayerCredit,C,"if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters"
 C129C6,BookKeepingCount,I,adds to a book keeping counter at a2 (called for several counters per start)
 C14E94,CardLock,C,"locks the memory card (REG_CRDLOCK1/2); pushed as the return address by Card, so it runs after every CARD call"
-C14EA2,ControllerTest,C,"unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame"
+C14EA2,ControllerTest,C,"unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame, never returns; ran in MAME from the hidden-programs build (scenario controller_test)"
 C14F32,PutInputBits,C,appends 10 characters 0/1 for the low bits of d1 (ControllerTest)
 C14F4C,ControllerTestText,C,MESS_OUT data of the controller test screen
 C1500A,CardUtility,C,"unreferenced in SP-S2: MEMORY CARD UTILITY menu, up/down over 6 lines, A jumps through CardUtilityMenuTable"
 C150A8,CardUtilityMenuTable,C,"6 entries in menu order: format, display data name, copy, delete, file user's name, END (Reset)"
 C150C0,CardUtilFormat,C,menu item 1. CARD FORMAT; MAME (test build): FORMAT THE CARD screen
 C1513E,CardUtilDisplayNames,C,"menu item 2. DISPLAY DATA NAME; MAME (test build, blank card): THERE IS NO DATA."
-C151B0,CardUtilCopy,I,menu item 3. COPY A DATA (table order)
+C151B0,CardUtilCopy,C,"menu item 3. COPY A DATA: A copies the chosen data (C all of it) into RAM, CHANGE CARD AND PRESS A BUTTON, then saves it on the new card; THERE IS .. ALREADY IN THIS CARD if it holds that data, MEMORY CARD NOT FORMATTED. for a blank card. MAME (test build, cards swapped): card_util_copy, card_util_copy_same_card, card_util_copy_unformatted"
 C15490,CardUtilDelete,C,"menu item 4. DELETE A DATA: lists the data, asks DO YOU MIND TO DELETE DATA, deletes through CARD function 4; MAME test build"
 C15578,CardUtilUserName,C,"menu item 5. FILE USER'S NAME: character grid, A types, END saves through CARD function 6; MAME test build"
 C15C3C,CardUtilityMenuText,C,MESS_OUT data of the MEMORY CARD UTILITY menu
@@ -281,3 +281,94 @@ C12A18,Card1MSaveCabinet,C,"SystemIo in title/demo: SELECT P1 with a 1M card who
 C12B98,Card1MIdTextSave,C,"NEO-GEO, compared one letter per word at +$40 by Card1MSaveCabinet"
 C12BA0,Card1MSaveOkText,C,"SAVE OK (Card1MSaveCabinet, BIOS_COUNTRY_CODE = 0)"
 C12BB0,Card1MStoredText,C,"DATA HAS BEEN STORED AT A MEMORY CARD. (Card1MSaveCabinet, other countries; MAME: card1m_save_a)"
+C16198,MonitorEntry,C,"debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (tbl_C163AC); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset)"
+C161A0,MonitorAddressError,C,"debug monitor, code 4 ADDRESS ERROR: also prints the extra words of the bus/address error frame (access address, instruction)"
+C16204,MonitorIllegal,C,"debug monitor, code 8 ILLEGAL INSTRUCTION"
+C1620E,MonitorPrivilege,C,"debug monitor, code $C PRIVILEGE VIOLATION"
+C16218,MonitorTrace,C,"debug monitor, code $10 TRACE"
+C16222,MonitorUnassigned,C,"debug monitor, code $14 UNASSIGNED"
+C1622C,MonitorUninitialized,C,"debug monitor, code $18 UNINITIALIZED INTERRUPT"
+C16236,MonitorSpurious,C,"debug monitor, code $1C SPURIOUS INTERRUPT"
+C118DC,PowerOnTestOld,C,"unreferenced older copy of the power-on tests after SystemInt2's rte (work RAM, palettes, VRAM, checksum, card), with error numbers shifted by one from BootErrorMessages; it ends in BootError even when everything passes. Never ran in MAME"
+C11A6E,WorkRamTestText,C,"WORK RAM TEST, shown while WorkRamTestLoop runs (every hard DIP on; MAME: work_ram_test_loop)"
+C12012,Z80Check,C,"power-on: writes 1 to REG_SOUND and waits up to $C350 reads for the Z80's reply 1; no reply: BootError 8 Z80 ERROR (MAME: boot_error_z80, reply faked away)"
+C16BB2,AesErrorColours,C,"BootError on an AES (SystemType 0): one palette colour pair per error, 0 blue, 1 red, 2 green, 3 yellow, 4 magenta, 5 cyan; only 6 entries (errors 6-8 would read the code after it). MAME: boot_error_aes_colours (forced)"
+C16BCA,BootErrorAes,C,"AES form of BootError: fills both palette banks with AesErrorColours[d6], colour 0 of palette 0 black, then waits forever"
+C16C42,ChecksumCompare,C,unreferenced variant of ChecksumLoop: sums the cartridge P ROM and compares with CART_HEADER_186 instead of storing the result; never ran
+C16C6E,WorkRamErrorText,C,WORK RAM ERROR (BootError 0)
+C16C96,BackupRamErrorText,C,BACKUP RAM ERROR (BootError 1)
+C16CC0,ColorRamBank0ErrorText,C,COLOR RAM BANK0 ERROR (BootError 2)
+C16CEE,ColorRamBank1ErrorText,C,COLOR RAM BANK1 ERROR (BootError 3)
+C16D1C,VideoRamErrorText,C,VIDEO RAM ERROR (BootError 4)
+C16D44,CalendarErrorText,C,CALENDAR ERROR (BootError 5)
+C16D62,SystemRomErrorText,C,SYSTEM ROM ERROR (BootError 6)
+C16D82,MemoryCardErrorText,C,MEMORY CARD ERROR (BootError 7)
+C16DA2,Z80ErrorText,C,Z80 ERROR (BootError 8)
+C16DBA,AddressWriteReadText,C,ADDRESS WRITE READ heading of the memory errors 0-4
+C16DCE,MonitorCauseTexts,C,"debug monitor: 8 pointers to the cause texts, indexed by the entry code"
+C16DEE,MonitorEntryText,C,MONITOR ENTRY
+C16E0A,MonitorAddressErrorText,C,ADDRESS ERROR
+C16E26,MonitorIllegalText,C,ILLEGAL INSTRUCTION
+C16E48,MonitorPrivilegeText,C,PRIVILEGE VIOLATION
+C16E6A,MonitorTraceText,C,TRACE
+C16E7E,MonitorUnassignedText,C,UNASSIGNED
+C16E98,MonitorUninitializedText,C,UNINITIALIZED INTERRUPT
+C16EBE,MonitorSpuriousText,C,SPURIOUS INTERRUPT
+C16EE0,MonitorDisplayMemoryText,C,DISPLAY MEMORY (command 0)
+C16EFE,MonitorDisplayVramText,C,DISPLAY V-RAM (command 1)
+C16F26,MonitorModifyMemoryText,C,MODIFY MEMORY (command 2)
+C16F4E,MonitorModifyVramText,C,MODIFY V-RAM (command 3)
+C16F74,MonitorModifyRegisterText,C,MODIFY REGISTER (command 4)
+C16FA8,MonitorTraceCommandText,C,TRACE (command 5)
+C16FE0,MonitorRunText,C,RUN (command 6)
+C16FF4,MonitorCommandLine,C,MESS_OUT header of the command line
+C16354,MonitorLoop,C,"debug monitor main loop: waits for VBlank, MESS_OUT, reads the controllers; A selects the next of the 7 commands, other keys go to the command (MonitorCommandTable)"
+C16330,MonitorDigitCount,C,debug monitor: number of editable digits per command
+C16338,MonitorCommandTexts,C,debug monitor: command name pointers (MonitorDisplayMemoryText ..)
+C163AC,MonitorCommandTable,C,"debug monitor: 7 command handlers, display memory, display V-RAM, modify memory, modify V-RAM, modify register, trace, run (MAME: monitor_test.py build)"
+C163C8,MonitorDisplayMemory,C,"command 0: Left/Right pick the digit, Up/Down change the address by MonitorAddressSteps, C dumps 8 lines of 8 bytes"
+C1642E,MonitorAddressSteps,C,"address steps per digit: $100000, $10000, $1000, $100, $40"
+C16498,MonitorDisplayVram,C,command 1: like MonitorDisplayMemory on video RAM (REG_VRAMADDR / REG_VRAMRW)
+C165B2,MonitorModifyMemory,C,"command 2: address and value digits, C writes the value to memory (ran in MAME, monitor test build)"
+C1666E,MonitorModifyVram,C,"command 3: address and value digits, C writes the value to video RAM (ran in MAME, monitor test build)"
+C1676C,MonitorModifyRegister,C,"command 4: picks a saved register (d0-a7, SR, PC) and changes it in the save area at $10FD00 (ran in MAME, monitor test build)"
+C168E2,MonitorTraceCommand,C,"command 5: C sets the trace bit in the saved SR and returns from the exception: one instruction runs, then MonitorTrace"
+C168F2,MonitorReturn,C,"restores the fix layer palette, USP, SP, the exception frame and d0-a6 from the save area, then rte"
+C1691C,MonitorRun,C,command 6: C returns from the exception (MonitorReturn)
+C16926,MonitorDrawDigitCursor,C,blinks a cursor under the digit being edited (MonitorDigitCursorPositions)
+C16958,MonitorDigitCursorPositions,C,fix-layer address of each digit cursor
+C16974,MonitorShowRegisters,C,"the register dump: d0-d7, a0-a7, then SR and PC of the exception"
+C16A48,MonitorPutAddress,C,three hex bytes of the edited address
+C16A78,MonitorPutValue,C,d7+1 hex bytes of the edited value
+C133E2,CardErrorTable,C,"CardError: handler offset (0, 4, 8, $C, $10; $FF none) for result $81-$85 x BIOS_CRDF 0-7: $81 load: no data, save: format; $83 load: error, save: format; $84 save: card full; $85 format/save/delete/name: write protected, load: no data"
+C13446,CardErrorHandlers,C,"CardError: NO DATA, ERROR ON MEMORY CARD, WRITE PROTECTED, not formatted, card full"
+C13482,CardNoDataText,C,NO DATA FOR THIS GAME.
+C134A2,CardErrorText,C,ERROR ON MEMORY CARD.
+C134C0,CardWriteProtectedText,C,MEMORY CARD WRITE PROTECTED.
+C134E6,PushAnyButtonText,C,PUSH ANY BUTTON.
+C1353E,CardErrorNotFormatted,C,"CardError for an unformatted card: an AES (BIOS_MVS_FLAG 0) asks DO YOU WISH TO FORMAT? (A yes, B no); an MVS formats at once, then repeats the CARD call; THIS MEMORY CARD CANNOT BE FORMATTED. if the format fails"
+C1359C,CardFormatQuestionText,C,"MEMORY CARD NOT FORMATTED, DO YOU WISH TO FORMAT? A BUTTON = YES B BUTTON = NO (AES only)"
+C13608,CardCannotFormatText,C,THIS MEMORY CARD CANNOT BE FORMATTED.
+C1363E,CardErrorFull,C,"CardError for a full card: MEMORY CARD FULL, lists the data on the card page by page so that one can be deleted, or the save is skipped"
+C13876,CardFullText,C,"MEMORY CARD FULL,SELECT GAME DATA TO BE DELETED WITH JOYSTICK OR DO NOT SAVE CURRENT GAME."
+C1390C,PreviousPageText,C,PREVIOUS PAGE
+C1392A,NextPageText,C,NEXT PAGE
+C144E8,CardNeoGeoIdText,C,"NEO-GEO, the card header compared by the CARD functions"
+C15CE0,CardUtilReturnText,C,B BUTTON = RETURN TO MENU SCREEN
+C15D0A,CardUtilFormatText,C,FORMAT THE CARD PRESS A BUTTON AFTER PLUGGING THE CARD IN.
+C15D5A,CardUtilFormatConfirmText,C,"THERE ARE SOME DATA IN THIS CARD. DO YOU MIND TO DELETE THEM ? A BUTTON = NO (but A formats and B returns, CardUtilFormat)"
+C15DBC,CardUtilReturnText2,C,B BUTTON = RETURN TO MENU SCREEN
+C15DE6,CardUtilDisplayText,C,DISPLAY DATA NAME
+C15E00,CardUtilCopySelectText,C,SELECT THE DATA TO COPY. A BUTTON = COPY C BUTTON = ALL COPY
+C15E52,CardUtilCopiedText,C,IS COPIED. CHANGE CARD AND PRESS A BUTTON
+C15E98,CardUtilAlreadyText,C,THERE IS .. ALREADY IN THIS CARD. DO YOU MIND TO DELETE OLD DATA ? A BUTTON = NO
+C15F02,CardUtilAllCopiedText,C,ALL THE DATA IN THE CARD IS COPIED. CHANGE CARD AND PRESS A BUTTON.
+C15F5C,CardUtilDeleteSelectText,C,SELECT DATA TO BE DELETED. A BUTTON = DELETE
+C15F98,CardUtilDeleteConfirmText,C,DO YOU MIND TO DELETE DATA .. A BUTTON = NO
+C15FD8,CardUtilUserNameText,C,FILE USER'S NAME and the character grid
+C160E2,CardUtilPlugCardText,C,PLUG THE CARD IN.
+C160FC,CardUtilNotFormattedText,C,MEMORY CARD NOT FORMATTED. (MAME: card_util_copy_unformatted)
+C16120,CardUtilNoDataText,C,THERE IS NO DATA.
+C1613A,CardUtilErrorText,C,ERROR ON MEMORY CARD.
+C16158,CardUtilFullText,C,MEMORY CARD FULL.
+C16172,CardUtilWriteProtectedText,C,MEMORY CARD WRITE PROTECTED. (MAME: card_util_write_protected)

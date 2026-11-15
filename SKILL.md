@@ -119,6 +119,22 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
 - A 2 MB P1 (KOF '94) is loaded by MAME second half first: its header is at `$100000` in the file.
 - Some code waits for a board state, not a key: the 1M card recovery runs only with no cartridge and
   Service held at power-on. Read the branch conditions before concluding that code is unreachable.
+- Whole programs can hide as data: the debug monitor's exception entry points (`$C16198`) looked like
+  bytes because nothing referenced them (the exception slots all do `jmp Reset`). Look for exception
+  handler patterns (`ori #$700,sr`, `movem.l d0-d7/a0-a6` to a save area, `move usp`) in data blocks.
+  A hint's reason can be wrong too: `longtable $C163AC` was filed under the card utility; it is the
+  monitor's command table.
+- MAME debugger: commands in `DEBUG_CMDS` are split on `||` (`sr=sr|4` contains `|`); `pc` cannot be
+  written, so branch by changing a register or the flags. Lua: a `local` declared after the function
+  that uses it is a nil global inside that function (the write-protect tap did nothing until moved).
+- Shell: `pgrep -f PATTERN` inside a command that contains PATTERN matches itself (a wait loop never
+  ended, twice); a background `exec 3>fifo` with no reader blocks forever and holds the caller's
+  output pipe: kill it once the reader is done (`tools/mame_coverage.sh`).
+- A game path that never runs may depend on the region: Top Player's Golf and Baseball Stars gate
+  CREDIT_DOWN on a copy of BIOS_COUNTRY_CODE (USA only), invisible with the European SP-S2. Find where
+  the gating variable is written (search the absolute address in the game ROM, `move.w $10FD82` too)
+  before playing longer. MAME watchpoints (`wpset ... {logerror}`) logged nothing in these headless
+  runs; breakpoints that print memory worked.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
   Text needs mostly letters and no long counting run, and is never looked for inside a named table.
 - A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.

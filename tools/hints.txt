@@ -5,5 +5,16 @@
 ; Unreferenced controller test + memory card utility ($C14EA2-$C16AA9): nothing in the
 ; ROM points into this block (checked: no reference, no long pointer). Traced so it reads as code.
 longtable $C15642   ; 5 code pointers inside the card utility
-longtable $C163AC   ; 7 code pointers inside the card utility
+longtable $C163AC   ; 7 command handlers of the debug monitor (DISPLAY MEMORY .. TRACE)
 entry     $C1500A   ; card utility main (menu): sets LSPCMODE and a5, draws the menu, dispatches through $C150A8 (table found by the tracer)
+; Debug monitor ($C16198-$C16AA9): exception entry points that save the registers and the exception
+; frame, show the cause (texts at $C16DEE) and run a command menu (tbl_C163AC). In this release the
+; exception vectors point to BIOS call slots that all jmp Reset, so nothing reaches these entries.
+entry     $C16198   ; monitor entry, code 0 MONITOR ENTRY
+entry     $C161A0   ; code 4 ADDRESS ERROR (bus/address error frame: access address and instruction)
+entry     $C16204   ; code 8 ILLEGAL INSTRUCTION
+entry     $C1620E   ; code $C PRIVILEGE VIOLATION
+entry     $C16218   ; code $10 TRACE
+entry     $C16222   ; code $14 UNASSIGNED
+entry     $C1622C   ; code $18 UNINITIALIZED INTERRUPT
+entry     $C16236   ; code $1C SPURIOUS INTERRUPT

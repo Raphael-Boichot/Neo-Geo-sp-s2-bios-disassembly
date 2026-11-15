@@ -2,17 +2,17 @@
 
 Where the SP-S2 disassembly stands and what comes next, in order. The priority is the disassembly itself:
 full coverage, names and a written reference. Levels L0-L6 are defined in
-`SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-14).
+`SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-15).
 
 ## Where we are
 
 | Level | State |
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
-| L1 every byte typed | done: code 32,338 B, data 22,011 B, free 76,723 B |
-| L2 traced and run | 9,109 instructions traced; 6,206 ran in MAME (68.1 %) over 47 scenarios; nothing ran outside the trace |
-| L3 names | 282 names (C 231, I 21, W 30); 1,300 automatic labels left: 110 `sub_`, 98 `dat_`, 30 `tbl_`, 1,062 `loc_` |
-| L4 RAM and registers | 219 RAM addresses used, 77 named; 30 backup RAM accesses through a4 left raw |
+| L1 every byte typed | done: code 32,834 B, data 21,515 B, free 76,723 B |
+| L2 traced and run | 9,223 instructions traced; 7,161 ran in MAME (77.6 %) over 73 scenarios, 6,541 without the forced ones; nothing ran outside the trace |
+| L3 names | 373 names (C 324, I 20, W 29); 1,233 automatic labels left: 105 `sub_`, 55 `dat_`, 24 `tbl_`, 1,049 `loc_` |
+| L4 RAM and registers | 223 RAM addresses used, 77 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
 
@@ -21,13 +21,13 @@ Coverage and automatic routines by module:
 | Module | Ran in MAME | `sub_` left |
 |---|---|---|
 | `test_mode.s` | 90 % (2,061 / 2,294; 219 of the rest is the unreachable `CabinetSettingsOld`) | 0 |
-| `card.s` (with the card utility) | 31 % (952 / 3,025) | 51 |
-| `boot_error.s` | 0 % (0 / 88) | 0 |
+| `card.s` (card utility, card errors, debug monitor) | 56 % (1,761 / 3,139) | 47 |
+| `boot_error.s` | 86 % (76 / 88, forced) | 0 |
 | `system.s` | 61 % | 0 |
 | `calendar.s` | 98 % | 0 |
 | `video_io.s` | 73 % | 14 |
-| `power_on.s` | 91 % | 29 |
-| `eyecatcher.s` | 84 % | 3 |
+| `power_on.s` | 93 % | 28 |
+| `eyecatcher.s` | 96 % | 3 |
 | `boot.s` | 95 % | 0 |
 | `hardware_test.s` | 90 % | 13 |
 | `how_to_play.s` | 90 % | 0 |
@@ -48,15 +48,19 @@ Coverage and automatic routines by module:
 
 Not reachable: `CabinetSettingsOld` (`$C19CF6-$C1A105`), an older cabinet page after a `jmp`.
 
-## 2. Error and rare paths (L2)
+## 2. Error and rare paths (L2): done except the full card
 
-Paths that need a fault. Reach them with `DEBUG_CMDS` breakpoints that fake the condition (as done
-for SYSTEM_INT2), and say in the scenario name that the condition was forced.
+Paths that need a fault, reached with `DEBUG_CMDS` breakpoints that fake the condition or with test
+builds; `tools/fault_scenarios.py` (26 scenarios) says which runs are forced.
 
-- [ ] Boot error screens (`BootError`, `$C16ADA`): work RAM, backup RAM, video RAM, palette RAM,
-      calendar, memory card, system ROM checksum
-- [ ] The checksum slot `CHECKSUM_LOOP` (`$C0047A` -> `$C16C0E`)
-- [ ] The work RAM test loop when every hard DIP is on (`WorkRamTestLoop`, `$C11BA8`)
+- [x] Boot error screens (`BootError`, `$C16ADA`): work RAM, backup RAM, both palette banks, video RAM,
+      calendar, system ROM, memory card, Z80, and the AES colour form (forced, `boot_error_*`)
+- [x] The checksum slot `CHECKSUM_LOOP` (`$C0047A` -> `$C16C0E`): nothing calls it; from a test build it
+      sums the P ROM, stores the sum at `$100000` and waits for the watchdog (`checksum_loop`).
+      `ChecksumCompare` (`$C16C42`) is still unreached
+- [x] The work RAM test loop when every hard DIP is on (`WorkRamTestLoop`, `$C11BA8`, not forced)
+- [x] The debug monitor (`$C16198-$C16AA9`, found in this step): every command, five exception types,
+      from a test build (`monitor_*`). Not run: MONITOR ENTRY, uninitialised and spurious interrupt entries
 - [x] The alternate calendar path (`$C12DB8-$C12EF0`): selected by a cartridge whose ID reads NEO-CLN
       (`CheckCartridgeId`); run in MAME with `tools/neo_cln_test.py` (scenario `neo_cln_cartridge`)
 - [x] The `NoGoIdText` case of `CheckCartridgeId`: sets `SlotNumberMode` (`$D00060`): SLOT n before the game,
@@ -64,10 +68,13 @@ for SYSTEM_INT2), and say in the scenario name that the condition was forced.
       (`tools/neo_cln_test.py --nogo`, scenario `nogo_cartridge`)
 - [x] `BackupRamTest` (`$C125C8`): a cleared `BackupRamSignature` makes the next boot run `ClearBackupRam`
       (all backup RAM zeroed, defaults written); seen in MAME with five boots sharing one nvram
-- [ ] Card error cases: no card, write-protected card, full card, wrong format (CARD_ERROR)
-- [ ] Card utility COPY (`CardUtilCopy`) and the controller test, as coverage scenarios of the test build
-- [ ] CREDIT_DOWN in Top Player's Golf, Baseball Stars Professional and Blue's Journey (it ran with League
-      Bowling, King of the Monsters and King of the Monsters 2)
+- [x] Card error cases: blank card (League Bowling: CARD_ERROR formats it), write-protected card (League
+      Bowling and the card utility); what 29 games do with a blank card
+- [ ] Card error: the full card (`CardErrorFull`, `$C1363E`): needs a card filled with saves
+- [x] Card utility COPY (`CardUtilCopy`) with two cards, the same card and an unformatted target, and the
+      controller test, as coverage scenarios of the hidden-programs build
+- [x] CREDIT_DOWN in Top Player's Golf and Baseball Stars Professional: only with the US country code
+      (forced); Blue's Journey: its wrapper has no caller
 
 ## 3. Names (L3)
 
@@ -85,7 +92,7 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 
-- [ ] Name every work RAM variable used (142 automatic), checking all readers and writers first
+- [ ] Name every work RAM variable used (146 automatic), checking all readers and writers first
 - [ ] Backup RAM map at `$D00000`: board settings, soft DIPs per game, game names, book keeping rings and
       code/cabinet numbers are named; still to map: `$D0011A`, `$D09B20`, the slot data, the card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one

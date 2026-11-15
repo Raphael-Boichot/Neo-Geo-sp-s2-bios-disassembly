@@ -55,7 +55,7 @@ PowerOnTest:
 	jsr	(ClearFixLayer).l	| C11B80
 	move.l	#0xEEE0000,(0x400002).l	| C11B86
 	lea.l	(ram_10FF00-A5_BASE,a5),a0	| C11B90
-	move.l	#dat_C11A6E,(a0)+	| C11B94
+	move.l	#WorkRamTestText,(a0)+	| C11B94
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C11B9A
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C11B9E
 	jsr	(MessOut).l	| C11BA2
@@ -301,7 +301,7 @@ loc_C11E9A:
 loc_C11EC2:
 	move.b	d4,(bram_D00047-A4_BASE,a4)	| C11EC2
 	lsl.w	#0x2,d4	| C11EC6
-	jsr	(sub_C12012,pc)	| C11EC8
+	jsr	(Z80Check,pc)	| C11EC8
 	move.b	#0x0,(REG_SLOT).l	| C11ECC
 	move.b	d0,(REG_CRTFIX).l	| C11ED4
 	jsr	(sub_C11F5A,pc)	| C11EDA
@@ -396,7 +396,8 @@ loc_C12002:
 	clr.b	(ram_10FEDB).l	| C1200A
 loc_C12010:
 	rts	| C12010
-sub_C12012:
+| Z80Check [C] power-on: writes 1 to REG_SOUND and waits up to $C350 reads for the Z80's reply 1; no reply: BootError 8 Z80 ERROR (MAME: boot_error_z80, reply faked away)
+Z80Check:
 	move.b	#0x1,(REG_SOUND).l	| C12012
 	bsr.w	sub_C184EC	| C1201A
 	move.w	#0xC350,d7	| C1201E

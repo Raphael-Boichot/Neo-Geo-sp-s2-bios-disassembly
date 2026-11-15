@@ -5,7 +5,7 @@ local dbg = manager.machine.debugger
 if dbg then
   dbg:command("trace " .. os.getenv("TRACEFILE") .. ",maincpu,noloop")
   -- DEBUG_CMDS: extra debugger commands separated by "||", e.g. a breakpoint that changes registers
-  for c in string.gmatch(os.getenv("DEBUG_CMDS") or "", "([^|]+)") do dbg:command(c) end
+  for c in ((os.getenv("DEBUG_CMDS") or "") .. "||"):gmatch("(.-)||") do if c ~= "" then dbg:command(c) end end
   dbg:command("go")
   print("trace started")
 else

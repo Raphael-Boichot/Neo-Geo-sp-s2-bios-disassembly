@@ -22,7 +22,9 @@ mkdir -p "$R/coverage"
 env TRACEFILE="$W/trace" "$@" ${MAME:-mame} "$game" -bios euro -rompath "$ROMS" \
   -cfg_directory "$W/cfg" -nvram_directory "${NVRAM_DIR:-$W/nvram}" -video none -sound none -nothrottle \
   -debug -debugger none -autoboot_script "$R/tools/mame_trace.lua" -skip_gameinfo >/dev/null 2>&1 || true
-( exec 3>"$W/trace" ) 2>/dev/null &     # unblock the reader if MAME never opened the pipe
+( exec 3>"$W/trace" ) >/dev/null 2>&1 &   # unblock the reader if MAME never opened the pipe
+UNBLOCK=$!
 wait $AGG
+kill $UNBLOCK 2>/dev/null || true          # otherwise it waits forever for a reader and holds our output
 rm -rf "$W"
 wc -l "$R/coverage/$name.txt"

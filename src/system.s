@@ -224,6 +224,8 @@ SystemInt2:
 	move.w	#0x2,(REG_IRQACK).l	| C118CA
 	move.w	#0x4000,(REG_LSPCMODE).l	| C118D2
 	rte	| C118DA
+| PowerOnTestOld [C] unreferenced older copy of the power-on tests after SystemInt2's rte (work RAM, palettes, VRAM, checksum, card), with error numbers shifted by one from BootErrorMessages; it ends in BootError even when everything passes. Never ran in MAME
+PowerOnTestOld:
 	moveq	#0x1,d6	| C118DC
 	lea.l	(WorkRamStart).l,a0	| C118DE
 	move.w	#0x7FFF,d5	| C118E4
@@ -338,7 +340,8 @@ loc_C11A64:
 loc_C11A68:
 	moveq	#0x0,d6	| C11A68
 	jmp	(BootError,pc)	| C11A6A
-dat_C11A6E:
+| WorkRamTestText [C] WORK RAM TEST, shown while WorkRamTestLoop runs (every hard DIP on; MAME: work_ram_test_loop)
+WorkRamTestText:
 	dc.b	0x00,0x03,0x71,0x4C,0x01,0x08
 	.ascii	"WORK RAM TEST"
 	dc.b	0xFF,0x00,0x00

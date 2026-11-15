@@ -151,6 +151,8 @@ reason), the speculative entries that ran, and which scenarios use each BIOS cal
 | `KEYS="420:P1 Down,600-700:P1 A"` | `F:` one-frame tap, `F-G:` held (A/B repeat), any MAME input name; `P1 Select` / `P2 Select` are emulated (MAME has no MVS SELECT input) |
 | `DIPS="900:Free Play=0"` | set a DIP switch field at a frame (values as MAME lists them: 0 = on) |
 | `MEMCARD=<file> MEMCARD_AT=<frame>` | insert a 2 KB memory card (created blank, or `MEMCARD_FROM=<file>` copied first) |
+| `MEMCARD2=<file> MEMCARD2_AT=<frame>` | insert a second card later (after `MEMCARD_OUT`), e.g. for the card utility COPY |
+| `MEMCARD_WP=1` | the card reads as write-protected (`REG_STATUS_B` bit 6 set through a read tap) |
 | `CARD1M=<file>` | emulate a 1 Mbit 16-bit RAM card at `$800000` with memory taps (keep a `MEMCARD` inserted too) |
 | `NVRAM_DIR=<dir>` (environment of `mame_coverage.sh`) | keep the backup RAM between runs |
 
@@ -162,8 +164,21 @@ through `mame_coverage.sh`. `CARD_DIR` holds the card images and chained backup 
 `PLAYED_NVRAM` a MAME nvram folder after a few played credits. The `card1m_*` scenarios pass their
 backup RAM and 1M card from one to the next: run them in order.
 
+### Faults, card errors and the debug monitor
+
+`tools/fault_scenarios.py list | run NAME | shot NAME OUT.png`: boot errors faked by a breakpoint at
+the compare that detects them, the all-DIPs RAM test loop, card errors (League Bowling) and the card
+utility COPY (`HIDDEN_ROMS`: a ROM folder with the `hidden_programs_test.py` build; `SAVED_CARD`,
+`FORMATTED_CARD`: card images). `tools/monitor_test.py OUT [illegal|address|privilege|trace|zerodiv|checksum]`
+builds a BIOS whose exception slots jump to the debug monitor (`checksum`: test-menu item 4 calls the
+CHECKSUM_LOOP slot instead); put each `sp-s2.sp1` in a copy of `neogeo.zip` in `$MONITOR_ROMS/<name>/`
+(with the game zip) for the `monitor_*` and `checksum_loop` scenarios. The `*_us_credit_down` scenarios
+write 1 (USA) into BIOS_COUNTRY_CODE when the game copies it.
+
 `DEBUG_CMDS` adds MAME debugger commands to a coverage run (several separated by `||`), for example a
-breakpoint that changes a register to reach a path no game takes (README, SYSTEM_INT2). To see what
+breakpoint that changes a register to reach a path no game takes (README, SYSTEM_INT2), separated by
+`||` (a single `|` is the OR operator inside a command). The program counter cannot be written (`pc` is
+not a symbol): change a register or the flags (`sr=sr|4` sets Z) instead. To see what
 games do with the timer interrupt and the vector switches, run a game with
 `-debug -debugger none -log -autoboot_script tools/mame_watch_irq2.lua` and read `error.log`.
 

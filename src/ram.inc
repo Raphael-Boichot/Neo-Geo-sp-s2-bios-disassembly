@@ -46,6 +46,8 @@
 	.equ	ram_10FD40,0x10FD40
 	.equ	ram_10FD44,0x10FD44
 	.equ	ram_10FD48,0x10FD48
+	.equ	ram_10FD4A,0x10FD4A
+	.equ	ram_10FD4C,0x10FD4C
 	.equ	ram_10FD4E,0x10FD4E
 	.equ	ram_10FD52,0x10FD52
 	.equ	ram_10FD5E,0x10FD5E
@@ -60,8 +62,10 @@
 	.equ	ram_10FD6C,0x10FD6C
 	.equ	ram_10FD6E,0x10FD6E
 	.equ	ram_10FD70,0x10FD70
+	.equ	ram_10FD74,0x10FD74
 	.equ	ram_10FD76,0x10FD76
 	.equ	ram_10FD77,0x10FD77
+	.equ	ram_10FD78,0x10FD78
 	.equ	ram_10FD79,0x10FD79
 	.equ	BIOS_SYSTEM_MODE,0x10FD80
 	.equ	BIOS_SYSTEM_MODE_LO,0x10FD81

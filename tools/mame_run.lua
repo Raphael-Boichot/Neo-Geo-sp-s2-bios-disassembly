@@ -12,6 +12,12 @@ local function field(name)   -- find an input by name in any port
     if port.fields[name] then return port.fields[name] end
   end
 end
+-- DEBUG_CMDS (needs -debug -debugger none): debugger commands separated by "||", e.g. a breakpoint faking a fault
+local dbg = manager.machine.debugger
+if dbg and os.getenv("DEBUG_CMDS") then
+  for c in (os.getenv("DEBUG_CMDS") .. "||"):gmatch("(.-)||") do if c ~= "" then dbg:command(c) end end
+  dbg:command("go")
+end
 local inputs = dofile((debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "") .. "mame_inputs.lua")
 emu.register_frame_done(function()
   local scr = manager.machine.screens[":screen"]

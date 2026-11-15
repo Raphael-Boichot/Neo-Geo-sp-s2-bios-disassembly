@@ -1,10 +1,12 @@
 -- Shared inputs for mame_run.lua and mame_trace.lua (loaded with dofile). Environment:
 --   KEYS="420:P1 Down,600-700:P1 A"   F: one-frame tap, F-G: held from F to G; any input name, several per frame.
 --        "P1 Select" and "P2 Select" (not MAME inputs on MVS) clear bit 1 / 3 of REG_STATUS_B through a read tap
+--   MEMCARD_WP=1   the same tap sets bit 6 of REG_STATUS_B: the memory card reads as write-protected
 --   DIPS="2:Setting Mode=0,900:Free Play=0"   sets a DIP switch field (values as MAME lists them) at frame F
 --   MEMCARD=<file> MEMCARD_AT=<frame>   creates (or loads) a memory card image at that frame (default 0);
 --                                       MEMCARD_FROM=<file> first copies that image (a formatted card) to MEMCARD;
---                                       MEMCARD_OUT=<frame> removes it again
+--                                       MEMCARD_OUT=<frame> removes it again;
+--                                       MEMCARD2=<file> MEMCARD2_AT=<frame> then inserts a second card
 --   CARD1M=<file>   emulates a 1 Mbit (64K x 16-bit) RAM card at $800000-$81FFFF with memory taps, kept in
 --                   <file> (created blank if missing, saved when MAME stops). MAME itself only has the 2 KB
 --                   8-bit card (high byte $FF, mirrored every $1000), so a MEMCARD must also be inserted for
@@ -57,14 +59,17 @@ local function c1m_install()   -- taps are dropped when MAME rebuilds the memory
       c1m[i] = c1m[i] & ~mask & 0xFFFF | data & mask end),
   }
 end
+local card_wp = os.getenv("MEMCARD_WP") == "1"   -- REG_STATUS_B bit 6 set: card write-protected
 local sel_taps, sel_bits = {}, 0
 local function sel_install()
   local sp = manager.machine.devices[":maincpu"].spaces["program"]
   for _, t in ipairs(sel_taps) do t:remove() end
   sel_taps = { sp:install_read_tap(0x380000, 0x380001, "select_r", function(offset, data, mask)
-    return data & ~(sel_bits << 8) & 0xFFFF end) }   -- REG_STATUS_B is the high byte, active low
+    local v = data & ~(sel_bits << 8) & 0xFFFF       -- REG_STATUS_B is the high byte; SELECT is active low
+    if card_wp then v = v | 0x4000 end
+    return v end) }
 end
-local has_select = (os.getenv("KEYS") or ""):find("Select") ~= nil
+local has_select = (os.getenv("KEYS") or ""):find("Select") ~= nil or card_wp
 return function(f)
   if c1m then c1m_install() end
   if has_select then
@@ -98,4 +103,12 @@ return function(f)
     end
   end
   if card and f == card_out then local img = card_image(); if img then img:unload() end end
+  local card2, card2_at = os.getenv("MEMCARD2"), tonumber(os.getenv("MEMCARD2_AT") or "-1")
+  if card2 and f == card2_at then
+    local img = card_image()
+    if img then
+      local h = io.open(card2, "rb")
+      if h then h:close(); img:load(card2) else img:create(card2) end
+    end
+  end
 end

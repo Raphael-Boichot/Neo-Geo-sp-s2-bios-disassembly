@@ -48,7 +48,8 @@ CardError:
 	bcs.b	loc_C1340A	| C133DE
 loc_C133E0:
 	rts	| C133E0
-tbl_C133E2:
+| CardErrorTable [C] CardError: handler offset (0, 4, 8, $C, $10; $FF none) for result $81-$85 x BIOS_CRDF 0-7: $81 load: no data, save: format; $83 load: error, save: format; $84 save: card full; $85 format/save/delete/name: write protected, load: no data
+CardErrorTable:
 	dc.b	0xFF,0xFF,0x00,0x0C,0xFF,0xFF,0x0C,0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
 	dc.b	0xFF,0xFF,0x04,0x0C,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x10,0xFF,0xFF,0xFF,0xFF
 	dc.b	0x08,0xFF,0x00,0x08,0x08,0xFF,0x08,0x00
@@ -57,7 +58,7 @@ loc_C1340A:
 	move.b	(BIOS_CRDF-A5_BASE,a5),d1	| C1340C
 	andi.b	#0x7,d1	| C13410
 	or.b	d1,d0	| C13414
-	move.b	(tbl_C133E2,pc,d0.w),d0	| C13416
+	move.b	(CardErrorTable,pc,d0.w),d0	| C13416
 	bmi.b	loc_C133E0	| C1341A
 	move.l	#ram_10FF00,(BIOS_MESS_POINT-A5_BASE,a5)	| C1341C
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C13424
@@ -66,41 +67,46 @@ loc_C1340A:
 	move.w	(BIOS_SYSTEM_MODE-A5_BASE,a5),(ram_10FE8E-A5_BASE,a5)	| C13430
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13436
 	move.w	#0x2000,sr	| C1343C
-	movea.l	(tbl_C13446,pc,d0.w),a0	| C13440
+	movea.l	(CardErrorHandlers,pc,d0.w),a0	| C13440
 	jmp	(a0)	| C13444
-tbl_C13446:
+| CardErrorHandlers [C] CardError: NO DATA, ERROR ON MEMORY CARD, WRITE PROTECTED, not formatted, card full
+CardErrorHandlers:
 	dc.l	loc_C1346A
 	dc.l	loc_C13472
 	dc.l	loc_C1347A
-	dc.l	loc_C1353E
-	dc.l	loc_C1363E
+	dc.l	CardErrorNotFormatted
+	dc.l	CardErrorFull
 loc_C1345A:
 	jsr	(CardLock,pc)	| C1345A
 	jsr	(sub_C139EC,pc)	| C1345E
 	move.w	(ram_10FE8E-A5_BASE,a5),(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13462
 	rts	| C13468
 loc_C1346A:
-	lea.l	(dat_C13482,pc),a4	| C1346A
+	lea.l	(CardNoDataText,pc),a4	| C1346A
 	bra.w	loc_C13500	| C1346E
 loc_C13472:
-	lea.l	(dat_C134A2,pc),a4	| C13472
+	lea.l	(CardErrorText,pc),a4	| C13472
 	bra.w	loc_C13500	| C13476
 loc_C1347A:
-	lea.l	(dat_C134C0,pc),a4	| C1347A
+	lea.l	(CardWriteProtectedText,pc),a4	| C1347A
 	bra.w	loc_C13500	| C1347E
-dat_C13482:
+| CardNoDataText [C] NO DATA FOR THIS GAME.
+CardNoDataText:
 	dc.b	0x00,0x03,0x71,0x4A,0x01,0x08
 	.ascii	"NO DATA FOR THIS GAME."
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C134A2:
+| CardErrorText [C] ERROR ON MEMORY CARD.
+CardErrorText:
 	dc.b	0x00,0x03,0x71,0x4A,0x01,0x08
 	.ascii	"ERROR ON MEMORY CARD."
 	dc.b	0xFF,0x00,0x00
-dat_C134C0:
+| CardWriteProtectedText [C] MEMORY CARD WRITE PROTECTED.
+CardWriteProtectedText:
 	dc.b	0x00,0x03,0x71,0x4A,0x01,0x08
 	.ascii	"MEMORY CARD WRITE PROTECTED."
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C134E6:
+| PushAnyButtonText [C] PUSH ANY BUTTON.
+PushAnyButtonText:
 	dc.b	0x00,0x03,0x71,0x4E,0x01,0x08
 	.ascii	"PUSH ANY BUTTON."
 	dc.b	0xFF,0xFF,0x00,0x00
@@ -109,7 +115,7 @@ loc_C13500:
 	addq.b	#0x1,(BIOS_MESS_BUSY).l	| C13504
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1350A
 	move.l	a4,(a0)+	| C1350E
-	move.l	#dat_C134E6,(a0)+	| C13510
+	move.l	#PushAnyButtonText,(a0)+	| C13510
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C13516
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C1351A
 	move.w	#0x384,(ram_10FE90-A5_BASE,a5)	| C13520
@@ -123,13 +129,14 @@ loc_C13526:
 	bne.b	loc_C13526	| C1353A
 loc_C1353C:
 	rts	| C1353C
-loc_C1353E:
+| CardErrorNotFormatted [C] CardError for an unformatted card: an AES (BIOS_MVS_FLAG 0) asks DO YOU WISH TO FORMAT? (A yes, B no); an MVS formats at once, then repeats the CARD call; THIS MEMORY CARD CANNOT BE FORMATTED. if the format fails
+CardErrorNotFormatted:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1353E
 	bne.w	loc_C13572	| C13542
 	jsr	(sub_C13986,pc)	| C13546
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1354A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1354E
-	move.l	#dat_C1359C,(a0)+	| C13552
+	move.l	#CardFormatQuestionText,(a0)+	| C13552
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C13558
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1355C
 loc_C13560:
@@ -146,13 +153,14 @@ loc_C13572:
 	jsr	(Card,pc)	| C1357E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13582
 	beq.b	loc_C13590	| C13586
-	lea.l	(dat_C13608,pc),a4	| C13588
+	lea.l	(CardCannotFormatText,pc),a4	| C13588
 	bra.w	loc_C13500	| C1358C
 loc_C13590:
 	move.b	(ram_10FDC5-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13590
 	jsr	(Card,pc)	| C13596
 	rts	| C1359A
-dat_C1359C:
+| CardFormatQuestionText [C] MEMORY CARD NOT FORMATTED, DO YOU WISH TO FORMAT? A BUTTON = YES B BUTTON = NO (AES only)
+CardFormatQuestionText:
 	dc.b	0x00,0x03,0x70,0x8A,0x01,0x08
 	.ascii	"MEMORY CARD NOT FORMATTED,"
 	dc.b	0xFF,0xFF,0x00,0x03,0x75,0x2A,0x01,0x08
@@ -162,13 +170,15 @@ dat_C1359C:
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x72,0x01,0x08
 	.ascii	"B BUTTON = NO"
 	dc.b	0xFF,0x00,0x00
-dat_C13608:
+| CardCannotFormatText [C] THIS MEMORY CARD CANNOT BE FORMATTED.
+CardCannotFormatText:
 	dc.b	0x00,0x03,0x71,0x48,0x01,0x08
 	.ascii	"THIS MEMORY CARD"
 	dc.b	0xFF,0xFF,0x00,0x05,0x00,0x02,0x01,0x08
 	.ascii	"CANNOT BE FORMATTED."
 	dc.b	0xFF,0xFF,0x00,0x00
-loc_C1363E:
+| CardErrorFull [C] CardError for a full card: MEMORY CARD FULL, lists the data on the card page by page so that one can be deleted, or the save is skipped
+CardErrorFull:
 	move.b	(BIOS_CRDF-A5_BASE,a5),(ram_10FDC5-A5_BASE,a5)	| C1363E
 	move.w	(BIOS_CRDNGH-A5_BASE,a5),(ram_10FE98-A5_BASE,a5)	| C13644
 	move.w	(BIOS_CRDFILE-A5_BASE,a5),(ram_10FE9A-A5_BASE,a5)	| C1364A
@@ -191,10 +201,10 @@ loc_C13690:
 	jsr	(sub_C13986,pc)	| C13694
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13698
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1369C
-	move.l	#dat_C13876,(a0)+	| C136A0
+	move.l	#CardFullText,(a0)+	| C136A0
 	tst.w	(ram_10FEB2-A5_BASE,a5)	| C136A6
 	beq.b	loc_C136B2	| C136AA
-	move.l	#dat_C1390C,(a0)+	| C136AC
+	move.l	#PreviousPageText,(a0)+	| C136AC
 loc_C136B2:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C136B2
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C136B6
@@ -234,7 +244,7 @@ loc_C13700:
 	bne.b	loc_C136BC	| C13734
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13736
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1373A
-	move.l	#dat_C1392A,(a0)+	| C1373E
+	move.l	#NextPageText,(a0)+	| C1373E
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C13744
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13748
 loc_C1374C:
@@ -290,7 +300,7 @@ loc_C137C8:
 	jsr	(Card,pc)	| C137EE
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(ram_10FDC7-A5_BASE,a5)	| C137F2
 	cmpi.b	#0x84,(BIOS_CRDRESULT-A5_BASE,a5)	| C137F8
-	beq.w	loc_C1363E	| C137FE
+	beq.w	CardErrorFull	| C137FE
 	rts	| C13802
 sub_C13804:
 	move.b	(ram_10FDC5-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13804
@@ -326,7 +336,8 @@ sub_C13854:
 	move.w	#0x1108,(a0)+	| C1386E
 	move.w	d1,(a0)+	| C13872
 	rts	| C13874
-dat_C13876:
+| CardFullText [C] MEMORY CARD FULL,SELECT GAME DATA TO BE DELETED WITH JOYSTICK OR DO NOT SAVE CURRENT GAME.
+CardFullText:
 	dc.b	0x00,0x03,0x70,0x64,0x01,0x08
 	.ascii	"MEMORY CARD FULL,SELECT GAME DATA"
 	dc.b	0xFF,0x00,0x03,0x70,0x66,0x01,0x08
@@ -336,11 +347,13 @@ dat_C13876:
 	dc.b	0xFF,0xFF,0x00,0x03,0x70,0x6A,0x01,0x08
 	.ascii	"A BUTTON=DELETE   B BUTTON=EXIT"
 	dc.b	0xFF,0x00,0x00
-dat_C1390C:
+| PreviousPageText [C] PREVIOUS PAGE
+PreviousPageText:
 	dc.b	0x00,0x03,0x71,0x6D,0x01,0x08,0x12,0xFF,0x00,0x03,0x71,0xAD,0x01,0x08
 	.ascii	"PREVIOUS PAGE"
 	dc.b	0xFF,0x00,0x00
-dat_C1392A:
+| NextPageText [C] NEXT PAGE
+NextPageText:
 	dc.b	0x00,0x03,0x71,0x7B,0x01,0x08,0x13,0xFF,0x00,0x03,0x71,0xBB,0x01,0x08
 	.ascii	"NEXT PAGE"
 	dc.b	0xFF,0x00,0x00
@@ -464,7 +477,7 @@ loc_C13AAE:
 loc_C13AD0:
 	move.w	d0,(a0)+	| C13AD0
 	dbra	d7,loc_C13AD0	| C13AD2
-	lea.l	(dat_C144E8,pc),a1	| C13AD6
+	lea.l	(CardNeoGeoIdText,pc),a1	| C13AD6
 	moveq	#0x7,d7	| C13ADA
 loc_C13ADC:
 	move.b	(a1)+,d0	| C13ADC
@@ -616,7 +629,7 @@ loc_C13C62:
 	move.w	d0,(a0)	| C13C62
 	addq.l	#0x4,a0	| C13C64
 	dbra	d7,loc_C13C62	| C13C66
-	lea.l	(dat_C144E8,pc),a1	| C13C6A
+	lea.l	(CardNeoGeoIdText,pc),a1	| C13C6A
 	moveq	#0x7,d7	| C13C6E
 loc_C13C70:
 	move.b	(a1)+,d0	| C13C70
@@ -1412,7 +1425,8 @@ loc_C144DE:
 	addq.l	#0x4,a3	| C144E0
 	dbra	d7,loc_C144CA	| C144E2
 	rts	| C144E6
-dat_C144E8:
+| CardNeoGeoIdText [C] NEO-GEO, the card header compared by the CARD functions
+CardNeoGeoIdText:
 	.ascii	"NEO-GEO"
 	dc.b	0x80
 | SnkRomCardId [C] "SNK ROM " card header
@@ -1929,7 +1943,7 @@ loc_C149CC:
 loc_C149CE:
 	move.b	d0,(REG_DIPSW).l	| C149CE
 	lea.l	0x40(a6),a0	| C149D4
-	lea.l	(dat_C144E8,pc),a1	| C149D8
+	lea.l	(CardNeoGeoIdText,pc),a1	| C149D8
 	moveq	#0x7,d7	| C149DC
 loc_C149DE:
 	move.w	(a0),d0	| C149DE
@@ -2301,7 +2315,7 @@ CardLock:
 	move.b	d0,(REG_CRDLOCK2).l	| C14E94
 	move.b	d0,(REG_CRDLOCK1).l	| C14E9A
 	rts	| C14EA0
-| ControllerTest [C] unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame
+| ControllerTest [C] unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame, never returns; ran in MAME from the hidden-programs build (scenario controller_test)
 ControllerTest:
 	move.w	#0xFF00,(REG_LSPCMODE).l	| C14EA2
 	lea.l	(BiosWorkRam).l,a5	| C14EAA
@@ -2432,7 +2446,7 @@ CardUtilityMenuTable:
 	dc.l	Reset
 | CardUtilFormat [C] menu item 1. CARD FORMAT; MAME (test build): FORMAT THE CARD screen
 CardUtilFormat:
-	lea.l	(dat_C15D0A,pc),a2	| C150C0
+	lea.l	(CardUtilFormatText,pc),a2	| C150C0
 	jsr	(CardUtilPutText,pc)	| C150C4
 loc_C150C8:
 	jsr	(WaitFrameGetP1,pc)	| C150C8
@@ -2449,7 +2463,7 @@ loc_C150C8:
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C150F6
 	bne.b	loc_C1511A	| C150FA
 	jsr	(ClearFixLayer,pc)	| C150FC
-	lea.l	(dat_C15D5A,pc),a2	| C15100
+	lea.l	(CardUtilFormatConfirmText,pc),a2	| C15100
 	jsr	(CardUtilPutText,pc)	| C15104
 loc_C15108:
 	jsr	(WaitFrameGetP1,pc)	| C15108
@@ -2464,7 +2478,7 @@ loc_C1511A:
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C15126
 	cmpi.b	#0x85,d0	| C1512A
 	bne.b	loc_C15138	| C1512E
-	lea.l	(dat_C16172,pc),a2	| C15130
+	lea.l	(CardUtilWriteProtectedText,pc),a2	| C15130
 	jsr	(sub_C1583E,pc)	| C15134
 loc_C15138:
 	rts	| C15138
@@ -2474,7 +2488,7 @@ loc_C1513A:
 CardUtilDisplayNames:
 	jsr	(ReadCardDetect,pc)	| C1513E
 	beq.w	loc_C15162	| C15142
-	lea.l	(dat_C160E2,pc),a2	| C15146
+	lea.l	(CardUtilPlugCardText,pc),a2	| C15146
 	jsr	(CardUtilPutText,pc)	| C1514A
 loc_C1514E:
 	jsr	(WaitFrameGetP1,pc)	| C1514E
@@ -2486,7 +2500,7 @@ loc_C1514E:
 loc_C15162:
 	jsr	(sub_C15866,pc)	| C15162
 loc_C15166:
-	lea.l	(dat_C15DE6,pc),a2	| C15166
+	lea.l	(CardUtilDisplayText,pc),a2	| C15166
 	jsr	(sub_C158BA,pc)	| C1516A
 loc_C1516E:
 	jsr	(WaitFrameGetP1,pc)	| C1516E
@@ -2514,11 +2528,11 @@ loc_C151A8:
 	cmp.w	(ram_10FEB0-A5_BASE,a5),d1	| C151A8
 	bhi.b	loc_C1516E	| C151AC
 	bra.b	loc_C15166	| C151AE
-| CardUtilCopy [I] menu item 3. COPY A DATA (table order)
+| CardUtilCopy [C] menu item 3. COPY A DATA: A copies the chosen data (C all of it) into RAM, CHANGE CARD AND PRESS A BUTTON, then saves it on the new card; THERE IS .. ALREADY IN THIS CARD if it holds that data, MEMORY CARD NOT FORMATTED. for a blank card. MAME (test build, cards swapped): card_util_copy, card_util_copy_same_card, card_util_copy_unformatted
 CardUtilCopy:
 	jsr	(ReadCardDetect,pc)	| C151B0
 	beq.w	loc_C151D4	| C151B4
-	lea.l	(dat_C160E2,pc),a2	| C151B8
+	lea.l	(CardUtilPlugCardText,pc),a2	| C151B8
 	jsr	(CardUtilPutText,pc)	| C151BC
 loc_C151C0:
 	jsr	(WaitFrameGetP1,pc)	| C151C0
@@ -2530,7 +2544,7 @@ loc_C151C0:
 loc_C151D4:
 	jsr	(sub_C15866,pc)	| C151D4
 loc_C151D8:
-	lea.l	(dat_C15E00,pc),a2	| C151D8
+	lea.l	(CardUtilCopySelectText,pc),a2	| C151D8
 	jsr	(sub_C158BA,pc)	| C151DC
 loc_C151E0:
 	jsr	(sub_C13824,pc)	| C151E0
@@ -2572,7 +2586,7 @@ loc_C15212:
 	bra.b	loc_C151D8	| C15244
 loc_C15246:
 	jsr	(ClearFixLayer,pc)	| C15246
-	lea.l	(dat_C15E52,pc),a2	| C1524A
+	lea.l	(CardUtilCopiedText,pc),a2	| C1524A
 	jsr	(CardUtilPutText,pc)	| C1524E
 	moveq	#0x0,d0	| C15252
 	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C15254
@@ -2613,7 +2627,7 @@ loc_C15298:
 	btst.l	d1,d0	| C152E2
 	beq.w	loc_C1531E	| C152E4
 	jsr	(ClearFixLayer,pc)	| C152E8
-	lea.l	(dat_C15E98,pc),a2	| C152EC
+	lea.l	(CardUtilAlreadyText,pc),a2	| C152EC
 	jsr	(CardUtilPutText,pc)	| C152F0
 	moveq	#0x0,d0	| C152F4
 	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C152F6
@@ -2639,7 +2653,7 @@ loc_C1531E:
 	bra.w	loc_C151EE	| C15340
 loc_C15344:
 	jsr	(ClearFixLayer,pc)	| C15344
-	lea.l	(dat_C15F02,pc),a2	| C15348
+	lea.l	(CardUtilAllCopiedText,pc),a2	| C15348
 	jsr	(CardUtilPutText,pc)	| C1534C
 	lea.l	(WorkRamStart).l,a0	| C15350
 	movea.l	#ram_10C000,a1	| C15356
@@ -2683,7 +2697,7 @@ loc_C153C2:
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C153F0
 	bne.b	loc_C15414	| C153F4
 	jsr	(ClearFixLayer,pc)	| C153F6
-	lea.l	(dat_C15D5A,pc),a2	| C153FA
+	lea.l	(CardUtilFormatConfirmText,pc),a2	| C153FA
 	jsr	(CardUtilPutText,pc)	| C153FE
 loc_C15402:
 	jsr	(WaitFrameGetP1,pc)	| C15402
@@ -2726,7 +2740,7 @@ loc_C1544C:
 CardUtilDelete:
 	jsr	(ReadCardDetect,pc)	| C15490
 	beq.w	loc_C154B4	| C15494
-	lea.l	(dat_C160E2,pc),a2	| C15498
+	lea.l	(CardUtilPlugCardText,pc),a2	| C15498
 	jsr	(CardUtilPutText,pc)	| C1549C
 loc_C154A0:
 	jsr	(WaitFrameGetP1,pc)	| C154A0
@@ -2738,7 +2752,7 @@ loc_C154A0:
 loc_C154B4:
 	jsr	(sub_C15866,pc)	| C154B4
 loc_C154B8:
-	lea.l	(dat_C15F5C,pc),a2	| C154B8
+	lea.l	(CardUtilDeleteSelectText,pc),a2	| C154B8
 	jsr	(sub_C158BA,pc)	| C154BC
 loc_C154C0:
 	jsr	(sub_C13824,pc)	| C154C0
@@ -2778,7 +2792,7 @@ loc_C154EA:
 	bra.b	loc_C154B8	| C1551C
 loc_C1551E:
 	jsr	(ClearFixLayer,pc)	| C1551E
-	lea.l	(dat_C15F98,pc),a2	| C15522
+	lea.l	(CardUtilDeleteConfirmText,pc),a2	| C15522
 	jsr	(CardUtilPutText,pc)	| C15526
 	moveq	#0x0,d0	| C1552A
 	move.w	(ram_10FEB6-A5_BASE,a5),d0	| C1552C
@@ -2806,7 +2820,7 @@ loc_C1554A:
 CardUtilUserName:
 	jsr	(ReadCardDetect,pc)	| C15578
 	beq.w	loc_C1559C	| C1557C
-	lea.l	(dat_C160E2,pc),a2	| C15580
+	lea.l	(CardUtilPlugCardText,pc),a2	| C15580
 	jsr	(CardUtilPutText,pc)	| C15584
 loc_C15588:
 	jsr	(WaitFrameGetP1,pc)	| C15588
@@ -2832,7 +2846,7 @@ loc_C155C4:
 	clr.w	(ram_10FEB8-A5_BASE,a5)	| C155D0
 loc_C155D4:
 	jsr	(ClearFixLayer,pc)	| C155D4
-	lea.l	(dat_C15FD8,pc),a2	| C155D8
+	lea.l	(CardUtilUserNameText,pc),a2	| C155D8
 	jsr	(CardUtilPutText,pc)	| C155DC
 	jsr	(sub_C15776,pc)	| C155E0
 	jsr	(sub_C157A8,pc)	| C155E4
@@ -3018,11 +3032,11 @@ loc_C15802:
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15812
 	rts	| C15816
 tbl_C15818:
-	dc.l	dat_C160FC
-	dc.l	dat_C16120
-	dc.l	dat_C1613A
-	dc.l	dat_C16158
-	dc.l	dat_C16172
+	dc.l	CardUtilNotFormattedText
+	dc.l	CardUtilNoDataText
+	dc.l	CardUtilErrorText
+	dc.l	CardUtilFullText
+	dc.l	CardUtilWriteProtectedText
 loc_C1582C:
 	subi.b	#0x81,d0	| C1582C
 	bmi.b	loc_C15864	| C15830
@@ -3035,7 +3049,7 @@ sub_C1583E:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15842
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C15846
 	move.l	a2,(a0)+	| C1584A
-	move.l	#dat_C134E6,(a0)+	| C1584C
+	move.l	#PushAnyButtonText,(a0)+	| C1584C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C15852
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15856
 loc_C1585A:
@@ -3077,10 +3091,10 @@ sub_C158BA:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C158C2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C158C6
 	move.l	a2,(a0)+	| C158CA
-	move.l	#dat_C15DBC,(a0)+	| C158CC
+	move.l	#CardUtilReturnText2,(a0)+	| C158CC
 	tst.w	(ram_10FEB2-A5_BASE,a5)	| C158D2
 	beq.b	loc_C158DE	| C158D6
-	move.l	#dat_C1390C,(a0)+	| C158D8
+	move.l	#PreviousPageText,(a0)+	| C158D8
 loc_C158DE:
 	move.w	(ram_10FEB2-A5_BASE,a5),d0	| C158DE
 	mulu.w	#0x18,d0	| C158E2
@@ -3113,7 +3127,7 @@ loc_C15928:
 	subq.w	#0x6,d0	| C15930
 	bne.b	loc_C158F0	| C15932
 	clr.w	(a0)+	| C15934
-	move.l	#dat_C1392A,(a0)+	| C15936
+	move.l	#NextPageText,(a0)+	| C15936
 loc_C1593C:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1593C
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15940
@@ -3148,7 +3162,7 @@ CardUtilPutText:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15986
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1598A
 	move.l	a2,(a0)+	| C1598E
-	move.l	#dat_C15CE0,(a0)+	| C15990
+	move.l	#CardUtilReturnText,(a0)+	| C15990
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C15996
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1599A
 	rts	| C1599E
@@ -3233,11 +3247,13 @@ CardUtilityMenuText:
 	dc.b	0xFF,0x00,0x03,0x71,0x18,0x01,0x08
 	.ascii	"6. END"
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C15CE0:
+| CardUtilReturnText [C] B BUTTON = RETURN TO MENU SCREEN
+CardUtilReturnText:
 	dc.b	0x00,0x03,0x70,0x9C,0x01,0x08
 	.ascii	"B BUTTON = RETURN TO MENU SCREEN"
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C15D0A:
+| CardUtilFormatText [C] FORMAT THE CARD PRESS A BUTTON AFTER PLUGGING THE CARD IN.
+CardUtilFormatText:
 	dc.b	0x00,0x03,0x71,0x28,0x01,0x08
 	.ascii	"FORMAT THE CARD"
 	dc.b	0xFF,0x00,0x03,0x71,0x2B,0x01,0x08
@@ -3245,7 +3261,8 @@ dat_C15D0A:
 	dc.b	0xFF,0xFF,0x00,0x03,0x70,0xED,0x01,0x08
 	.ascii	"AFTER PLUGGING THE CARD IN."
 	dc.b	0xFF,0x00,0x00
-dat_C15D5A:
+| CardUtilFormatConfirmText [C] THERE ARE SOME DATA IN THIS CARD. DO YOU MIND TO DELETE THEM ? A BUTTON = NO (but A formats and B returns, CardUtilFormat)
+CardUtilFormatConfirmText:
 	dc.b	0x00,0x03,0x70,0x8A,0x01,0x08
 	.ascii	"THERE ARE SOME DATA IN THIS CARD."
 	dc.b	0xFF,0x00,0x03,0x70,0x8D,0x01,0x08
@@ -3253,15 +3270,18 @@ dat_C15D5A:
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x10,0x01,0x08
 	.ascii	"A BUTTON = NO"
 	dc.b	0xFF,0x00,0x00
-dat_C15DBC:
+| CardUtilReturnText2 [C] B BUTTON = RETURN TO MENU SCREEN
+CardUtilReturnText2:
 	dc.b	0x00,0x03,0x70,0x8A,0x01,0x08
 	.ascii	"B BUTTON = RETURN TO MENU SCREEN"
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C15DE6:
+| CardUtilDisplayText [C] DISPLAY DATA NAME
+CardUtilDisplayText:
 	dc.b	0x00,0x03,0x71,0x07,0x01,0x08
 	.ascii	"DISPLAY DATA NAME"
 	dc.b	0xFF,0x00,0x00
-dat_C15E00:
+| CardUtilCopySelectText [C] SELECT THE DATA TO COPY. A BUTTON = COPY C BUTTON = ALL COPY
+CardUtilCopySelectText:
 	dc.b	0x00,0x03,0x71,0x24,0x01,0x08
 	.ascii	"SELECT THE DATA TO COPY."
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x26,0x01,0x08
@@ -3269,14 +3289,16 @@ dat_C15E00:
 	dc.b	0xFF,0x00,0x03,0x71,0x28,0x01,0x08
 	.ascii	"C BUTTON = ALL COPY"
 	dc.b	0xFF,0x00,0x00
-dat_C15E52:
+| CardUtilCopiedText [C] IS COPIED. CHANGE CARD AND PRESS A BUTTON
+CardUtilCopiedText:
 	dc.b	0x00,0x03,0x71,0x09,0x01,0x08,0x44,0x41,0x54,0x41,0xFF,0xFF,0x00,0x03,0x71,0x0F
 	dc.b	0x01,0x08
 	.ascii	"IS COPIED."
 	dc.b	0xFF,0xFF,0x00,0x03,0x70,0xB2,0x01,0x08
 	.ascii	"CHANGE CARD AND PRESS A BUTTON"
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C15E98:
+| CardUtilAlreadyText [C] THERE IS .. ALREADY IN THIS CARD. DO YOU MIND TO DELETE OLD DATA ? A BUTTON = NO
+CardUtilAlreadyText:
 	dc.b	0x00,0x03,0x71,0x09,0x01,0x08
 	.ascii	"THERE IS"
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x0F,0x01,0x08
@@ -3286,7 +3308,8 @@ dat_C15E98:
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x15,0x01,0x08
 	.ascii	"A BUTTON = NO"
 	dc.b	0xFF,0x00,0x00
-dat_C15F02:
+| CardUtilAllCopiedText [C] ALL THE DATA IN THE CARD IS COPIED. CHANGE CARD AND PRESS A BUTTON.
+CardUtilAllCopiedText:
 	dc.b	0x00,0x03,0x71,0x0F,0x01,0x08
 	.ascii	"ALL THE DATA"
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x12,0x01,0x08
@@ -3294,19 +3317,22 @@ dat_C15F02:
 	dc.b	0xFF,0xFF,0x00,0x03,0x70,0xB5,0x01,0x08
 	.ascii	"CHANGE CARD AND PRESS A BUTTON."
 	dc.b	0xFF,0x00,0x00
-dat_C15F5C:
+| CardUtilDeleteSelectText [C] SELECT DATA TO BE DELETED. A BUTTON = DELETE
+CardUtilDeleteSelectText:
 	dc.b	0x00,0x03,0x70,0xE5,0x01,0x08
 	.ascii	"SELECT DATA TO BE DELETED."
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x28,0x01,0x08
 	.ascii	"A BUTTON = DELETE"
 	dc.b	0xFF,0x00,0x00
-dat_C15F98:
+| CardUtilDeleteConfirmText [C] DO YOU MIND TO DELETE DATA .. A BUTTON = NO
+CardUtilDeleteConfirmText:
 	dc.b	0x00,0x03,0x71,0x09,0x01,0x08
 	.ascii	"DO YOU MIND TO DELETE DATA"
 	dc.b	0xFF,0xFF,0x00,0x03,0x73,0xCC,0x01,0x08,0x3F,0xFF,0x00,0x03,0x71,0x12,0x01,0x08
 	.ascii	"A BUTTON = NO"
 	dc.b	0xFF,0x00,0x00
-dat_C15FD8:
+| CardUtilUserNameText [C] FILE USER'S NAME and the character grid
+CardUtilUserNameText:
 	dc.b	0x00,0x03,0x71,0x03,0x01,0x08
 	.ascii	"FILE USER'S NAME"
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x86,0x01,0x08,0x28,0x20,0x20,0x20,0x20,0x20,0x20,0x20
@@ -3326,83 +3352,204 @@ dat_C15FD8:
 	dc.b	0x20,0x3E,0xFF,0x00,0x03,0x71,0x16,0x01,0x08
 	.ascii	"SPACE "
 	dc.b	0x10,0x20,0x11,0x20,0x45,0x4E,0x44,0xFF,0x00,0x00
-dat_C160E2:
+| CardUtilPlugCardText [C] PLUG THE CARD IN.
+CardUtilPlugCardText:
 	dc.b	0x00,0x03,0x71,0x2B,0x01,0x08
 	.ascii	"PLUG THE CARD IN."
 	dc.b	0xFF,0x00,0x00
-dat_C160FC:
+| CardUtilNotFormattedText [C] MEMORY CARD NOT FORMATTED. (MAME: card_util_copy_unformatted)
+CardUtilNotFormattedText:
 	dc.b	0x00,0x03,0x70,0xEB,0x01,0x08
 	.ascii	"MEMORY CARD NOT FORMATTED."
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C16120:
+| CardUtilNoDataText [C] THERE IS NO DATA.
+CardUtilNoDataText:
 	dc.b	0x00,0x03,0x71,0x2B,0x01,0x08
 	.ascii	"THERE IS NO DATA."
 	dc.b	0xFF,0x00,0x00
-dat_C1613A:
+| CardUtilErrorText [C] ERROR ON MEMORY CARD.
+CardUtilErrorText:
 	dc.b	0x00,0x03,0x71,0x2B,0x01,0x08
 	.ascii	"ERROR ON MEMORY CARD."
 	dc.b	0xFF,0x00,0x00
-dat_C16158:
+| CardUtilFullText [C] MEMORY CARD FULL.
+CardUtilFullText:
 	dc.b	0x00,0x03,0x71,0x2B,0x01,0x08
 	.ascii	"MEMORY CARD FULL."
 	dc.b	0xFF,0x00,0x00
-dat_C16172:
+| CardUtilWriteProtectedText [C] MEMORY CARD WRITE PROTECTED. (MAME: card_util_write_protected)
+CardUtilWriteProtectedText:
 	dc.b	0x00,0x03,0x70,0xEB,0x01,0x08
 	.ascii	"MEMORY CARD WRITE PROTECTED."
-	dc.b	0xFF,0xFF,0x00,0x00,0x42,0x79,0x00,0x10,0xFD,0x4C,0x60,0x08,0x33,0xFC,0x00,0x04
-	dc.b	0x00,0x10,0xFD,0x4C,0x00,0x7C,0x07,0x00,0x48,0xF9,0x7F,0xFF,0x00,0x10,0xFD,0x00
-	dc.b	0x41,0xF9,0x00,0x10,0xFF,0x00,0x42,0x98,0x20,0xFC,0x00,0x01,0xF0,0xFF,0x30,0xFC
-	dc.b	0x20,0x02,0x20,0xFC,0x00,0x03,0x70,0x85,0x30,0xFC,0x00,0x07,0x22,0x4F,0x4E,0xBA
-	dc.b	0x08,0xD6,0x4E,0xBA,0x08,0xD2,0x30,0xFC,0x20,0x20,0x4E,0xBA,0x08,0xCA,0x4E,0xBA
-	dc.b	0x08,0xC6,0x4E,0xBA,0x08,0xC2,0x4E,0xBA,0x08,0xBE,0x30,0xFC,0x20,0x20,0x4E,0xBA
-	dc.b	0x08,0xB6,0x4E,0xBA,0x08,0xB2,0x20,0xFC,0xFF,0x00,0x00,0x00,0x50,0x8F,0x60,0x4C
-	dc.b	0x33,0xFC,0x00,0x08,0x00,0x10,0xFD,0x4C,0x60,0x30,0x33,0xFC,0x00,0x0C,0x00,0x10
-	dc.b	0xFD,0x4C,0x60,0x26,0x33,0xFC,0x00,0x10,0x00,0x10,0xFD,0x4C,0x60,0x1C,0x33,0xFC
-	dc.b	0x00,0x14,0x00,0x10,0xFD,0x4C,0x60,0x12,0x33,0xFC,0x00,0x18,0x00,0x10,0xFD,0x4C
-	dc.b	0x60,0x08,0x33,0xFC,0x00,0x1C,0x00,0x10,0xFD,0x4C,0x00,0x7C,0x07,0x00,0x48,0xF9
-	dc.b	0x7F,0xFF,0x00,0x10,0xFD,0x00,0x41,0xF9,0x00,0x10,0xFF,0x00,0x4B,0xF9,0x00,0x10
-	dc.b	0xF3,0x00,0x4E,0x6B,0x2B,0x4B,0x0A,0x40,0x3B,0x5F,0x0A,0x48,0x2B,0x5F,0x0A,0x44
-	dc.b	0x2B,0x4F,0x0A,0x3C,0x42,0x6D,0x0A,0x4A,0x2B,0x79,0x00,0x40,0x01,0xE2,0x0A,0x4E
-	dc.b	0x23,0xFC,0x0E,0xEE,0x00,0x00,0x00,0x40,0x01,0xE2,0x13,0xC0,0x00,0x3A,0x00,0x01
-	dc.b	0x42,0x2D,0x0A,0xC2,0x43,0xFA,0x0B,0x44,0x30,0x2D,0x0A,0x4C,0x20,0xF1,0x00,0x00
-	dc.b	0x4E,0xBA,0x06,0xDE,0x13,0xC0,0x00,0x30,0x00,0x01,0x42,0x6D,0x0A,0x74,0x2B,0x7C
-	dc.b	0x00,0x10,0x00,0x00,0x0A,0x5E,0x2B,0x7C,0x00,0x10,0x00,0x00,0x0A,0x66,0x42,0xAD
-	dc.b	0x0A,0x62,0x42,0xAD,0x0A,0x6A,0x42,0x6D,0x0A,0x6E,0x08,0x2D,0x00,0x07,0x0A,0x48
-	dc.b	0x67,0x08,0x33,0xFC,0x00,0x05,0x00,0x10,0xFD,0x74,0x30,0x2D,0x0A,0x74,0x0C,0x40
-	dc.b	0x00,0x02,0x65,0x38,0x0C,0x40,0x00,0x05,0x64,0x32,0x0C,0x40,0x00,0x03,0x67,0x14
-	dc.b	0x64,0x0A,0x2C,0x6D,0x0A,0x66,0x3B,0x56,0x0A,0x70,0x60,0x20,0x2B,0x6D,0x0A,0x00
-	dc.b	0x0A,0x70,0x60,0x18,0x33,0xED,0x0A,0x6C,0x00,0x3C,0x00,0x00
-	.ascii	"NqNqNqNq;y"
-	dc.b	0x00,0x3C,0x00,0x02,0x0A,0x70,0x42,0x6D,0x0A,0x76,0x1B,0x7B,0x00,0x1A,0x0A,0x77
-	dc.b	0xE5,0x48,0x20,0x6D,0x0A,0xBE,0x20,0xFC
-	dc.l	dat_C16FF4
-	dc.b	0x20,0xFB,0x00,0x10,0x2B,0x48,0x0A,0xBE,0x60,0x24,0x04,0x04,0x05,0x05,0x00,0x00
-	dc.b	0x00,0x00
-	dc.l	dat_C16EE0
-	dc.l	dat_C16EFE
-	dc.l	dat_C16F26
-	dc.l	dat_C16F4E
-	dc.l	dat_C16F74
-	dc.l	dat_C16FA8
-	dc.l	dat_C16FE0
-	dc.b	0x13,0xC0,0x00,0x30,0x00,0x01,0x33,0xFC,0x00,0x07,0x00,0x3C,0x00,0x0C,0x30,0x39
-	dc.b	0x00,0x3C,0x00,0x06,0x02,0x40,0x7F,0x80,0x66,0xF4,0x4E,0xBA,0x23,0xAE,0x4B,0xF9
-	dc.b	0x00,0x10,0xF3,0x00,0x52,0x6D,0x0A,0x78,0x4E,0xBA,0x21,0x90,0x30,0x2D,0x0A,0x74
-	dc.b	0x16,0x2D,0x0A,0x98,0x08,0x03,0x00,0x04,0x67,0x12,0x52,0x40,0x0C,0x40,0x00,0x07
-	dc.b	0x65,0x02,0x70,0x00,0x3B,0x40,0x0A,0x74,0x60,0x00,0xFF,0x30,0x48,0x7A,0xFF,0xB2
-	dc.b	0xE5,0x48,0x20,0x7B,0x00,0x04,0x4E,0xD0
-tbl_C163AC:
-	dc.l	loc_C163C8
-	dc.l	loc_C16498
-	dc.l	loc_C165B2
-	dc.l	loc_C1666E
-	dc.l	loc_C1676C
-	dc.l	loc_C168E2
-	dc.l	loc_C1691C
-loc_C163C8:
+	dc.b	0xFF,0xFF,0x00,0x00
+| MonitorEntry [C] debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (tbl_C163AC); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset)
+MonitorEntry:
+	clr.w	(ram_10FD4C).l	| C16198
+	bra.b	loc_C161A8	| C1619E
+| MonitorAddressError [C] debug monitor, code 4 ADDRESS ERROR: also prints the extra words of the bus/address error frame (access address, instruction)
+MonitorAddressError:
+	move.w	#0x4,(ram_10FD4C).l	| C161A0
+loc_C161A8:
+	ori.w	#0x700,sr	| C161A8
+	movem.l	d0-d7/a0-a6,(ram_10FD00).l	| C161AC
+	lea.l	(ram_10FF00).l,a0	| C161B4
+	clr.l	(a0)+	| C161BA
+	move.l	#0x1F0FF,(a0)+	| C161BC
+	move.w	#0x2002,(a0)+	| C161C2
+	move.l	#0x37085,(a0)+	| C161C6
+	move.w	#0x7,(a0)+	| C161CC
+	movea.l	a7,a1	| C161D0
+	jsr	(PutHexByte,pc)	| C161D2
+	jsr	(PutHexByte,pc)	| C161D6
+	move.w	#0x2020,(a0)+	| C161DA
+	jsr	(PutHexByte,pc)	| C161DE
+	jsr	(PutHexByte,pc)	| C161E2
+	jsr	(PutHexByte,pc)	| C161E6
+	jsr	(PutHexByte,pc)	| C161EA
+	move.w	#0x2020,(a0)+	| C161EE
+	jsr	(PutHexByte,pc)	| C161F2
+	jsr	(PutHexByte,pc)	| C161F6
+	move.l	#0xFF000000,(a0)+	| C161FA
+	addq.l	#0x8,a7	| C16200
+	bra.b	loc_C16250	| C16202
+| MonitorIllegal [C] debug monitor, code 8 ILLEGAL INSTRUCTION
+MonitorIllegal:
+	move.w	#0x8,(ram_10FD4C).l	| C16204
+	bra.b	loc_C1623E	| C1620C
+| MonitorPrivilege [C] debug monitor, code $C PRIVILEGE VIOLATION
+MonitorPrivilege:
+	move.w	#0xC,(ram_10FD4C).l	| C1620E
+	bra.b	loc_C1623E	| C16216
+| MonitorTrace [C] debug monitor, code $10 TRACE
+MonitorTrace:
+	move.w	#0x10,(ram_10FD4C).l	| C16218
+	bra.b	loc_C1623E	| C16220
+| MonitorUnassigned [C] debug monitor, code $14 UNASSIGNED
+MonitorUnassigned:
+	move.w	#0x14,(ram_10FD4C).l	| C16222
+	bra.b	loc_C1623E	| C1622A
+| MonitorUninitialized [C] debug monitor, code $18 UNINITIALIZED INTERRUPT
+MonitorUninitialized:
+	move.w	#0x18,(ram_10FD4C).l	| C1622C
+	bra.b	loc_C1623E	| C16234
+| MonitorSpurious [C] debug monitor, code $1C SPURIOUS INTERRUPT
+MonitorSpurious:
+	move.w	#0x1C,(ram_10FD4C).l	| C16236
+loc_C1623E:
+	ori.w	#0x700,sr	| C1623E
+	movem.l	d0-d7/a0-a6,(ram_10FD00).l	| C16242
+	lea.l	(ram_10FF00).l,a0	| C1624A
+loc_C16250:
+	lea.l	(BiosWorkRam).l,a5	| C16250
+	move	usp,a3	| C16256
+	move.l	a3,(ram_10FD40-A5_BASE,a5)	| C16258
+	move.w	(a7)+,(ram_10FD48-A5_BASE,a5)	| C1625C
+	move.l	(a7)+,(ram_10FD44-A5_BASE,a5)	| C16260
+	move.l	a7,(ram_10FD3C-A5_BASE,a5)	| C16264
+	clr.w	(ram_10FD4A-A5_BASE,a5)	| C16268
+	move.l	(0x4001E2).l,(ram_10FD4E-A5_BASE,a5)	| C1626C
+	move.l	#0xEEE0000,(0x4001E2).l	| C16274
+	move.b	d0,(REG_NOSHADOW).l	| C1627E
+	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C16284
+	lea.l	(MonitorCauseTexts,pc),a1	| C16288
+	move.w	(ram_10FD4C-A5_BASE,a5),d0	| C1628C
+	move.l	(a1,d0.w),(a0)+	| C16290
+	jsr	(MonitorShowRegisters,pc)	| C16294
+	move.b	d0,(REG_DIPSW).l	| C16298
+	clr.w	(ram_10FD74-A5_BASE,a5)	| C1629E
+	move.l	#WorkRamStart,(ram_10FD5E-A5_BASE,a5)	| C162A2
+	move.l	#WorkRamStart,(ram_10FD66-A5_BASE,a5)	| C162AA
+	clr.l	(ram_10FD62-A5_BASE,a5)	| C162B2
+	clr.l	(ram_10FD6A-A5_BASE,a5)	| C162B6
+	clr.w	(ram_10FD6E-A5_BASE,a5)	| C162BA
+	btst.b	#0x7,(ram_10FD48-A5_BASE,a5)	| C162BE
+	beq.b	loc_C162CE	| C162C4
+	move.w	#0x5,(ram_10FD74).l	| C162C6
+loc_C162CE:
+	move.w	(ram_10FD74-A5_BASE,a5),d0	| C162CE
+	cmpi.w	#0x2,d0	| C162D2
+	bcs.b	loc_C16310	| C162D6
+	cmpi.w	#0x5,d0	| C162D8
+	bcc.b	loc_C16310	| C162DC
+	cmpi.w	#0x3,d0	| C162DE
+	beq.b	loc_C162F8	| C162E2
+	bcc.b	loc_C162F0	| C162E4
+	movea.l	(ram_10FD66-A5_BASE,a5),a6	| C162E6
+	move.w	(a6),(ram_10FD70-A5_BASE,a5)	| C162EA
+	bra.b	loc_C16310	| C162EE
+loc_C162F0:
+	move.l	(ram_10FD00-A5_BASE,a5),(ram_10FD70-A5_BASE,a5)	| C162F0
+	bra.b	loc_C16310	| C162F6
+loc_C162F8:
+	move.w	(ram_10FD6C-A5_BASE,a5),(REG_VRAMADDR).l	| C162F8
+	nop	| C16300
+	nop	| C16302
+	nop	| C16304
+	nop	| C16306
+	move.w	(REG_VRAMRW).l,(ram_10FD70-A5_BASE,a5)	| C16308
+loc_C16310:
+	clr.w	(ram_10FD76-A5_BASE,a5)	| C16310
+	move.b	(MonitorDigitCount,pc,d0.w),(ram_10FD77-A5_BASE,a5)	| C16314
+	lsl.w	#0x2,d0	| C1631A
+	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1631C
+	move.l	#MonitorCommandLine,(a0)+	| C16320
+	move.l	(MonitorCommandTexts,pc,d0.w),(a0)+	| C16326
+	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1632A
+	bra.b	MonitorLoop	| C1632E
+| MonitorDigitCount [C] debug monitor: number of editable digits per command
+MonitorDigitCount:
+	dc.b	0x04,0x04,0x05,0x05,0x00,0x00,0x00,0x00
+| MonitorCommandTexts [C] debug monitor: command name pointers (MonitorDisplayMemoryText ..)
+MonitorCommandTexts:
+	dc.l	MonitorDisplayMemoryText
+	dc.l	MonitorDisplayVramText
+	dc.l	MonitorModifyMemoryText
+	dc.l	MonitorModifyVramText
+	dc.l	MonitorModifyRegisterText
+	dc.l	MonitorTraceCommandText
+	dc.l	MonitorRunText
+| MonitorLoop [C] debug monitor main loop: waits for VBlank, MESS_OUT, reads the controllers; A selects the next of the 7 commands, other keys go to the command (MonitorCommandTable)
+MonitorLoop:
+	move.b	d0,(REG_DIPSW).l	| C16354
+	move.w	#0x7,(REG_IRQACK).l	| C1635A
+loc_C16362:
+	move.w	(REG_LSPCMODE).l,d0	| C16362
+	andi.w	#0x7F80,d0	| C16368
+	bne.b	loc_C16362	| C1636C
+	jsr	(MessOut,pc)	| C1636E
+	lea.l	(BiosWorkRam).l,a5	| C16372
+	addq.w	#0x1,(ram_10FD78-A5_BASE,a5)	| C16378
+	jsr	(ReadControllers,pc)	| C1637C
+	move.w	(ram_10FD74-A5_BASE,a5),d0	| C16380
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16384
+	btst.b	#0x4,d3	| C16388
+	beq.b	loc_C163A0	| C1638C
+	addq.w	#0x1,d0	| C1638E
+	cmpi.w	#0x7,d0	| C16390
+	bcs.b	loc_C16398	| C16394
+	moveq	#0x0,d0	| C16396
+loc_C16398:
+	move.w	d0,(ram_10FD74-A5_BASE,a5)	| C16398
+	bra.w	loc_C162CE	| C1639C
+loc_C163A0:
+	pea.l	(MonitorLoop,pc)	| C163A0
+	lsl.w	#0x2,d0	| C163A4
+	movea.l	(MonitorCommandTable,pc,d0.w),a0	| C163A6
+	jmp	(a0)	| C163AA
+| MonitorCommandTable [C] debug monitor: 7 command handlers, display memory, display V-RAM, modify memory, modify V-RAM, modify register, trace, run (MAME: monitor_test.py build)
+MonitorCommandTable:
+	dc.l	MonitorDisplayMemory
+	dc.l	MonitorDisplayVram
+	dc.l	MonitorModifyMemory
+	dc.l	MonitorModifyVram
+	dc.l	MonitorModifyRegister
+	dc.l	MonitorTraceCommand
+	dc.l	MonitorRun
+| MonitorDisplayMemory [C] command 0: Left/Right pick the digit, Up/Down change the address by MonitorAddressSteps, C dumps 8 lines of 8 bytes
+MonitorDisplayMemory:
 	lea.l	(ram_10FD5F-A5_BASE,a5),a1	| C163C8
-	jsr	(sub_C16A48,pc)	| C163CC
-	jsr	(sub_C16926,pc)	| C163D0
+	jsr	(MonitorPutAddress,pc)	| C163CC
+	jsr	(MonitorDrawDigitCursor,pc)	| C163D0
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C163D4
 	andi.b	#0xC,d3	| C163D8
 	beq.w	loc_C16400	| C163DC
@@ -3428,7 +3575,7 @@ loc_C16400:
 	move.l	(ram_10FD5E-A5_BASE,a5),d0	| C1640A
 	move.w	(ram_10FD76-A5_BASE,a5),d2	| C1640E
 	lsl.w	#0x2,d2	| C16412
-	move.l	(tbl_C1642E,pc,d2.w),d2	| C16414
+	move.l	(MonitorAddressSteps,pc,d2.w),d2	| C16414
 	andi.b	#0x1,d3	| C16418
 	beq.b	loc_C16420	| C1641C
 	neg.l	d2	| C1641E
@@ -3437,7 +3584,8 @@ loc_C16420:
 	andi.l	#0xFFFFFF,d0	| C16422
 	move.l	d0,(ram_10FD5E-A5_BASE,a5)	| C16428
 	rts	| C1642C
-tbl_C1642E:
+| MonitorAddressSteps [C] address steps per digit: $100000, $10000, $1000, $100, $40
+MonitorAddressSteps:
 	dc.b	0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x40
 loc_C16442:
@@ -3467,10 +3615,11 @@ loc_C1646E:
 	clr.w	(a0)+	| C16490
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16492
 	rts	| C16496
-loc_C16498:
+| MonitorDisplayVram [C] command 1: like MonitorDisplayMemory on video RAM (REG_VRAMADDR / REG_VRAMRW)
+MonitorDisplayVram:
 	lea.l	(ram_10FD63-A5_BASE,a5),a1	| C16498
-	jsr	(sub_C16A48,pc)	| C1649C
-	jsr	(sub_C16926,pc)	| C164A0
+	jsr	(MonitorPutAddress,pc)	| C1649C
+	jsr	(MonitorDrawDigitCursor,pc)	| C164A0
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C164A4
 	andi.b	#0xC,d3	| C164A8
 	beq.w	loc_C164D4	| C164AC
@@ -3566,12 +3715,13 @@ sub_C165A8:
 	move.b	d0,(a0)+	| C165AC
 	move.b	d1,(a0)+	| C165AE
 	rts	| C165B0
-loc_C165B2:
+| MonitorModifyMemory [C] command 2: address and value digits, C writes the value to memory (ran in MAME, monitor test build)
+MonitorModifyMemory:
 	lea.l	(ram_10FD67-A5_BASE,a5),a1	| C165B2
-	jsr	(sub_C16A48,pc)	| C165B6
+	jsr	(MonitorPutAddress,pc)	| C165B6
 	moveq	#0x1,d7	| C165BA
-	jsr	(sub_C16A78,pc)	| C165BC
-	jsr	(sub_C16926,pc)	| C165C0
+	jsr	(MonitorPutValue,pc)	| C165BC
+	jsr	(MonitorDrawDigitCursor,pc)	| C165C0
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C165C4
 	andi.b	#0xC,d3	| C165C8
 	beq.w	loc_C165F0	| C165CC
@@ -3624,12 +3774,13 @@ loc_C1665C:
 	move.w	(ram_10FD70-A5_BASE,a5),(a1)	| C16668
 loc_C1666C:
 	rts	| C1666C
-loc_C1666E:
+| MonitorModifyVram [C] command 3: address and value digits, C writes the value to video RAM (ran in MAME, monitor test build)
+MonitorModifyVram:
 	lea.l	(ram_10FD6B-A5_BASE,a5),a1	| C1666E
-	jsr	(sub_C16A48,pc)	| C16672
+	jsr	(MonitorPutAddress,pc)	| C16672
 	moveq	#0x1,d7	| C16676
-	jsr	(sub_C16A78,pc)	| C16678
-	jsr	(sub_C16926,pc)	| C1667C
+	jsr	(MonitorPutValue,pc)	| C16678
+	jsr	(MonitorDrawDigitCursor,pc)	| C1667C
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16680
 	andi.b	#0xC,d3	| C16684
 	beq.w	loc_C166B6	| C16688
@@ -3696,7 +3847,8 @@ loc_C16752:
 	move.w	(ram_10FD70-A5_BASE,a5),(REG_VRAMRW).l	| C16762
 loc_C1676A:
 	rts	| C1676A
-loc_C1676C:
+| MonitorModifyRegister [C] command 4: picks a saved register (d0-a7, SR, PC) and changes it in the save area at $10FD00 (ran in MAME, monitor test build)
+MonitorModifyRegister:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1676C
 	clr.l	(a0)+	| C16770
 	move.l	#0x1F0FF,(a0)+	| C16772
@@ -3716,10 +3868,10 @@ loc_C16796:
 	clr.w	(a0)+	| C167A2
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C167A4
 	moveq	#0x3,d7	| C167A8
-	jsr	(sub_C16A78,pc)	| C167AA
+	jsr	(MonitorPutValue,pc)	| C167AA
 	tst.w	(ram_10FD76-A5_BASE,a5)	| C167AE
 	beq.b	loc_C167B8	| C167B2
-	jsr	(sub_C16926,pc)	| C167B4
+	jsr	(MonitorDrawDigitCursor,pc)	| C167B4
 loc_C167B8:
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C167B8
 	andi.b	#0xC,d3	| C167BC
@@ -3781,7 +3933,7 @@ loc_C1686C:
 	lea.l	(ram_10FD00-A5_BASE,a5),a4	| C1687E
 	move.l	(ram_10FD70-A5_BASE,a5),(a4,d0.w)	| C16882
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16888
-	jsr	(sub_C16974,pc)	| C1688C
+	jsr	(MonitorShowRegisters,pc)	| C1688C
 loc_C16890:
 	rts	| C16890
 dat_C16892:
@@ -3790,13 +3942,15 @@ dat_C16892:
 	dc.b	0x41,0x30,0x20,0xFF,0x41,0x31,0x20,0xFF,0x41,0x32,0x20,0xFF,0x41,0x33,0x20,0xFF
 	dc.b	0x41,0x34,0x20,0xFF,0x41,0x35,0x20,0xFF,0x41,0x36,0x20,0xFF,0x53,0x53,0x50,0xFF
 	dc.b	0x55,0x53,0x50,0xFF,0x50,0x43,0x20,0xFF,0x53,0x52,0x20,0xFF,0x20,0x20,0x20,0xFF
-loc_C168E2:
+| MonitorTraceCommand [C] command 5: C sets the trace bit in the saved SR and returns from the exception: one instruction runs, then MonitorTrace
+MonitorTraceCommand:
 	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C168E2
 	bne.b	loc_C168EC	| C168E8
 	rts	| C168EA
 loc_C168EC:
 	bset.b	#0x7,(ram_10FD48-A5_BASE,a5)	| C168EC
-loc_C168F2:
+| MonitorReturn [C] restores the fix layer palette, USP, SP, the exception frame and d0-a6 from the save area, then rte
+MonitorReturn:
 	jsr	(FixClear).l	| C168F2
 	move.l	(ram_10FD4E-A5_BASE,a5),(0x4001E2).l	| C168F8
 	movea.l	(ram_10FD40-A5_BASE,a5),a3	| C16900
@@ -3806,11 +3960,13 @@ loc_C168F2:
 	move.w	(ram_10FD48-A5_BASE,a5),-(a7)	| C1690E
 	movem.l	(ram_10FD00).l,d0-d7/a0-a6	| C16912
 	rte	| C1691A
-loc_C1691C:
+| MonitorRun [C] command 6: C returns from the exception (MonitorReturn)
+MonitorRun:
 	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C1691C
-	bne.b	loc_C168F2	| C16922
+	bne.b	MonitorReturn	| C16922
 	rts	| C16924
-sub_C16926:
+| MonitorDrawDigitCursor [C] blinks a cursor under the digit being edited (MonitorDigitCursorPositions)
+MonitorDrawDigitCursor:
 	btst.b	#0x4,(ram_10FD79-A5_BASE,a5)	| C16926
 	beq.b	loc_C16956	| C1692C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1692E
@@ -3819,18 +3975,20 @@ sub_C16926:
 	move.w	#0x3,(a0)+	| C1693A
 	move.w	(ram_10FD76-A5_BASE,a5),d0	| C1693E
 	add.w	d0,d0	| C16942
-	move.w	(tbl_C16958,pc,d0.w),(a0)+	| C16944
+	move.w	(MonitorDigitCursorPositions,pc,d0.w),(a0)+	| C16944
 	move.w	#0x7,(a0)+	| C16948
 	move.l	#0x20FF0000,(a0)+	| C1694C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16952
 loc_C16956:
 	rts	| C16956
-tbl_C16958:
+| MonitorDigitCursorPositions [C] fix-layer address of each digit cursor
+MonitorDigitCursorPositions:
 	dc.b	0x70,0x8E,0x70,0xAE,0x70,0xCE,0x70,0xEE,0x71,0x0E,0x71,0x2E,0x71,0xCE,0x71,0xEE
 	dc.b	0x72,0x0E
 	.ascii	"r.rNrnr"
 	dc.b	0x8E,0x72,0xAE
-sub_C16974:
+| MonitorShowRegisters [C] the register dump: d0-d7, a0-a7, then SR and PC of the exception
+MonitorShowRegisters:
 	clr.l	(a0)+	| C16974
 	move.l	#0x1F0FF,(a0)+	| C16976
 	move.w	#0x2002,(a0)+	| C1697C
@@ -3887,7 +4045,8 @@ loc_C169DC:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16A3E
 	jsr	(MessOut,pc)	| C16A42
 	rts	| C16A46
-sub_C16A48:
+| MonitorPutAddress [C] three hex bytes of the edited address
+MonitorPutAddress:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16A48
 	clr.l	(a0)+	| C16A4C
 	move.l	#0x1F0FF,(a0)+	| C16A4E
@@ -3901,7 +4060,8 @@ loc_C16A64:
 	move.l	#0xFF000000,(a0)+	| C16A6C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16A72
 	rts	| C16A76
-sub_C16A78:
+| MonitorPutValue [C] d7+1 hex bytes of the edited value
+MonitorPutValue:
 	lea.l	(ram_10FD70-A5_BASE,a5),a1	| C16A78
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16A7C
 	clr.l	(a0)+	| C16A80
@@ -3924,12 +4084,12 @@ PutHexByte:
 	rts	| C16AB4
 | BootErrorMessages [C] pointers to the boot error texts: 0 WORK RAM, 1 BACKUP RAM, 2 COLOR RAM BANK0, 3 COLOR RAM BANK1, 4 VIDEO RAM, 5 CALENDAR, 6 SYSTEM ROM, 7 MEMORY CARD
 BootErrorMessages:
-	dc.l	dat_C16C6E
-	dc.l	dat_C16C96
-	dc.l	dat_C16CC0
-	dc.l	dat_C16CEE
-	dc.l	dat_C16D1C
-	dc.l	dat_C16D44
-	dc.l	dat_C16D62
-	dc.l	dat_C16D82
-	dc.l	dat_C16DA2
+	dc.l	WorkRamErrorText
+	dc.l	BackupRamErrorText
+	dc.l	ColorRamBank0ErrorText
+	dc.l	ColorRamBank1ErrorText
+	dc.l	VideoRamErrorText
+	dc.l	CalendarErrorText
+	dc.l	SystemRomErrorText
+	dc.l	MemoryCardErrorText
+	dc.l	Z80ErrorText

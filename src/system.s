@@ -42,7 +42,7 @@ loc_C116B2:
 	jsr	(PlayTimeCount,pc)	| C116C0
 loc_C116C4:
 	rts	| C116C4
-| SystemIoBuildFlag [I] word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch
+| SystemIoBuildFlag [I] word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch Same test in every MVS version, absent from the AES ones (docs/versions.md)
 SystemIoBuildFlag:
 	dc.b	0x00,0x01
 | CheckPlayerStart [C] SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3

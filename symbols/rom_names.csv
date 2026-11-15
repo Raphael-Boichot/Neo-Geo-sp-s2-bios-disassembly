@@ -16,9 +16,9 @@ C004C2,FIX_CLEAR,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004C8,LSP_1ST,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004CE,MESS_OUT,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
 C004D4,CONTROLLER_SETUP,W,BIOS call table slot (NeoGeoDev wiki BIOS calls)
-C02000,ScaleTableA,I,"64 rows x 64 bytes, each row starts at $40 and decreases; use not read in code yet"
-C03000,ScaleTableB,I,64 rows x 64 bytes of ramps (row 0 = 0..63); use not read in code yet
-C04000,AbsSineTable,I,"384 words |sin(n*pi/128)| * $10000, the peak stored as $0001; use not read in code yet"
+C02000,ScaleTableA,C,"64 rows x 64 bytes, each row starts at $40 and decreases; no system ROM reads it: a table for the games at a fixed address (the same bytes at $C02000 in all 19 SNK system ROMs; 15 of the 29 games load it with lea; Sengoku 2 reads it in MAME). docs/versions.md"
+C03000,ScaleTableB,C,"64 rows x 64 bytes of ramps (row 0 = 0..63); a table for the games, like ScaleTableA ($C03000 in every SNK system ROM). docs/versions.md"
+C04000,AbsSineTable,C,"384 words |sin(n*pi/128)| * $10000, the peak stored as $0001; a table for the games, like ScaleTableA ($C04000 in every SNK system ROM; games also load $C04200). docs/versions.md"
 C113DE,CheckSettingMode,C,"reads hard DIP 1 (bit 0 of REG_DIPSW, 0 = on) and branches to TestModeEntry when it is on; MAME: setting mode DIP opens test mode"
 C18F74,TestModeEntry,C,"test mode start: clears system mode, RAM and both palette banks, sets up the BIOS RAM, then TestMenu"
 C19072,TestMenu,C,"main menu: draws TestMenuText and the date, up/down moves the cursor, A selects (TestMenuSelect); MAME screen"
@@ -114,10 +114,10 @@ C12912,DeductStartCredits,C,after CART_PLAYER_START: for P1 and P2 (DeductPlayer
 C12934,DeductPlayerCredit,C,"if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters"
 C129C6,BookKeepingCount,C,"adds 1 to the long at +4 of the 16-byte record a2, and to +8 when d2 is non-zero (DeductPlayerCredit: one call per record of today, the month, the game..)"
 C14E94,CardLock,C,"locks the memory card (REG_CRDLOCK1/2); pushed as the return address by Card, so it runs after every CARD call"
-C14EA2,ControllerTest,C,"unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame, never returns; ran in MAME from the hidden-programs build (scenario controller_test)"
+C14EA2,ControllerTest,C,"unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame, never returns; ran in MAME from the hidden-programs build (scenario controller_test) The AES boot menu of controller 2: every AES system ROM jumps here when A-D are held on P2 at power-on (MAME, AES Japan); no MVS ROM refers to it (docs/versions.md)"
 C14F32,PutInputBits,C,appends 10 characters 0/1 for the low bits of d1 (ControllerTest)
 C14F4C,ControllerTestText,C,MESS_OUT data of the controller test screen
-C1500A,CardUtility,C,"unreferenced in SP-S2: MEMORY CARD UTILITY menu, up/down over 6 lines, A jumps through CardUtilityMenuTable"
+C1500A,CardUtility,C,"unreferenced in SP-S2: MEMORY CARD UTILITY menu, up/down over 6 lines, A jumps through CardUtilityMenuTable The AES boot menu of controller 1: every AES system ROM jumps here when A-D are held on P1 at power-on (MAME, AES Japan); no MVS ROM refers to it (docs/versions.md)"
 C150A8,CardUtilityMenuTable,C,"6 entries in menu order: format, display data name, copy, delete, file user's name, END (Reset)"
 C150C0,CardUtilFormat,C,menu item 1. CARD FORMAT; MAME (test build): FORMAT THE CARD screen
 C1513E,CardUtilDisplayNames,C,"menu item 2. DISPLAY DATA NAME; MAME (test build, blank card): THERE IS NO DATA."
@@ -281,7 +281,7 @@ C12A18,Card1MSaveCabinet,C,"SystemIo in title/demo: SELECT P1 with a 1M card who
 C12B98,Card1MIdTextSave,C,"NEO-GEO, compared one letter per word at +$40 by Card1MSaveCabinet"
 C12BA0,Card1MSaveOkText,C,"SAVE OK (Card1MSaveCabinet, BIOS_COUNTRY_CODE = 0)"
 C12BB0,Card1MStoredText,C,"DATA HAS BEEN STORED AT A MEMORY CARD. (Card1MSaveCabinet, other countries; MAME: card1m_save_a)"
-C16198,MonitorEntry,C,"debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (tbl_C163AC); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset)"
+C16198,MonitorEntry,C,"debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (tbl_C163AC); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset). The exception slots of the AES Development System ROM and the Custom Japanese Hotel ROM point into the monitor (docs/versions.md)"
 C161A0,MonitorAddressError,C,"debug monitor, code 4 ADDRESS ERROR: also prints the extra words of the bus/address error frame (access address, instruction)"
 C16204,MonitorIllegal,C,"debug monitor, code 8 ILLEGAL INSTRUCTION"
 C1620E,MonitorPrivilege,C,"debug monitor, code $C PRIVILEGE VIOLATION"
@@ -294,7 +294,7 @@ C11A6E,WorkRamTestText,C,"WORK RAM TEST, shown while WorkRamTestLoop runs (every
 C12012,Z80Check,C,"power-on: writes 1 to REG_SOUND and waits up to $C350 reads for the Z80's reply 1; no reply: BootError 8 Z80 ERROR (MAME: boot_error_z80, reply faked away)"
 C16BB2,AesErrorColours,C,"BootError on an AES (SystemType 0): one palette colour pair per error, 0 blue, 1 red, 2 green, 3 yellow, 4 magenta, 5 cyan; only 6 entries (errors 6-8 would read the code after it). MAME: boot_error_aes_colours (forced)"
 C16BCA,BootErrorAes,C,"AES form of BootError: fills both palette banks with AesErrorColours[d6], colour 0 of palette 0 black, then waits forever"
-C16C42,ChecksumCompare,C,unreferenced variant of ChecksumLoop: sums the cartridge P ROM and compares with CART_HEADER_186 instead of storing the result; never ran
+C16C42,ChecksumCompare,C,unreferenced variant of ChecksumLoop: sums the cartridge P ROM and compares with CART_HEADER_186 instead of storing the result; never ran; unreferenced in all 18 other SNK system ROMs too
 C16C6E,WorkRamErrorText,C,WORK RAM ERROR (BootError 0)
 C16C96,BackupRamErrorText,C,BACKUP RAM ERROR (BootError 1)
 C16CC0,ColorRamBank0ErrorText,C,COLOR RAM BANK0 ERROR (BootError 2)
@@ -506,15 +506,15 @@ C187DA,MessOutCall,C,MESS_OUT command 10: runs another list (pointer pushed at r
 C187EE,MessOutReturn,C,MESS_OUT command 11: back from MessOutCall
 C187FE,MessOutRepeat,C,MESS_OUT command 12: writes one word d1 times
 C18808,MessOutSequence,C,"MESS_OUT command 13: writes d1 words, adding 1 each time"
-C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover)"
-C132B4,CardFillTest,C,"unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears"
+C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover) The same words in all 18 other SNK system ROMs, referenced in none"
+C132B4,CardFillTest,C,"unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears Present and unreferenced in all 18 other SNK system ROMs."
 C13338,CardFillTestTitle,C,20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save
 C00080,SystemRomChecksum,W,"checksum byte of the system ROM (NeoGeoDev wiki, SP-E: $4D here; the byte after it is the same); compared by the power-on test"
 C00082,SystemIdText,W,"NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK CORPORATION (ID text, wiki); its bytes start the checksummed area"
 C11000,CardFormatVersion,I,word $0000 just before Reset: CardFormat writes it into the card header (8-bit and 16-bit cards)
 C11001,CardFormatVersionLo,I,low byte of CardFormatVersion (CardFormat for a type $80 card)
 C1137A,SystemReturnModes,C,SystemReturn: one handler per system mode (BIOS_SYSTEM_MODE low byte 0-6)
-C116C6,SystemIoBuildFlag,I,"word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch"
+C116C6,SystemIoBuildFlag,I,"word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch Same test in every MVS version, absent from the AES ones (docs/versions.md)"
 C117C2,StartCreditsNeeded,C,"credits needed for the start bits 1-3 (P1, P2, both): 1, 1, 2 (StartCreditCheck)"
 C117C6,StartFlagResult,C,BIOS_START_FLAG for the start bits with enough credits (first 4) or not (last 4: 0)
 C12572,BookGameHoursTable,C,"$D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)"

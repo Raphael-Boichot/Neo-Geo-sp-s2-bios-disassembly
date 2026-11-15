@@ -95,7 +95,7 @@ loc_C16C24:
 	move.b	d0,(WorkRamStart).l	| C16C38
 loc_C16C3E:
 	jmp	(loc_C16C3E,pc)	| C16C3E
-| ChecksumCompare [C] unreferenced variant of ChecksumLoop: sums the cartridge P ROM and compares with CART_HEADER_186 instead of storing the result; never ran
+| ChecksumCompare [C] unreferenced variant of ChecksumLoop: sums the cartridge P ROM and compares with CART_HEADER_186 instead of storing the result; never ran; unreferenced in all 18 other SNK system ROMs too
 ChecksumCompare:
 	move.w	#0x2700,sr	| C16C42
 	move.b	d0,(REG_SWPROM).l	| C16C46

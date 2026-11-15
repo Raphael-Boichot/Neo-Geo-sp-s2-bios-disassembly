@@ -1,0 +1,61 @@
+addr,name,tag,note
+P00,PORT_SOUND_CODE,W,read: the command byte from the 68k (and acknowledges the NMI); write: clears it (NeoGeoDev wiki Z80 port map)
+P04,PORT_YM_ADDR_A,W,YM2610 address port A
+P05,PORT_YM_DATA_A,W,YM2610 data port A
+P06,PORT_YM_ADDR_B,W,YM2610 address port B
+P07,PORT_YM_DATA_B,W,YM2610 data port B
+P08,PORT_NMI_ENABLE,W,write: enables the NMI (command from the 68k); read: bank $F000-$F7FF
+P0C,PORT_REPLY,W,write: the reply byte the 68k reads in REG_SOUND
+P18,PORT_NMI_DISABLE,W,write: disables the NMI
+PC0,PORT_C0,W,"mirror of port $00 (only address bits 2-3 decoded, wiki); Init writes 1 to it"
+0000,Reset,C,"di, jp Init"
+0008,RstDelayShort,C,rst 08h: jp DelayShort
+0010,RstDelay,C,rst 10h: jp Delay
+0018,RstYmWriteA,C,rst 18h: jp YmWriteA
+0020,RstYmWriteB,C,rst 20h: jp YmWriteB
+0028,RstSystemCommand,C,rst 28h: jp SystemCommand
+0038,IrqVector,C,"mode 1 interrupt (the YM2610 timers, wiki): di, jp TimerIrq"
+003E,VersionText,C,Ver 1.5b by Mr.Pac h Ber.02/01/08 (the signature on the wiki SM1 page)
+0066,Nmi,C,"command from the 68k: 1, 3 and $10 are handled at once (NmiPrepareSwitch, NmiReset, NmiCommand10); 0 is ignored; any other is queued in CommandQueue (or put straight in SoundCommand while CommandWait is set); then the reply (ReplyValue with bit 7) and the port $00 clear. MAME: every command of the hardware test and the boot"
+00B9,NmiExit,C,restores the registers and retn
+00D0,Init,C,"stack $FFFC, interrupt mode 1, clears the 2 KB of RAM, sets SoundLock, writes 1 to port $C0 and YM2610 registers $27, $10, $1C, enables the NMI (port $08) and enters MainLoop. Run at every reset (MAME)"
+0135,MainLoop,C,"takes the next queued command (CommandQueue, QueueRead) and runs it (TakeCommand); while RandomReplyOn is set, sends a random reply (ld a,r | $80) to port $0C"
+0169,TakeCommand,C,"marks the queue entry free, SoundCommand = the command, then DispatchCommand"
+0175,DispatchCommand,C,"CommandTypeTable[SoundCommand]: 1 system command (rst 28h), 2 a sound or tune (PlaySoundCommand), 5 the coin sound (CoinSound); types 3 and 4 ($01C4, $048E) are handled but no command has them; 0 ignored"
+01A6,PlaySoundCommand,C,command type 2 ($5C-$5F): jp PlaySound with the command
+01AD,ClearCommandQueue,C,clears QueueRead / QueueWrite and the 16 bytes of CommandQueue
+0B0B,SystemCommand,C,"SoundCommand x 3 into SystemCommandTable, jp (hl)"
+0B18,SystemCommandTable,C,"26 jp, one per system command 0-25 (CommandTypeTable gives type 1 to 1-9 and $10 only)"
+0B79,NmiPrepareSwitch,C,"command 1, from the NMI: clears the reply and the code, resets the stack and returns (retn) into PrepareSwitch"
+0B88,NmiReset,C,"command 3, from the NMI: same, into SoftReset"
+0B97,NmiCommand10,C,"command $10, from the NMI: resets the stack and returns into Command10"
+0BA0,CommandNone,C,system command 0 (and the unused entries): ret
+0BA1,Command2Eyecatcher,C,"command 2: plays sound $5F through PlaySound (the eyecatcher jingle: MAME, recorded and compared with the jingle of Sengoku 2's own M1: same envelope, correlation 0.9996)"
+0BAF,PrepareSwitch,C,"command 1: keys off and silences every YM2610 channel, writes jp $FFFD at $FFFD in RAM, replies 1 and jumps there: the Z80 waits in RAM while the 68k changes the Z80 ROM (MAME: Z80 at $FFFD after command 1)"
+0CFC,SoftReset,C,"command 3: SoftResetFlag = 1, clears the reply and the code, jp Reset (MAME: the next instruction traced is $0000, in the newly selected ROM)"
+0D63,Command7Enable,C,"command 7: clears the queue, silences the YM2610 (SilenceAll) and clears SoundLock and $FE31: after a reset, $5C-$5F play only once 7 has been sent (MAME). The hardware test sends 3 then 7 for SOUND OFF and on entering the sound test"
+0E35,Command10,I,"command $10: a loop over the ROM with ix as return address and flags kept in the shadow registers; a ROM or RAM check whose result is not understood yet"
+15FC,SilenceAll,I,"YM2610 register writes that silence the channels (called by Init and Command7StopAll)"
+1626,DelayShort,C,ret: the time of the rst itself
+1627,Delay,C,"push and pop bc, de, hl: a slightly longer delay between YM2610 accesses"
+1EB5,TimerIrq,C,"YM2610 timer interrupt: saves the registers and runs the sound engine"
+2936,YmWriteA,C,"writes YM2610 register d = e through port A ($04, $05), with rst 08h / 10h waits"
+2941,YmWriteB,C,"same through port B ($06, $07)"
+0EEF,PlaySound,C,"starts sound SoundCommand: resets ADPCM-B (YM2610 register $10) and sets up the channels from SoundTable entry SoundCommand - $20. While SoundLock is set it goes to $118A and nothing is heard. MAME, no cartridge: $5D right channel only, $5C left only, $5E both (the RIGHT / LEFT / CENTER of the sound test), $5F the eyecatcher jingle"
+3F6C,SoundTable,C,"pointers per sound, index command - $20 (PlaySound)"
+087A,CoinSound,C,"command type 5 ($7F): the coin sound (MAME: a short sound, about a second)"
+2384,SequenceCommandTable,C,"48 jp: the commands of the music sequence interpreter, by character - '0' (x 3)"
+51D4,CommandTypeTable,C,"256 bytes, the type of each command: 1 for 1-9 and $10, 2 for $5C-$5F, 5 for $7F, 0 for the rest"
+F800,WorkRam,C,start of the Z80's 2 KB RAM (cleared by Init)
+FE39,SoundCommand,C,the command being run
+FE3B,SoundCommandType,C,its CommandTypeTable value
+FE46,QueueRead,C,next CommandQueue entry to run (0-7)
+FE47,QueueWrite,C,next free CommandQueue entry (0-7)
+FE48,CommandQueue,C,"8 entries of 2 bytes: $FF while waiting, then the command"
+FE58,CommandWait,I,"set while a command waits for the previous one (loop at $0C3D); the NMI then stores the command straight in SoundCommand"
+FE65,RandomReplyOn,I,"cleared by most system commands; MainLoop sends random replies while it is set"
+FE30,SoundLock,C,"$FF from Init: PlaySound plays nothing until command 7 clears it (MAME)"
+FE66,InRamLoop,C,1 while the Z80 waits in RAM after command 1 (PrepareSwitch)
+FE68,SoftResetFlag,C,set to 1 by SoftReset before jumping to Reset
+FE69,ReplyValue,I,"random value (ld a,r) sent with bit 7 as the reply after each command"
+FFFD,RamLoop,C,"jp $FFFD, written by PrepareSwitch: the Z80 loops here during a ROM switch"

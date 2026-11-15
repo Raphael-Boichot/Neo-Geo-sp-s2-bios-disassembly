@@ -417,8 +417,9 @@ Besides the system ROM, three ROM chips sit on the MVS motherboard whatever the 
 tiles `sfix.sfix`, the Z80 sound program `sm1.sm1` and the sprite shrink table `000-lo.lo`, read by
 the video hardware only. What each holds and which part of the board reads it:
 [`docs/bios_set.md`](docs/bios_set.md). `make` rebuilds `sfix.sfix` from tile sheets and `000-lo.lo`
-from its rule (row z of the table adds the source line bitreverse(z XOR `$11`)); `sm1.sm1` is not done
-yet.
+from its rule (row z of the table adds the source line bitreverse(z XOR `$11`)); `sm1.sm1` is
+disassembled in `sm1/` and rebuilt with z80asm. The sound commands and when the board's Z80 program
+runs: [`docs/sound.md`](docs/sound.md).
 
 ### Board fix ROM (sfix.sfix)
 
@@ -486,6 +487,9 @@ scenario `nogo_cartridge`:
 |---|---|
 | [`src/`](src/) | Generated 68000 source (GNU as, Motorola syntax), ROM addresses in comments: `sp-s2.s` includes 14 modules (`header.s`, `tables.s`, `boot.s`, `system.s`, `power_on.s`, `calendar.s`, `card.s`, `boot_error.s`, `hardware_test.s`, `eyecatcher.s`, `video_io.s`, `how_to_play.s`, `test_mode.s`, `data_end.s`) |
 | [`gfx/sfix/`](gfx/sfix/) | The board fix ROM `sfix.sfix` as 16 indexed tile sheets (`make` rebuilds it) |
+| [`sm1/`](sm1/) | The board Z80 sound program `sm1.sm1`: `src/sm1.asm` (generated), `names.csv`, `hints.txt`, MAME coverage |
+| [`tools/sm1.py`](tools/sm1.py), [`tools/z80dis.py`](tools/z80dis.py) | Z80 decoder, tracer and source generator for `sm1.sm1`; build with z80asm and SHA-1 check |
+| [`tools/mame_z80.sh`](tools/mame_z80.sh), [`tools/mame_z80.lua`](tools/mame_z80.lua) | Traced MAME run of the Z80: sound commands by frame, Z80 trace, WAV recording; can send commands |
 | [`tools/mess_render.py`](tools/mess_render.py) | Replays MESS_OUT lists of the system ROM on a fix layer model: tiles used, picture |
 | [`tools/lo_rom.py`](tools/lo_rom.py) | The sprite shrink table `000-lo.lo` rebuilt from its rule (`make` builds it, `make check` compares it) |
 | [`src/neogeo.inc`](src/neogeo.inc), [`src/ram.inc`](src/ram.inc) | Registers, cartridge header, `A5_BASE`/`A4_BASE`; every RAM address used |
@@ -527,9 +531,10 @@ The ROM is **not** in the repository (SNK copyright). Put your own dump in `roms
 make check    # build/sp-s2.sp1, SHA-1 must be 4f5ed7105b7128794654ce82b51723e16e389543
               # build/sfix.sfix, SHA-1 must be fd4a618cdcdbf849374f0a50dd8efe9dbab706c3
               # build/000-lo.lo, SHA-1 must be 5992277debadeb64d1c1c64b0a92d9293eaf7e4a
+              # build/sm1.sm1, SHA-1 must be 42f9d7ddd6c0931fd64226a60dc73602b2819dcf
 ```
 
-Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-gnu`). Details in
+Needs Python 3 with `capstone`, GNU binutils for m68k (`binutils-m68k-linux-gnu`) and z80asm (`z80asm`). Details in
 [`HOWTO.md`](HOWTO.md).
 
 ## Disassembly status
@@ -542,7 +547,7 @@ Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-g
 | L3 names | 574 routines, tables and data blocks named (C 527, I 16, W 31) in `symbols/rom_names.csv`; every I and RAM I with its doubt and how to settle it in `symbols/doubts.csv`: the 17 BIOS call slots (wiki names, W) and their targets, and the 8 CARD functions; all ran in MAME (SYSTEM_INT2 only when forced, the checksum slot only from a test build); boot path, system modes and the hand-off to the game, VBlank and SYSTEM_IO, start buttons, credits and their deduction, slot switching, calendar chip (and the NEO-CLN cartridge calendar), test mode (every routine, table and text of `test_mode.s`), the 1M card cabinet backup, hardware test, the unreferenced controller test and memory card utility, the boot errors, the debug monitor, the card error handlers, the card format and file system helpers (three card types), the slot scan and slot table merge, coins and the software clock, the controller reading, the MESS_OUT command handlers, the most-called helpers (C from code reading, MAME screens and coverage); some I. Only the 1,039 `loc_` labels (branch targets inside routines) are still automatic: no `sub_`, `dat_` or `tbl_` left |
 | L4 RAM and registers | done: no raw RAM, register or cartridge-header operand left; `x(a5)` written `(NAME-A5_BASE,a5)`; backup RAM through a4 = `$D08000` written `(NAME-A4_BASE,a4)`, a4 proven by the generator or, for the 8 cabinet row handlers reached through a table, by reading the callers (`a4` hints). All 273 RAM addresses used are named: `symbols/ram.csv` has 160 names (W 60 from the NeoGeoDev wiki, C 88, I 12) and `symbols/ram_scoped.csv` 114 names valid in one part of the code only (`symbols/ram_scoped.csv`: the BIOS reuses `$10FC00-$10FD7F` and the card screen variables per screen). Backup RAM map above; 18 cartridge header fields named |
 | L5 editable tree | done: 14 modules (`symbols/modules.csv`), no numeric ROM address left, free space as `.org`. Relocation proven in MAME (`tools/relocation_test.py`): with two NOPs at `Reset` and a new routine called from `TestMenu`, 38,961 bytes move and the BIOS still boots, plays the boot animation, starts Sengoku 2, runs the test menu (with the new line) and the hardware test |
-| L6 understanding | started: boot sequence, every test-mode and hardware-test screen (with their settings), the 1M card cabinet backup, the hidden programs, card save/load/delete and card errors, boot errors, the debug monitor, HOW_TO_PLAY, CREDIT_DOWN and SYSTEM_INT2 run in MAME and linked to their routines (README sections above); screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); written reference in [`docs/`](docs/README.md), 7 pages (boot, game contract, credits, calendar, memory card, test mode, interrupts), sound commands not yet |
+| L6 understanding | started: boot sequence, every test-mode and hardware-test screen (with their settings), the 1M card cabinet backup, the hidden programs, card save/load/delete and card errors, boot errors, the debug monitor, HOW_TO_PLAY, CREDIT_DOWN and SYSTEM_INT2 run in MAME and linked to their routines (README sections above); screen texts match the ROM text tables (for example book keeping "CABINET/COIN" at `$C1AEB2`); written reference in [`docs/`](docs/README.md), 9 pages (boot, game contract, credits, calendar, memory card, test mode, interrupts, sound commands, the board ROMs) |
 
 ## Sources
 

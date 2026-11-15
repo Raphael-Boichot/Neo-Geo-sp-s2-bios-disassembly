@@ -13,8 +13,8 @@ data sheets), **I** inferred.
 | [memory_card.md](memory_card.md) | Card kinds, layout, CARD functions and results, CARD_ERROR, the hidden card utility |
 | [test_mode.md](test_mode.md) | Ways in, menu, cabinet settings, hardware test, unreachable programs |
 | [interrupts.md](interrupts.md) | Vector tables, VBlank and timer handlers, who maps which table |
+| [sound.md](sound.md) | The 68000/Z80 channel, when the board's `sm1.sm1` runs, every sound command SP-S2 sends and what `sm1.sm1` does with it |
 | [bios_set.md](bios_set.md) | The four ROMs of the MVS board (system ROM, `sfix.sfix`, `sm1.sm1`, `000-lo.lo`): what each holds, which chip reads it, the shrink table rule |
 
-Not written yet: the sound commands sent to the Z80 (with the `sm1.sm1` work, ROADMAP step 7).
 Boot errors, the debug monitor, the 1M card cabinet backup, the eyecatcher assets, the board fix ROM
 and the backup RAM map are in the top-level README.

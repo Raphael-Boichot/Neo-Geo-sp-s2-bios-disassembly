@@ -4,6 +4,7 @@
 
 - Python 3 with Capstone: `pip install capstone`
 - GNU binutils for the 68000: `sudo apt install binutils-m68k-linux-gnu`
+- z80asm for the board sound program `sm1.sm1`: `sudo apt install z80asm`
   (provides `m68k-linux-gnu-as`, `-ld`, `-objdump`)
 - `make` (optional: the commands below can be typed by hand)
 - For running a build: MAME (`neogeo` driver). For hardware: a 27C1024 EPROM or a flash adapter.

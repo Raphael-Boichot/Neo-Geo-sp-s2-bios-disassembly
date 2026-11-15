@@ -1,0 +1,26 @@
+# hints for tools/sm1.py (see its docstring)
+jptable 0B18 26   # sound command dispatch (rst 28h): command in (fe39) x 3
+jpind 0B17        # into the jptable at 0B18
+jptable 2384 48   # sequence interpreter: (character - '0') x 3
+jpind 2383        # into the jptable at 2384
+entry 0E6A        # return address held in ix (ld ix,0E6A at 0E64), reached by jp (ix)
+jpind 0EE7        # jp (ix): back to the caller's address in ix (0E6A)
+jpind 0EED        # same
+imm 033C          # ld de,table base
+imm 076B          # ld de,table base
+imm 1640          # ld de,table base
+entry 1B7B        # return address pushed by ld hl,1B7B / push hl at 1A67
+# code after a ret that nothing calls (dead routines, kept as code)
+entry 0294
+entry 0428
+entry 077E
+entry 0875
+entry 0DDA
+entry 0E1D
+entry 1603
+entry 160A
+entry 1947
+entry 20D5
+entry 24C6
+entry 0DF3
+text 003E 22  # version text

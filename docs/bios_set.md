@@ -13,7 +13,7 @@ SM1, L0 ROM). They are read by different parts of the board:
 |---|---|---|---|---|---|
 | `sp-s2.sp1` | system ROM: the 68000 program this repository disassembles | 128 KB (128 KB, 16-bit words byte-swapped) | 68000 at `$C00000`; its vector table at `$000000` after `REG_SWPBIOS` | always mapped | `src/`, rebuilt byte for byte (`make check`) |
 | `sfix.sfix` | board fix layer tiles: the font and pictures of the system screens | 128 KB (128 KB) | video chips, fix layer | `REG_BRDFIX` (`$3A000B`); `REG_CRTFIX` gives the cartridge's S ROM back | `gfx/sfix/`, 16 tile sheets, rebuilt byte for byte |
-| `sm1.sm1` | board sound program for the Z80, used while the board ROMs are selected (the system screens) | 64 KB (128 KB: the same 64 KB twice, C) | Z80 | `REG_BRDFIX` too ("Use the embedded SFIX ROM and SM1 ROM", W); `REG_CRTFIX` gives the cartridge's M1 ROM | not yet (ROADMAP step 7) |
+| `sm1.sm1` | board sound program for the Z80, used while the board ROMs are selected (the system screens) | 64 KB (128 KB: the same 64 KB twice, C) | Z80 | `REG_BRDFIX` too ("Use the embedded SFIX ROM and SM1 ROM", W); `REG_CRTFIX` gives the cartridge's M1 ROM | `sm1/src/sm1.asm`, rebuilt byte for byte (docs/sound.md) |
 | `000-lo.lo` | L0 ROM: the sprite vertical shrink table | 64 KB (128 KB: the same 64 KB twice, C) | video hardware, for every sprite line drawn | not switched | `tools/lo_rom.py`, rebuilt from its rule (below) |
 
 So yes, separate chips, and they are not all for the 68000: the system ROM is program code, the fix
@@ -37,8 +37,8 @@ The other system ROMs of `neogeo.zip` (other regions, AES, later revisions) are 
 `Ver 1.5b by Mr.Pac h Ber.02/01/08` (C; the same signature as the wiki's SM1 page). The system ROM
 talks to it through `REG_SOUND`: command 1 before a slot switch (`SoundSlotSwitch`, reply 1), 3 when it
 hands over to a game (`CallUser`), `$7F` for the coin sound on system screens, and the sound test
-commands. What each command plays, and whether the eyecatcher music comes from this ROM or from the
-cartridge's M1, is ROADMAP step 7.
+commands. What each command does, and why the eyecatcher music an MVS plays comes from the cartridge's M1
+though this ROM has the same jingle: docs/sound.md.
 
 ## 000-lo.lo (sprite shrink table)
 

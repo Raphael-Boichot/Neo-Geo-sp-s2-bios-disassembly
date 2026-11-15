@@ -124,7 +124,7 @@ One page per subsystem in `docs/`, from the code and the MAME runs, with address
 - [x] Memory card: CARD functions, card format, the card utility
 - [x] Test mode: menu structure and how each item stores its settings
 - [x] Interrupts: VBlank (SystemInt1), timer (SystemInt2), when each vector table is mapped
-- [ ] Sound commands sent to the Z80 (with step 7, `sm1.sm1`)
+- [x] Sound commands sent to the Z80 (with step 7, `sm1.sm1`): [`docs/sound.md`](docs/sound.md)
 
 ## 6. Other SNK system ROMs (L3, L6)
 
@@ -145,9 +145,11 @@ board, whatever the cartridge, so they belong to the BIOS.
 - [x] `sfix.sfix`: `$700-$77F` / `$800-$87F` are the HOW_TO_PLAY picture, `$900-$AFF` the HOW_TO_PLAY
       text font (matched by `tools/mess_render.py`); every font range matched to the lists that use it;
       only the kana/kanji halves `$780-$7FF`, `$880-$8FF` and most kanji of `$500-$6FF` have no user in SP-S2 (I)
-- [ ] `sm1.sm1`, the Z80 sound program on the board (128 KB): what the system ROM's sound commands do
-      (1 slot switch, 3 reset, $5C-$5E sound test, $7F coin), whether it plays the eyecatcher music;
-      Z80 disassembly that rebuilds it byte for byte
+- [x] `sm1.sm1`, the Z80 sound program on the board (128 KB): Z80 disassembly in `sm1/` rebuilt byte
+      for byte (`make check`), code traced (no unresolved jump), the commands SP-S2 sends run in MAME
+      (`tools/mame_z80.sh`), the eyecatcher jingle found in it (docs/sound.md)
+- [ ] `sm1.sm1` L1-L4: type the data at `$2A16-$53D4` (sound tables, music), name the 576 automatic
+      labels and the RAM (585 raw operand lines)
 - [x] `000-lo.lo`, the sprite zoom table read by the video hardware (128 KB): rebuilt from its rule
       by `tools/lo_rom.py` (row z adds line bitreverse(z XOR $11)), SHA-1 checked by `make check`;
       the four board ROMs described in [`docs/bios_set.md`](docs/bios_set.md)

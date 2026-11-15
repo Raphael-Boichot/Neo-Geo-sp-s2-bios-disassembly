@@ -5,11 +5,13 @@ LD      := m68k-linux-gnu-ld -Ttext=0xC00000 -e 0xC00402 --oformat binary
 ROM_SHA1 := 4f5ed7105b7128794654ce82b51723e16e389543
 SFIX_SHA1 := fd4a618cdcdbf849374f0a50dd8efe9dbab706c3
 LO_SHA1   := 5992277debadeb64d1c1c64b0a92d9293eaf7e4a
+SM1_SHA1  := 42f9d7ddd6c0931fd64226a60dc73602b2819dcf
 # original dump, MAME order; only needed for `make source`
 ROM     ?= roms/sp-s2.sp1
 SFIX    ?= roms/sfix.sfix
+SM1     ?= roms/sm1.sm1
 
-all: build/sp-s2.sp1 build/sfix.sfix build/000-lo.lo
+all: build/sp-s2.sp1 build/sfix.sfix build/000-lo.lo build/sm1.sm1
 
 build/sp-s2.o: $(wildcard src/*.s src/*.inc)
 	@mkdir -p build
@@ -31,12 +33,18 @@ build/000-lo.lo: tools/lo_rom.py
 	@mkdir -p build
 	$(PY) tools/lo_rom.py build $@
 
+# board Z80 sound program (sm1.sm1) from sm1/src/sm1.asm (z80asm)
+build/sm1.sm1: sm1/src/sm1.asm tools/sm1.py
+	@mkdir -p build
+	$(PY) tools/sm1.py build $< $@
+
 # compare with the original ROMs (no ROM needed: SHA-1 only)
-check: build/sp-s2.sp1 build/sfix.sfix build/000-lo.lo
+check: build/sp-s2.sp1 build/sfix.sfix build/000-lo.lo build/sm1.sm1
 	$(PY) tools/romtool.py check build/sp-s2.sp1 $(ROM_SHA1)
 	$(PY) tools/romtool.py checksum build/sp-s2.sp1
 	$(PY) tools/sfix.py check build/sfix.sfix $(SFIX_SHA1)
 	$(PY) tools/lo_rom.py check build/000-lo.lo $(LO_SHA1)
+	$(PY) tools/sm1.py check build/sm1.sm1 $(SM1_SHA1)
 
 # rewrite the boot checksum of a modified build
 fixsum: build/sp-s2.sp1
@@ -46,6 +54,10 @@ fixsum: build/sp-s2.sp1
 source:
 	$(PY) tools/gen_source.py $(ROM) src tools/hints.txt
 
+# regenerate sm1/src/sm1.asm from the sound ROM, sm1/names.csv and sm1/hints.txt
+sm1-source:
+	$(PY) tools/sm1.py source $(SM1)
+
 # regenerate gfx/sfix/ from the board fix ROM - OVERWRITES edited sheets
 sfix-source:
 	$(PY) tools/sfix.py extract $(SFIX) gfx/sfix
@@ -53,4 +65,4 @@ sfix-source:
 clean:
 	rm -rf build
 
-.PHONY: all check fixsum source sfix-source clean
+.PHONY: all check fixsum source sfix-source sm1-source clean

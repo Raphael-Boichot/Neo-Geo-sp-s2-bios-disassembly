@@ -46,7 +46,6 @@ PC0,PORT_C0,W,"mirror of port $00 (only address bits 2-3 decoded, wiki); Init wr
 087A,CoinSound,C,"command type 5 ($7F): the coin sound (MAME: a short sound, about a second)"
 2384,SequenceCommandTable,C,"48 jp: the commands of the music sequence interpreter, by character - '0' (x 3)"
 51D4,CommandTypeTable,C,"256 bytes, the type of each command: 1 for 1-9 and $10, 2 for $5C-$5F, 5 for $7F, 0 for the rest"
-F800,WorkRam,C,start of the Z80's 2 KB RAM (cleared by Init)
 FE39,SoundCommand,C,the command being run
 FE3B,SoundCommandType,C,its CommandTypeTable value
 FE46,QueueRead,C,next CommandQueue entry to run (0-7)
@@ -59,3 +58,76 @@ FE66,InRamLoop,C,1 while the Z80 waits in RAM after command 1 (PrepareSwitch)
 FE68,SoftResetFlag,C,set to 1 by SoftReset before jumping to Reset
 FE69,ReplyValue,I,"random value (ld a,r) sent with bit 7 as the reply after each command"
 FFFD,RamLoop,C,"jp $FFFD, written by PrepareSwitch: the Z80 loops here during a ROM switch"
+F800,SsgPeriodA,C,"start of the 2 KB RAM (cleared by Init); word: SSG period kept for channel 5 (command 5Fh reads it)"
+F802,SsgPeriodB,C,word: the same for channel 6
+F804,SsgPeriodC,C,word: the same for channel 7
+F806,SsgSlideA,I,"11-byte block of channel 5 set by command 5Fh (flag, period, step); cleared by Init"
+F811,SsgSlideB,I,the same for channel 6
+F81C,SsgSlideC,I,the same for channel 7
+F827,LoopStacks,C,"loop counters and return addresses of commands 31h/32h and 34h/38h, 16 bytes per channel (base + channel x 16, sub_27DD)"
+F957,CallStacks,C,"return addresses of commands 35h/36h (call, return), 16 bytes per channel"
+FACE,TimerAShadow,C,"copy of the timer A value: +4 YM $24, +5 YM $25 (command 37h)"
+FADE,FmShadowA,I,"FM operator register copies of channels 1-2 (port A), written by the instrument loader sub_162E"
+FB65,FmShadowB,I,the same for channels 3-4 (port B)
+FCD9,ChannelOwner,C,"one byte per channel number (0-14): written by sub_28EC with b & 7 when a sound takes the channel"
+FCE8,Channel1,C,"16-byte block of song channel 1 (FM): +0 flags, +9/+10 sequence pointer, +11/+12 sequence start (PlaySound)"
+FCF8,Channel2,C,song channel 2 (FM)
+FD08,Channel3,C,song channel 3 (FM)
+FD18,Channel4,C,song channel 4 (FM)
+FD28,Channel8,C,song channel 8 (ADPCM-A)
+FD38,Channel9,C,song channel 9 (ADPCM-A)
+FD48,Channel10,C,song channel 10 (ADPCM-A)
+FD58,Channel11,C,song channel 11 (ADPCM-A)
+FD68,Channel12,C,song channel 12 (ADPCM-A)
+FD78,Channel13,C,song channel 13 (ADPCM-A)
+FD88,Channel14,C,song channel 14 (ADPCM-B)
+FD98,EffectChannel5,C,"effect channel 5 (SSG A), sub_0881"
+FDA8,EffectChannel6,C,effect channel 6 (SSG B)
+FDB8,EffectChannel7,C,effect channel 7 (SSG C)
+FDC8,EffectChannel0,C,effect channel 0
+FDD8,ExtraChannel0,I,"another channel block (type 5 path at $0841)"
+FDE8,ExtraChannel5,I,"channel blocks of the type 3 sounds ($03D0), SSG A"
+FDF8,ExtraChannel6,I,SSG B
+FE08,ExtraChannel7,I,SSG C
+FE18,EffectPlaying,C,"$FF while an effect plays (sub_0881)"
+FE19,EffectPriority,C,"priority of the playing effect: a lower one is refused (sub_0881)"
+FE1A,EffectParam,I,"effect header byte +13 (sub_0881); also command 51h"
+FE20,EngineStack,C,"stack pointer saved by TimerIrq; commands 40h, 47h and 55h restore it to leave the channel"
+FE2B,Tempo,I,"song header byte +23, also command 33h; applied by sub_28FE"
+FE2C,NoNewCommand,C,"$FF once TakeCommand has taken the command; the NMI clears it"
+FE38,CurrentChannel,C,the channel number the engine is working on (0-14)
+FE3A,EffectCommand,C,the command number of the effect being started (sub_0881)
+FFFC,StackTop,C,initial stack pointer (Init and the system commands)
+226D,SequenceStep,C,"reads the channel's sequence at hl: notes ($01-$30, $00 escape), commands ($31-$5F through SequenceCommandTable), instruments ($80-$FF); format in tools/sm1_data.py"
+162E,LoadInstrument,C,"writes FM instrument a (52-byte record of FmInstruments, a x 52) to the channel's operators and to the register copies FmShadowA/B"
+28FE,SetTempo,I,applies Tempo (song header +23 and command 33h)
+0881,StartEffect,C,"starts effect SoundCommand - $60 from EffectTable on channels 5, 6, 7 and 0, unless a higher-priority effect plays (CoinSound)"
+2414,SeqNop,C,"sequence commands 30h, 3Ch, 3Eh, 48h, 49h, 4Ah: nothing"
+27C4,SeqLoopStart,C,"commands 31h, 32h: push a loop (count byte) on the channel's LoopStacks entry"
+281C,SeqLoopEnd,C,"commands 34h, 38h: back to the loop start until the count runs out"
+2838,SeqCall,C,command 35h: call the sub-sequence at the word that follows (CallStacks)
+2851,SeqReturn,C,command 36h: return from a sub-sequence
+27BF,SeqJump,?,"command 39h: reads a word at hl without the exx the other commands do, so it would read its operand from $226D; no sequence uses it"
+25AA,SeqTempo,C,command 33h: tempo byte (SetTempo)
+25B3,SeqTimerA,C,"command 37h: two bytes to YM2610 $25 and $24 (timer A), kept in TimerAShadow"
+28A1,SeqVolume,C,command 3Ah: byte - $88 to the channel's +7
+2780,SeqEnd,C,"command 40h: silences the channel and leaves it (EngineStack)"
+277C,SeqHalt,?,command 41h: di / halt: would stop the Z80; no sequence uses it
+27B1,SeqRepeat,C,command 42h: back to the start of the sequence (+11/+12 to +9/+10)
+2683,SeqStartSound,C,"command 47h: starts another sound (PlaySound entry sub_0EF3) and leaves the channel"
+260D,SeqLfo,C,command 4Eh: byte to YM2610 $22 (LFO)
+25F0,SeqYmWrite,C,"command 50h: register, value to YM2610 port A"
+25D1,SeqSsgEnvelope,C,"command 53h: three bytes to YM2610 $0D, $0B, $0C (SSG envelope shape and period)"
+257F,SeqEffectEnd,C,"command 55h: ends the effect channel (EffectPlaying cleared) and leaves it"
+402C,SoundLeft,C,"sound $5C, the sound test's LEFT: only channel 1 has notes (MAME: left output only)"
+4092,SoundRight,C,"sound $5D, RIGHT"
+40F8,SoundCenter,C,"sound $5E, CENTER"
+415E,SoundEyecatcher,C,"sound $5F, the eyecatcher jingle (command 2): FM channels 1-4"
+43F7,EffectCoin,C,"effect $7F, the coin sound: SSG channels 5-7"
+3FEC,EffectTable,C,"pointers per effect, commands $60-$7F (StartEffect); only $7F is filled"
+2A80,FmInstruments,C,"103 FM instruments of 52 bytes (LoadInstrument)"
+2A16,AlgorithmCarriers,I,"per FM algorithm (0-7): bits of the operators whose level the instrument does not set (the carriers)"
+2A1E,TimerATable,I,7 timer A values (YM $25/$24)
+5354,SpecialEffect,I,"an effect number ($00 here): StartEffect sets $FE40 = 4 when the effect started is this one, and command 55h checks $FE40 = 4"
+5355,FmFnumTable,I,"FM F-numbers ($26A-$4B0) by note index bits 0-4 (12 notes in 16 slots)"
+5395,SsgPeriodTable,I,"SSG tone periods by note index bits 0-4"

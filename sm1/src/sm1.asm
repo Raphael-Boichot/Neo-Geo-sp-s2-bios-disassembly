@@ -14,9 +14,47 @@ PORT_NMI_DISABLE:	equ 018h	; [W] write: disables the NMI
 PORT_C0:	equ 0c0h	; [W] mirror of port $00 (only address bits 2-3 decoded, wiki); Init writes 1 to it
 
 ; work RAM ($F800-$FFFF)
-WorkRam:	equ 0f800h	; [C] start of the Z80's 2 KB RAM (cleared by Init)
+SsgPeriodA:	equ 0f800h	; [C] start of the 2 KB RAM (cleared by Init); word: SSG period kept for channel 5 (command 5Fh reads it)
+SsgPeriodB:	equ 0f802h	; [C] word: the same for channel 6
+SsgPeriodC:	equ 0f804h	; [C] word: the same for channel 7
+SsgSlideA:	equ 0f806h	; [I] 11-byte block of channel 5 set by command 5Fh (flag, period, step); cleared by Init
+SsgSlideB:	equ 0f811h	; [I] the same for channel 6
+SsgSlideC:	equ 0f81ch	; [I] the same for channel 7
+LoopStacks:	equ 0f827h	; [C] loop counters and return addresses of commands 31h/32h and 34h/38h, 16 bytes per channel (base + channel x 16, sub_27DD)
+CallStacks:	equ 0f957h	; [C] return addresses of commands 35h/36h (call, return), 16 bytes per channel
+TimerAShadow:	equ 0faceh	; [C] copy of the timer A value: +4 YM $24, +5 YM $25 (command 37h)
+FmShadowA:	equ 0fadeh	; [I] FM operator register copies of channels 1-2 (port A), written by the instrument loader sub_162E
+FmShadowB:	equ 0fb65h	; [I] the same for channels 3-4 (port B)
+ChannelOwner:	equ 0fcd9h	; [C] one byte per channel number (0-14): written by sub_28EC with b & 7 when a sound takes the channel
+Channel1:	equ 0fce8h	; [C] 16-byte block of song channel 1 (FM): +0 flags, +9/+10 sequence pointer, +11/+12 sequence start (PlaySound)
+Channel2:	equ 0fcf8h	; [C] song channel 2 (FM)
+Channel3:	equ 0fd08h	; [C] song channel 3 (FM)
+Channel4:	equ 0fd18h	; [C] song channel 4 (FM)
+Channel8:	equ 0fd28h	; [C] song channel 8 (ADPCM-A)
+Channel9:	equ 0fd38h	; [C] song channel 9 (ADPCM-A)
+Channel10:	equ 0fd48h	; [C] song channel 10 (ADPCM-A)
+Channel11:	equ 0fd58h	; [C] song channel 11 (ADPCM-A)
+Channel12:	equ 0fd68h	; [C] song channel 12 (ADPCM-A)
+Channel13:	equ 0fd78h	; [C] song channel 13 (ADPCM-A)
+Channel14:	equ 0fd88h	; [C] song channel 14 (ADPCM-B)
+EffectChannel5:	equ 0fd98h	; [C] effect channel 5 (SSG A), sub_0881
+EffectChannel6:	equ 0fda8h	; [C] effect channel 6 (SSG B)
+EffectChannel7:	equ 0fdb8h	; [C] effect channel 7 (SSG C)
+EffectChannel0:	equ 0fdc8h	; [C] effect channel 0
+ExtraChannel0:	equ 0fdd8h	; [I] another channel block (type 5 path at $0841)
+ExtraChannel5:	equ 0fde8h	; [I] channel blocks of the type 3 sounds ($03D0), SSG A
+ExtraChannel6:	equ 0fdf8h	; [I] SSG B
+ExtraChannel7:	equ 0fe08h	; [I] SSG C
+EffectPlaying:	equ 0fe18h	; [C] $FF while an effect plays (sub_0881)
+EffectPriority:	equ 0fe19h	; [C] priority of the playing effect: a lower one is refused (sub_0881)
+EffectParam:	equ 0fe1ah	; [I] effect header byte +13 (sub_0881); also command 51h
+EngineStack:	equ 0fe20h	; [C] stack pointer saved by TimerIrq; commands 40h, 47h and 55h restore it to leave the channel
+Tempo:	equ 0fe2bh	; [I] song header byte +23, also command 33h; applied by sub_28FE
+NoNewCommand:	equ 0fe2ch	; [C] $FF once TakeCommand has taken the command; the NMI clears it
 SoundLock:	equ 0fe30h	; [C] $FF from Init: PlaySound plays nothing until command 7 clears it (MAME)
+CurrentChannel:	equ 0fe38h	; [C] the channel number the engine is working on (0-14)
 SoundCommand:	equ 0fe39h	; [C] the command being run
+EffectCommand:	equ 0fe3ah	; [C] the command number of the effect being started (sub_0881)
 SoundCommandType:	equ 0fe3bh	; [C] its CommandTypeTable value
 QueueRead:	equ 0fe46h	; [C] next CommandQueue entry to run (0-7)
 QueueWrite:	equ 0fe47h	; [C] next free CommandQueue entry (0-7)
@@ -26,6 +64,7 @@ RandomReplyOn:	equ 0fe65h	; [I] cleared by most system commands; MainLoop sends 
 InRamLoop:	equ 0fe66h	; [C] 1 while the Z80 waits in RAM after command 1 (PrepareSwitch)
 SoftResetFlag:	equ 0fe68h	; [C] set to 1 by SoftReset before jumping to Reset
 ReplyValue:	equ 0fe69h	; [I] random value (ld a,r) sent with bit 7 as the reply after each command
+StackTop:	equ 0fffch	; [C] initial stack pointer (Init and the system commands)
 RamLoop:	equ 0fffdh	; [C] jp $FFFD, written by PrepareSwitch: the Z80 loops here during a ROM switch
 
 	org 00000h
@@ -101,13 +140,13 @@ Nmi:
 	and 007h	; 009D
 	ld (QueueWrite),a	; 009F
 	xor a	; 00A2
-	ld (0fe2ch),a	; 00A3
+	ld (NoNewCommand),a	; 00A3
 	jr loc_00B0	; 00A6
 loc_00A8:
 	ld a,b	; 00A8
 	ld (SoundCommand),a	; 00A9
 	xor a	; 00AC
-	ld (0fe2ch),a	; 00AD
+	ld (NoNewCommand),a	; 00AD
 loc_00B0:
 	ld a,(ReplyValue)	; 00B0
 	or 080h	; 00B3
@@ -123,17 +162,17 @@ NmiExit:
 	defs 00011h,000h	; 00BF
 ; Init [C] stack $FFFC, interrupt mode 1, clears the 2 KB of RAM, sets SoundLock, writes 1 to port $C0 and YM2610 registers $27, $10, $1C, enables the NMI (port $08) and enters MainLoop. Run at every reset (MAME)
 Init:
-	ld sp,0fffch	; 00D0
+	ld sp,StackTop	; 00D0
 	im 1	; 00D3
 	xor a	; 00D5
 	ld (InRamLoop),a	; 00D6
-	ld (WorkRam),a	; 00D9
-	ld hl,WorkRam	; 00DC
+	ld (SsgPeriodA),a	; 00D9
+	ld hl,SsgPeriodA	; 00DC
 	ld de,0f801h	; 00DF
 	ld bc,007ffh	; 00E2
 	ldir	; 00E5
 	ld a,0ffh	; 00E7
-	ld (0fe2ch),a	; 00E9
+	ld (NoNewCommand),a	; 00E9
 	ld (SoundLock),a	; 00EC
 	ld (0fe31h),a	; 00EF
 	ld a,003h	; 00F2
@@ -192,7 +231,7 @@ MainLoop:
 ; TakeCommand [C] marks the queue entry free, SoundCommand = the command, then DispatchCommand
 TakeCommand:
 	ld a,0ffh	; 0169
-	ld (0fe2ch),a	; 016B
+	ld (NoNewCommand),a	; 016B
 	ld (hl),000h	; 016E
 	inc hl	; 0170
 	ld a,(hl)	; 0171
@@ -245,7 +284,7 @@ loc_01BD:
 loc_01C4:
 	di	; 01C4
 	ld a,(SoundCommand)	; 01C5
-	ld (0fe3ah),a	; 01C8
+	ld (EffectCommand),a	; 01C8
 	call sub_0325	; 01CB
 sub_01CE:
 	ld e,a	; 01CE
@@ -253,9 +292,9 @@ sub_01CE:
 	ld a,e	; 01D0
 	ex af,af'	; 01D1
 	push bc	; 01D2
-	ld a,(dat_5354)	; 01D3
+	ld a,(SpecialEffect)	; 01D3
 	ld b,a	; 01D6
-	ld a,(0fe3ah)	; 01D7
+	ld a,(EffectCommand)	; 01D7
 	cp b	; 01DA
 	pop bc	; 01DB
 	jr z,loc_01E3	; 01DC
@@ -554,7 +593,7 @@ loc_03AA:
 	sub 0c0h	; 03AA
 	ld e,a	; 03AC
 	ld d,000h	; 03AD
-	ld hl,dat_47B0	; 03AF
+	ld hl,tbl_47B0	; 03AF
 	add hl,de	; 03B2
 	add hl,de	; 03B3
 	ld e,(hl)	; 03B4
@@ -575,7 +614,7 @@ loc_03AA:
 	cp 00dh	; 03CC
 	jr z,loc_03F4	; 03CE
 loc_03D0:
-	ld iy,0fde8h	; 03D0
+	ld iy,ExtraChannel5	; 03D0
 	ld hl,0f947h	; 03D4
 	ld (hl),000h	; 03D7
 	ld hl,0fa77h	; 03D9
@@ -583,7 +622,7 @@ loc_03D0:
 	ld a,00bh	; 03DE
 	jr loc_0404	; 03E0
 loc_03E2:
-	ld iy,0fdf8h	; 03E2
+	ld iy,ExtraChannel6	; 03E2
 	ld hl,0f937h	; 03E6
 	ld (hl),000h	; 03E9
 	ld hl,0fa67h	; 03EB
@@ -591,7 +630,7 @@ loc_03E2:
 	ld a,00ch	; 03F0
 	jr loc_0404	; 03F2
 loc_03F4:
-	ld iy,0fe08h	; 03F4
+	ld iy,ExtraChannel7	; 03F4
 	ld hl,0f917h	; 03F8
 	ld (hl),000h	; 03FB
 	ld hl,0fa47h	; 03FD
@@ -667,7 +706,7 @@ loc_0473:
 loc_048E:
 	di	; 048E
 	ld a,(SoundCommand)	; 048F
-	ld (0fe3ah),a	; 0492
+	ld (EffectCommand),a	; 0492
 	call sub_0773	; 0495
 sub_0498:
 	cp 0c0h	; 0498
@@ -678,9 +717,9 @@ sub_0498:
 	push bc	; 04A5
 	xor a	; 04A6
 	ld (0fe40h),a	; 04A7
-	ld a,(dat_5354)	; 04AA
+	ld a,(SpecialEffect)	; 04AA
 	ld b,a	; 04AD
-	ld a,(0fe3ah)	; 04AE
+	ld a,(EffectCommand)	; 04AE
 	cp b	; 04B1
 	pop bc	; 04B2
 	jr z,loc_04BC	; 04B3
@@ -1064,7 +1103,7 @@ loc_07E8:
 	sub 0c0h	; 07E8
 	ld e,a	; 07EA
 	ld d,000h	; 07EB
-	ld hl,dat_4F46	; 07ED
+	ld hl,tbl_4F46	; 07ED
 	add hl,de	; 07F0
 	add hl,de	; 07F1
 	ld e,(hl)	; 07F2
@@ -1074,9 +1113,9 @@ loc_07E8:
 	push hl	; 07F6
 	pop ix	; 07F7
 	push bc	; 07F9
-	ld a,(dat_5354)	; 07FA
+	ld a,(SpecialEffect)	; 07FA
 	ld b,a	; 07FD
-	ld a,(0fe3ah)	; 07FE
+	ld a,(EffectCommand)	; 07FE
 	cp b	; 0801
 	pop bc	; 0802
 	jr z,loc_080A	; 0803
@@ -1110,7 +1149,7 @@ loc_0827:
 	ld (hl),000h	; 083A
 	ld hl,0fa57h	; 083C
 	ld (hl),000h	; 083F
-	ld iy,0fdd8h	; 0841
+	ld iy,ExtraChannel0	; 0841
 	ld a,00eh	; 0845
 	ld b,007h	; 0847
 	call sub_28EC	; 0849
@@ -1136,13 +1175,14 @@ sub_0875:
 CoinSound:
 	di	; 087A
 	ld a,(SoundCommand)	; 087B
-	ld (0fe3ah),a	; 087E
-sub_0881:
+	ld (EffectCommand),a	; 087E
+; StartEffect [C] starts effect SoundCommand - $60 from EffectTable on channels 5, 6, 7 and 0, unless a higher-priority effect plays (CoinSound)
+StartEffect:
 	call sub_098F	; 0881
 	sub 060h	; 0884
 	ld e,a	; 0886
 	ld d,000h	; 0887
-	ld hl,dat_3FEC	; 0889
+	ld hl,EffectTable	; 0889
 	add hl,de	; 088C
 	add hl,de	; 088D
 	ld e,(hl)	; 088E
@@ -1151,11 +1191,11 @@ sub_0881:
 	ld l,e	; 0891
 	push hl	; 0892
 	pop ix	; 0893
-	ld iy,0fd98h	; 0895
+	ld iy,EffectChannel5	; 0895
 	push bc	; 0899
-	ld a,(dat_5354)	; 089A
+	ld a,(SpecialEffect)	; 089A
 	ld b,a	; 089D
-	ld a,(0fe3ah)	; 089E
+	ld a,(EffectCommand)	; 089E
 	cp b	; 08A1
 	pop bc	; 08A2
 	jr z,loc_08AC	; 08A3
@@ -1168,20 +1208,20 @@ loc_08AC:
 	ld (0fe40h),a	; 08AE
 loc_08B1:
 	ld b,(ix+0)	; 08B1
-	ld a,(0fe18h)	; 08B4
+	ld a,(EffectPlaying)	; 08B4
 	or a	; 08B7
 	jr z,loc_08BF	; 08B8
-	ld a,(0fe19h)	; 08BA
+	ld a,(EffectPriority)	; 08BA
 	cp b	; 08BD
 	ret c	; 08BE
 loc_08BF:
 	ld a,b	; 08BF
-	ld (0fe19h),a	; 08C0
+	ld (EffectPriority),a	; 08C0
 	ld a,0ffh	; 08C3
-	ld (0fe18h),a	; 08C5
+	ld (EffectPlaying),a	; 08C5
 	call sub_09BC	; 08C8
 	ld de,00010h	; 08CB
-	ld hl,0f827h	; 08CE
+	ld hl,LoopStacks	; 08CE
 	ld (hl),000h	; 08D1
 	ld hl,0f877h	; 08D3
 	ld (hl),000h	; 08D6
@@ -1189,7 +1229,7 @@ loc_08BF:
 	ld (hl),000h	; 08D9
 	add hl,de	; 08DB
 	ld (hl),000h	; 08DC
-	ld hl,0f957h	; 08DE
+	ld hl,CallStacks	; 08DE
 	ld (hl),000h	; 08E1
 	ld hl,0f9a7h	; 08E3
 	ld (hl),000h	; 08E6
@@ -1237,7 +1277,7 @@ loc_08BF:
 	ld (iy+10),h	; 0958
 	ld (iy+11),l	; 095B
 	ld (iy+12),h	; 095E
-	ld iy,0fdc8h	; 0961
+	ld iy,EffectChannel0	; 0961
 	ld a,000h	; 0965
 	ld b,007h	; 0967
 	call sub_28EC	; 0969
@@ -1251,16 +1291,16 @@ loc_08BF:
 	ld (iy+11),l	; 0982
 	ld (iy+12),h	; 0985
 	ld a,(ix+13)	; 0988
-	ld (0fe1ah),a	; 098B
+	ld (EffectParam),a	; 098B
 	ret	; 098E
 sub_098F:
 	push af	; 098F
 	push hl	; 0990
-	ld hl,0f806h	; 0991
+	ld hl,SsgSlideA	; 0991
 	ld (hl),000h	; 0994
-	ld hl,0f811h	; 0996
+	ld hl,SsgSlideB	; 0996
 	ld (hl),000h	; 0999
-	ld hl,0f81ch	; 099B
+	ld hl,SsgSlideC	; 099B
 	ld (hl),000h	; 099E
 	pop hl	; 09A0
 	pop af	; 09A1
@@ -1517,7 +1557,7 @@ NmiPrepareSwitch:
 	ld a,000h	; 0B79
 	out (PORT_REPLY),a	; 0B7B
 	out (PORT_SOUND_CODE),a	; 0B7D
-	ld sp,0fffch	; 0B7F
+	ld sp,StackTop	; 0B7F
 	ld hl,PrepareSwitch	; 0B82
 	push hl	; 0B85
 	retn	; 0B86
@@ -1526,13 +1566,13 @@ NmiReset:
 	ld a,000h	; 0B88
 	out (PORT_REPLY),a	; 0B8A
 	out (PORT_SOUND_CODE),a	; 0B8C
-	ld sp,0fffch	; 0B8E
+	ld sp,StackTop	; 0B8E
 	ld hl,SoftReset	; 0B91
 	push hl	; 0B94
 	retn	; 0B95
 ; NmiCommand10 [C] command $10, from the NMI: resets the stack and returns into Command10
 NmiCommand10:
-	ld sp,0fffch	; 0B97
+	ld sp,StackTop	; 0B97
 	ld hl,Command10	; 0B9A
 	push hl	; 0B9D
 	retn	; 0B9E
@@ -1610,11 +1650,11 @@ loc_0BF3:
 loc_0C3D:
 	ld a,0ffh	; 0C3D
 	ld (CommandWait),a	; 0C3F
-	ld a,(0fe2ch)	; 0C42
+	ld a,(NoNewCommand)	; 0C42
 	or a	; 0C45
 	jr nz,loc_0C3D	; 0C46
 	ld a,0ffh	; 0C48
-	ld (0fe2ch),a	; 0C4A
+	ld (NoNewCommand),a	; 0C4A
 	ld a,(SoundCommand)	; 0C4D
 	cp 010h	; 0C50
 	jp c,DispatchCommand	; 0C52
@@ -1649,11 +1689,11 @@ loc_0C7A:
 loc_0C7D:
 	ld a,0ffh	; 0C7D
 	ld (CommandWait),a	; 0C7F
-	ld a,(0fe2ch)	; 0C82
+	ld a,(NoNewCommand)	; 0C82
 	or a	; 0C85
 	jr nz,loc_0C7D	; 0C86
 	ld a,0ffh	; 0C88
-	ld (0fe2ch),a	; 0C8A
+	ld (NoNewCommand),a	; 0C8A
 	ld a,(SoundCommand)	; 0C8D
 	cp 010h	; 0C90
 	jp c,DispatchCommand	; 0C92
@@ -1684,11 +1724,11 @@ loc_0CB9:
 loc_0CBE:
 	ld a,0ffh	; 0CBE
 	ld (CommandWait),a	; 0CC0
-	ld a,(0fe2ch)	; 0CC3
+	ld a,(NoNewCommand)	; 0CC3
 	or a	; 0CC6
 	jr nz,loc_0CBE	; 0CC7
 	ld a,0ffh	; 0CC9
-	ld (0fe2ch),a	; 0CCB
+	ld (NoNewCommand),a	; 0CCB
 	ld a,(SoundCommand)	; 0CCE
 	call sub_0325	; 0CD1
 	ld (0fe22h),a	; 0CD4
@@ -1788,11 +1828,11 @@ loc_0D7F:
 loc_0D8B:
 	ld a,0ffh	; 0D8B
 	ld (CommandWait),a	; 0D8D
-	ld a,(0fe2ch)	; 0D90
+	ld a,(NoNewCommand)	; 0D90
 	or a	; 0D93
 	jr nz,loc_0D8B	; 0D94
 	ld a,0ffh	; 0D96
-	ld (0fe2ch),a	; 0D98
+	ld (NoNewCommand),a	; 0D98
 	ld iy,0fabeh	; 0D9B
 	ld a,(SoundCommand)	; 0D9F
 	ld (iy+2),a	; 0DA2
@@ -1829,11 +1869,11 @@ loc_0DD5:
 sub_0DDA:
 	ld a,0ffh	; 0DDA
 	ld (CommandWait),a	; 0DDC
-	ld a,(0fe2ch)	; 0DDF
+	ld a,(NoNewCommand)	; 0DDF
 	or a	; 0DE2
 	jr nz,sub_0DDA	; 0DE3
 	ld a,0ffh	; 0DE5
-	ld (0fe2ch),a	; 0DE7
+	ld (NoNewCommand),a	; 0DE7
 	ld a,(SoundCommand)	; 0DEA
 	and 003h	; 0DED
 	ld (0fe25h),a	; 0DEF
@@ -1861,20 +1901,20 @@ loc_0E0E:
 	cp 004h	; 0E12
 	ret z	; 0E14
 	xor a	; 0E15
-	ld (0fe18h),a	; 0E16
+	ld (EffectPlaying),a	; 0E16
 	call sub_09BC	; 0E19
 	ret	; 0E1C
 sub_0E1D:
 	ld a,0ffh	; 0E1D
 	ld (CommandWait),a	; 0E1F
-	ld a,(0fe2ch)	; 0E22
+	ld a,(NoNewCommand)	; 0E22
 	or a	; 0E25
 	jr nz,sub_0E1D	; 0E26
 	di	; 0E28
 	ld a,0ffh	; 0E29
-	ld (0fe2ch),a	; 0E2B
+	ld (NoNewCommand),a	; 0E2B
 	ld a,(SoundCommand)	; 0E2E
-	call sub_28FE	; 0E31
+	call SetTempo	; 0E31
 	ret	; 0E34
 ; Command10 [I] command $10: a loop over the ROM with ix as return address and flags kept in the shadow registers; a ROM or RAM check whose result is not understood yet
 Command10:
@@ -1926,25 +1966,25 @@ loc_0E73:
 	exx	; 0E75
 	jp Reset	; 0E76
 loc_0E79:
-	ld hl,WorkRam	; 0E79
+	ld hl,SsgPeriodA	; 0E79
 	ld de,0f801h	; 0E7C
 	ld bc,007ffh	; 0E7F
 	ld a,055h	; 0E82
 	ld (hl),a	; 0E84
 	ldir	; 0E85
-	ld hl,WorkRam	; 0E87
+	ld hl,SsgPeriodA	; 0E87
 	ld bc,007ffh	; 0E8A
 loc_0E8D:
 	cpi	; 0E8D
 	jp nz,loc_0EB7	; 0E8F
 	jp pe,loc_0E8D	; 0E92
-	ld hl,WorkRam	; 0E95
+	ld hl,SsgPeriodA	; 0E95
 	ld de,0f801h	; 0E98
 	ld bc,007ffh	; 0E9B
 	ld a,0aah	; 0E9E
 	ld (hl),a	; 0EA0
 	ldir	; 0EA1
-	ld hl,WorkRam	; 0EA3
+	ld hl,SsgPeriodA	; 0EA3
 	ld bc,007ffh	; 0EA6
 loc_0EA9:
 	cpi	; 0EA9
@@ -1959,7 +1999,7 @@ loc_0EB7:
 	set 1,a	; 0EB8
 	ex af,af'	; 0EBA
 loc_0EBB:
-	ld hl,WorkRam	; 0EBB
+	ld hl,SsgPeriodA	; 0EBB
 	ld bc,003ffh	; 0EBE
 loc_0EC1:
 	ld e,l	; 0EC1
@@ -1972,7 +2012,7 @@ loc_0EC1:
 	ld a,b	; 0EC8
 	or c	; 0EC9
 	jr nz,loc_0EC1	; 0ECA
-	ld hl,WorkRam	; 0ECC
+	ld hl,SsgPeriodA	; 0ECC
 	ld bc,003ffh	; 0ECF
 loc_0ED2:
 	ld e,l	; 0ED2
@@ -2037,7 +2077,7 @@ loc_0F17:
 	ld l,e	; 0F2D
 	push hl	; 0F2E
 	pop ix	; 0F2F
-	ld iy,0fce8h	; 0F31
+	ld iy,Channel1	; 0F31
 	call sub_09A3	; 0F35
 	ld hl,0f837h	; 0F38
 	ld de,00010h	; 0F3B
@@ -2074,8 +2114,8 @@ loc_0F71:
 	add hl,de	; 0F73
 	djnz loc_0F71	; 0F74
 	ld a,(ix+23)	; 0F76
-	ld (0fe2bh),a	; 0F79
-	call sub_28FE	; 0F7C
+	ld (Tempo),a	; 0F79
+	call SetTempo	; 0F7C
 	ld a,001h	; 0F7F
 	ld b,007h	; 0F81
 	call sub_28EC	; 0F83
@@ -2273,7 +2313,7 @@ sub_118C:
 	or a	; 118F
 	jp nz,loc_11B3	; 1190
 	push ix	; 1193
-	ld ix,0f806h	; 1195
+	ld ix,SsgSlideA	; 1195
 	ld bc,00300h	; 1199
 loc_119C:
 	push bc	; 119C
@@ -2296,7 +2336,7 @@ loc_11B3:
 	cp 004h	; 11B9
 	ret z	; 11BB
 	xor a	; 11BC
-	ld (0fe18h),a	; 11BD
+	ld (EffectPlaying),a	; 11BD
 	ret	; 11C0
 sub_11C1:
 	dec (ix+8)	; 11C1
@@ -2349,7 +2389,7 @@ sub_1218:
 	ld (ix+0),000h	; 1218
 	call sub_09BC	; 121C
 	xor a	; 121F
-	ld (0fe18h),a	; 1220
+	ld (EffectPlaying),a	; 1220
 	ret	; 1223
 sub_1224:
 	push hl	; 1224
@@ -2378,7 +2418,7 @@ sub_123E:
 	cp 003h	; 1244
 	jr c,loc_1258	; 1246
 	ld c,006h	; 1248
-	ld hl,0fb65h	; 124A
+	ld hl,FmShadowB	; 124A
 	sub 002h	; 124D
 	ld e,a	; 124F
 	add hl,de	; 1250
@@ -2388,7 +2428,7 @@ sub_123E:
 	jr loc_1264	; 1256
 loc_1258:
 	ld c,004h	; 1258
-	ld hl,0fadeh	; 125A
+	ld hl,FmShadowA	; 125A
 	ld e,a	; 125D
 	add hl,de	; 125E
 	exx	; 125F
@@ -2404,7 +2444,7 @@ loc_1264:
 	or d	; 126C
 	out (PORT_YM_DATA_A),a	; 126D
 	rst 010h	; 126F
-	ld ix,0faceh	; 1270
+	ld ix,TimerAShadow	; 1270
 	ld (ix+8),a	; 1274
 	and 0f0h	; 1277
 	or a	; 1279
@@ -2414,7 +2454,7 @@ loc_1264:
 	and 01fh	; 127F
 	ld e,a	; 1281
 	ld d,000h	; 1282
-	ld hl,dat_5355	; 1284
+	ld hl,FmFnumTable	; 1284
 	add hl,de	; 1287
 	add hl,de	; 1288
 	ld e,(hl)	; 1289
@@ -2509,7 +2549,7 @@ loc_12F0:
 	ld a,e	; 1303
 	and 01fh	; 1304
 	ld e,a	; 1306
-	ld hl,dat_5395	; 1307
+	ld hl,SsgPeriodTable	; 1307
 	add hl,de	; 130A
 	add hl,de	; 130B
 	ld e,(hl)	; 130C
@@ -2528,7 +2568,7 @@ loc_1318:
 	djnz loc_1318	; 131C
 loc_131E:
 	push af	; 131E
-	ld a,(0fe38h)	; 131F
+	ld a,(CurrentChannel)	; 131F
 	or a	; 1322
 	jr z,loc_134F	; 1323
 	cp 005h	; 1325
@@ -2538,19 +2578,19 @@ loc_131E:
 	ld a,(0fe45h)	; 132D
 	or a	; 1330
 	jr z,loc_134F	; 1331
-	ld (0f804h),de	; 1333
+	ld (SsgPeriodC),de	; 1333
 	jr loc_134F	; 1337
 loc_1339:
 	ld a,(0fe45h)	; 1339
 	or a	; 133C
 	jr z,loc_134F	; 133D
-	ld (0f802h),de	; 133F
+	ld (SsgPeriodB),de	; 133F
 	jr loc_134F	; 1343
 loc_1345:
 	ld a,(0fe45h)	; 1345
 	or a	; 1348
 	jr z,loc_134F	; 1349
-	ld (WorkRam),de	; 134B
+	ld (SsgPeriodA),de	; 134B
 loc_134F:
 	pop af	; 134F
 	ex af,af'	; 1350
@@ -2583,7 +2623,7 @@ sub_1365:
 	cpl	; 1375
 	and 0c7h	; 1376
 	ld d,a	; 1378
-	ld a,(0fe1ah)	; 1379
+	ld a,(EffectParam)	; 1379
 	or d	; 137C
 	cpl	; 137D
 	ld d,007h	; 137E
@@ -2609,13 +2649,13 @@ sub_1397:
 	jr z,loc_13AB	; 139B
 	cp 006h	; 139D
 	jr z,loc_13A6	; 139F
-	ld hl,0f81ch	; 13A1
+	ld hl,SsgSlideC	; 13A1
 	jr loc_13AE	; 13A4
 loc_13A6:
-	ld hl,0f811h	; 13A6
+	ld hl,SsgSlideB	; 13A6
 	jr loc_13AE	; 13A9
 loc_13AB:
-	ld hl,0f806h	; 13AB
+	ld hl,SsgSlideA	; 13AB
 loc_13AE:
 	xor a	; 13AE
 	or (hl)	; 13AF
@@ -2933,7 +2973,7 @@ sub_15BB:
 	ex af,af'	; 15C9
 	ld a,(hl)	; 15CA
 	ex af,af'	; 15CB
-	ld hl,dat_50D4	; 15CC
+	ld hl,tbl_50D4	; 15CC
 	ld a,c	; 15CF
 	and 00fh	; 15D0
 	or b	; 15D2
@@ -2963,7 +3003,7 @@ sub_15E1:
 	or e	; 15EE
 	ld e,a	; 15EF
 	ld d,000h	; 15F0
-	ld hl,dat_4FA4	; 15F2
+	ld hl,tbl_4FA4	; 15F2
 	add hl,de	; 15F5
 	add hl,de	; 15F6
 	ld e,(hl)	; 15F7
@@ -3008,7 +3048,8 @@ Delay:
 	pop de	; 162B
 	pop bc	; 162C
 	ret	; 162D
-sub_162E:
+; LoadInstrument [C] writes FM instrument a (52-byte record of FmInstruments, a x 52) to the channel's operators and to the register copies FmShadowA/B
+LoadInstrument:
 	push af	; 162E
 	push ix	; 162F
 	push hl	; 1631
@@ -3025,7 +3066,7 @@ sub_162E:
 	add hl,de	; 163D
 	pop de	; 163E
 	add hl,de	; 163F
-	ld de,dat_2A80	; 1640
+	ld de,FmInstruments	; 1640
 	add hl,de	; 1643
 	push hl	; 1644
 	pop ix	; 1645
@@ -3035,9 +3076,9 @@ sub_162E:
 	or a	; 164D
 	jp z,loc_17AC	; 164E
 	cp 003h	; 1651
-	ld hl,0fadeh	; 1653
+	ld hl,FmShadowA	; 1653
 	jr c,loc_165D	; 1656
-	ld hl,0fb65h	; 1658
+	ld hl,FmShadowB	; 1658
 	sub 002h	; 165B
 loc_165D:
 	ld e,a	; 165D
@@ -3089,7 +3130,7 @@ loc_165D:
 	push hl	; 16AA
 	ld d,000h	; 16AB
 	ld e,(ix+1)	; 16AD
-	ld hl,dat_2A16	; 16B0
+	ld hl,AlgorithmCarriers	; 16B0
 	add hl,de	; 16B3
 	ld e,(hl)	; 16B4
 	pop hl	; 16B5
@@ -3255,7 +3296,7 @@ sub_17B1:
 	ret	; 17B5
 sub_17B6:
 	push iy	; 17B6
-	ld a,(0fe38h)	; 17B8
+	ld a,(CurrentChannel)	; 17B8
 	ld b,a	; 17BB
 	ld iy,0fc80h	; 17BC
 	ld de,00010h	; 17C0
@@ -3311,7 +3352,7 @@ sub_1816:
 	sub 002h	; 1820
 	jr loc_1839	; 1822
 loc_1824:
-	ld hl,0fadeh	; 1824
+	ld hl,FmShadowA	; 1824
 	ld e,a	; 1827
 	ld d,000h	; 1828
 	add hl,de	; 182A
@@ -3326,7 +3367,7 @@ loc_1824:
 	ld c,005h	; 1835
 	jr loc_184C	; 1837
 loc_1839:
-	ld hl,0fb65h	; 1839
+	ld hl,FmShadowB	; 1839
 	ld e,a	; 183C
 	ld d,000h	; 183D
 	add hl,de	; 183F
@@ -3414,33 +3455,33 @@ sub_18A0:
 	cp (iy+1)	; 18BC
 	call c,sub_193E	; 18BF
 	push ix	; 18C2
-	ld ix,0fd28h	; 18C4
+	ld ix,Channel8	; 18C4
 	dec (ix+2)	; 18C8
 	call z,sub_1935	; 18CB
 	call m,sub_1935	; 18CE
-	ld ix,0fd38h	; 18D1
+	ld ix,Channel9	; 18D1
 	dec (ix+2)	; 18D5
 	call z,sub_1935	; 18D8
 	call m,sub_1935	; 18DB
-	ld ix,0fd48h	; 18DE
+	ld ix,Channel10	; 18DE
 	dec (ix+2)	; 18E2
 	call z,sub_1935	; 18E5
 	call m,sub_1935	; 18E8
-	ld ix,0fd58h	; 18EB
+	ld ix,Channel11	; 18EB
 	dec (ix+2)	; 18EF
 	call z,sub_1935	; 18F2
 	call m,sub_1935	; 18F5
-	ld ix,0fd68h	; 18F8
+	ld ix,Channel12	; 18F8
 	dec (ix+2)	; 18FC
 	call z,sub_1935	; 18FF
 	call m,sub_1935	; 1902
-	ld ix,0fd78h	; 1905
+	ld ix,Channel13	; 1905
 	dec (ix+2)	; 1909
 	call z,sub_1935	; 190C
 	call m,sub_1935	; 190F
 	pop ix	; 1912
 	push ix	; 1914
-	ld ix,0fd88h	; 1916
+	ld ix,Channel14	; 1916
 	ld a,(ix+2)	; 191A
 	sub 005h	; 191D
 	bit 7,a	; 191F
@@ -3496,7 +3537,7 @@ loc_1983:
 	ld a,078h	; 1987
 loc_1989:
 	ld b,a	; 1989
-	ld a,(0fe38h)	; 198A
+	ld a,(CurrentChannel)	; 198A
 	call sub_294C	; 198D
 	ret	; 1990
 sub_1991:
@@ -3509,7 +3550,7 @@ sub_1991:
 loc_19A0:
 	push af	; 19A0
 	push ix	; 19A1
-	ld a,(0fe38h)	; 19A3
+	ld a,(CurrentChannel)	; 19A3
 	sub 008h	; 19A6
 	call sub_02FC	; 19A8
 	jr c,loc_19B8	; 19AB
@@ -3526,7 +3567,7 @@ loc_19B8:
 	and 0c0h	; 19BF
 	or b	; 19C1
 	ld b,a	; 19C2
-	ld a,(0fe38h)	; 19C3
+	ld a,(CurrentChannel)	; 19C3
 	sub 008h	; 19C6
 	call sub_29E5	; 19C8
 	ret	; 19CB
@@ -3777,10 +3818,10 @@ loc_1B98:
 	call YmWriteB	; 1BA6
 	ret	; 1BA9
 sub_1BAA:
-	ld hl,0fadeh	; 1BAA
+	ld hl,FmShadowA	; 1BAA
 	cp 003h	; 1BAD
 	jr c,loc_1BB6	; 1BAF
-	ld hl,0fb65h	; 1BB1
+	ld hl,FmShadowB	; 1BB1
 	sub 002h	; 1BB4
 loc_1BB6:
 	ld e,a	; 1BB6
@@ -3799,7 +3840,7 @@ loc_1BB6:
 	ret	; 1BC6
 sub_1BC7:
 	push iy	; 1BC7
-	ld a,(0fe38h)	; 1BC9
+	ld a,(CurrentChannel)	; 1BC9
 	ld b,a	; 1BCC
 	call sub_1BED	; 1BCD
 	ld a,(iy+3)	; 1BD0
@@ -4167,11 +4208,14 @@ loc_1E6F:
 	ld e,(hl)	; 1E73
 	ret	; 1E74
 dat_1E75:
-	defb 007h,001h,003h,000h,006h,008h,00ah,000h,000h,000h,009h,00bh,000h,002h,004h,005h	; 1E75
-	defb 0ach,0c1h,0cdh,0c2h,0ceh,0cfh,0c4h,0c0h,0c5h,0cah,0c6h,0cbh,0cch,0e1h,0edh,0e2h	; 1E85
+	defb 007h,001h,003h,000h,006h,008h,00ah,000h	; 1E75
+	defb 000h,000h,009h,00bh,000h,002h,004h,005h	; 1E7D
+	defb 0ach,0c1h,0cdh,0c2h,0ceh,0cfh,0c4h,0c0h	; 1E85
+	defb 0c5h,0cah,0c6h,0cbh,0cch,0e1h,0edh,0e2h	; 1E8D
 	defb 0eeh,0efh,0e4h,0e0h,0e5h,0eah,0e6h,0ebh	; 1E95
 dat_1E9D:
-	defb 00ch,001h,00dh,002h,00eh,00fh,004h,000h,005h,00ah,006h,00bh,02ch,021h,02dh,022h	; 1E9D
+	defb 00ch,001h,00dh,002h,00eh,00fh,004h,000h	; 1E9D
+	defb 005h,00ah,006h,00bh,02ch,021h,02dh,022h	; 1EA5
 	defb 02eh,02fh,024h,020h,025h,02ah,026h,02bh	; 1EAD
 ; TimerIrq [C] YM2610 timer interrupt: saves the registers and runs the sound engine
 TimerIrq:
@@ -4184,7 +4228,7 @@ TimerIrq:
 	ld a,0ffh	; 1EBD
 	ld (0fe2dh),a	; 1EBF
 	ld (0fe2eh),a	; 1EC2
-	ld (0fe20h),sp	; 1EC5
+	ld (EngineStack),sp	; 1EC5
 	in a,(PORT_YM_ADDR_B)	; 1EC9
 	ld (0fe33h),a	; 1ECB
 	bit 7,a	; 1ECE
@@ -4236,48 +4280,48 @@ loc_1F1D:
 	call sub_1A18	; 1F3E
 	ld a,004h	; 1F41
 	call sub_1A18	; 1F43
-	ld a,(0fe18h)	; 1F46
+	ld a,(EffectPlaying)	; 1F46
 	or a	; 1F49
 	jp z,loc_1F7D	; 1F4A
 	ld a,005h	; 1F4D
-	ld (0fe38h),a	; 1F4F
-	ld ix,0fd98h	; 1F52
+	ld (CurrentChannel),a	; 1F4F
+	ld ix,EffectChannel5	; 1F52
 	call sub_20BE	; 1F56
 	ld a,006h	; 1F59
-	ld (0fe38h),a	; 1F5B
-	ld ix,0fda8h	; 1F5E
+	ld (CurrentChannel),a	; 1F5B
+	ld ix,EffectChannel6	; 1F5E
 	call sub_20BE	; 1F62
 	ld a,007h	; 1F65
-	ld (0fe38h),a	; 1F67
-	ld ix,0fdb8h	; 1F6A
+	ld (CurrentChannel),a	; 1F67
+	ld ix,EffectChannel7	; 1F6A
 	call sub_20BE	; 1F6E
 	ld a,000h	; 1F71
-	ld (0fe38h),a	; 1F73
-	ld ix,0fdc8h	; 1F76
+	ld (CurrentChannel),a	; 1F73
+	ld ix,EffectChannel0	; 1F76
 	call sub_20BE	; 1F7A
 loc_1F7D:
 	ld a,(0fbf3h)	; 1F7D
 	or a	; 1F80
 	jr z,loc_1F8F	; 1F81
 	ld a,00bh	; 1F83
-	ld (0fe38h),a	; 1F85
-	ld ix,0fde8h	; 1F88
+	ld (CurrentChannel),a	; 1F85
+	ld ix,ExtraChannel5	; 1F88
 	call sub_20BE	; 1F8C
 loc_1F8F:
 	ld a,(0fbfch)	; 1F8F
 	or a	; 1F92
 	jr z,loc_1FA1	; 1F93
 	ld a,00ch	; 1F95
-	ld (0fe38h),a	; 1F97
-	ld ix,0fdf8h	; 1F9A
+	ld (CurrentChannel),a	; 1F97
+	ld ix,ExtraChannel6	; 1F9A
 	call sub_20BE	; 1F9E
 loc_1FA1:
 	ld a,(0fc05h)	; 1FA1
 	or a	; 1FA4
 	jr z,loc_1FB3	; 1FA5
 	ld a,00dh	; 1FA7
-	ld (0fe38h),a	; 1FA9
-	ld ix,0fe08h	; 1FAC
+	ld (CurrentChannel),a	; 1FA9
+	ld ix,ExtraChannel7	; 1FAC
 	call sub_20BE	; 1FB0
 loc_1FB3:
 	ld a,(0fc35h)	; 1FB3
@@ -4285,8 +4329,8 @@ loc_1FB3:
 	jp z,loc_2253	; 1FB7
 	ld iy,0fac6h	; 1FBA
 	ld a,00eh	; 1FBE
-	ld (0fe38h),a	; 1FC0
-	ld ix,0fdd8h	; 1FC3
+	ld (CurrentChannel),a	; 1FC0
+	ld ix,ExtraChannel0	; 1FC3
 	call sub_20BE	; 1FC7
 	jp loc_2253	; 1FCA
 loc_1FCD:
@@ -4296,84 +4340,84 @@ loc_1FCD:
 	ld a,(0fe29h)	; 1FD4
 	or a	; 1FD7
 	jp z,loc_2253	; 1FD8
-	ld ix,0fce8h	; 1FDB
+	ld ix,Channel1	; 1FDB
 	ld iy,0fabeh	; 1FDF
 	ld a,(0fe23h)	; 1FE3
 	or a	; 1FE6
 	call nz,sub_1886	; 1FE7
 	ld a,001h	; 1FEA
-	ld (0fe38h),a	; 1FEC
-	ld ix,0fce8h	; 1FEF
+	ld (CurrentChannel),a	; 1FEC
+	ld ix,Channel1	; 1FEF
 	call sub_20BE	; 1FF3
 	ld a,(0fe23h)	; 1FF6
 	or a	; 1FF9
 	call nz,sub_196F	; 1FFA
 	ld a,002h	; 1FFD
-	ld (0fe38h),a	; 1FFF
-	ld ix,0fcf8h	; 2002
+	ld (CurrentChannel),a	; 1FFF
+	ld ix,Channel2	; 2002
 	call sub_20BE	; 2006
 	ld a,(0fe23h)	; 2009
 	or a	; 200C
 	call nz,sub_196F	; 200D
 	ld a,003h	; 2010
-	ld (0fe38h),a	; 2012
-	ld ix,0fd08h	; 2015
+	ld (CurrentChannel),a	; 2012
+	ld ix,Channel3	; 2015
 	call sub_20BE	; 2019
 	ld a,(0fe23h)	; 201C
 	or a	; 201F
 	call nz,sub_196F	; 2020
 	ld a,004h	; 2023
-	ld (0fe38h),a	; 2025
-	ld ix,0fd18h	; 2028
+	ld (CurrentChannel),a	; 2025
+	ld ix,Channel4	; 2028
 	call sub_20BE	; 202C
 	ld a,(0fe23h)	; 202F
 	or a	; 2032
 	call nz,sub_196F	; 2033
 	ld a,008h	; 2036
-	ld (0fe38h),a	; 2038
-	ld ix,0fd28h	; 203B
+	ld (CurrentChannel),a	; 2038
+	ld ix,Channel8	; 203B
 	call sub_20BE	; 203F
 	ld a,(0fe23h)	; 2042
 	or a	; 2045
 	call nz,sub_1991	; 2046
 	ld a,009h	; 2049
-	ld (0fe38h),a	; 204B
-	ld ix,0fd38h	; 204E
+	ld (CurrentChannel),a	; 204B
+	ld ix,Channel9	; 204E
 	call sub_20BE	; 2052
 	ld a,(0fe23h)	; 2055
 	or a	; 2058
 	call nz,sub_1991	; 2059
 	ld a,00ah	; 205C
-	ld (0fe38h),a	; 205E
-	ld ix,0fd48h	; 2061
+	ld (CurrentChannel),a	; 205E
+	ld ix,Channel10	; 2061
 	call sub_20BE	; 2065
 	ld a,(0fe23h)	; 2068
 	or a	; 206B
 	call nz,sub_1991	; 206C
 	ld a,00bh	; 206F
-	ld (0fe38h),a	; 2071
-	ld ix,0fd58h	; 2074
+	ld (CurrentChannel),a	; 2071
+	ld ix,Channel11	; 2074
 	call sub_20BE	; 2078
 	ld a,(0fe23h)	; 207B
 	or a	; 207E
 	call nz,sub_1991	; 207F
 	ld a,00ch	; 2082
-	ld (0fe38h),a	; 2084
-	ld ix,0fd68h	; 2087
+	ld (CurrentChannel),a	; 2084
+	ld ix,Channel12	; 2087
 	call sub_20BE	; 208B
 	ld a,(0fe23h)	; 208E
 	or a	; 2091
 	call nz,sub_1991	; 2092
 	ld a,00dh	; 2095
-	ld (0fe38h),a	; 2097
-	ld ix,0fd78h	; 209A
+	ld (CurrentChannel),a	; 2097
+	ld ix,Channel13	; 209A
 	call sub_20BE	; 209E
 	ld a,(0fe23h)	; 20A1
 	or a	; 20A4
 	call nz,sub_1991	; 20A5
 	ld a,00eh	; 20A8
-	ld (0fe38h),a	; 20AA
-	ld ix,0fd88h	; 20AD
+	ld (CurrentChannel),a	; 20AA
+	ld ix,Channel14	; 20AD
 	call sub_20BE	; 20B1
 	ld a,(0fe23h)	; 20B4
 	or a	; 20B7
@@ -4398,16 +4442,16 @@ loc_20D6:
 	ld (ix+0),a	; 20DE
 	ld l,(ix+9)	; 20E1
 	ld h,(ix+10)	; 20E4
-	call sub_226D	; 20E7
+	call SequenceStep	; 20E7
 	ld (ix+9),l	; 20EA
 	ld (ix+10),h	; 20ED
-	ld a,(0fe38h)	; 20F0
+	ld a,(CurrentChannel)	; 20F0
 	or a	; 20F3
 	jp z,loc_2141	; 20F4
 	cp 008h	; 20F7
 	jp nc,loc_214E	; 20F9
 	call sub_21E3	; 20FC
-	ld a,(0fe38h)	; 20FF
+	ld a,(CurrentChannel)	; 20FF
 	cp 005h	; 2102
 	jr nc,loc_2133	; 2104
 	ld a,(iy+1)	; 2106
@@ -4420,7 +4464,7 @@ loc_2115:
 	ld a,07fh	; 2115
 loc_2117:
 	ld b,a	; 2117
-	ld a,(0fe38h)	; 2118
+	ld a,(CurrentChannel)	; 2118
 	call sub_294C	; 211B
 	bit 3,(ix+0)	; 211E
 	jr nz,loc_212F	; 2122
@@ -4438,7 +4482,7 @@ loc_212F:
 loc_2133:
 	ld a,(ix+3)	; 2133
 	ld b,a	; 2136
-	ld a,(0fe38h)	; 2137
+	ld a,(CurrentChannel)	; 2137
 	call sub_29D8	; 213A
 	call sub_12D4	; 213D
 	ret	; 2140
@@ -4466,7 +4510,7 @@ loc_2165:
 	and 0c0h	; 2169
 	or b	; 216B
 	ld b,a	; 216C
-	ld a,(0fe38h)	; 216D
+	ld a,(CurrentChannel)	; 216D
 	call sub_13BA	; 2170
 	ret	; 2173
 loc_2174:
@@ -4502,7 +4546,7 @@ loc_21A4:
 	ld a,b	; 21AB
 	ld (0fe1fh),a	; 21AC
 loc_21AF:
-	ld a,(0fe38h)	; 21AF
+	ld a,(CurrentChannel)	; 21AF
 	bit 2,(ix+0)	; 21B2
 	jr nz,loc_21BE	; 21B6
 	bit 3,(ix+0)	; 21B8
@@ -4547,7 +4591,7 @@ loc_21FB:
 	jr z,loc_221B	; 2207
 	bit 3,(ix+0)	; 2209
 	ret nz	; 220D
-	ld a,(0fe38h)	; 220E
+	ld a,(CurrentChannel)	; 220E
 	ld d,000h	; 2211
 	call sub_1533	; 2213
 	ret	; 2216
@@ -4558,7 +4602,7 @@ loc_221B:
 	res 0,(ix+0)	; 221B
 	bit 3,(ix+0)	; 221F
 	jp nz,loc_20D6	; 2223
-	ld a,(0fe38h)	; 2226
+	ld a,(CurrentChannel)	; 2226
 	cp 005h	; 2229
 	jp c,loc_224C	; 222B
 loc_222E:
@@ -4596,8 +4640,9 @@ loc_2263:
 	pop af	; 226A
 	ei	; 226B
 	ret	; 226C
-sub_226D:
-	ld a,(0fe38h)	; 226D
+; SequenceStep [C] reads the channel's sequence at hl: notes ($01-$30, $00 escape), commands ($31-$5F through SequenceCommandTable), instruments ($80-$FF); format in tools/sm1_data.py
+SequenceStep:
+	ld a,(CurrentChannel)	; 226D
 	ld b,a	; 2270
 	ex af,af'	; 2271
 	ld a,b	; 2272
@@ -4611,14 +4656,14 @@ sub_226D:
 	jp c,loc_2371	; 2280
 	bit 7,a	; 2283
 	jp nz,loc_228B	; 2285
-	jp sub_226D	; 2288
+	jp SequenceStep	; 2288
 loc_228B:
 	sub 080h	; 228B
 	ex af,af'	; 228D
 	ld c,a	; 228E
 	ex af,af'	; 228F
-	call sub_162E	; 2290
-	ld a,(0fe38h)	; 2293
+	call LoadInstrument	; 2290
+	ld a,(CurrentChannel)	; 2293
 	call sub_1816	; 2296
 	inc hl	; 2299
 	bit 7,(hl)	; 229A
@@ -4627,9 +4672,9 @@ loc_228B:
 	call nz,sub_22DC	; 22A1
 	bit 7,(hl)	; 22A4
 	call nz,sub_22D4	; 22A6
-	jp sub_226D	; 22A9
+	jp SequenceStep	; 22A9
 sub_22AC:
-	ld a,(0fe38h)	; 22AC
+	ld a,(CurrentChannel)	; 22AC
 	cp 008h	; 22AF
 	jr nc,loc_22BB	; 22B1
 	ld a,(hl)	; 22B3
@@ -4685,7 +4730,7 @@ loc_22F6:
 	jr loc_22FA	; 22F8
 loc_22FA:
 	ex af,af'	; 22FA
-	ld a,(0fe38h)	; 22FB
+	ld a,(CurrentChannel)	; 22FB
 	ex af,af'	; 22FE
 	call sub_28AA	; 22FF
 	ld (ix+4),b	; 2302
@@ -4701,7 +4746,7 @@ loc_22FA:
 loc_2318:
 	set 3,(ix+0)	; 2318
 loc_231C:
-	ld a,(0fe38h)	; 231C
+	ld a,(CurrentChannel)	; 231C
 	cp 00eh	; 231F
 	jr nz,loc_2330	; 2321
 	xor a	; 2323
@@ -4715,7 +4760,7 @@ loc_2330:
 	and 01fh	; 2331
 	ld (ix+3),a	; 2333
 	inc hl	; 2336
-	ld a,(0fe38h)	; 2337
+	ld a,(CurrentChannel)	; 2337
 	or a	; 233A
 	jr z,loc_234F	; 233B
 	cp 008h	; 233D
@@ -4737,7 +4782,7 @@ loc_234F:
 	inc hl	; 2357
 	ret	; 2358
 loc_2359:
-	ld a,(0fe38h)	; 2359
+	ld a,(CurrentChannel)	; 2359
 	cp 00eh	; 235C
 	jr nz,loc_2364	; 235E
 	xor a	; 2360
@@ -4754,7 +4799,7 @@ loc_2371:
 	sub 030h	; 2371
 	inc hl	; 2373
 	exx	; 2374
-	ld hl,sub_226D	; 2375
+	ld hl,SequenceStep	; 2375
 	push hl	; 2378
 	ld e,a	; 2379
 	add a,a	; 237A
@@ -4766,43 +4811,43 @@ loc_2371:
 	jp (hl)	; 2383
 ; SequenceCommandTable [C] 48 jp: the commands of the music sequence interpreter, by character - '0' (x 3)
 SequenceCommandTable:
-	jp loc_2414	; 2384
+	jp SeqNop	; 2384
 loc_2387:
-	jp loc_27C4	; 2387
+	jp SeqLoopStart	; 2387
 loc_238A:
-	jp loc_27C4	; 238A
+	jp SeqLoopStart	; 238A
 loc_238D:
-	jp loc_25AA	; 238D
+	jp SeqTempo	; 238D
 loc_2390:
-	jp loc_281C	; 2390
+	jp SeqLoopEnd	; 2390
 loc_2393:
-	jp loc_2838	; 2393
+	jp SeqCall	; 2393
 loc_2396:
-	jp loc_2851	; 2396
+	jp SeqReturn	; 2396
 loc_2399:
-	jp loc_25B3	; 2399
+	jp SeqTimerA	; 2399
 loc_239C:
-	jp loc_281C	; 239C
+	jp SeqLoopEnd	; 239C
 loc_239F:
-	jp loc_27BF	; 239F
+	jp SeqJump	; 239F
 loc_23A2:
-	jp loc_28A1	; 23A2
+	jp SeqVolume	; 23A2
 loc_23A5:
 	jp loc_2869	; 23A5
 loc_23A8:
-	jp loc_2414	; 23A8
+	jp SeqNop	; 23A8
 loc_23AB:
 	jp loc_288B	; 23AB
 loc_23AE:
-	jp loc_2414	; 23AE
+	jp SeqNop	; 23AE
 loc_23B1:
 	jp loc_2895	; 23B1
 loc_23B4:
-	jp loc_2780	; 23B4
+	jp SeqEnd	; 23B4
 loc_23B7:
-	jp loc_277C	; 23B7
+	jp SeqHalt	; 23B7
 loc_23BA:
-	jp loc_27B1	; 23BA
+	jp SeqRepeat	; 23BA
 loc_23BD:
 	jp loc_287A	; 23BD
 loc_23C0:
@@ -4812,13 +4857,13 @@ loc_23C3:
 loc_23C6:
 	jp loc_268F	; 23C6
 loc_23C9:
-	jp loc_2683	; 23C9
+	jp SeqStartSound	; 23C9
 loc_23CC:
-	jp loc_2414	; 23CC
+	jp SeqNop	; 23CC
 loc_23CF:
-	jp loc_2414	; 23CF
+	jp SeqNop	; 23CF
 loc_23D2:
-	jp loc_2414	; 23D2
+	jp SeqNop	; 23D2
 loc_23D5:
 	jp loc_2624	; 23D5
 loc_23D8:
@@ -4826,21 +4871,21 @@ loc_23D8:
 loc_23DB:
 	jp loc_26C7	; 23DB
 loc_23DE:
-	jp loc_260D	; 23DE
+	jp SeqLfo	; 23DE
 loc_23E1:
 	jp loc_25F9	; 23E1
 loc_23E4:
-	jp loc_25F0	; 23E4
+	jp SeqYmWrite	; 23E4
 loc_23E7:
 	jp loc_25E9	; 23E7
 loc_23EA:
 	jp loc_261D	; 23EA
 loc_23ED:
-	jp loc_25D1	; 23ED
+	jp SeqSsgEnvelope	; 23ED
 loc_23F0:
 	jp loc_2599	; 23F0
 loc_23F3:
-	jp loc_257F	; 23F3
+	jp SeqEffectEnd	; 23F3
 loc_23F6:
 	jp loc_2576	; 23F6
 loc_23F9:
@@ -4861,38 +4906,39 @@ loc_240E:
 	jp loc_2480	; 240E
 loc_2411:
 	jp loc_2416	; 2411
-loc_2414:
+; SeqNop [C] sequence commands 30h, 3Ch, 3Eh, 48h, 49h, 4Ah: nothing
+SeqNop:
 	exx	; 2414
 	ret	; 2415
 loc_2416:
 	exx	; 2416
 	push ix	; 2417
-	ld a,(0fe38h)	; 2419
+	ld a,(CurrentChannel)	; 2419
 	cp 005h	; 241C
 	jr z,loc_244A	; 241E
 	cp 006h	; 2420
 	jr z,loc_243A	; 2422
 	cp 007h	; 2424
 	jp nz,loc_2479	; 2426
-	ld ix,0f81ch	; 2429
+	ld ix,SsgSlideC	; 2429
 	xor a	; 242D
 	cp (ix+0)	; 242E
 	jp nz,loc_247C	; 2431
-	ld de,(0f804h)	; 2434
+	ld de,(SsgPeriodC)	; 2434
 	jr loc_2458	; 2438
 loc_243A:
-	ld ix,0f811h	; 243A
+	ld ix,SsgSlideB	; 243A
 	xor a	; 243E
 	cp (ix+0)	; 243F
 	jr nz,loc_247C	; 2442
-	ld de,(0f802h)	; 2444
+	ld de,(SsgPeriodB)	; 2444
 	jr loc_2458	; 2448
 loc_244A:
-	ld ix,0f806h	; 244A
+	ld ix,SsgSlideA	; 244A
 	xor a	; 244E
 	cp (ix+0)	; 244F
 	jr nz,loc_247C	; 2452
-	ld de,(WorkRam)	; 2454
+	ld de,(SsgPeriodA)	; 2454
 loc_2458:
 	xor a	; 2458
 	ld (0fe3eh),a	; 2459
@@ -4940,7 +4986,7 @@ loc_2495:
 	ret	; 249E
 loc_249F:
 	exx	; 249F
-	ld a,(0fe38h)	; 24A0
+	ld a,(CurrentChannel)	; 24A0
 	cp 00bh	; 24A3
 	jr z,loc_24AF	; 24A5
 	cp 00ch	; 24A7
@@ -5062,7 +5108,8 @@ loc_2576:
 	ld (ix+2),a	; 257A
 	inc hl	; 257D
 	ret	; 257E
-loc_257F:
+; SeqEffectEnd [C] command 55h: ends the effect channel (EffectPlaying cleared) and leaves it
+SeqEffectEnd:
 	exx	; 257F
 	ld a,(0fe40h)	; 2580
 	cp 004h	; 2583
@@ -5071,9 +5118,9 @@ loc_257F:
 	ld (0fe40h),a	; 2588
 loc_258B:
 	xor a	; 258B
-	ld (0fe18h),a	; 258C
+	ld (EffectPlaying),a	; 258C
 	call sub_09BC	; 258F
-	ld sp,(0fe20h)	; 2592
+	ld sp,(EngineStack)	; 2592
 	jp loc_2253	; 2596
 loc_2599:
 	exx	; 2599
@@ -5081,24 +5128,26 @@ loc_2599:
 	push hl	; 259B
 	push ix	; 259C
 	push iy	; 259E
-	call sub_0881	; 25A0
+	call StartEffect	; 25A0
 	pop iy	; 25A3
 	pop ix	; 25A5
 	pop hl	; 25A7
 	inc hl	; 25A8
 	ret	; 25A9
-loc_25AA:
+; SeqTempo [C] command 33h: tempo byte (SetTempo)
+SeqTempo:
 	exx	; 25AA
 	ld a,(hl)	; 25AB
 	exx	; 25AC
-	call sub_28FE	; 25AD
+	call SetTempo	; 25AD
 	exx	; 25B0
 	inc hl	; 25B1
 	ret	; 25B2
-loc_25B3:
+; SeqTimerA [C] command 37h: two bytes to YM2610 $25 and $24 (timer A), kept in TimerAShadow
+SeqTimerA:
 	exx	; 25B3
 	push ix	; 25B4
-	ld ix,0faceh	; 25B6
+	ld ix,TimerAShadow	; 25B6
 	ld e,(hl)	; 25BA
 	ld d,025h	; 25BB
 	call YmWriteA	; 25BD
@@ -5111,7 +5160,8 @@ loc_25B3:
 	inc hl	; 25CD
 	pop ix	; 25CE
 	ret	; 25D0
-loc_25D1:
+; SeqSsgEnvelope [C] command 53h: three bytes to YM2610 $0D, $0B, $0C (SSG envelope shape and period)
+SeqSsgEnvelope:
 	exx	; 25D1
 	ld a,(hl)	; 25D2
 	ld e,a	; 25D3
@@ -5130,10 +5180,11 @@ loc_25D1:
 loc_25E9:
 	exx	; 25E9
 	ld a,(hl)	; 25EA
-	ld (0fe1ah),a	; 25EB
+	ld (EffectParam),a	; 25EB
 	inc hl	; 25EE
 	ret	; 25EF
-loc_25F0:
+; SeqYmWrite [C] command 50h: register, value to YM2610 port A
+SeqYmWrite:
 	exx	; 25F0
 	ld d,(hl)	; 25F1
 	inc hl	; 25F2
@@ -5147,7 +5198,7 @@ loc_25F9:
 	push af	; 25FB
 	exx	; 25FC
 	ld hl,0fc3ah	; 25FD
-	ld a,(0fe38h)	; 2600
+	ld a,(CurrentChannel)	; 2600
 	dec a	; 2603
 	ld e,a	; 2604
 	ld d,000h	; 2605
@@ -5157,7 +5208,8 @@ loc_25F9:
 	exx	; 260A
 	inc hl	; 260B
 	ret	; 260C
-loc_260D:
+; SeqLfo [C] command 4Eh: byte to YM2610 $22 (LFO)
+SeqLfo:
 	exx	; 260D
 	ld e,(hl)	; 260E
 	ld d,022h	; 260F
@@ -5236,11 +5288,12 @@ loc_2660:
 	inc hl	; 267D
 	ld (0fab0h),de	; 267E
 	ret	; 2682
-loc_2683:
+; SeqStartSound [C] command 47h: starts another sound (PlaySound entry sub_0EF3) and leaves the channel
+SeqStartSound:
 	exx	; 2683
 	ld a,(hl)	; 2684
 	call sub_0EF3	; 2685
-	ld sp,(0fe20h)	; 2688
+	ld sp,(EngineStack)	; 2688
 	jp loc_2253	; 268C
 loc_268F:
 	exx	; 268F
@@ -5294,7 +5347,7 @@ loc_26D6:
 	ld (0fc3eh),a	; 26D8
 	ret	; 26DB
 loc_26DC:
-	ld a,(0fe38h)	; 26DC
+	ld a,(CurrentChannel)	; 26DC
 	cp 005h	; 26DF
 	jr c,loc_26F0	; 26E1
 	cp 008h	; 26E3
@@ -5397,12 +5450,14 @@ loc_2779:
 	exx	; 2779
 	inc hl	; 277A
 	ret	; 277B
-loc_277C:
+; SeqHalt [?] command 41h: di / halt: would stop the Z80; no sequence uses it
+SeqHalt:
 	exx	; 277C
 	di	; 277D
 	halt	; 277E
 	ret	; 277F
-loc_2780:
+; SeqEnd [C] command 40h: silences the channel and leaves it (EngineStack)
+SeqEnd:
 	exx	; 2780
 loc_2781:
 	xor a	; 2781
@@ -5422,23 +5477,26 @@ loc_27A3:
 	ld d,001h	; 27A3
 	ld e,03fh	; 27A5
 	call YmWriteB	; 27A7
-	ld sp,(0fe20h)	; 27AA
+	ld sp,(EngineStack)	; 27AA
 	jp loc_2253	; 27AE
-loc_27B1:
+; SeqRepeat [C] command 42h: back to the start of the sequence (+11/+12 to +9/+10)
+SeqRepeat:
 	exx	; 27B1
 	ld l,(ix+11)	; 27B2
 	ld h,(ix+12)	; 27B5
 	ld (ix+9),l	; 27B8
 	ld (ix+10),h	; 27BB
 	ret	; 27BE
-loc_27BF:
+; SeqJump [?] command 39h: reads a word at hl without the exx the other commands do, so it would read its operand from $226D; no sequence uses it
+SeqJump:
 	ld e,(hl)	; 27BF
 	inc hl	; 27C0
 	ld h,(hl)	; 27C1
 	ld l,e	; 27C2
 	ret	; 27C3
-loc_27C4:
-	ld hl,0f827h	; 27C4
+; SeqLoopStart [C] commands 31h, 32h: push a loop (count byte) on the channel's LoopStacks entry
+SeqLoopStart:
+	ld hl,LoopStacks	; 27C4
 	call sub_27DD	; 27C7
 	exx	; 27CA
 	ld a,(hl)	; 27CB
@@ -5461,7 +5519,7 @@ sub_27DD:
 	ld a,(0fc38h)	; 27DD
 	or a	; 27E0
 	jr nz,loc_27EF	; 27E1
-	ld a,(0fe38h)	; 27E3
+	ld a,(CurrentChannel)	; 27E3
 loc_27E6:
 	add a,a	; 27E6
 	add a,a	; 27E7
@@ -5472,7 +5530,7 @@ loc_27E6:
 	add hl,de	; 27ED
 	ret	; 27EE
 loc_27EF:
-	ld a,(0fe38h)	; 27EF
+	ld a,(CurrentChannel)	; 27EF
 	cp 00dh	; 27F2
 	jr z,loc_2808	; 27F4
 	cp 00ch	; 27F6
@@ -5502,8 +5560,9 @@ sub_2814:
 	ld d,000h	; 2818
 	add hl,de	; 281A
 	ret	; 281B
-loc_281C:
-	ld hl,0f827h	; 281C
+; SeqLoopEnd [C] commands 34h, 38h: back to the loop start until the count runs out
+SeqLoopEnd:
+	ld hl,LoopStacks	; 281C
 	call sub_27DD	; 281F
 	ld a,(hl)	; 2822
 	ld b,h	; 2823
@@ -5525,8 +5584,9 @@ loc_2833:
 	dec (hl)	; 2835
 	exx	; 2836
 	ret	; 2837
-loc_2838:
-	ld hl,0f957h	; 2838
+; SeqCall [C] command 35h: call the sub-sequence at the word that follows (CallStacks)
+SeqCall:
+	ld hl,CallStacks	; 2838
 	call sub_27DD	; 283B
 	inc (hl)	; 283E
 	ld a,(hl)	; 283F
@@ -5545,10 +5605,11 @@ loc_2838:
 	ld (hl),d	; 284E
 	exx	; 284F
 	ret	; 2850
-loc_2851:
+; SeqReturn [C] command 36h: return from a sub-sequence
+SeqReturn:
 	exx	; 2851
 	push hl	; 2852
-	ld hl,0f957h	; 2853
+	ld hl,CallStacks	; 2853
 	call sub_27DD	; 2856
 	ld a,(hl)	; 2859
 	or a	; 285A
@@ -5591,7 +5652,7 @@ loc_287A:
 loc_288B:
 	exx	; 288B
 	ld b,(hl)	; 288C
-	ld a,(0fe38h)	; 288D
+	ld a,(CurrentChannel)	; 288D
 	call sub_28EC	; 2890
 	inc hl	; 2893
 	ret	; 2894
@@ -5603,7 +5664,8 @@ loc_2895:
 	ld (iy+2),a	; 289C
 	inc hl	; 289F
 	ret	; 28A0
-loc_28A1:
+; SeqVolume [C] command 3Ah: byte - $88 to the channel's +7
+SeqVolume:
 	exx	; 28A1
 	ld a,(hl)	; 28A2
 	sub 088h	; 28A3
@@ -5618,7 +5680,7 @@ sub_28AA:
 	rrca	; 28AE
 	and 01fh	; 28AF
 	push af	; 28B1
-	ld hl,0fcd9h	; 28B2
+	ld hl,ChannelOwner	; 28B2
 	ex af,af'	; 28B5
 	ld e,a	; 28B6
 	ld d,000h	; 28B7
@@ -5671,7 +5733,7 @@ sub_28EC:
 	push de	; 28EE
 	ld e,a	; 28EF
 	ld d,000h	; 28F0
-	ld hl,0fcd9h	; 28F2
+	ld hl,ChannelOwner	; 28F2
 	add hl,de	; 28F5
 	ld a,b	; 28F6
 	and 007h	; 28F7
@@ -5680,9 +5742,10 @@ sub_28EC:
 	pop hl	; 28FB
 	pop af	; 28FC
 	ret	; 28FD
-sub_28FE:
+; SetTempo [I] applies Tempo (song header +23 and command 33h)
+SetTempo:
 	push ix	; 28FE
-	ld ix,0faceh	; 2900
+	ld ix,TimerAShadow	; 2900
 	ld e,a	; 2904
 	ld d,026h	; 2905
 	call YmWriteA	; 2907
@@ -5691,12 +5754,12 @@ sub_28FE:
 	ret	; 290F
 sub_2910:
 	push ix	; 2910
-	ld ix,0faceh	; 2912
+	ld ix,TimerAShadow	; 2912
 	and 00fh	; 2916
 	add a,a	; 2918
 	ld e,a	; 2919
 	ld d,000h	; 291A
-	ld hl,dat_2A1E	; 291C
+	ld hl,TimerATable	; 291C
 	add hl,de	; 291F
 	ld e,(hl)	; 2920
 	ld d,025h	; 2921
@@ -5740,13 +5803,13 @@ sub_294C:
 	cp 003h	; 2952
 	jr nc,loc_2961	; 2954
 	ld c,005h	; 2956
-	ld hl,0fadeh	; 2958
+	ld hl,FmShadowA	; 2958
 	exx	; 295B
 	ld c,004h	; 295C
 	jp loc_296B	; 295E
 loc_2961:
 	ld c,007h	; 2961
-	ld hl,0fb65h	; 2963
+	ld hl,FmShadowB	; 2963
 	exx	; 2966
 	ld c,006h	; 2967
 	sub 002h	; 2969
@@ -5775,7 +5838,7 @@ loc_296B:
 	and 007h	; 2986
 	ld e,a	; 2988
 	ld d,000h	; 2989
-	ld hl,dat_2A16	; 298B
+	ld hl,AlgorithmCarriers	; 298B
 	add hl,de	; 298E
 	ld a,(hl)	; 298F
 	bit 0,a	; 2990
@@ -5862,647 +5925,1155 @@ sub_2A02:
 	pop ix	; 2A12
 	pop de	; 2A14
 	ret	; 2A15
-dat_2A16:
+; AlgorithmCarriers [I] per FM algorithm (0-7): bits of the operators whose level the instrument does not set (the carriers)
+AlgorithmCarriers:
 	defb 008h,008h,008h,008h,00ah,00eh,00eh,00fh	; 2A16
-dat_2A1E:
-	defb 0ebh,002h,0d5h,001h,0c0h,000h,051h,000h,032h,000h,028h,000h,01eh,000h	; 2A1E
+; TimerATable [I] 7 timer A values (YM $25/$24)
+TimerATable:
+	defw 002ebh,001d5h,000c0h,00051h,00032h,RstSystemCommand,0001eh	; 2A1E timer A values (YM $25 / $24), command 37h
 dat_2A2C:
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,001h,001h,001h,001h,001h,001h,001h,001h	; 2A2C
-	defb 001h,001h,001h,001h,002h,002h,002h,002h,001h,001h,002h,002h,002h,002h,003h,003h	; 2A3C
-	defb 001h,001h,002h,002h,003h,003h,004h,004h,001h,001h,002h,003h,003h,004h,005h,005h	; 2A4C
-	defb 001h,002h,002h,003h,004h,005h,005h,006h,001h,002h,003h,004h,004h,005h,006h,007h	; 2A5C
+	defb 000h,000h,000h,000h,000h,000h,000h,000h	; 2A2C
+	defb 001h,001h,001h,001h,001h,001h,001h,001h	; 2A34
+	defb 001h,001h,001h,001h,002h,002h,002h,002h	; 2A3C
+	defb 001h,001h,002h,002h,002h,002h,003h,003h	; 2A44
+	defb 001h,001h,002h,002h,003h,003h,004h,004h	; 2A4C
+	defb 001h,001h,002h,003h,003h,004h,005h,005h	; 2A54
+	defb 001h,002h,002h,003h,004h,005h,005h,006h	; 2A5C
+	defb 001h,002h,003h,004h,004h,005h,006h,007h	; 2A64
 dat_2A6C:
-	defb 001h,002h,004h,008h,010h,020h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2A6C
+	defb 001h,002h,004h,008h,010h,020h,000h,000h	; 2A6C
+	defb 000h,000h,000h,000h,000h,000h,000h,000h	; 2A74
 	defb 000h,000h,000h,000h	; 2A7C
-dat_2A80:
-	defb 004h,000h,003h,003h,003h,003h,006h,005h,000h,001h,019h,037h,013h,000h,003h,003h	; 2A80
-	defb 002h,002h,01fh,01fh,01fh,01fh,007h,006h,009h,006h,007h,006h,006h,008h,002h,001h	; 2A90
-	defb 001h,00fh,009h,009h,009h,009h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2AA0
-	defb 000h,000h,000h,000h,005h,000h,003h,003h,003h,003h,009h,005h,000h,001h,017h,032h	; 2AB0
-	defb 014h,000h,003h,003h,002h,002h,01fh,01fh,01fh,01fh,00ch,007h,00ah,00ah,007h,007h	; 2AC0
-	defb 007h,009h,002h,001h,001h,00fh,009h,009h,009h,009h,000h,000h,000h,000h,000h,000h	; 2AD0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,006h,001h,003h,003h,003h,003h,004h,005h	; 2AE0
-	defb 000h,001h,017h,032h,014h,000h,003h,003h,002h,002h,01fh,01fh,01fh,01fh,00ch,007h	; 2AF0
-	defb 00ch,00bh,007h,007h,007h,009h,002h,001h,001h,00fh,009h,009h,009h,009h,000h,000h	; 2B00
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,000h,003h,003h	; 2B10
-	defb 003h,003h,000h,000h,000h,000h,014h,03ch,014h,000h,002h,003h,003h,003h,01eh,018h	; 2B20
-	defb 01ch,01ch,00eh,00ah,004h,005h,008h,008h,008h,008h,00bh,00bh,00bh,00bh,006h,006h	; 2B30
-	defb 006h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2B40
-	defb 003h,000h,003h,003h,003h,003h,007h,000h,000h,001h,02ch,022h,014h,000h,002h,003h	; 2B50
-	defb 000h,002h,01eh,01ch,01ch,01ch,00dh,006h,004h,001h,008h,00ah,003h,005h,00bh,00bh	; 2B60
-	defb 003h,002h,006h,006h,006h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2B70
-	defb 000h,000h,000h,000h,005h,000h,000h,0fdh,003h,000h,003h,000h,001h,000h,01eh,019h	; 2B80
-	defb 016h,000h,000h,000h,001h,001h,01fh,01fh,01fh,01fh,003h,003h,003h,002h,001h,002h	; 2B90
-	defb 002h,003h,00ah,002h,002h,005h,000h,007h,000h,006h,000h,000h,000h,000h,000h,000h	; 2BA0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,005h,000h,000h,0fdh,003h,000h,007h,000h	; 2BB0
-	defb 000h,001h,01eh,016h,019h,000h,000h,000h,001h,001h,01fh,01fh,01fh,014h,00dh,003h	; 2BC0
-	defb 003h,002h,001h,002h,002h,003h,003h,002h,002h,005h,000h,007h,000h,006h,000h,000h	; 2BD0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,005h,000h,0fdh,003h	; 2BE0
-	defb 0fdh,003h,002h,005h,000h,001h,014h,028h,015h,000h,000h,000h,001h,001h,01fh,01fh	; 2BF0
-	defb 01fh,014h,002h,003h,003h,002h,001h,002h,002h,003h,002h,002h,002h,005h,000h,007h	; 2C00
-	defb 000h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2C10
-	defb 007h,001h,000h,0feh,000h,000h,001h,001h,000h,000h,01ch,022h,01fh,000h,000h,001h	; 2C20
-	defb 001h,001h,01fh,01fh,01fh,01fh,010h,011h,009h,009h,007h,000h,000h,000h,00ch,00fh	; 2C30
-	defb 00fh,00fh,008h,008h,008h,008h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2C40
-	defb 000h,000h,000h,000h,007h,000h,000h,000h,000h,000h,007h,004h,000h,001h,022h,022h	; 2C50
-	defb 00eh,000h,003h,000h,000h,003h,01fh,01fh,01fh,01fh,004h,017h,004h,000h,006h,009h	; 2C60
-	defb 004h,01bh,000h,000h,001h,00ah,005h,005h,005h,00ch,000h,000h,000h,000h,000h,000h	; 2C70
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,001h,000h,000h,0fdh,003h,000h,00ah,000h	; 2C80
-	defb 000h,000h,024h,02dh,013h,000h,000h,000h,001h,001h,01fh,01fh,01fh,01fh,012h,00eh	; 2C90
-	defb 00ah,00ah,000h,004h,004h,003h,002h,002h,002h,002h,006h,006h,006h,006h,000h,000h	; 2CA0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,000h,0fdh,003h	; 2CB0
-	defb 000h,000h,00ah,001h,000h,000h,014h,02bh,017h,000h,002h,003h,003h,003h,01fh,018h	; 2CC0
-	defb 01ch,01fh,010h,00ah,004h,004h,00fh,008h,008h,008h,005h,005h,00bh,00bh,000h,000h	; 2CD0
-	defb 000h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2CE0
-	defb 003h,000h,000h,0fdh,003h,000h,007h,001h,000h,001h,01eh,02dh,00fh,000h,000h,000h	; 2CF0
-	defb 001h,001h,01fh,01fh,01fh,01fh,00ah,00ah,00ch,00ah,000h,004h,004h,003h,005h,005h	; 2D00
-	defb 005h,005h,006h,000h,000h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2D10
-	defb 000h,000h,000h,000h,007h,002h,0fdh,000h,003h,000h,001h,004h,000h,001h,01eh,020h	; 2D20
-	defb 02ah,000h,000h,000h,000h,000h,00fh,019h,014h,016h,008h,00bh,00ah,005h,003h,003h	; 2D30
-	defb 003h,005h,001h,008h,006h,005h,005h,005h,005h,007h,000h,000h,000h,000h,000h,000h	; 2D40
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,002h,000h,000h,000h,000h,001h,007h	; 2D50
-	defb 001h,001h,018h,028h,027h,000h,002h,002h,002h,001h,00eh,00eh,00dh,013h,00eh,00eh	; 2D60
-	defb 00eh,003h,000h,000h,000h,000h,001h,00fh,001h,000h,003h,00ah,003h,00ah,000h,000h	; 2D70
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,005h,000h,000h	; 2D80
-	defb 000h,000h,001h,001h,001h,001h,01bh,000h,000h,01bh,002h,001h,000h,001h,00eh,012h	; 2D90
-	defb 014h,00ch,008h,008h,00eh,003h,000h,000h,000h,000h,001h,001h,001h,001h,004h,007h	; 2DA0
-	defb 007h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2DB0
-	defb 005h,002h,000h,000h,000h,000h,001h,000h,005h,001h,01bh,021h,029h,000h,002h,002h	; 2DC0
-	defb 002h,001h,00ch,00ch,00ch,013h,00eh,00ch,00eh,003h,000h,000h,000h,000h,001h,00fh	; 2DD0
-	defb 001h,000h,003h,00ah,003h,00ah,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2DE0
-	defb 000h,000h,000h,000h,007h,002h,0ffh,000h,001h,000h,001h,001h,001h,001h,020h,02ah	; 2DF0
-	defb 02dh,000h,000h,000h,000h,000h,00fh,010h,00fh,010h,008h,00ah,000h,006h,001h,001h	; 2E00
-	defb 001h,001h,001h,001h,001h,001h,002h,002h,002h,008h,000h,000h,000h,000h,000h,000h	; 2E10
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,005h,000h,000h,000h,000h,001h,002h	; 2E20
-	defb 002h,002h,01ch,002h,002h,002h,000h,001h,001h,001h,010h,010h,010h,010h,007h,008h	; 2E30
-	defb 008h,008h,001h,000h,000h,000h,002h,001h,001h,001h,004h,008h,008h,008h,000h,000h	; 2E40
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,005h,000h,000h	; 2E50
-	defb 000h,000h,001h,001h,002h,001h,01dh,000h,006h,000h,001h,000h,001h,000h,00ch,00fh	; 2E60
-	defb 010h,012h,00bh,005h,001h,002h,001h,000h,000h,000h,002h,002h,002h,001h,008h,009h	; 2E70
-	defb 00ah,009h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2E80
-	defb 007h,002h,0ffh,000h,001h,000h,001h,001h,001h,001h,028h,029h,02dh,000h,000h,000h	; 2E90
-	defb 000h,000h,00fh,010h,00fh,00eh,008h,00ah,000h,006h,001h,001h,001h,001h,001h,001h	; 2EA0
-	defb 001h,001h,002h,002h,002h,008h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2EB0
-	defb 000h,000h,000h,000h,007h,002h,000h,000h,000h,000h,001h,003h,001h,001h,025h,022h	; 2EC0
-	defb 019h,000h,000h,000h,000h,000h,018h,010h,015h,014h,00ah,00dh,008h,007h,000h,000h	; 2ED0
-	defb 000h,000h,000h,00fh,000h,001h,009h,009h,006h,00bh,000h,000h,000h,000h,000h,000h	; 2EE0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,002h,000h,000h,000h,000h,001h,001h	; 2EF0
-	defb 001h,002h,018h,022h,018h,000h,002h,000h,000h,001h,00dh,007h,007h,012h,009h,000h	; 2F00
-	defb 000h,003h,001h,002h,002h,000h,005h,000h,000h,002h,002h,002h,002h,008h,000h,000h	; 2F10
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,004h,000h,000h	; 2F20
-	defb 000h,000h,001h,002h,00fh,004h,015h,000h,01dh,007h,002h,001h,002h,000h,00dh,012h	; 2F30
-	defb 01fh,01fh,009h,000h,000h,00dh,000h,000h,000h,000h,002h,000h,000h,00fh,003h,008h	; 2F40
-	defb 002h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2F50
-	defb 007h,003h,0ffh,003h,003h,0ffh,001h,002h,001h,002h,01eh,019h,01eh,000h,000h,000h	; 2F60
-	defb 000h,000h,01fh,01fh,01fh,01fh,00fh,000h,00fh,000h,000h,000h,000h,001h,005h,000h	; 2F70
-	defb 005h,005h,005h,00ah,005h,00ah,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2F80
-	defb 000h,000h,000h,000h,007h,004h,0ffh,000h,001h,000h,001h,001h,001h,001h,01ch,000h	; 2F90
-	defb 028h,000h,000h,000h,000h,000h,00fh,010h,00fh,010h,006h,00fh,000h,006h,001h,001h	; 2FA0
-	defb 001h,001h,002h,002h,002h,002h,002h,007h,002h,008h,000h,000h,000h,000h,000h,000h	; 2FB0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,006h,004h,0ffh,000h,001h,000h,001h,001h	; 2FC0
-	defb 001h,001h,014h,005h,01ch,000h,000h,000h,000h,000h,00fh,010h,00fh,010h,006h,00fh	; 2FD0
-	defb 000h,006h,001h,001h,001h,001h,002h,003h,002h,002h,002h,007h,002h,008h,000h,000h	; 2FE0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,002h,0fdh,000h	; 2FF0
-	defb 003h,000h,001h,00dh,003h,001h,023h,02dh,026h,000h,001h,002h,001h,002h,01fh,019h	; 3000
-	defb 01fh,014h,005h,005h,005h,007h,002h,002h,002h,002h,001h,001h,001h,00ah,001h,001h	; 3010
-	defb 001h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3020
-	defb 005h,004h,0feh,000h,000h,003h,001h,003h,001h,003h,01eh,000h,01eh,000h,001h,002h	; 3030
-	defb 001h,002h,01fh,014h,01fh,014h,005h,005h,005h,007h,002h,002h,002h,002h,001h,006h	; 3040
-	defb 001h,00ah,001h,006h,001h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3050
-	defb 000h,000h,000h,000h,006h,002h,0fdh,003h,003h,000h,001h,007h,003h,001h,026h,024h	; 3060
-	defb 020h,000h,002h,001h,000h,001h,019h,015h,019h,016h,002h,00ah,004h,00fh,004h,006h	; 3070
-	defb 005h,004h,001h,002h,00fh,001h,006h,004h,005h,007h,000h,000h,000h,000h,000h,000h	; 3080
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,002h,003h,000h,006h,000h,001h,00ch	; 3090
-	defb 004h,001h,024h,03bh,026h,000h,002h,003h,002h,003h,01ch,01bh,01ch,019h,004h,009h	; 30A0
-	defb 004h,003h,003h,001h,003h,000h,001h,000h,000h,00ah,007h,002h,006h,005h,000h,000h	; 30B0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,000h,0fdh,0fdh	; 30C0
-	defb 0fdh,003h,005h,005h,001h,001h,034h,029h,010h,000h,003h,001h,002h,002h,018h,018h	; 30D0
-	defb 016h,014h,001h,01bh,003h,008h,001h,004h,001h,001h,00fh,002h,003h,003h,003h,003h	; 30E0
-	defb 004h,005h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 30F0
-	defb 006h,002h,0feh,0fdh,000h,003h,005h,004h,003h,001h,023h,023h,01ch,000h,001h,002h	; 3100
-	defb 001h,002h,01fh,01dh,01fh,01bh,005h,007h,005h,007h,002h,002h,002h,002h,001h,008h	; 3110
-	defb 001h,00ah,002h,001h,005h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3120
-	defb 000h,000h,000h,000h,007h,002h,003h,001h,0fdh,001h,002h,001h,002h,001h,01eh,000h	; 3130
-	defb 028h,005h,000h,000h,002h,000h,01fh,01fh,01fh,01fh,003h,00ah,003h,00ah,002h,002h	; 3140
-	defb 002h,002h,00ah,007h,00ah,007h,003h,007h,003h,007h,000h,000h,000h,000h,000h,000h	; 3150
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,004h,003h,0fdh,003h,0fdh,00fh,001h	; 3160
-	defb 001h,001h,028h,014h,014h,000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,00fh,007h	; 3170
-	defb 007h,007h,00fh,006h,006h,006h,00fh,00fh,00fh,00fh,00ah,007h,007h,007h,000h,000h	; 3180
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,003h,004h,0feh,000h	; 3190
-	defb 002h,007h,00fh,001h,001h,001h,028h,00dh,028h,000h,002h,003h,002h,001h,01fh,01bh	; 31A0
-	defb 01eh,01eh,00fh,007h,006h,007h,008h,00ah,00bh,000h,008h,008h,00fh,00fh,00ah,006h	; 31B0
-	defb 006h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 31C0
-	defb 003h,004h,000h,000h,000h,000h,001h,001h,001h,001h,018h,007h,011h,000h,002h,003h	; 31D0
-	defb 002h,001h,01fh,01fh,01fh,01fh,00fh,012h,006h,006h,000h,007h,00bh,007h,00fh,002h	; 31E0
-	defb 00fh,00fh,003h,006h,003h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 31F0
-	defb 000h,000h,000h,000h,006h,004h,003h,000h,000h,000h,00fh,001h,001h,001h,03fh,000h	; 3200
-	defb 012h,000h,000h,000h,001h,001h,01fh,01fh,01fh,01fh,00eh,012h,00fh,012h,00fh,006h	; 3210
-	defb 005h,006h,006h,001h,001h,001h,00eh,008h,00bh,008h,000h,000h,000h,000h,000h,000h	; 3220
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,003h,004h,003h,000h,0fdh,003h,00fh,001h	; 3230
-	defb 001h,001h,026h,012h,018h,000h,000h,000h,000h,000h,01fh,01bh,01eh,01eh,00fh,007h	; 3240
-	defb 006h,007h,000h,00ah,000h,000h,008h,008h,00fh,00fh,00ah,006h,006h,007h,000h,000h	; 3250
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,006h,000h,000h	; 3260
-	defb 000h,000h,00fh,001h,001h,001h,018h,011h,000h,033h,000h,000h,000h,000h,01fh,01fh	; 3270
-	defb 01fh,01fh,012h,011h,00eh,000h,00fh,000h,001h,000h,00fh,000h,001h,000h,003h,008h	; 3280
-	defb 006h,008h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3290
-	defb 007h,004h,003h,0fdh,003h,0fdh,001h,001h,00eh,001h,013h,007h,02ah,003h,002h,002h	; 32A0
-	defb 002h,002h,01fh,004h,016h,016h,00ah,001h,00ch,004h,001h,002h,008h,001h,001h,002h	; 32B0
-	defb 004h,002h,002h,003h,004h,005h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 32C0
-	defb 000h,000h,000h,000h,007h,004h,003h,0fdh,003h,0fdh,001h,001h,00eh,001h,01ch,00ah	; 32D0
-	defb 029h,007h,001h,002h,002h,002h,008h,00dh,016h,016h,003h,001h,00ch,004h,001h,001h	; 32E0
-	defb 008h,001h,002h,002h,004h,002h,007h,005h,004h,005h,000h,000h,000h,000h,000h,000h	; 32F0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,003h,003h,003h,003h,003h,00ch,009h	; 3300
-	defb 000h,001h,029h,020h,00fh,000h,003h,000h,000h,003h,01fh,01fh,01fh,01fh,004h,005h	; 3310
-	defb 004h,001h,004h,004h,004h,002h,00fh,000h,001h,00ah,007h,007h,007h,00ch,000h,000h	; 3320
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,003h,000h,000h	; 3330
-	defb 000h,000h,00fh,006h,000h,001h,022h,022h,022h,000h,003h,000h,000h,003h,01fh,01fh	; 3340
-	defb 01fh,01fh,00ch,000h,00ah,003h,00fh,000h,000h,001h,00fh,000h,005h,005h,003h,005h	; 3350
-	defb 005h,00ch,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3360
-	defb 007h,003h,003h,0fdh,001h,0fdh,00fh,000h,000h,002h,036h,01dh,011h,000h,000h,000h	; 3370
-	defb 000h,000h,00dh,01fh,00eh,01fh,00ah,00ah,00ah,004h,000h,000h,000h,005h,005h,005h	; 3380
-	defb 001h,00ah,003h,005h,005h,00ch,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3390
-	defb 000h,000h,000h,000h,007h,002h,000h,001h,000h,0ffh,00ch,00fh,001h,003h,01dh,036h	; 33A0
-	defb 01bh,000h,000h,003h,000h,002h,01fh,01fh,01fh,01fh,00ch,002h,00ch,005h,004h,004h	; 33B0
-	defb 004h,007h,001h,00fh,000h,002h,00ah,006h,006h,007h,000h,000h,000h,000h,000h,000h	; 33C0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,002h,000h,000h,000h,000h,007h,006h	; 33D0
-	defb 002h,001h,01ah,01ch,023h,000h,001h,001h,001h,002h,01fh,01fh,01fh,01fh,002h,002h	; 33E0
-	defb 00ah,007h,002h,003h,003h,006h,005h,007h,00ah,006h,002h,002h,002h,005h,000h,000h	; 33F0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,001h,000h,0ffh	; 3400
-	defb 000h,0ffh,00ch,00ch,001h,003h,028h,03ch,01eh,000h,000h,002h,000h,002h,01fh,01fh	; 3410
-	defb 01fh,01fh,002h,00ch,002h,00fh,007h,007h,007h,007h,00fh,003h,003h,003h,00ah,007h	; 3420
-	defb 007h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3430
-	defb 007h,005h,000h,000h,000h,000h,001h,002h,002h,002h,01ah,012h,027h,000h,000h,000h	; 3440
-	defb 002h,000h,014h,00eh,00ch,00eh,008h,005h,002h,005h,000h,000h,000h,000h,001h,001h	; 3450
-	defb 001h,001h,002h,007h,007h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3460
-	defb 000h,000h,000h,000h,007h,005h,000h,000h,000h,000h,001h,002h,002h,002h,01fh,008h	; 3470
-	defb 008h,007h,000h,000h,002h,000h,01fh,008h,00ah,00ah,008h,008h,008h,008h,000h,001h	; 3480
-	defb 000h,000h,000h,001h,001h,001h,002h,006h,007h,006h,000h,000h,000h,000h,000h,000h	; 3490
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,004h,000h,000h,000h,000h,001h,002h	; 34A0
-	defb 001h,002h,01eh,000h,01fh,000h,003h,000h,003h,000h,00fh,00dh,00fh,00ch,000h,002h	; 34B0
-	defb 000h,002h,000h,000h,000h,000h,000h,003h,000h,003h,002h,007h,002h,008h,000h,000h	; 34C0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,002h,0ffh,0feh	; 34D0
-	defb 003h,000h,000h,000h,000h,000h,018h,01fh,017h,000h,002h,002h,001h,001h,01fh,009h	; 34E0
-	defb 01bh,00bh,009h,009h,01fh,003h,000h,000h,000h,000h,001h,00fh,000h,000h,003h,005h	; 34F0
-	defb 006h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3500
-	defb 000h,003h,001h,0fdh,000h,000h,008h,001h,001h,001h,012h,016h,01ch,000h,002h,003h	; 3510
-	defb 001h,001h,01bh,01fh,01fh,00eh,00ch,012h,00bh,008h,000h,001h,00bh,00dh,00ch,002h	; 3520
-	defb 002h,00fh,007h,006h,000h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3530
-	defb 000h,000h,000h,000h,007h,002h,001h,001h,000h,001h,001h,005h,001h,001h,01ah,00eh	; 3540
-	defb 02eh,000h,001h,001h,001h,001h,019h,019h,01ch,00eh,00ah,00bh,00dh,004h,000h,000h	; 3550
-	defb 000h,000h,001h,005h,002h,000h,005h,008h,006h,006h,000h,000h,000h,000h,000h,000h	; 3560
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,002h,002h,002h,0feh,000h,000h,003h	; 3570
-	defb 000h,001h,021h,025h,028h,000h,000h,000h,000h,000h,01eh,01fh,01fh,01fh,00ah,00ah	; 3580
-	defb 00bh,00ah,005h,007h,00ah,008h,00ah,008h,009h,007h,004h,005h,006h,007h,000h,000h	; 3590
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,003h,0ffh,000h	; 35A0
-	defb 002h,000h,001h,003h,005h,002h,01eh,020h,025h,000h,001h,001h,001h,001h,019h,019h	; 35B0
-	defb 019h,00ah,004h,004h,004h,007h,001h,001h,001h,001h,001h,001h,001h,001h,002h,002h	; 35C0
-	defb 002h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 35D0
-	defb 007h,003h,0feh,000h,002h,000h,001h,002h,003h,002h,01eh,020h,025h,000h,001h,001h	; 35E0
-	defb 001h,001h,019h,019h,019h,00ah,003h,003h,003h,005h,000h,000h,000h,000h,002h,002h	; 35F0
-	defb 002h,002h,002h,002h,002h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3600
-	defb 000h,000h,000h,000h,007h,004h,002h,0ffh,0feh,0feh,004h,008h,003h,006h,01ch,005h	; 3610
-	defb 019h,000h,001h,001h,001h,001h,019h,00ah,019h,00ah,003h,005h,003h,005h,000h,000h	; 3620
-	defb 000h,000h,002h,002h,002h,002h,002h,007h,002h,007h,000h,000h,000h,000h,000h,000h	; 3630
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,004h,0feh,002h,001h,0ffh,002h,004h	; 3640
-	defb 003h,006h,01ch,005h,019h,000h,001h,001h,001h,001h,019h,00ah,019h,00ah,003h,005h	; 3650
-	defb 003h,005h,000h,000h,000h,000h,002h,002h,002h,002h,002h,007h,002h,007h,000h,000h	; 3660
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,002h,0fdh,004h	; 3670
-	defb 002h,003h,005h,003h,000h,000h,028h,032h,017h,000h,001h,001h,001h,001h,00fh,00ah	; 3680
-	defb 00fh,00ah,004h,008h,004h,008h,003h,000h,003h,000h,002h,00ch,002h,000h,005h,007h	; 3690
-	defb 005h,005h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 36A0
-	defb 006h,002h,003h,0ffh,003h,0ffh,000h,005h,000h,000h,025h,02eh,015h,000h,001h,001h	; 36B0
-	defb 000h,000h,01eh,01fh,010h,00bh,004h,008h,005h,005h,002h,000h,002h,000h,002h,00ch	; 36C0
-	defb 002h,000h,006h,008h,006h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 36D0
-	defb 000h,000h,000h,000h,007h,004h,003h,0ffh,0ffh,003h,002h,004h,001h,002h,022h,005h	; 36E0
-	defb 018h,003h,000h,000h,000h,000h,01fh,00ch,01fh,00ch,00fh,000h,01fh,000h,000h,000h	; 36F0
-	defb 000h,000h,002h,000h,000h,000h,001h,006h,001h,005h,000h,000h,000h,000h,000h,000h	; 3700
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,004h,003h,0ffh,0ffh,003h,001h,002h	; 3710
-	defb 000h,000h,01ah,006h,016h,006h,000h,000h,000h,000h,01fh,011h,01fh,011h,01fh,01fh	; 3720
-	defb 01fh,01fh,000h,000h,000h,000h,000h,000h,000h,000h,002h,006h,002h,006h,000h,000h	; 3730
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,002h,003h,001h	; 3740
-	defb 0fdh,000h,002h,004h,006h,004h,01bh,01eh,024h,000h,001h,001h,001h,001h,01dh,01dh	; 3750
-	defb 01dh,00ah,01fh,01fh,01fh,01fh,000h,000h,000h,000h,000h,000h,000h,000h,005h,005h	; 3760
-	defb 004h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3770
-	defb 007h,005h,000h,000h,000h,000h,001h,002h,000h,001h,017h,00dh,00ch,00ch,000h,000h	; 3780
-	defb 000h,000h,01fh,00eh,00eh,00eh,007h,01fh,01fh,01fh,000h,000h,000h,000h,001h,000h	; 3790
-	defb 000h,000h,003h,006h,006h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 37A0
-	defb 000h,000h,000h,000h,007h,004h,003h,003h,0ffh,0ffh,001h,001h,001h,004h,01ch,008h	; 37B0
-	defb 015h,008h,000h,000h,000h,000h,01ah,00ch,01ah,00ch,005h,01fh,005h,01fh,000h,000h	; 37C0
-	defb 000h,000h,001h,000h,001h,000h,001h,006h,001h,006h,000h,000h,000h,000h,000h,000h	; 37D0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,000h,003h,0ffh,003h,0fdh,001h,001h	; 37E0
-	defb 001h,001h,020h,011h,021h,000h,000h,000h,000h,000h,017h,018h,01ah,011h,017h,016h	; 37F0
-	defb 00bh,000h,000h,000h,000h,000h,001h,001h,000h,000h,000h,000h,000h,006h,000h,000h	; 3800
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,004h,003h,003h	; 3810
-	defb 0ffh,000h,002h,002h,001h,002h,01bh,008h,012h,008h,000h,000h,000h,000h,01fh,00bh	; 3820
-	defb 01fh,00bh,007h,01fh,007h,01fh,000h,000h,000h,000h,001h,000h,001h,000h,002h,005h	; 3830
-	defb 003h,005h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3840
-	defb 007h,002h,001h,000h,000h,000h,001h,001h,001h,001h,01dh,026h,018h,000h,003h,000h	; 3850
-	defb 000h,000h,01fh,01fh,01fh,01ah,01fh,01fh,01fh,01fh,009h,008h,007h,000h,000h,000h	; 3860
-	defb 000h,000h,004h,004h,004h,005h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3870
-	defb 000h,000h,000h,000h,005h,004h,0fdh,0fdh,003h,003h,000h,004h,002h,004h,017h,000h	; 3880
-	defb 019h,005h,000h,000h,000h,000h,019h,014h,019h,014h,001h,008h,002h,005h,001h,001h	; 3890
-	defb 002h,001h,001h,008h,001h,003h,003h,007h,000h,007h,000h,000h,000h,000h,000h,000h	; 38A0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,004h,0fdh,0fdh,003h,003h,000h,004h	; 38B0
-	defb 001h,003h,017h,000h,017h,000h,000h,000h,000h,000h,019h,014h,019h,014h,001h,008h	; 38C0
-	defb 001h,008h,001h,001h,001h,001h,001h,003h,001h,003h,003h,007h,003h,007h,000h,000h	; 38D0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,001h,000h,000h	; 38E0
-	defb 000h,000h,002h,001h,002h,001h,01bh,032h,028h,000h,000h,000h,000h,000h,01fh,01fh	; 38F0
-	defb 01fh,01fh,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,00fh,00fh	; 3900
-	defb 00fh,00fh,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3910
-	defb 007h,003h,0fdh,000h,003h,000h,005h,004h,002h,001h,01eh,028h,028h,000h,000h,000h	; 3920
-	defb 000h,000h,014h,00fh,014h,00bh,002h,00ah,002h,004h,002h,002h,002h,003h,002h,002h	; 3930
-	defb 002h,002h,000h,000h,000h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3940
-	defb 000h,000h,000h,000h,007h,003h,000h,0fdh,003h,000h,007h,004h,002h,001h,01eh,028h	; 3950
-	defb 028h,000h,000h,000h,001h,001h,01fh,014h,01fh,00dh,002h,002h,003h,004h,001h,001h	; 3960
-	defb 002h,003h,001h,001h,001h,001h,003h,003h,003h,007h,000h,000h,000h,000h,000h,000h	; 3970
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,007h,000h,000h,0fdh,003h,002h,000h	; 3980
-	defb 001h,001h,000h,005h,000h,000h,000h,000h,000h,000h,012h,012h,012h,012h,000h,000h	; 3990
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,006h,005h,005h,000h,000h	; 39A0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,001h,000h,000h	; 39B0
-	defb 0fdh,003h,002h,001h,001h,001h,01eh,014h,028h,000h,000h,000h,000h,000h,01fh,01fh	; 39C0
-	defb 014h,012h,002h,003h,004h,004h,001h,002h,003h,003h,002h,002h,002h,002h,000h,000h	; 39D0
-	defb 000h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 39E0
-	defb 004h,004h,003h,0fdh,0fdh,003h,008h,004h,006h,003h,01eh,000h,01eh,000h,000h,000h	; 39F0
-	defb 000h,000h,01fh,01fh,01fh,01fh,002h,005h,004h,005h,003h,003h,003h,003h,002h,002h	; 3A00
-	defb 002h,002h,000h,007h,000h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3A10
-	defb 000h,000h,000h,000h,004h,002h,003h,0fdh,0fdh,003h,003h,004h,006h,003h,023h,01eh	; 3A20
-	defb 028h,000h,000h,000h,000h,000h,01fh,01fh,01fh,00fh,007h,003h,003h,005h,001h,002h	; 3A30
-	defb 002h,003h,001h,004h,004h,003h,002h,005h,002h,007h,000h,000h,000h,000h,000h,000h	; 3A40
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,005h,004h,0fdh,0fdh,003h,003h,001h,004h	; 3A50
-	defb 002h,001h,016h,000h,017h,000h,000h,000h,000h,000h,01fh,012h,01fh,012h,000h,005h	; 3A60
-	defb 000h,005h,000h,000h,000h,000h,000h,005h,000h,005h,000h,007h,000h,007h,000h,000h	; 3A70
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,005h,004h,0fdh,0fdh	; 3A80
-	defb 003h,003h,002h,002h,003h,002h,019h,000h,017h,005h,000h,000h,000h,000h,01fh,00fh	; 3A90
-	defb 01fh,00fh,001h,003h,001h,003h,001h,001h,001h,001h,001h,002h,001h,002h,000h,007h	; 3AA0
-	defb 000h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3AB0
-	defb 002h,004h,0fdh,0fdh,003h,003h,002h,001h,003h,001h,01eh,000h,019h,003h,000h,000h	; 3AC0
-	defb 000h,001h,014h,011h,012h,00dh,001h,003h,002h,008h,001h,001h,001h,001h,001h,002h	; 3AD0
-	defb 001h,002h,000h,007h,000h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3AE0
-	defb 000h,000h,000h,000h,007h,003h,0ffh,003h,003h,0ffh,002h,001h,001h,001h,01ch,018h	; 3AF0
-	defb 01dh,000h,000h,000h,000h,000h,012h,014h,012h,014h,00eh,000h,00eh,002h,000h,000h	; 3B00
-	defb 000h,001h,004h,000h,005h,003h,00ah,00ah,00ah,00ah,000h,000h,000h,000h,000h,000h	; 3B10
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,004h,003h,0fdh,0fdh,003h,001h,002h	; 3B20
-	defb 000h,000h,01ah,000h,016h,000h,001h,001h,001h,001h,012h,013h,012h,013h,008h,000h	; 3B30
-	defb 008h,000h,004h,000h,004h,000h,001h,000h,001h,000h,004h,007h,004h,006h,000h,000h	; 3B40
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,004h,003h,003h	; 3B50
-	defb 0ffh,0ffh,002h,002h,003h,003h,01ch,000h,01ah,000h,000h,000h,000h,000h,012h,016h	; 3B60
-	defb 00eh,00fh,006h,00eh,006h,006h,001h,001h,001h,001h,003h,00fh,003h,003h,007h,009h	; 3B70
-	defb 007h,009h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3B80
-	defb 000h,004h,001h,000h,0fdh,000h,001h,001h,001h,001h,007h,006h,007h,006h,000h,000h	; 3B90
-	defb 000h,000h,012h,014h,012h,014h,000h,00fh,000h,00fh,000h,000h,000h,000h,000h,001h	; 3BA0
-	defb 000h,001h,00ah,00ah,00ah,00ah,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3BB0
-	defb 000h,000h,000h,000h,000h,004h,001h,000h,0fdh,000h,001h,001h,000h,000h,007h,009h	; 3BC0
-	defb 007h,009h,000h,000h,000h,000h,008h,01fh,008h,01fh,000h,00fh,000h,00fh,00ah,000h	; 3BD0
-	defb 00ah,000h,000h,000h,000h,000h,00ah,00ah,00ah,00ah,000h,000h,000h,000h,000h,000h	; 3BE0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,005h,004h,0ffh,0ffh,003h,003h,002h,008h	; 3BF0
-	defb 004h,004h,015h,002h,014h,002h,000h,000h,000h,000h,01fh,012h,01fh,012h,000h,00ah	; 3C00
-	defb 000h,00ah,000h,000h,000h,000h,000h,001h,000h,001h,000h,006h,000h,006h,000h,000h	; 3C10
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,003h,001h,002h,003h	; 3C20
-	defb 002h,002h,000h,009h,001h,002h,00eh,01bh,022h,005h,000h,000h,000h,000h,012h,005h	; 3C30
-	defb 019h,017h,007h,005h,002h,003h,005h,005h,000h,000h,002h,002h,002h,002h,00ch,00ch	; 3C40
-	defb 00ch,009h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3C50
-	defb 000h,007h,003h,003h,0ffh,0ffh,004h,001h,004h,001h,011h,011h,011h,00eh,000h,000h	; 3C60
-	defb 000h,000h,014h,014h,014h,014h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3C70
-	defb 000h,000h,006h,006h,006h,006h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3C80
-	defb 000h,000h,000h,000h,006h,004h,000h,000h,001h,000h,001h,001h,003h,000h,021h,000h	; 3C90
-	defb 013h,000h,000h,000h,000h,000h,01fh,01dh,018h,019h,000h,019h,016h,00dh,000h,000h	; 3CA0
-	defb 002h,003h,000h,000h,001h,001h,000h,006h,005h,006h,000h,000h,000h,000h,000h,000h	; 3CB0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,007h,007h,001h,000h,001h,000h,004h,004h	; 3CC0
-	defb 002h,001h,02fh,008h,000h,000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,000h,000h	; 3CD0
-	defb 000h,000h,000h,000h,000h,000h,00fh,00fh,00fh,00fh,00ah,00ah,00ah,00ah,000h,000h	; 3CE0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,003h,003h,0fdh,000h	; 3CF0
-	defb 003h,000h,005h,004h,002h,001h,01eh,028h,028h,000h,000h,000h,000h,000h,014h,00fh	; 3D00
-	defb 014h,00bh,002h,00ah,002h,004h,002h,002h,002h,003h,002h,002h,002h,002h,000h,000h	; 3D10
-	defb 000h,009h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D20
-	defb 007h,002h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D30
-	defb 000h,000h,01fh,01fh,01fh,01fh,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D40
-	defb 000h,000h,000h,007h,000h,007h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D50
-	defb 000h,000h,000h,000h,007h,003h,0fdh,000h,003h,000h,005h,004h,002h,001h,01eh,028h	; 3D60
-	defb 028h,000h,000h,000h,000h,000h,012h,00bh,012h,00ah,002h,00ah,002h,004h,002h,002h	; 3D70
-	defb 002h,003h,002h,002h,002h,002h,000h,000h,000h,007h,000h,000h,000h,000h,000h,000h	; 3D80
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,006h,002h,000h,000h,001h,000h,003h,003h	; 3D90
-	defb 001h,003h,017h,026h,01bh,000h,000h,000h,000h,000h,01fh,019h,01fh,01fh,002h,001h	; 3DA0
-	defb 002h,00eh,001h,001h,001h,001h,001h,001h,003h,001h,000h,008h,000h,00ah,000h,000h	; 3DB0
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,002h,000h,000h	; 3DC0
-	defb 000h,000h,005h,007h,002h,001h,00ah,025h,00ah,000h,000h,000h,000h,000h,01fh,01fh	; 3DD0
-	defb 01fh,01fh,012h,012h,010h,00dh,00ah,00ah,00ah,00ah,004h,004h,004h,003h,003h,003h	; 3DE0
-	defb 002h,008h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3DF0
-	defb 007h,006h,000h,003h,000h,0ffh,001h,003h,002h,001h,011h,011h,011h,00ch,000h,000h	; 3E00
-	defb 000h,000h,01fh,01fh,01fh,01fh,019h,01fh,01fh,01fh,01eh,000h,000h,000h,003h,000h	; 3E10
-	defb 000h,000h,00fh,00fh,00fh,00fh,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3E20
-	defb 000h,000h,000h,000h,007h,000h,0ffh,003h,0ffh,003h,008h,003h,003h,001h,027h,01dh	; 3E30
-	defb 022h,001h,001h,001h,000h,001h,01fh,01fh,01ch,01fh,009h,00ah,006h,012h,000h,000h	; 3E40
-	defb 000h,008h,00fh,00fh,00fh,000h,006h,009h,008h,008h,000h,000h,000h,000h,000h,000h	; 3E50
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,001h,0fdh,003h,001h,000h,003h,009h	; 3E60
-	defb 001h,001h,034h,023h,011h,000h,000h,001h,000h,001h,01fh,01fh,01ch,012h,01fh,00bh	; 3E70
-	defb 007h,001h,008h,001h,009h,001h,00ch,001h,00fh,00fh,002h,003h,004h,004h,000h,000h	; 3E80
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,00fh,00fh,004h,004h,003h,003h	; 3E90
-	defb 0ffh,0ffh,00eh,001h,006h,001h,02ah,008h,02fh,008h,000h,002h,000h,002h,01fh,018h	; 3EA0
-	defb 01fh,01fh,00fh,011h,00eh,011h,00eh,005h,008h,005h,005h,000h,006h,000h,000h,002h	; 3EB0
-	defb 000h,002h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3EC0
-	defb 000h,007h,001h,000h,001h,000h,001h,001h,001h,001h,02fh,008h,000h,000h,000h,000h	; 3ED0
-	defb 000h,000h,01fh,01fh,01fh,01fh,000h,000h,000h,000h,000h,000h,000h,000h,00fh,00fh	; 3EE0
-	defb 00fh,00fh,00fh,00fh,00fh,00fh,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3EF0
-	defb 000h,000h,000h,000h,001h,004h,000h,000h,000h,000h,000h,000h,006h,001h,014h,000h	; 3F00
-	defb 01ah,000h,000h,001h,003h,001h,019h,019h,019h,019h,002h,006h,002h,00ch,00ah,00ah	; 3F10
-	defb 009h,00fh,001h,001h,000h,00ah,004h,005h,002h,005h,000h,000h,000h,000h,000h,000h	; 3F20
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,003h,0fdh,0fdh,003h,003h,008h	; 3F30
-	defb 004h,000h,015h,063h,040h,05ah,000h,000h,000h,000h,00fh,00fh,00fh,00fh,00ch,00ch	; 3F40
-	defb 00ch,005h,006h,005h,006h,000h,000h,001h,009h,002h,007h,007h,007h,007h,000h,000h	; 3F50
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3F60
+; FmInstruments [C] 103 FM instruments of 52 bytes (LoadInstrument)
+FmInstruments:
+	defb 004h,000h,003h,003h,003h,003h,006h,005h,000h,001h,019h,037h,013h	; 2A80 FM instrument 00h
+	defb 000h,003h,003h,002h,002h,01fh,01fh,01fh,01fh,007h,006h,009h,006h	; 2A8D
+	defb 007h,006h,006h,008h,002h,001h,001h,00fh,009h,009h,009h,009h,000h	; 2A9A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2AA7
+	defb 005h,000h,003h,003h,003h,003h,009h,005h,000h,001h,017h,032h,014h	; 2AB4 FM instrument 01h
+	defb 000h,003h,003h,002h,002h,01fh,01fh,01fh,01fh,00ch,007h,00ah,00ah	; 2AC1
+	defb 007h,007h,007h,009h,002h,001h,001h,00fh,009h,009h,009h,009h,000h	; 2ACE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2ADB
+	defb 006h,001h,003h,003h,003h,003h,004h,005h,000h,001h,017h,032h,014h	; 2AE8 FM instrument 02h
+	defb 000h,003h,003h,002h,002h,01fh,01fh,01fh,01fh,00ch,007h,00ch,00bh	; 2AF5
+	defb 007h,007h,007h,009h,002h,001h,001h,00fh,009h,009h,009h,009h,000h	; 2B02
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2B0F
+	defb 006h,000h,003h,003h,003h,003h,000h,000h,000h,000h,014h,03ch,014h	; 2B1C FM instrument 03h
+	defb 000h,002h,003h,003h,003h,01eh,018h,01ch,01ch,00eh,00ah,004h,005h	; 2B29
+	defb 008h,008h,008h,008h,00bh,00bh,00bh,00bh,006h,006h,006h,006h,000h	; 2B36
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2B43
+	defb 003h,000h,003h,003h,003h,003h,007h,000h,000h,001h,02ch,022h,014h	; 2B50 FM instrument 04h
+	defb 000h,002h,003h,000h,002h,01eh,01ch,01ch,01ch,00dh,006h,004h,001h	; 2B5D
+	defb 008h,00ah,003h,005h,00bh,00bh,003h,002h,006h,006h,006h,006h,000h	; 2B6A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2B77
+	defb 005h,000h,000h,0fdh,003h,000h,003h,000h,001h,000h,01eh,019h,016h	; 2B84 FM instrument 05h
+	defb 000h,000h,000h,001h,001h,01fh,01fh,01fh,01fh,003h,003h,003h,002h	; 2B91
+	defb 001h,002h,002h,003h,00ah,002h,002h,005h,000h,007h,000h,006h,000h	; 2B9E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2BAB
+	defb 005h,000h,000h,0fdh,003h,000h,007h,000h,000h,001h,01eh,016h,019h	; 2BB8 FM instrument 06h
+	defb 000h,000h,000h,001h,001h,01fh,01fh,01fh,014h,00dh,003h,003h,002h	; 2BC5
+	defb 001h,002h,002h,003h,003h,002h,002h,005h,000h,007h,000h,006h,000h	; 2BD2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2BDF
+	defb 005h,000h,0fdh,003h,0fdh,003h,002h,005h,000h,001h,014h,028h,015h	; 2BEC FM instrument 07h
+	defb 000h,000h,000h,001h,001h,01fh,01fh,01fh,014h,002h,003h,003h,002h	; 2BF9
+	defb 001h,002h,002h,003h,002h,002h,002h,005h,000h,007h,000h,006h,000h	; 2C06
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2C13
+	defb 007h,001h,000h,0feh,000h,000h,001h,001h,000h,000h,01ch,022h,01fh	; 2C20 FM instrument 08h
+	defb 000h,000h,001h,001h,001h,01fh,01fh,01fh,01fh,010h,011h,009h,009h	; 2C2D
+	defb 007h,000h,000h,000h,00ch,00fh,00fh,00fh,008h,008h,008h,008h,000h	; 2C3A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2C47
+	defb 007h,000h,000h,000h,000h,000h,007h,004h,000h,001h,022h,022h,00eh	; 2C54 FM instrument 09h
+	defb 000h,003h,000h,000h,003h,01fh,01fh,01fh,01fh,004h,017h,004h,000h	; 2C61
+	defb 006h,009h,004h,01bh,000h,000h,001h,00ah,005h,005h,005h,00ch,000h	; 2C6E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2C7B
+	defb 001h,000h,000h,0fdh,003h,000h,00ah,000h,000h,000h,024h,02dh,013h	; 2C88 FM instrument 0Ah
+	defb 000h,000h,000h,001h,001h,01fh,01fh,01fh,01fh,012h,00eh,00ah,00ah	; 2C95
+	defb 000h,004h,004h,003h,002h,002h,002h,002h,006h,006h,006h,006h,000h	; 2CA2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2CAF
+	defb 004h,000h,0fdh,003h,000h,000h,00ah,001h,000h,000h,014h,02bh,017h	; 2CBC FM instrument 0Bh
+	defb 000h,002h,003h,003h,003h,01fh,018h,01ch,01fh,010h,00ah,004h,004h	; 2CC9
+	defb 00fh,008h,008h,008h,005h,005h,00bh,00bh,000h,000h,000h,006h,000h	; 2CD6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2CE3
+	defb 003h,000h,000h,0fdh,003h,000h,007h,001h,000h,001h,01eh,02dh,00fh	; 2CF0 FM instrument 0Ch
+	defb 000h,000h,000h,001h,001h,01fh,01fh,01fh,01fh,00ah,00ah,00ch,00ah	; 2CFD
+	defb 000h,004h,004h,003h,005h,005h,005h,005h,006h,000h,000h,006h,000h	; 2D0A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2D17
+	defb 007h,002h,0fdh,000h,003h,000h,001h,004h,000h,001h,01eh,020h,02ah	; 2D24 FM instrument 0Dh
+	defb 000h,000h,000h,000h,000h,00fh,019h,014h,016h,008h,00bh,00ah,005h	; 2D31
+	defb 003h,003h,003h,005h,001h,008h,006h,005h,005h,005h,005h,007h,000h	; 2D3E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2D4B
+	defb 007h,002h,000h,000h,000h,000h,001h,007h,001h,001h,018h,028h,027h	; 2D58 FM instrument 0Eh
+	defb 000h,002h,002h,002h,001h,00eh,00eh,00dh,013h,00eh,00eh,00eh,003h	; 2D65
+	defb 000h,000h,000h,000h,001h,00fh,001h,000h,003h,00ah,003h,00ah,000h	; 2D72
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2D7F
+	defb 007h,005h,000h,000h,000h,000h,001h,001h,001h,001h,01bh,000h,000h	; 2D8C FM instrument 0Fh
+	defb 01bh,002h,001h,000h,001h,00eh,012h,014h,00ch,008h,008h,00eh,003h	; 2D99
+	defb 000h,000h,000h,000h,001h,001h,001h,001h,004h,007h,007h,006h,000h	; 2DA6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2DB3
+	defb 005h,002h,000h,000h,000h,000h,001h,000h,005h,001h,01bh,021h,029h	; 2DC0 FM instrument 10h
+	defb 000h,002h,002h,002h,001h,00ch,00ch,00ch,013h,00eh,00ch,00eh,003h	; 2DCD
+	defb 000h,000h,000h,000h,001h,00fh,001h,000h,003h,00ah,003h,00ah,000h	; 2DDA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2DE7
+	defb 007h,002h,0ffh,000h,001h,000h,001h,001h,001h,001h,020h,02ah,02dh	; 2DF4 FM instrument 11h
+	defb 000h,000h,000h,000h,000h,00fh,010h,00fh,010h,008h,00ah,000h,006h	; 2E01
+	defb 001h,001h,001h,001h,001h,001h,001h,001h,002h,002h,002h,008h,000h	; 2E0E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2E1B
+	defb 007h,005h,000h,000h,000h,000h,001h,002h,002h,002h,01ch,002h,002h	; 2E28 FM instrument 12h
+	defb 002h,000h,001h,001h,001h,010h,010h,010h,010h,007h,008h,008h,008h	; 2E35
+	defb 001h,000h,000h,000h,002h,001h,001h,001h,004h,008h,008h,008h,000h	; 2E42
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2E4F
+	defb 007h,005h,000h,000h,000h,000h,001h,001h,002h,001h,01dh,000h,006h	; 2E5C FM instrument 13h
+	defb 000h,001h,000h,001h,000h,00ch,00fh,010h,012h,00bh,005h,001h,002h	; 2E69
+	defb 001h,000h,000h,000h,002h,002h,002h,001h,008h,009h,00ah,009h,000h	; 2E76
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2E83
+	defb 007h,002h,0ffh,000h,001h,000h,001h,001h,001h,001h,028h,029h,02dh	; 2E90 FM instrument 14h
+	defb 000h,000h,000h,000h,000h,00fh,010h,00fh,00eh,008h,00ah,000h,006h	; 2E9D
+	defb 001h,001h,001h,001h,001h,001h,001h,001h,002h,002h,002h,008h,000h	; 2EAA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2EB7
+	defb 007h,002h,000h,000h,000h,000h,001h,003h,001h,001h,025h,022h,019h	; 2EC4 FM instrument 15h
+	defb 000h,000h,000h,000h,000h,018h,010h,015h,014h,00ah,00dh,008h,007h	; 2ED1
+	defb 000h,000h,000h,000h,000h,00fh,000h,001h,009h,009h,006h,00bh,000h	; 2EDE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2EEB
+	defb 007h,002h,000h,000h,000h,000h,001h,001h,001h,002h,018h,022h,018h	; 2EF8 FM instrument 16h
+	defb 000h,002h,000h,000h,001h,00dh,007h,007h,012h,009h,000h,000h,003h	; 2F05
+	defb 001h,002h,002h,000h,005h,000h,000h,002h,002h,002h,002h,008h,000h	; 2F12
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2F1F
+	defb 007h,004h,000h,000h,000h,000h,001h,002h,00fh,004h,015h,000h,01dh	; 2F2C FM instrument 17h
+	defb 007h,002h,001h,002h,000h,00dh,012h,01fh,01fh,009h,000h,000h,00dh	; 2F39
+	defb 000h,000h,000h,000h,002h,000h,000h,00fh,003h,008h,002h,006h,000h	; 2F46
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2F53
+	defb 007h,003h,0ffh,003h,003h,0ffh,001h,002h,001h,002h,01eh,019h,01eh	; 2F60 FM instrument 18h
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,00fh,000h,00fh,000h	; 2F6D
+	defb 000h,000h,000h,001h,005h,000h,005h,005h,005h,00ah,005h,00ah,000h	; 2F7A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2F87
+	defb 007h,004h,0ffh,000h,001h,000h,001h,001h,001h,001h,01ch,000h,028h	; 2F94 FM instrument 19h
+	defb 000h,000h,000h,000h,000h,00fh,010h,00fh,010h,006h,00fh,000h,006h	; 2FA1
+	defb 001h,001h,001h,001h,002h,002h,002h,002h,002h,007h,002h,008h,000h	; 2FAE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2FBB
+	defb 006h,004h,0ffh,000h,001h,000h,001h,001h,001h,001h,014h,005h,01ch	; 2FC8 FM instrument 1Ah
+	defb 000h,000h,000h,000h,000h,00fh,010h,00fh,010h,006h,00fh,000h,006h	; 2FD5
+	defb 001h,001h,001h,001h,002h,003h,002h,002h,002h,007h,002h,008h,000h	; 2FE2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 2FEF
+	defb 006h,002h,0fdh,000h,003h,000h,001h,00dh,003h,001h,023h,02dh,026h	; 2FFC FM instrument 1Bh
+	defb 000h,001h,002h,001h,002h,01fh,019h,01fh,014h,005h,005h,005h,007h	; 3009
+	defb 002h,002h,002h,002h,001h,001h,001h,00ah,001h,001h,001h,006h,000h	; 3016
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3023
+	defb 005h,004h,0feh,000h,000h,003h,001h,003h,001h,003h,01eh,000h,01eh	; 3030 FM instrument 1Ch
+	defb 000h,001h,002h,001h,002h,01fh,014h,01fh,014h,005h,005h,005h,007h	; 303D
+	defb 002h,002h,002h,002h,001h,006h,001h,00ah,001h,006h,001h,006h,000h	; 304A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3057
+	defb 006h,002h,0fdh,003h,003h,000h,001h,007h,003h,001h,026h,024h,020h	; 3064 FM instrument 1Dh
+	defb 000h,002h,001h,000h,001h,019h,015h,019h,016h,002h,00ah,004h,00fh	; 3071
+	defb 004h,006h,005h,004h,001h,002h,00fh,001h,006h,004h,005h,007h,000h	; 307E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 308B
+	defb 007h,002h,003h,000h,006h,000h,001h,00ch,004h,001h,024h,03bh,026h	; 3098 FM instrument 1Eh
+	defb 000h,002h,003h,002h,003h,01ch,01bh,01ch,019h,004h,009h,004h,003h	; 30A5
+	defb 003h,001h,003h,000h,001h,000h,000h,00ah,007h,002h,006h,005h,000h	; 30B2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 30BF
+	defb 006h,000h,0fdh,0fdh,0fdh,003h,005h,005h,001h,001h,034h,029h,010h	; 30CC FM instrument 1Fh
+	defb 000h,003h,001h,002h,002h,018h,018h,016h,014h,001h,01bh,003h,008h	; 30D9
+	defb 001h,004h,001h,001h,00fh,002h,003h,003h,003h,003h,004h,005h,000h	; 30E6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 30F3
+	defb 006h,002h,0feh,0fdh,000h,003h,005h,004h,003h,001h,023h,023h,01ch	; 3100 FM instrument 20h
+	defb 000h,001h,002h,001h,002h,01fh,01dh,01fh,01bh,005h,007h,005h,007h	; 310D
+	defb 002h,002h,002h,002h,001h,008h,001h,00ah,002h,001h,005h,007h,000h	; 311A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3127
+	defb 007h,002h,003h,001h,0fdh,001h,002h,001h,002h,001h,01eh,000h,028h	; 3134 FM instrument 21h
+	defb 005h,000h,000h,002h,000h,01fh,01fh,01fh,01fh,003h,00ah,003h,00ah	; 3141
+	defb 002h,002h,002h,002h,00ah,007h,00ah,007h,003h,007h,003h,007h,000h	; 314E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 315B
+	defb 007h,004h,003h,0fdh,003h,0fdh,00fh,001h,001h,001h,028h,014h,014h	; 3168 FM instrument 22h
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,00fh,007h,007h,007h	; 3175
+	defb 00fh,006h,006h,006h,00fh,00fh,00fh,00fh,00ah,007h,007h,007h,000h	; 3182
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 318F
+	defb 003h,004h,0feh,000h,002h,007h,00fh,001h,001h,001h,028h,00dh,028h	; 319C FM instrument 23h
+	defb 000h,002h,003h,002h,001h,01fh,01bh,01eh,01eh,00fh,007h,006h,007h	; 31A9
+	defb 008h,00ah,00bh,000h,008h,008h,00fh,00fh,00ah,006h,006h,007h,000h	; 31B6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 31C3
+	defb 003h,004h,000h,000h,000h,000h,001h,001h,001h,001h,018h,007h,011h	; 31D0 FM instrument 24h
+	defb 000h,002h,003h,002h,001h,01fh,01fh,01fh,01fh,00fh,012h,006h,006h	; 31DD
+	defb 000h,007h,00bh,007h,00fh,002h,00fh,00fh,003h,006h,003h,007h,000h	; 31EA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 31F7
+	defb 006h,004h,003h,000h,000h,000h,00fh,001h,001h,001h,03fh,000h,012h	; 3204 FM instrument 25h
+	defb 000h,000h,000h,001h,001h,01fh,01fh,01fh,01fh,00eh,012h,00fh,012h	; 3211
+	defb 00fh,006h,005h,006h,006h,001h,001h,001h,00eh,008h,00bh,008h,000h	; 321E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 322B
+	defb 003h,004h,003h,000h,0fdh,003h,00fh,001h,001h,001h,026h,012h,018h	; 3238 FM instrument 26h
+	defb 000h,000h,000h,000h,000h,01fh,01bh,01eh,01eh,00fh,007h,006h,007h	; 3245
+	defb 000h,00ah,000h,000h,008h,008h,00fh,00fh,00ah,006h,006h,007h,000h	; 3252
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 325F
+	defb 006h,006h,000h,000h,000h,000h,00fh,001h,001h,001h,018h,011h,000h	; 326C FM instrument 27h
+	defb 033h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,012h,011h,00eh,000h	; 3279
+	defb 00fh,000h,001h,000h,00fh,000h,001h,000h,003h,008h,006h,008h,000h	; 3286
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3293
+	defb 007h,004h,003h,0fdh,003h,0fdh,001h,001h,00eh,001h,013h,007h,02ah	; 32A0 FM instrument 28h
+	defb 003h,002h,002h,002h,002h,01fh,004h,016h,016h,00ah,001h,00ch,004h	; 32AD
+	defb 001h,002h,008h,001h,001h,002h,004h,002h,002h,003h,004h,005h,000h	; 32BA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 32C7
+	defb 007h,004h,003h,0fdh,003h,0fdh,001h,001h,00eh,001h,01ch,00ah,029h	; 32D4 FM instrument 29h
+	defb 007h,001h,002h,002h,002h,008h,00dh,016h,016h,003h,001h,00ch,004h	; 32E1
+	defb 001h,001h,008h,001h,002h,002h,004h,002h,007h,005h,004h,005h,000h	; 32EE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 32FB
+	defb 007h,003h,003h,003h,003h,003h,00ch,009h,000h,001h,029h,020h,00fh	; 3308 FM instrument 2Ah
+	defb 000h,003h,000h,000h,003h,01fh,01fh,01fh,01fh,004h,005h,004h,001h	; 3315
+	defb 004h,004h,004h,002h,00fh,000h,001h,00ah,007h,007h,007h,00ch,000h	; 3322
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 332F
+	defb 007h,003h,000h,000h,000h,000h,00fh,006h,000h,001h,022h,022h,022h	; 333C FM instrument 2Bh
+	defb 000h,003h,000h,000h,003h,01fh,01fh,01fh,01fh,00ch,000h,00ah,003h	; 3349
+	defb 00fh,000h,000h,001h,00fh,000h,005h,005h,003h,005h,005h,00ch,000h	; 3356
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3363
+	defb 007h,003h,003h,0fdh,001h,0fdh,00fh,000h,000h,002h,036h,01dh,011h	; 3370 FM instrument 2Ch
+	defb 000h,000h,000h,000h,000h,00dh,01fh,00eh,01fh,00ah,00ah,00ah,004h	; 337D
+	defb 000h,000h,000h,005h,005h,005h,001h,00ah,003h,005h,005h,00ch,000h	; 338A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3397
+	defb 007h,002h,000h,001h,000h,0ffh,00ch,00fh,001h,003h,01dh,036h,01bh	; 33A4 FM instrument 2Dh
+	defb 000h,000h,003h,000h,002h,01fh,01fh,01fh,01fh,00ch,002h,00ch,005h	; 33B1
+	defb 004h,004h,004h,007h,001h,00fh,000h,002h,00ah,006h,006h,007h,000h	; 33BE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 33CB
+	defb 007h,002h,000h,000h,000h,000h,007h,006h,002h,001h,01ah,01ch,023h	; 33D8 FM instrument 2Eh
+	defb 000h,001h,001h,001h,002h,01fh,01fh,01fh,01fh,002h,002h,00ah,007h	; 33E5
+	defb 002h,003h,003h,006h,005h,007h,00ah,006h,002h,002h,002h,005h,000h	; 33F2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 33FF
+	defb 007h,001h,000h,0ffh,000h,0ffh,00ch,00ch,001h,003h,028h,03ch,01eh	; 340C FM instrument 2Fh
+	defb 000h,000h,002h,000h,002h,01fh,01fh,01fh,01fh,002h,00ch,002h,00fh	; 3419
+	defb 007h,007h,007h,007h,00fh,003h,003h,003h,00ah,007h,007h,007h,000h	; 3426
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3433
+	defb 007h,005h,000h,000h,000h,000h,001h,002h,002h,002h,01ah,012h,027h	; 3440 FM instrument 30h
+	defb 000h,000h,000h,002h,000h,014h,00eh,00ch,00eh,008h,005h,002h,005h	; 344D
+	defb 000h,000h,000h,000h,001h,001h,001h,001h,002h,007h,007h,007h,000h	; 345A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3467
+	defb 007h,005h,000h,000h,000h,000h,001h,002h,002h,002h,01fh,008h,008h	; 3474 FM instrument 31h
+	defb 007h,000h,000h,002h,000h,01fh,008h,00ah,00ah,008h,008h,008h,008h	; 3481
+	defb 000h,001h,000h,000h,000h,001h,001h,001h,002h,006h,007h,006h,000h	; 348E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 349B
+	defb 007h,004h,000h,000h,000h,000h,001h,002h,001h,002h,01eh,000h,01fh	; 34A8 FM instrument 32h
+	defb 000h,003h,000h,003h,000h,00fh,00dh,00fh,00ch,000h,002h,000h,002h	; 34B5
+	defb 000h,000h,000h,000h,000h,003h,000h,003h,002h,007h,002h,008h,000h	; 34C2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 34CF
+	defb 007h,002h,0ffh,0feh,003h,000h,000h,000h,000h,000h,018h,01fh,017h	; 34DC FM instrument 33h
+	defb 000h,002h,002h,001h,001h,01fh,009h,01bh,00bh,009h,009h,01fh,003h	; 34E9
+	defb 000h,000h,000h,000h,001h,00fh,000h,000h,003h,005h,006h,006h,000h	; 34F6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3503
+	defb 000h,003h,001h,0fdh,000h,000h,008h,001h,001h,001h,012h,016h,01ch	; 3510 FM instrument 34h
+	defb 000h,002h,003h,001h,001h,01bh,01fh,01fh,00eh,00ch,012h,00bh,008h	; 351D
+	defb 000h,001h,00bh,00dh,00ch,002h,002h,00fh,007h,006h,000h,007h,000h	; 352A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3537
+	defb 007h,002h,001h,001h,000h,001h,001h,005h,001h,001h,01ah,00eh,02eh	; 3544 FM instrument 35h
+	defb 000h,001h,001h,001h,001h,019h,019h,01ch,00eh,00ah,00bh,00dh,004h	; 3551
+	defb 000h,000h,000h,000h,001h,005h,002h,000h,005h,008h,006h,006h,000h	; 355E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 356B
+	defb 007h,002h,002h,002h,0feh,000h,000h,003h,000h,001h,021h,025h,028h	; 3578 FM instrument 36h
+	defb 000h,000h,000h,000h,000h,01eh,01fh,01fh,01fh,00ah,00ah,00bh,00ah	; 3585
+	defb 005h,007h,00ah,008h,00ah,008h,009h,007h,004h,005h,006h,007h,000h	; 3592
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 359F
+	defb 007h,003h,0ffh,000h,002h,000h,001h,003h,005h,002h,01eh,020h,025h	; 35AC FM instrument 37h
+	defb 000h,001h,001h,001h,001h,019h,019h,019h,00ah,004h,004h,004h,007h	; 35B9
+	defb 001h,001h,001h,001h,001h,001h,001h,001h,002h,002h,002h,007h,000h	; 35C6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 35D3
+	defb 007h,003h,0feh,000h,002h,000h,001h,002h,003h,002h,01eh,020h,025h	; 35E0 FM instrument 38h
+	defb 000h,001h,001h,001h,001h,019h,019h,019h,00ah,003h,003h,003h,005h	; 35ED
+	defb 000h,000h,000h,000h,002h,002h,002h,002h,002h,002h,002h,007h,000h	; 35FA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3607
+	defb 007h,004h,002h,0ffh,0feh,0feh,004h,008h,003h,006h,01ch,005h,019h	; 3614 FM instrument 39h
+	defb 000h,001h,001h,001h,001h,019h,00ah,019h,00ah,003h,005h,003h,005h	; 3621
+	defb 000h,000h,000h,000h,002h,002h,002h,002h,002h,007h,002h,007h,000h	; 362E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 363B
+	defb 007h,004h,0feh,002h,001h,0ffh,002h,004h,003h,006h,01ch,005h,019h	; 3648 FM instrument 3Ah
+	defb 000h,001h,001h,001h,001h,019h,00ah,019h,00ah,003h,005h,003h,005h	; 3655
+	defb 000h,000h,000h,000h,002h,002h,002h,002h,002h,007h,002h,007h,000h	; 3662
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 366F
+	defb 004h,002h,0fdh,004h,002h,003h,005h,003h,000h,000h,028h,032h,017h	; 367C FM instrument 3Bh
+	defb 000h,001h,001h,001h,001h,00fh,00ah,00fh,00ah,004h,008h,004h,008h	; 3689
+	defb 003h,000h,003h,000h,002h,00ch,002h,000h,005h,007h,005h,005h,000h	; 3696
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 36A3
+	defb 006h,002h,003h,0ffh,003h,0ffh,000h,005h,000h,000h,025h,02eh,015h	; 36B0 FM instrument 3Ch
+	defb 000h,001h,001h,000h,000h,01eh,01fh,010h,00bh,004h,008h,005h,005h	; 36BD
+	defb 002h,000h,002h,000h,002h,00ch,002h,000h,006h,008h,006h,006h,000h	; 36CA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 36D7
+	defb 007h,004h,003h,0ffh,0ffh,003h,002h,004h,001h,002h,022h,005h,018h	; 36E4 FM instrument 3Dh
+	defb 003h,000h,000h,000h,000h,01fh,00ch,01fh,00ch,00fh,000h,01fh,000h	; 36F1
+	defb 000h,000h,000h,000h,002h,000h,000h,000h,001h,006h,001h,005h,000h	; 36FE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 370B
+	defb 007h,004h,003h,0ffh,0ffh,003h,001h,002h,000h,000h,01ah,006h,016h	; 3718 FM instrument 3Eh
+	defb 006h,000h,000h,000h,000h,01fh,011h,01fh,011h,01fh,01fh,01fh,01fh	; 3725
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,002h,006h,002h,006h,000h	; 3732
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 373F
+	defb 007h,002h,003h,001h,0fdh,000h,002h,004h,006h,004h,01bh,01eh,024h	; 374C FM instrument 3Fh
+	defb 000h,001h,001h,001h,001h,01dh,01dh,01dh,00ah,01fh,01fh,01fh,01fh	; 3759
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,005h,005h,004h,006h,000h	; 3766
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3773
+	defb 007h,005h,000h,000h,000h,000h,001h,002h,000h,001h,017h,00dh,00ch	; 3780 FM instrument 40h
+	defb 00ch,000h,000h,000h,000h,01fh,00eh,00eh,00eh,007h,01fh,01fh,01fh	; 378D
+	defb 000h,000h,000h,000h,001h,000h,000h,000h,003h,006h,006h,006h,000h	; 379A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 37A7
+	defb 007h,004h,003h,003h,0ffh,0ffh,001h,001h,001h,004h,01ch,008h,015h	; 37B4 FM instrument 41h
+	defb 008h,000h,000h,000h,000h,01ah,00ch,01ah,00ch,005h,01fh,005h,01fh	; 37C1
+	defb 000h,000h,000h,000h,001h,000h,001h,000h,001h,006h,001h,006h,000h	; 37CE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 37DB
+	defb 007h,000h,003h,0ffh,003h,0fdh,001h,001h,001h,001h,020h,011h,021h	; 37E8 FM instrument 42h
+	defb 000h,000h,000h,000h,000h,017h,018h,01ah,011h,017h,016h,00bh,000h	; 37F5
+	defb 000h,000h,000h,000h,001h,001h,000h,000h,000h,000h,000h,006h,000h	; 3802
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 380F
+	defb 007h,004h,003h,003h,0ffh,000h,002h,002h,001h,002h,01bh,008h,012h	; 381C FM instrument 43h
+	defb 008h,000h,000h,000h,000h,01fh,00bh,01fh,00bh,007h,01fh,007h,01fh	; 3829
+	defb 000h,000h,000h,000h,001h,000h,001h,000h,002h,005h,003h,005h,000h	; 3836
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3843
+	defb 007h,002h,001h,000h,000h,000h,001h,001h,001h,001h,01dh,026h,018h	; 3850 FM instrument 44h
+	defb 000h,003h,000h,000h,000h,01fh,01fh,01fh,01ah,01fh,01fh,01fh,01fh	; 385D
+	defb 009h,008h,007h,000h,000h,000h,000h,000h,004h,004h,004h,005h,000h	; 386A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3877
+	defb 005h,004h,0fdh,0fdh,003h,003h,000h,004h,002h,004h,017h,000h,019h	; 3884 FM instrument 45h
+	defb 005h,000h,000h,000h,000h,019h,014h,019h,014h,001h,008h,002h,005h	; 3891
+	defb 001h,001h,002h,001h,001h,008h,001h,003h,003h,007h,000h,007h,000h	; 389E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 38AB
+	defb 004h,004h,0fdh,0fdh,003h,003h,000h,004h,001h,003h,017h,000h,017h	; 38B8 FM instrument 46h
+	defb 000h,000h,000h,000h,000h,019h,014h,019h,014h,001h,008h,001h,008h	; 38C5
+	defb 001h,001h,001h,001h,001h,003h,001h,003h,003h,007h,003h,007h,000h	; 38D2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 38DF
+	defb 007h,001h,000h,000h,000h,000h,002h,001h,002h,001h,01bh,032h,028h	; 38EC FM instrument 47h
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,000h,000h,000h,000h	; 38F9
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,00fh,00fh,00fh,00fh,000h	; 3906
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3913
+	defb 007h,003h,0fdh,000h,003h,000h,005h,004h,002h,001h,01eh,028h,028h	; 3920 FM instrument 48h
+	defb 000h,000h,000h,000h,000h,014h,00fh,014h,00bh,002h,00ah,002h,004h	; 392D
+	defb 002h,002h,002h,003h,002h,002h,002h,002h,000h,000h,000h,007h,000h	; 393A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3947
+	defb 007h,003h,000h,0fdh,003h,000h,007h,004h,002h,001h,01eh,028h,028h	; 3954 FM instrument 49h
+	defb 000h,000h,000h,001h,001h,01fh,014h,01fh,00dh,002h,002h,003h,004h	; 3961
+	defb 001h,001h,002h,003h,001h,001h,001h,001h,003h,003h,003h,007h,000h	; 396E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 397B
+	defb 004h,007h,000h,000h,0fdh,003h,002h,000h,001h,001h,000h,005h,000h	; 3988 FM instrument 4Ah
+	defb 000h,000h,000h,000h,000h,012h,012h,012h,012h,000h,000h,000h,000h	; 3995
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,006h,006h,005h,005h,000h	; 39A2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 39AF
+	defb 004h,001h,000h,000h,0fdh,003h,002h,001h,001h,001h,01eh,014h,028h	; 39BC FM instrument 4Bh
+	defb 000h,000h,000h,000h,000h,01fh,01fh,014h,012h,002h,003h,004h,004h	; 39C9
+	defb 001h,002h,003h,003h,002h,002h,002h,002h,000h,000h,000h,007h,000h	; 39D6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 39E3
+	defb 004h,004h,003h,0fdh,0fdh,003h,008h,004h,006h,003h,01eh,000h,01eh	; 39F0 FM instrument 4Ch
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,002h,005h,004h,005h	; 39FD
+	defb 003h,003h,003h,003h,002h,002h,002h,002h,000h,007h,000h,007h,000h	; 3A0A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3A17
+	defb 004h,002h,003h,0fdh,0fdh,003h,003h,004h,006h,003h,023h,01eh,028h	; 3A24 FM instrument 4Dh
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,00fh,007h,003h,003h,005h	; 3A31
+	defb 001h,002h,002h,003h,001h,004h,004h,003h,002h,005h,002h,007h,000h	; 3A3E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3A4B
+	defb 005h,004h,0fdh,0fdh,003h,003h,001h,004h,002h,001h,016h,000h,017h	; 3A58 FM instrument 4Eh
+	defb 000h,000h,000h,000h,000h,01fh,012h,01fh,012h,000h,005h,000h,005h	; 3A65
+	defb 000h,000h,000h,000h,000h,005h,000h,005h,000h,007h,000h,007h,000h	; 3A72
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3A7F
+	defb 005h,004h,0fdh,0fdh,003h,003h,002h,002h,003h,002h,019h,000h,017h	; 3A8C FM instrument 4Fh
+	defb 005h,000h,000h,000h,000h,01fh,00fh,01fh,00fh,001h,003h,001h,003h	; 3A99
+	defb 001h,001h,001h,001h,001h,002h,001h,002h,000h,007h,000h,007h,000h	; 3AA6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3AB3
+	defb 002h,004h,0fdh,0fdh,003h,003h,002h,001h,003h,001h,01eh,000h,019h	; 3AC0 FM instrument 50h
+	defb 003h,000h,000h,000h,001h,014h,011h,012h,00dh,001h,003h,002h,008h	; 3ACD
+	defb 001h,001h,001h,001h,001h,002h,001h,002h,000h,007h,000h,007h,000h	; 3ADA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3AE7
+	defb 007h,003h,0ffh,003h,003h,0ffh,002h,001h,001h,001h,01ch,018h,01dh	; 3AF4 FM instrument 51h
+	defb 000h,000h,000h,000h,000h,012h,014h,012h,014h,00eh,000h,00eh,002h	; 3B01
+	defb 000h,000h,000h,001h,004h,000h,005h,003h,00ah,00ah,00ah,00ah,000h	; 3B0E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3B1B
+	defb 007h,004h,003h,0fdh,0fdh,003h,001h,002h,000h,000h,01ah,000h,016h	; 3B28 FM instrument 52h
+	defb 000h,001h,001h,001h,001h,012h,013h,012h,013h,008h,000h,008h,000h	; 3B35
+	defb 004h,000h,004h,000h,001h,000h,001h,000h,004h,007h,004h,006h,000h	; 3B42
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3B4F
+	defb 006h,004h,003h,003h,0ffh,0ffh,002h,002h,003h,003h,01ch,000h,01ah	; 3B5C FM instrument 53h
+	defb 000h,000h,000h,000h,000h,012h,016h,00eh,00fh,006h,00eh,006h,006h	; 3B69
+	defb 001h,001h,001h,001h,003h,00fh,003h,003h,007h,009h,007h,009h,000h	; 3B76
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3B83
+	defb 000h,004h,001h,000h,0fdh,000h,001h,001h,001h,001h,007h,006h,007h	; 3B90 FM instrument 54h
+	defb 006h,000h,000h,000h,000h,012h,014h,012h,014h,000h,00fh,000h,00fh	; 3B9D
+	defb 000h,000h,000h,000h,000h,001h,000h,001h,00ah,00ah,00ah,00ah,000h	; 3BAA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3BB7
+	defb 000h,004h,001h,000h,0fdh,000h,001h,001h,000h,000h,007h,009h,007h	; 3BC4 FM instrument 55h
+	defb 009h,000h,000h,000h,000h,008h,01fh,008h,01fh,000h,00fh,000h,00fh	; 3BD1
+	defb 00ah,000h,00ah,000h,000h,000h,000h,000h,00ah,00ah,00ah,00ah,000h	; 3BDE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3BEB
+	defb 005h,004h,0ffh,0ffh,003h,003h,002h,008h,004h,004h,015h,002h,014h	; 3BF8 FM instrument 56h
+	defb 002h,000h,000h,000h,000h,01fh,012h,01fh,012h,000h,00ah,000h,00ah	; 3C05
+	defb 000h,000h,000h,000h,000h,001h,000h,001h,000h,006h,000h,006h,000h	; 3C12
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3C1F
+	defb 003h,001h,002h,003h,002h,002h,000h,009h,001h,002h,00eh,01bh,022h	; 3C2C FM instrument 57h
+	defb 005h,000h,000h,000h,000h,012h,005h,019h,017h,007h,005h,002h,003h	; 3C39
+	defb 005h,005h,000h,000h,002h,002h,002h,002h,00ch,00ch,00ch,009h,000h	; 3C46
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3C53
+	defb 000h,007h,003h,003h,0ffh,0ffh,004h,001h,004h,001h,011h,011h,011h	; 3C60 FM instrument 58h
+	defb 00eh,000h,000h,000h,000h,014h,014h,014h,014h,000h,000h,000h,000h	; 3C6D
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,006h,006h,006h,006h,000h	; 3C7A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3C87
+	defb 006h,004h,000h,000h,001h,000h,001h,001h,003h,000h,021h,000h,013h	; 3C94 FM instrument 59h
+	defb 000h,000h,000h,000h,000h,01fh,01dh,018h,019h,000h,019h,016h,00dh	; 3CA1
+	defb 000h,000h,002h,003h,000h,000h,001h,001h,000h,006h,005h,006h,000h	; 3CAE
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3CBB
+	defb 007h,007h,001h,000h,001h,000h,004h,004h,002h,001h,02fh,008h,000h	; 3CC8 FM instrument 5Ah
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,000h,000h,000h,000h	; 3CD5
+	defb 000h,000h,000h,000h,00fh,00fh,00fh,00fh,00ah,00ah,00ah,00ah,000h	; 3CE2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3CEF
+	defb 003h,003h,0fdh,000h,003h,000h,005h,004h,002h,001h,01eh,028h,028h	; 3CFC FM instrument 5Bh
+	defb 000h,000h,000h,000h,000h,014h,00fh,014h,00bh,002h,00ah,002h,004h	; 3D09
+	defb 002h,002h,002h,003h,002h,002h,002h,002h,000h,000h,000h,009h,000h	; 3D16
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D23
+	defb 007h,002h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D30 FM instrument 5Ch
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,000h,000h,000h,000h	; 3D3D
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,007h,000h,007h,000h	; 3D4A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D57
+	defb 007h,003h,0fdh,000h,003h,000h,005h,004h,002h,001h,01eh,028h,028h	; 3D64 FM instrument 5Dh
+	defb 000h,000h,000h,000h,000h,012h,00bh,012h,00ah,002h,00ah,002h,004h	; 3D71
+	defb 002h,002h,002h,003h,002h,002h,002h,002h,000h,000h,000h,007h,000h	; 3D7E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3D8B
+	defb 006h,002h,000h,000h,001h,000h,003h,003h,001h,003h,017h,026h,01bh	; 3D98 FM instrument 5Eh
+	defb 000h,000h,000h,000h,000h,01fh,019h,01fh,01fh,002h,001h,002h,00eh	; 3DA5
+	defb 001h,001h,001h,001h,001h,001h,003h,001h,000h,008h,000h,00ah,000h	; 3DB2
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3DBF
+	defb 006h,002h,000h,000h,000h,000h,005h,007h,002h,001h,00ah,025h,00ah	; 3DCC FM instrument 5Fh
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,012h,012h,010h,00dh	; 3DD9
+	defb 00ah,00ah,00ah,00ah,004h,004h,004h,003h,003h,003h,002h,008h,000h	; 3DE6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3DF3
+	defb 007h,006h,000h,003h,000h,0ffh,001h,003h,002h,001h,011h,011h,011h	; 3E00 FM instrument 60h
+	defb 00ch,000h,000h,000h,000h,01fh,01fh,01fh,01fh,019h,01fh,01fh,01fh	; 3E0D
+	defb 01eh,000h,000h,000h,003h,000h,000h,000h,00fh,00fh,00fh,00fh,000h	; 3E1A
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3E27
+	defb 007h,000h,0ffh,003h,0ffh,003h,008h,003h,003h,001h,027h,01dh,022h	; 3E34 FM instrument 61h
+	defb 001h,001h,001h,000h,001h,01fh,01fh,01ch,01fh,009h,00ah,006h,012h	; 3E41
+	defb 000h,000h,000h,008h,00fh,00fh,00fh,000h,006h,009h,008h,008h,000h	; 3E4E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3E5B
+	defb 000h,001h,0fdh,003h,001h,000h,003h,009h,001h,001h,034h,023h,011h	; 3E68 FM instrument 62h
+	defb 000h,000h,001h,000h,001h,01fh,01fh,01ch,012h,01fh,00bh,007h,001h	; 3E75
+	defb 008h,001h,009h,001h,00ch,001h,00fh,00fh,002h,003h,004h,004h,000h	; 3E82
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,00fh,00fh	; 3E8F
+	defb 004h,004h,003h,003h,0ffh,0ffh,00eh,001h,006h,001h,02ah,008h,02fh	; 3E9C FM instrument 63h
+	defb 008h,000h,002h,000h,002h,01fh,018h,01fh,01fh,00fh,011h,00eh,011h	; 3EA9
+	defb 00eh,005h,008h,005h,005h,000h,006h,000h,000h,002h,000h,002h,000h	; 3EB6
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3EC3
+	defb 000h,007h,001h,000h,001h,000h,001h,001h,001h,001h,02fh,008h,000h	; 3ED0 FM instrument 64h
+	defb 000h,000h,000h,000h,000h,01fh,01fh,01fh,01fh,000h,000h,000h,000h	; 3EDD
+	defb 000h,000h,000h,000h,00fh,00fh,00fh,00fh,00fh,00fh,00fh,00fh,000h	; 3EEA
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3EF7
+	defb 001h,004h,000h,000h,000h,000h,000h,000h,006h,001h,014h,000h,01ah	; 3F04 FM instrument 65h
+	defb 000h,000h,001h,003h,001h,019h,019h,019h,019h,002h,006h,002h,00ch	; 3F11
+	defb 00ah,00ah,009h,00fh,001h,001h,000h,00ah,004h,005h,002h,005h,000h	; 3F1E
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3F2B
+	defb 000h,004h,003h,0fdh,0fdh,003h,003h,008h,004h,000h,015h,063h,040h	; 3F38 FM instrument 66h
+	defb 05ah,000h,000h,000h,000h,00fh,00fh,00fh,00fh,00ch,00ch,00ch,005h	; 3F45
+	defb 006h,005h,006h,000h,000h,001h,009h,002h,007h,007h,007h,007h,000h	; 3F52
+	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 3F5F
 ; SoundTable [C] pointers per sound, index command - $20 (PlaySound)
 SoundTable:
-	defs 00078h,000h	; 3F6C
-	defb 02ch,040h,092h,040h,0f8h,040h,05eh,041h	; 3FE4
-dat_3FEC:
-	defs 0003eh,000h	; 3FEC
-	defb 0f7h,043h,000h,05dh,040h,06ah,040h,06eh,040h,072h,040h,076h,040h,07ah,040h,07eh	; 402A
-	defb 040h,082h,040h,086h,040h,08ah,040h,08eh,040h,0c0h,014h,03fh,0a0h,001h,000h,000h	; 403A
-	defs 00013h,000h	; 404A
-	defb 0e4h,088h,080h,0b8h,044h,002h,030h,088h,0ach,030h,040h,000h,042h,001h,040h,000h	; 405D
-	defb 040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h	; 406D
-	defb 040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h	; 407D
-	defb 040h,001h,040h,000h,040h,000h,0c3h,040h,0d0h,040h,0d4h,040h,0d8h,040h,0dch,040h	; 408D
-	defb 0e0h,040h,0e4h,040h,0e8h,040h,0ech,040h,0f0h,040h,0f4h,040h,0c0h,014h,03fh,0a0h	; 409D
-	defb 001h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 40AD
-	defb 000h,000h,000h,000h,000h,000h,0e4h,088h,080h,0b8h,044h,001h,030h,088h,0ach,030h	; 40BD
-	defb 040h,000h,042h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h	; 40CD
-	defb 040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h	; 40DD
-	defb 040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,000h,029h,041h,036h,041h	; 40ED
-	defb 03ah,041h,03eh,041h,042h,041h,046h,041h,04ah,041h,04eh,041h,052h,041h,056h,041h	; 40FD
-	defb 05ah,041h,0c0h,014h,03fh,0a0h,001h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 410D
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,0e4h,088h,080h,0b8h	; 411D
-	defb 044h,003h,030h,088h,0ach,030h,040h,000h,042h,001h,040h,000h,040h,001h,040h,000h	; 412D
-	defb 040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h	; 413D
-	defb 040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h	; 414D
-	defb 040h,000h,08fh,041h,0efh,041h,003h,042h,0cdh,043h,0dbh,043h,0dfh,043h,0e3h,043h	; 415D
-	defb 0e7h,043h,0ebh,043h,0efh,043h,0f3h,043h,0c0h,014h,03fh,0a0h,001h,000h,001h,000h	; 416D
-	defb 001h,000h,001h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 417D
-	defb 000h,000h,0e6h,088h,084h,0b8h,035h,0a0h,041h,00ch,012h,06ah,00ch,015h,06ah,001h	; 418D
-	defb 040h,000h,040h,012h,080h,060h,012h,008h,060h,012h,080h,06eh,012h,008h,06eh,00ch	; 419D
-	defb 080h,06bh,00ch,008h,06bh,00ch,080h,06ah,00ch,002h,06ah,00ch,004h,06ah,00ch,006h	; 41AD
-	defb 06ah,00ch,008h,06ah,00ch,00ah,06ah,00ch,00ch,06ah,00ch,00eh,06ah,012h,080h,08ch	; 41BD
-	defb 012h,008h,08ch,012h,080h,06bh,012h,008h,06bh,00ch,080h,060h,00ch,008h,060h,00ch	; 41CD
-	defb 080h,06ah,00ch,003h,06ah,00ch,006h,06ah,00ch,009h,06ah,00ch,00ch,06ah,00ch,00fh	; 41DD
-	defb 06ah,036h,0e6h,08ah,084h,0b2h,003h,040h,000h,035h,0a0h,041h,00ch,012h,06ah,009h	; 41ED
-	defb 015h,06ah,001h,040h,000h,040h,0e5h,08eh,082h,0b8h,035h,00eh,042h,001h,040h,000h	; 41FD
-	defb 040h,003h,080h,060h,003h,008h,060h,003h,080h,08ch,003h,008h,08ch,044h,001h,003h	; 420D
-	defb 080h,08dh,003h,008h,08dh,003h,080h,08fh,003h,008h,08fh,044h,003h,003h,080h,080h	; 421D
-	defb 003h,008h,080h,003h,080h,08fh,003h,008h,08fh,044h,002h,003h,080h,08dh,003h,008h	; 422D
-	defb 08dh,003h,080h,08ch,003h,008h,08ch,044h,003h,003h,080h,08dh,003h,008h,08dh,003h	; 423D
-	defb 080h,060h,003h,008h,060h,044h,001h,003h,080h,08ch,003h,008h,08ch,003h,080h,08dh	; 424D
-	defb 003h,008h,08dh,044h,003h,003h,080h,08dh,003h,008h,08dh,003h,080h,060h,003h,008h	; 425D
-	defb 060h,044h,002h,003h,080h,08ch,003h,008h,08ch,003h,080h,08dh,003h,008h,08dh,044h	; 426D
-	defb 003h,003h,080h,06ah,003h,008h,06ah,003h,080h,08dh,003h,008h,08dh,044h,001h,003h	; 427D
-	defb 080h,08eh,003h,008h,08eh,003h,080h,080h,003h,008h,080h,044h,003h,003h,080h,08ah	; 428D
-	defb 003h,008h,08ah,003h,080h,080h,003h,008h,080h,044h,002h,003h,080h,08eh,003h,008h	; 429D
-	defb 08eh,003h,080h,08dh,003h,008h,08dh,044h,003h,003h,080h,08eh,003h,008h,08eh,003h	; 42AD
-	defb 080h,06ah,003h,008h,06ah,044h,001h,003h,080h,08dh,003h,008h,08dh,003h,080h,08eh	; 42BD
-	defb 003h,008h,08eh,044h,003h,003h,080h,08eh,003h,008h,08eh,003h,080h,06ah,003h,008h	; 42CD
-	defb 06ah,044h,002h,003h,080h,08dh,003h,008h,08dh,003h,080h,08eh,003h,008h,08eh,044h	; 42DD
-	defb 003h,003h,080h,08ch,003h,008h,08ch,003h,080h,08eh,003h,008h,08eh,044h,001h,003h	; 42ED
-	defb 080h,080h,003h,008h,080h,003h,080h,086h,003h,008h,086h,044h,003h,003h,080h,0ach	; 42FD
-	defb 003h,008h,0ach,003h,080h,086h,003h,008h,086h,044h,002h,003h,080h,080h,003h,008h	; 430D
-	defb 080h,003h,080h,08eh,003h,008h,08eh,044h,003h,003h,080h,086h,003h,008h,086h,003h	; 431D
-	defb 080h,08ch,003h,008h,08ch,044h,001h,003h,080h,08eh,003h,008h,08eh,003h,080h,080h	; 432D
-	defb 003h,008h,080h,044h,003h,003h,080h,086h,003h,008h,086h,003h,080h,08ch,003h,008h	; 433D
-	defb 08ch,044h,002h,003h,080h,08eh,003h,008h,08eh,003h,080h,080h,003h,008h,080h,044h	; 434D
-	defb 003h,003h,080h,06ah,003h,008h,06ah,003h,082h,08dh,003h,00ah,08dh,044h,001h,003h	; 435D
-	defb 084h,08eh,003h,00ch,08eh,003h,086h,08ah,003h,00eh,08ah,044h,003h,003h,088h,06ah	; 436D
-	defb 003h,010h,06ah,003h,08ah,08dh,003h,012h,08dh,044h,002h,003h,08ch,08eh,003h,014h	; 437D
-	defb 08eh,003h,08eh,08ah,003h,016h,08ah,044h,003h,003h,090h,06ah,003h,018h,06ah,003h	; 438D
-	defb 092h,08dh,003h,01ah,08dh,044h,001h,003h,094h,08eh,003h,01ch,08eh,003h,096h,08ah	; 439D
-	defb 003h,01eh,08ah,044h,003h,003h,098h,06ah,003h,01fh,06ah,003h,09ah,08dh,003h,01fh	; 43AD
-	defb 08dh,044h,002h,003h,09ch,08eh,003h,01fh,08eh,003h,09eh,08ah,003h,01fh,08ah,036h	; 43BD
-	defb 0e5h,090h,082h,0b2h,002h,040h,000h,035h,00eh,042h,001h,040h,000h,040h,001h,040h	; 43CD
-	defb 000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,001h,040h	; 43DD
-	defb 000h,040h,001h,040h,000h,040h,001h,040h,000h,040h,000h,005h,044h,036h,044h,064h	; 43ED
-	defb 044h,092h,044h,001h,001h,001h,001h,000h,053h,00eh,000h,001h,051h,000h,004h,08ah	; 43FD
-	defb 08dh,004h,006h,08dh,004h,08ah,0ach,004h,006h,0ach,004h,08ah,0abh,004h,006h,0abh	; 440D
-	defb 004h,088h,0abh,004h,004h,0abh,004h,086h,0abh,004h,003h,0abh,004h,084h,0abh,004h	; 441D
-	defb 002h,0abh,004h,082h,0abh,004h,001h,0abh,055h,002h,040h,000h,004h,08ah,08fh,004h	; 442D
-	defb 006h,08fh,004h,08ah,0aeh,004h,006h,0aeh,004h,08ah,0cdh,004h,006h,0cdh,004h,088h	; 443D
-	defb 0cdh,004h,004h,0cdh,004h,086h,0cdh,004h,003h,0cdh,004h,084h,0cdh,004h,002h,0cdh	; 444D
-	defb 004h,082h,0cdh,004h,001h,0cdh,055h,004h,040h,000h,004h,08ah,08ah,004h,004h,08ah	; 445D
-	defb 004h,08ah,0a0h,004h,006h,0a0h,004h,08ah,0c4h,004h,004h,0c4h,004h,088h,0c4h,004h	; 446D
-	defb 004h,0c4h,004h,086h,0c4h,004h,003h,0c4h,004h,084h,0c4h,004h,002h,0c4h,004h,082h	; 447D
-	defb 0c4h,004h,001h,0c4h,055h,030h,040h,000h,00ah,040h,000h,042h	; 448D
+	defw 0,0,0,0,0,0,0,0	; 3F6C SoundTable: commands $20-$5F
+	defw 0,0,0,0,0,0,0,0	; 3F7C
+	defw 0,0,0,0,0,0,0,0	; 3F8C
+	defw 0,0,0,0,0,0,0,0	; 3F9C
+	defw 0,0,0,0,0,0,0,0	; 3FAC
+	defw 0,0,0,0,0,0,0,0	; 3FBC
+	defw 0,0,0,0,0,0,0,0	; 3FCC
+	defw 0,0,0,0,SoundLeft,SoundRight,SoundCenter,SoundEyecatcher	; 3FDC
+; EffectTable [C] pointers per effect, commands $60-$7F (StartEffect); only $7F is filled
+EffectTable:
+	defw 0,0,0,0,0,0,0,0	; 3FEC EffectTable: commands $60-$7F
+	defw 0,0,0,0,0,0,0,0	; 3FFC
+	defw 0,0,0,0,0,0,0,0	; 400C
+	defw 0,0,0,0,0,0,0,EffectCoin	; 401C
+; SoundLeft [C] sound $5C, the sound test's LEFT: only channel 1 has notes (MAME: left output only)
+SoundLeft:
+	defb 000h	; 402C song header
+	defw seq_405D,seq_406A,seq_406E,seq_4072,seq_4076,seq_407A,seq_407E,seq_4082,seq_4086,seq_408A,seq_408E	; 402D channels 1 2 3 4 8 9 10 11 12 13 14
+	defb 0c0h,014h,03fh,0a0h	; 4043 +23 tempo ($FE2B, sub_28FE), +24 to $FABF, +25 ADPCM-A total level (YM port B $01) and $FAC4, +26 to $FAC5
+	defb 001h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4047 per channel: 2 bytes (the first | $C0 into the channel)
+seq_405D:
+	defb 0e4h,088h,080h,0b8h	; 405D instrument 64h, 88 80 b8
+	defb 044h,002h	; 4061 44h command 02
+	defb 030h,088h,0ach	; 4063 length 30h, level 08h +flag, octave A note C
+	defb 030h,040h,000h	; 4066 length 30h, rest (40h, 00h)
+	defb 042h	; 4069 42h repeat from the start
+seq_406A:
+	defb 001h,040h,000h	; 406A length 01h, rest (40h, 00h)
+	defb 040h	; 406D 40h end of the sound
+seq_406E:
+	defb 001h,040h,000h	; 406E length 01h, rest (40h, 00h)
+	defb 040h	; 4071 40h end of the sound
+seq_4072:
+	defb 001h,040h,000h	; 4072 length 01h, rest (40h, 00h)
+	defb 040h	; 4075 40h end of the sound
+seq_4076:
+	defb 001h,040h,000h	; 4076 length 01h, rest (40h, 00h)
+	defb 040h	; 4079 40h end of the sound
+seq_407A:
+	defb 001h,040h,000h	; 407A length 01h, rest (40h, 00h)
+	defb 040h	; 407D 40h end of the sound
+seq_407E:
+	defb 001h,040h,000h	; 407E length 01h, rest (40h, 00h)
+	defb 040h	; 4081 40h end of the sound
+seq_4082:
+	defb 001h,040h,000h	; 4082 length 01h, rest (40h, 00h)
+	defb 040h	; 4085 40h end of the sound
+seq_4086:
+	defb 001h,040h,000h	; 4086 length 01h, rest (40h, 00h)
+	defb 040h	; 4089 40h end of the sound
+seq_408A:
+	defb 001h,040h,000h	; 408A length 01h, rest (40h, 00h)
+	defb 040h	; 408D 40h end of the sound
+seq_408E:
+	defb 001h,040h,000h	; 408E length 01h, rest (40h, 00h)
+	defb 040h	; 4091 40h end of the sound
+; SoundRight [C] sound $5D, RIGHT
+SoundRight:
+	defb 000h	; 4092 song header
+	defw seq_40C3,seq_40D0,seq_40D4,seq_40D8,seq_40DC,seq_40E0,seq_40E4,seq_40E8,seq_40EC,seq_40F0,seq_40F4	; 4093 channels 1 2 3 4 8 9 10 11 12 13 14
+	defb 0c0h,014h,03fh,0a0h	; 40A9 +23 tempo ($FE2B, sub_28FE), +24 to $FABF, +25 ADPCM-A total level (YM port B $01) and $FAC4, +26 to $FAC5
+	defb 001h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 40AD per channel: 2 bytes (the first | $C0 into the channel)
+seq_40C3:
+	defb 0e4h,088h,080h,0b8h	; 40C3 instrument 64h, 88 80 b8
+	defb 044h,001h	; 40C7 44h command 01
+	defb 030h,088h,0ach	; 40C9 length 30h, level 08h +flag, octave A note C
+	defb 030h,040h,000h	; 40CC length 30h, rest (40h, 00h)
+	defb 042h	; 40CF 42h repeat from the start
+seq_40D0:
+	defb 001h,040h,000h	; 40D0 length 01h, rest (40h, 00h)
+	defb 040h	; 40D3 40h end of the sound
+seq_40D4:
+	defb 001h,040h,000h	; 40D4 length 01h, rest (40h, 00h)
+	defb 040h	; 40D7 40h end of the sound
+seq_40D8:
+	defb 001h,040h,000h	; 40D8 length 01h, rest (40h, 00h)
+	defb 040h	; 40DB 40h end of the sound
+seq_40DC:
+	defb 001h,040h,000h	; 40DC length 01h, rest (40h, 00h)
+	defb 040h	; 40DF 40h end of the sound
+seq_40E0:
+	defb 001h,040h,000h	; 40E0 length 01h, rest (40h, 00h)
+	defb 040h	; 40E3 40h end of the sound
+seq_40E4:
+	defb 001h,040h,000h	; 40E4 length 01h, rest (40h, 00h)
+	defb 040h	; 40E7 40h end of the sound
+seq_40E8:
+	defb 001h,040h,000h	; 40E8 length 01h, rest (40h, 00h)
+	defb 040h	; 40EB 40h end of the sound
+seq_40EC:
+	defb 001h,040h,000h	; 40EC length 01h, rest (40h, 00h)
+	defb 040h	; 40EF 40h end of the sound
+seq_40F0:
+	defb 001h,040h,000h	; 40F0 length 01h, rest (40h, 00h)
+	defb 040h	; 40F3 40h end of the sound
+seq_40F4:
+	defb 001h,040h,000h	; 40F4 length 01h, rest (40h, 00h)
+	defb 040h	; 40F7 40h end of the sound
+; SoundCenter [C] sound $5E, CENTER
+SoundCenter:
+	defb 000h	; 40F8 song header
+	defw seq_4129,seq_4136,seq_413A,seq_413E,seq_4142,seq_4146,seq_414A,seq_414E,seq_4152,seq_4156,seq_415A	; 40F9 channels 1 2 3 4 8 9 10 11 12 13 14
+	defb 0c0h,014h,03fh,0a0h	; 410F +23 tempo ($FE2B, sub_28FE), +24 to $FABF, +25 ADPCM-A total level (YM port B $01) and $FAC4, +26 to $FAC5
+	defb 001h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4113 per channel: 2 bytes (the first | $C0 into the channel)
+seq_4129:
+	defb 0e4h,088h,080h,0b8h	; 4129 instrument 64h, 88 80 b8
+	defb 044h,003h	; 412D 44h command 03
+	defb 030h,088h,0ach	; 412F length 30h, level 08h +flag, octave A note C
+	defb 030h,040h,000h	; 4132 length 30h, rest (40h, 00h)
+	defb 042h	; 4135 42h repeat from the start
+seq_4136:
+	defb 001h,040h,000h	; 4136 length 01h, rest (40h, 00h)
+	defb 040h	; 4139 40h end of the sound
+seq_413A:
+	defb 001h,040h,000h	; 413A length 01h, rest (40h, 00h)
+	defb 040h	; 413D 40h end of the sound
+seq_413E:
+	defb 001h,040h,000h	; 413E length 01h, rest (40h, 00h)
+	defb 040h	; 4141 40h end of the sound
+seq_4142:
+	defb 001h,040h,000h	; 4142 length 01h, rest (40h, 00h)
+	defb 040h	; 4145 40h end of the sound
+seq_4146:
+	defb 001h,040h,000h	; 4146 length 01h, rest (40h, 00h)
+	defb 040h	; 4149 40h end of the sound
+seq_414A:
+	defb 001h,040h,000h	; 414A length 01h, rest (40h, 00h)
+	defb 040h	; 414D 40h end of the sound
+seq_414E:
+	defb 001h,040h,000h	; 414E length 01h, rest (40h, 00h)
+	defb 040h	; 4151 40h end of the sound
+seq_4152:
+	defb 001h,040h,000h	; 4152 length 01h, rest (40h, 00h)
+	defb 040h	; 4155 40h end of the sound
+seq_4156:
+	defb 001h,040h,000h	; 4156 length 01h, rest (40h, 00h)
+	defb 040h	; 4159 40h end of the sound
+seq_415A:
+	defb 001h,040h,000h	; 415A length 01h, rest (40h, 00h)
+	defb 040h	; 415D 40h end of the sound
+; SoundEyecatcher [C] sound $5F, the eyecatcher jingle (command 2): FM channels 1-4
+SoundEyecatcher:
+	defb 000h	; 415E song header
+	defw seq_418F,seq_41EF,seq_4203,seq_43CD,seq_43DB,seq_43DF,seq_43E3,seq_43E7,seq_43EB,seq_43EF,seq_43F3	; 415F channels 1 2 3 4 8 9 10 11 12 13 14
+	defb 0c0h,014h,03fh,0a0h	; 4175 +23 tempo ($FE2B, sub_28FE), +24 to $FABF, +25 ADPCM-A total level (YM port B $01) and $FAC4, +26 to $FAC5
+	defb 001h,000h,001h,000h,001h,000h,001h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4179 per channel: 2 bytes (the first | $C0 into the channel)
+seq_418F:
+	defb 0e6h,088h,084h,0b8h	; 418F instrument 66h, 88 84 b8
+	defb 035h	; 4193 call
+	defw sub_seq_41A0	; 4194
+	defb 00ch,012h,06ah	; 4196 length 0Ch, level 12h, octave 6 note A
+	defb 00ch,015h,06ah	; 4199 length 0Ch, level 15h, octave 6 note A
+	defb 001h,040h,000h	; 419C length 01h, rest (40h, 00h)
+	defb 040h	; 419F 40h end of the sound
+sub_seq_41A0:
+	defb 012h,080h,060h	; 41A0 length 12h, level 00h +flag, octave 6 note 0
+	defb 012h,008h,060h	; 41A3 length 12h, level 08h, octave 6 note 0
+	defb 012h,080h,06eh	; 41A6 length 12h, level 00h +flag, octave 6 note E
+	defb 012h,008h,06eh	; 41A9 length 12h, level 08h, octave 6 note E
+	defb 00ch,080h,06bh	; 41AC length 0Ch, level 00h +flag, octave 6 note B
+	defb 00ch,008h,06bh	; 41AF length 0Ch, level 08h, octave 6 note B
+	defb 00ch,080h,06ah	; 41B2 length 0Ch, level 00h +flag, octave 6 note A
+	defb 00ch,002h,06ah	; 41B5 length 0Ch, level 02h, octave 6 note A
+	defb 00ch,004h,06ah	; 41B8 length 0Ch, level 04h, octave 6 note A
+	defb 00ch,006h,06ah	; 41BB length 0Ch, level 06h, octave 6 note A
+	defb 00ch,008h,06ah	; 41BE length 0Ch, level 08h, octave 6 note A
+	defb 00ch,00ah,06ah	; 41C1 length 0Ch, level 0Ah, octave 6 note A
+	defb 00ch,00ch,06ah	; 41C4 length 0Ch, level 0Ch, octave 6 note A
+	defb 00ch,00eh,06ah	; 41C7 length 0Ch, level 0Eh, octave 6 note A
+	defb 012h,080h,08ch	; 41CA length 12h, level 00h +flag, octave 8 note C
+	defb 012h,008h,08ch	; 41CD length 12h, level 08h, octave 8 note C
+	defb 012h,080h,06bh	; 41D0 length 12h, level 00h +flag, octave 6 note B
+	defb 012h,008h,06bh	; 41D3 length 12h, level 08h, octave 6 note B
+	defb 00ch,080h,060h	; 41D6 length 0Ch, level 00h +flag, octave 6 note 0
+	defb 00ch,008h,060h	; 41D9 length 0Ch, level 08h, octave 6 note 0
+	defb 00ch,080h,06ah	; 41DC length 0Ch, level 00h +flag, octave 6 note A
+	defb 00ch,003h,06ah	; 41DF length 0Ch, level 03h, octave 6 note A
+	defb 00ch,006h,06ah	; 41E2 length 0Ch, level 06h, octave 6 note A
+	defb 00ch,009h,06ah	; 41E5 length 0Ch, level 09h, octave 6 note A
+	defb 00ch,00ch,06ah	; 41E8 length 0Ch, level 0Ch, octave 6 note A
+	defb 00ch,00fh,06ah	; 41EB length 0Ch, level 0Fh, octave 6 note A
+	defb 036h	; 41EE 36h return
+seq_41EF:
+	defb 0e6h,08ah,084h,0b2h	; 41EF instrument 66h, 8a 84 b2
+	defb 003h,040h,000h	; 41F3 length 03h, rest (40h, 00h)
+	defb 035h	; 41F6 call
+	defw sub_seq_41A0	; 41F7
+	defb 00ch,012h,06ah	; 41F9 length 0Ch, level 12h, octave 6 note A
+	defb 009h,015h,06ah	; 41FC length 09h, level 15h, octave 6 note A
+	defb 001h,040h,000h	; 41FF length 01h, rest (40h, 00h)
+	defb 040h	; 4202 40h end of the sound
+seq_4203:
+	defb 0e5h,08eh,082h,0b8h	; 4203 instrument 65h, 8e 82 b8
+	defb 035h	; 4207 call
+	defw sub_seq_420E	; 4208
+	defb 001h,040h,000h	; 420A length 01h, rest (40h, 00h)
+	defb 040h	; 420D 40h end of the sound
+sub_seq_420E:
+	defb 003h,080h,060h	; 420E length 03h, level 00h +flag, octave 6 note 0
+	defb 003h,008h,060h	; 4211 length 03h, level 08h, octave 6 note 0
+	defb 003h,080h,08ch	; 4214 length 03h, level 00h +flag, octave 8 note C
+	defb 003h,008h,08ch	; 4217 length 03h, level 08h, octave 8 note C
+	defb 044h,001h	; 421A 44h command 01
+	defb 003h,080h,08dh	; 421C length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 421F length 03h, level 08h, octave 8 note D
+	defb 003h,080h,08fh	; 4222 length 03h, level 00h +flag, octave 8 note F
+	defb 003h,008h,08fh	; 4225 length 03h, level 08h, octave 8 note F
+	defb 044h,003h	; 4228 44h command 03
+	defb 003h,080h,080h	; 422A length 03h, level 00h +flag, octave 8 note 0
+	defb 003h,008h,080h	; 422D length 03h, level 08h, octave 8 note 0
+	defb 003h,080h,08fh	; 4230 length 03h, level 00h +flag, octave 8 note F
+	defb 003h,008h,08fh	; 4233 length 03h, level 08h, octave 8 note F
+	defb 044h,002h	; 4236 44h command 02
+	defb 003h,080h,08dh	; 4238 length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 423B length 03h, level 08h, octave 8 note D
+	defb 003h,080h,08ch	; 423E length 03h, level 00h +flag, octave 8 note C
+	defb 003h,008h,08ch	; 4241 length 03h, level 08h, octave 8 note C
+	defb 044h,003h	; 4244 44h command 03
+	defb 003h,080h,08dh	; 4246 length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 4249 length 03h, level 08h, octave 8 note D
+	defb 003h,080h,060h	; 424C length 03h, level 00h +flag, octave 6 note 0
+	defb 003h,008h,060h	; 424F length 03h, level 08h, octave 6 note 0
+	defb 044h,001h	; 4252 44h command 01
+	defb 003h,080h,08ch	; 4254 length 03h, level 00h +flag, octave 8 note C
+	defb 003h,008h,08ch	; 4257 length 03h, level 08h, octave 8 note C
+	defb 003h,080h,08dh	; 425A length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 425D length 03h, level 08h, octave 8 note D
+	defb 044h,003h	; 4260 44h command 03
+	defb 003h,080h,08dh	; 4262 length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 4265 length 03h, level 08h, octave 8 note D
+	defb 003h,080h,060h	; 4268 length 03h, level 00h +flag, octave 6 note 0
+	defb 003h,008h,060h	; 426B length 03h, level 08h, octave 6 note 0
+	defb 044h,002h	; 426E 44h command 02
+	defb 003h,080h,08ch	; 4270 length 03h, level 00h +flag, octave 8 note C
+	defb 003h,008h,08ch	; 4273 length 03h, level 08h, octave 8 note C
+	defb 003h,080h,08dh	; 4276 length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 4279 length 03h, level 08h, octave 8 note D
+	defb 044h,003h	; 427C 44h command 03
+	defb 003h,080h,06ah	; 427E length 03h, level 00h +flag, octave 6 note A
+	defb 003h,008h,06ah	; 4281 length 03h, level 08h, octave 6 note A
+	defb 003h,080h,08dh	; 4284 length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 4287 length 03h, level 08h, octave 8 note D
+	defb 044h,001h	; 428A 44h command 01
+	defb 003h,080h,08eh	; 428C length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 428F length 03h, level 08h, octave 8 note E
+	defb 003h,080h,080h	; 4292 length 03h, level 00h +flag, octave 8 note 0
+	defb 003h,008h,080h	; 4295 length 03h, level 08h, octave 8 note 0
+	defb 044h,003h	; 4298 44h command 03
+	defb 003h,080h,08ah	; 429A length 03h, level 00h +flag, octave 8 note A
+	defb 003h,008h,08ah	; 429D length 03h, level 08h, octave 8 note A
+	defb 003h,080h,080h	; 42A0 length 03h, level 00h +flag, octave 8 note 0
+	defb 003h,008h,080h	; 42A3 length 03h, level 08h, octave 8 note 0
+	defb 044h,002h	; 42A6 44h command 02
+	defb 003h,080h,08eh	; 42A8 length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 42AB length 03h, level 08h, octave 8 note E
+	defb 003h,080h,08dh	; 42AE length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 42B1 length 03h, level 08h, octave 8 note D
+	defb 044h,003h	; 42B4 44h command 03
+	defb 003h,080h,08eh	; 42B6 length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 42B9 length 03h, level 08h, octave 8 note E
+	defb 003h,080h,06ah	; 42BC length 03h, level 00h +flag, octave 6 note A
+	defb 003h,008h,06ah	; 42BF length 03h, level 08h, octave 6 note A
+	defb 044h,001h	; 42C2 44h command 01
+	defb 003h,080h,08dh	; 42C4 length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 42C7 length 03h, level 08h, octave 8 note D
+	defb 003h,080h,08eh	; 42CA length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 42CD length 03h, level 08h, octave 8 note E
+	defb 044h,003h	; 42D0 44h command 03
+	defb 003h,080h,08eh	; 42D2 length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 42D5 length 03h, level 08h, octave 8 note E
+	defb 003h,080h,06ah	; 42D8 length 03h, level 00h +flag, octave 6 note A
+	defb 003h,008h,06ah	; 42DB length 03h, level 08h, octave 6 note A
+	defb 044h,002h	; 42DE 44h command 02
+	defb 003h,080h,08dh	; 42E0 length 03h, level 00h +flag, octave 8 note D
+	defb 003h,008h,08dh	; 42E3 length 03h, level 08h, octave 8 note D
+	defb 003h,080h,08eh	; 42E6 length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 42E9 length 03h, level 08h, octave 8 note E
+	defb 044h,003h	; 42EC 44h command 03
+	defb 003h,080h,08ch	; 42EE length 03h, level 00h +flag, octave 8 note C
+	defb 003h,008h,08ch	; 42F1 length 03h, level 08h, octave 8 note C
+	defb 003h,080h,08eh	; 42F4 length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 42F7 length 03h, level 08h, octave 8 note E
+	defb 044h,001h	; 42FA 44h command 01
+	defb 003h,080h,080h	; 42FC length 03h, level 00h +flag, octave 8 note 0
+	defb 003h,008h,080h	; 42FF length 03h, level 08h, octave 8 note 0
+	defb 003h,080h,086h	; 4302 length 03h, level 00h +flag, octave 8 note 6
+	defb 003h,008h,086h	; 4305 length 03h, level 08h, octave 8 note 6
+	defb 044h,003h	; 4308 44h command 03
+	defb 003h,080h,0ach	; 430A length 03h, level 00h +flag, octave A note C
+	defb 003h,008h,0ach	; 430D length 03h, level 08h, octave A note C
+	defb 003h,080h,086h	; 4310 length 03h, level 00h +flag, octave 8 note 6
+	defb 003h,008h,086h	; 4313 length 03h, level 08h, octave 8 note 6
+	defb 044h,002h	; 4316 44h command 02
+	defb 003h,080h,080h	; 4318 length 03h, level 00h +flag, octave 8 note 0
+	defb 003h,008h,080h	; 431B length 03h, level 08h, octave 8 note 0
+	defb 003h,080h,08eh	; 431E length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 4321 length 03h, level 08h, octave 8 note E
+	defb 044h,003h	; 4324 44h command 03
+	defb 003h,080h,086h	; 4326 length 03h, level 00h +flag, octave 8 note 6
+	defb 003h,008h,086h	; 4329 length 03h, level 08h, octave 8 note 6
+	defb 003h,080h,08ch	; 432C length 03h, level 00h +flag, octave 8 note C
+	defb 003h,008h,08ch	; 432F length 03h, level 08h, octave 8 note C
+	defb 044h,001h	; 4332 44h command 01
+	defb 003h,080h,08eh	; 4334 length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 4337 length 03h, level 08h, octave 8 note E
+	defb 003h,080h,080h	; 433A length 03h, level 00h +flag, octave 8 note 0
+	defb 003h,008h,080h	; 433D length 03h, level 08h, octave 8 note 0
+	defb 044h,003h	; 4340 44h command 03
+	defb 003h,080h,086h	; 4342 length 03h, level 00h +flag, octave 8 note 6
+	defb 003h,008h,086h	; 4345 length 03h, level 08h, octave 8 note 6
+	defb 003h,080h,08ch	; 4348 length 03h, level 00h +flag, octave 8 note C
+	defb 003h,008h,08ch	; 434B length 03h, level 08h, octave 8 note C
+	defb 044h,002h	; 434E 44h command 02
+	defb 003h,080h,08eh	; 4350 length 03h, level 00h +flag, octave 8 note E
+	defb 003h,008h,08eh	; 4353 length 03h, level 08h, octave 8 note E
+	defb 003h,080h,080h	; 4356 length 03h, level 00h +flag, octave 8 note 0
+	defb 003h,008h,080h	; 4359 length 03h, level 08h, octave 8 note 0
+	defb 044h,003h	; 435C 44h command 03
+	defb 003h,080h,06ah	; 435E length 03h, level 00h +flag, octave 6 note A
+	defb 003h,008h,06ah	; 4361 length 03h, level 08h, octave 6 note A
+	defb 003h,082h,08dh	; 4364 length 03h, level 02h +flag, octave 8 note D
+	defb 003h,00ah,08dh	; 4367 length 03h, level 0Ah, octave 8 note D
+	defb 044h,001h	; 436A 44h command 01
+	defb 003h,084h,08eh	; 436C length 03h, level 04h +flag, octave 8 note E
+	defb 003h,00ch,08eh	; 436F length 03h, level 0Ch, octave 8 note E
+	defb 003h,086h,08ah	; 4372 length 03h, level 06h +flag, octave 8 note A
+	defb 003h,00eh,08ah	; 4375 length 03h, level 0Eh, octave 8 note A
+	defb 044h,003h	; 4378 44h command 03
+	defb 003h,088h,06ah	; 437A length 03h, level 08h +flag, octave 6 note A
+	defb 003h,010h,06ah	; 437D length 03h, level 10h, octave 6 note A
+	defb 003h,08ah,08dh	; 4380 length 03h, level 0Ah +flag, octave 8 note D
+	defb 003h,012h,08dh	; 4383 length 03h, level 12h, octave 8 note D
+	defb 044h,002h	; 4386 44h command 02
+	defb 003h,08ch,08eh	; 4388 length 03h, level 0Ch +flag, octave 8 note E
+	defb 003h,014h,08eh	; 438B length 03h, level 14h, octave 8 note E
+	defb 003h,08eh,08ah	; 438E length 03h, level 0Eh +flag, octave 8 note A
+	defb 003h,016h,08ah	; 4391 length 03h, level 16h, octave 8 note A
+	defb 044h,003h	; 4394 44h command 03
+	defb 003h,090h,06ah	; 4396 length 03h, level 10h +flag, octave 6 note A
+	defb 003h,018h,06ah	; 4399 length 03h, level 18h, octave 6 note A
+	defb 003h,092h,08dh	; 439C length 03h, level 12h +flag, octave 8 note D
+	defb 003h,01ah,08dh	; 439F length 03h, level 1Ah, octave 8 note D
+	defb 044h,001h	; 43A2 44h command 01
+	defb 003h,094h,08eh	; 43A4 length 03h, level 14h +flag, octave 8 note E
+	defb 003h,01ch,08eh	; 43A7 length 03h, level 1Ch, octave 8 note E
+	defb 003h,096h,08ah	; 43AA length 03h, level 16h +flag, octave 8 note A
+	defb 003h,01eh,08ah	; 43AD length 03h, level 1Eh, octave 8 note A
+	defb 044h,003h	; 43B0 44h command 03
+	defb 003h,098h,06ah	; 43B2 length 03h, level 18h +flag, octave 6 note A
+	defb 003h,01fh,06ah	; 43B5 length 03h, level 1Fh, octave 6 note A
+	defb 003h,09ah,08dh	; 43B8 length 03h, level 1Ah +flag, octave 8 note D
+	defb 003h,01fh,08dh	; 43BB length 03h, level 1Fh, octave 8 note D
+	defb 044h,002h	; 43BE 44h command 02
+	defb 003h,09ch,08eh	; 43C0 length 03h, level 1Ch +flag, octave 8 note E
+	defb 003h,01fh,08eh	; 43C3 length 03h, level 1Fh, octave 8 note E
+	defb 003h,09eh,08ah	; 43C6 length 03h, level 1Eh +flag, octave 8 note A
+	defb 003h,01fh,08ah	; 43C9 length 03h, level 1Fh, octave 8 note A
+	defb 036h	; 43CC 36h return
+seq_43CD:
+	defb 0e5h,090h,082h,0b2h	; 43CD instrument 65h, 90 82 b2
+	defb 002h,040h,000h	; 43D1 length 02h, rest (40h, 00h)
+	defb 035h	; 43D4 call
+	defw sub_seq_420E	; 43D5
+	defb 001h,040h,000h	; 43D7 length 01h, rest (40h, 00h)
+	defb 040h	; 43DA 40h end of the sound
+seq_43DB:
+	defb 001h,040h,000h	; 43DB length 01h, rest (40h, 00h)
+	defb 040h	; 43DE 40h end of the sound
+seq_43DF:
+	defb 001h,040h,000h	; 43DF length 01h, rest (40h, 00h)
+	defb 040h	; 43E2 40h end of the sound
+seq_43E3:
+	defb 001h,040h,000h	; 43E3 length 01h, rest (40h, 00h)
+	defb 040h	; 43E6 40h end of the sound
+seq_43E7:
+	defb 001h,040h,000h	; 43E7 length 01h, rest (40h, 00h)
+	defb 040h	; 43EA 40h end of the sound
+seq_43EB:
+	defb 001h,040h,000h	; 43EB length 01h, rest (40h, 00h)
+	defb 040h	; 43EE 40h end of the sound
+seq_43EF:
+	defb 001h,040h,000h	; 43EF length 01h, rest (40h, 00h)
+	defb 040h	; 43F2 40h end of the sound
+seq_43F3:
+	defb 001h,040h,000h	; 43F3 length 01h, rest (40h, 00h)
+	defb 040h	; 43F6 40h end of the sound
+; EffectCoin [C] effect $7F, the coin sound: SSG channels 5-7
+EffectCoin:
+	defb 000h	; 43F7 effect header: priority
+	defw seq_4405,seq_4436,seq_4464,seq_4492	; 43F8 channels 5 6 7 0
+	defb 001h,001h,001h,001h,000h	; 4400 per channel byte, then $FE1A
+seq_4405:
+	defb 053h,00eh,000h,001h	; 4405 53h SSG envelope (YM $0D, $0B, $0C) 0e 00 01
+	defb 051h,000h	; 4409 51h command 00
+	defb 004h,08ah,08dh	; 440B length 04h, level 0Ah +flag, octave 8 note D
+	defb 004h,006h,08dh	; 440E length 04h, level 06h, octave 8 note D
+	defb 004h,08ah,0ach	; 4411 length 04h, level 0Ah +flag, octave A note C
+	defb 004h,006h,0ach	; 4414 length 04h, level 06h, octave A note C
+	defb 004h,08ah,0abh	; 4417 length 04h, level 0Ah +flag, octave A note B
+	defb 004h,006h,0abh	; 441A length 04h, level 06h, octave A note B
+	defb 004h,088h,0abh	; 441D length 04h, level 08h +flag, octave A note B
+	defb 004h,004h,0abh	; 4420 length 04h, level 04h, octave A note B
+	defb 004h,086h,0abh	; 4423 length 04h, level 06h +flag, octave A note B
+	defb 004h,003h,0abh	; 4426 length 04h, level 03h, octave A note B
+	defb 004h,084h,0abh	; 4429 length 04h, level 04h +flag, octave A note B
+	defb 004h,002h,0abh	; 442C length 04h, level 02h, octave A note B
+	defb 004h,082h,0abh	; 442F length 04h, level 02h +flag, octave A note B
+	defb 004h,001h,0abh	; 4432 length 04h, level 01h, octave A note B
+	defb 055h	; 4435 55h end of the effect
+seq_4436:
+	defb 002h,040h,000h	; 4436 length 02h, rest (40h, 00h)
+	defb 004h,08ah,08fh	; 4439 length 04h, level 0Ah +flag, octave 8 note F
+	defb 004h,006h,08fh	; 443C length 04h, level 06h, octave 8 note F
+	defb 004h,08ah,0aeh	; 443F length 04h, level 0Ah +flag, octave A note E
+	defb 004h,006h,0aeh	; 4442 length 04h, level 06h, octave A note E
+	defb 004h,08ah,0cdh	; 4445 length 04h, level 0Ah +flag, octave C note D
+	defb 004h,006h,0cdh	; 4448 length 04h, level 06h, octave C note D
+	defb 004h,088h,0cdh	; 444B length 04h, level 08h +flag, octave C note D
+	defb 004h,004h,0cdh	; 444E length 04h, level 04h, octave C note D
+	defb 004h,086h,0cdh	; 4451 length 04h, level 06h +flag, octave C note D
+	defb 004h,003h,0cdh	; 4454 length 04h, level 03h, octave C note D
+	defb 004h,084h,0cdh	; 4457 length 04h, level 04h +flag, octave C note D
+	defb 004h,002h,0cdh	; 445A length 04h, level 02h, octave C note D
+	defb 004h,082h,0cdh	; 445D length 04h, level 02h +flag, octave C note D
+	defb 004h,001h,0cdh	; 4460 length 04h, level 01h, octave C note D
+	defb 055h	; 4463 55h end of the effect
+seq_4464:
+	defb 004h,040h,000h	; 4464 length 04h, rest (40h, 00h)
+	defb 004h,08ah,08ah	; 4467 length 04h, level 0Ah +flag, octave 8 note A
+	defb 004h,004h,08ah	; 446A length 04h, level 04h, octave 8 note A
+	defb 004h,08ah,0a0h	; 446D length 04h, level 0Ah +flag, octave A note 0
+	defb 004h,006h,0a0h	; 4470 length 04h, level 06h, octave A note 0
+	defb 004h,08ah,0c4h	; 4473 length 04h, level 0Ah +flag, octave C note 4
+	defb 004h,004h,0c4h	; 4476 length 04h, level 04h, octave C note 4
+	defb 004h,088h,0c4h	; 4479 length 04h, level 08h +flag, octave C note 4
+	defb 004h,004h,0c4h	; 447C length 04h, level 04h, octave C note 4
+	defb 004h,086h,0c4h	; 447F length 04h, level 06h +flag, octave C note 4
+	defb 004h,003h,0c4h	; 4482 length 04h, level 03h, octave C note 4
+	defb 004h,084h,0c4h	; 4485 length 04h, level 04h +flag, octave C note 4
+	defb 004h,002h,0c4h	; 4488 length 04h, level 02h, octave C note 4
+	defb 004h,082h,0c4h	; 448B length 04h, level 02h +flag, octave C note 4
+	defb 004h,001h,0c4h	; 448E length 04h, level 01h, octave C note 4
+	defb 055h	; 4491 55h end of the effect
+seq_4492:
+	defb 030h,040h,000h	; 4492 length 30h, rest (40h, 00h)
+	defb 00ah,040h,000h	; 4495 length 0Ah, rest (40h, 00h)
+	defb 042h	; 4498 42h repeat from the start
 dat_4499:
 	defs 00020h,000h	; 4499
 dat_44B9:
-	defb 001h,000h,000h,01ch,000h,000h,000h,000h,000h,000h,0d8h,001h,01dh,000h,030h,000h	; 44B9
-	defb 000h,000h,000h,000h,000h,0d8h,001h,031h,000h,03eh,000h,000h,000h,000h,000h,000h	; 44C9
-	defb 0dah,001h,03fh,000h,062h,000h,000h,000h,000h,000h,000h,0d2h,001h,063h,000h,076h	; 44D9
-	defb 000h,000h,000h,000h,000h,000h,0d7h,001h,077h,000h,0ceh,000h,000h,000h,000h,000h	; 44E9
-	defb 000h,0d5h,001h,0cfh,000h,0f7h,000h,000h,000h,000h,000h,000h,0d7h,001h,0f8h,000h	; 44F9
-	defb 017h,001h,000h,000h,000h,000h,000h,0d5h,001h,018h,001h,044h,001h,000h,000h,000h	; 4509
-	defb 000h,000h,0d2h,001h,045h,001h,052h,001h,000h,000h,000h,000h,000h,0d2h,001h,053h	; 4519
-	defb 001h,05eh,001h,000h,000h,000h,000h,000h,0d5h,001h,05fh,001h,081h,001h,000h,000h	; 4529
-	defb 000h,000h,000h,0d7h,001h,082h,001h,0a2h,001h,000h,000h,000h,000h,000h,0d5h,001h	; 4539
-	defb 0a3h,001h,0beh,001h,000h,000h,000h,000h,000h,0d5h,001h,0bfh,001h,0d2h,001h,000h	; 4549
-	defb 000h,000h,000h,000h,0d7h,001h,0d3h,001h,0feh,001h,000h,000h,000h,000h,000h,0d5h	; 4559
-	defb 001h,000h,002h,023h,002h,000h,000h,000h,000h,000h,0d3h,001h,024h,002h,039h,002h	; 4569
-	defb 000h,000h,000h,000h,000h,0d3h,001h,03ah,002h,067h,002h,000h,000h,000h,000h,000h	; 4579
-	defb 0dbh,001h,068h,002h,085h,002h,000h,000h,000h,000h,000h,0ceh,001h,086h,002h,0c0h	; 4589
-	defb 002h,000h,000h,000h,000h,000h,0d5h,001h,0c1h,002h,0d6h,002h,000h,000h,000h,000h	; 4599
-	defb 000h,0d7h,001h,0d7h,002h,0e1h,002h,000h,000h,000h,000h,000h,0d9h,001h,0e2h,002h	; 45A9
-	defb 0e3h,002h,000h,000h,000h,000h,000h,0d9h,001h,0e4h,002h,0edh,002h,000h,000h,000h	; 45B9
-	defb 000h,000h,0d2h,001h,0eeh,002h,0fah,002h,000h,000h,000h,000h,000h,0d7h,001h,0fbh	; 45C9
-	defb 002h,039h,003h,000h,000h,000h,000h,000h,0d7h,001h,03ah,003h,054h,003h,000h,000h	; 45D9
-	defb 000h,000h,000h,0dbh,001h,055h,003h,05eh,003h,000h,000h,000h,000h,000h,0d7h,001h	; 45E9
-	defb 05fh,003h,076h,003h,000h,000h,000h,000h,000h,0d4h,001h,077h,003h,084h,003h,000h	; 45F9
-	defb 000h,000h,000h,000h,0d3h,001h,085h,003h,09fh,003h,000h,000h,000h,000h,000h,0d8h	; 4609
-	defb 001h,0a0h,003h,0aeh,003h,000h,000h,000h,000h,000h,0dch,001h,0afh,003h,0bdh,003h	; 4619
-	defb 000h,000h,000h,000h,000h,0dah,001h,0beh,003h,0cfh,003h,000h,000h,000h,000h,000h	; 4629
-	defb 0d8h,001h,0d0h,003h,0f2h,003h,000h,000h,000h,000h,000h,0d5h,001h,000h,004h,043h	; 4639
-	defb 004h,000h,000h,000h,000h,000h,0d7h,001h,044h,004h,060h,004h,000h,000h,000h,000h	; 4649
-	defb 000h,0d5h,001h,061h,004h,070h,004h,000h,000h,000h,000h,000h,0dfh,001h,071h,004h	; 4659
-	defb 098h,004h,000h,000h,000h,000h,000h,0d5h,001h,099h,004h,0fbh,004h,000h,000h,000h	; 4669
-	defb 000h,000h,0d2h,001h,0fch,004h,029h,005h,000h,000h,000h,000h,000h,0d5h,001h,02ah	; 4679
-	defb 005h,04fh,005h,000h,000h,000h,000h,000h,0d5h,001h,050h,005h,068h,005h,000h,000h	; 4689
-	defb 000h,000h,000h,0d5h,001h,069h,005h,084h,005h,000h,000h,000h,000h,000h,0d5h,001h	; 4699
-	defb 085h,005h,098h,005h,000h,000h,000h,000h,000h,0d7h,001h,099h,005h,0bfh,005h,000h	; 46A9
-	defb 000h,000h,000h,000h,0d8h,001h,000h,006h,012h,006h,000h,000h,000h,000h,000h,0dfh	; 46B9
-	defb 001h,013h,006h,024h,006h,000h,000h,000h,000h,000h,0dfh,001h,025h,006h,03ah,006h	; 46C9
-	defb 000h,000h,000h,000h,000h,0dfh,001h,03bh,006h,04dh,006h,000h,000h,000h,000h,000h	; 46D9
-	defb 0dfh,001h,04eh,006h,062h,006h,000h,000h,000h,000h,000h,0dfh,001h,063h,006h,08ah	; 46E9
-	defb 006h,000h,000h,000h,000h,000h,0dfh,001h,08bh,006h,0b4h,006h,000h,000h,000h,000h	; 46F9
-	defb 000h,0dfh,001h,0b5h,006h,0dch,006h,000h,000h,000h,000h,000h,0dfh,001h,0ddh,006h	; 4709
-	defb 003h,007h,000h,000h,000h,000h,000h,0dfh,001h,004h,007h,00fh,007h,000h,000h,000h	; 4719
-	defb 000h,000h,0dfh,001h,010h,007h,026h,007h,000h,000h,000h,000h,000h,0dfh,001h,027h	; 4729
-	defb 007h,042h,007h,000h,000h,000h,000h,000h,0dfh,001h,043h,007h,063h,007h,000h,000h	; 4739
-	defb 000h,000h,000h,0dfh,001h,064h,007h,08eh,007h,000h,000h,000h,000h,000h,0dfh,001h	; 4749
-	defb 08fh,007h,094h,007h,000h,000h,000h,000h,000h,0dfh,001h,095h,007h,0aah,007h,000h	; 4759
-	defb 000h,000h,000h,000h,0dfh,001h,0abh,007h,0d2h,007h,000h,000h,000h,000h,000h,0dfh	; 4769
-	defb 001h,0d3h,007h,0fah,007h,000h,000h,000h,000h,000h,0dfh,001h,0fbh,007h,0ffh,007h	; 4779
-	defb 000h,000h,000h,000h,000h,0dfh,001h,0c0h,005h,0dfh,005h,000h,000h,000h,000h,000h	; 4789
-	defb 0dfh,001h,0e0h,005h,0ffh,005h,000h,000h,000h,000h,000h,0dfh,001h,0f3h,003h,0feh	; 4799
-	defb 003h,000h,000h,000h,000h,000h,0d0h	; 47A9
-dat_47B0:
-	defs 00026h,000h	; 47B0
+	defb 001h,000h,000h,01ch,000h,000h,000h,000h,000h,000h,0d8h	; 44B9
+	defb 001h,01dh,000h,030h,000h,000h,000h,000h,000h,000h,0d8h	; 44C4
+	defb 001h,031h,000h,03eh,000h,000h,000h,000h,000h,000h,0dah	; 44CF
+	defb 001h,03fh,000h,062h,000h,000h,000h,000h,000h,000h,0d2h	; 44DA
+	defb 001h,063h,000h,076h,000h,000h,000h,000h,000h,000h,0d7h	; 44E5
+	defb 001h,077h,000h,0ceh,000h,000h,000h,000h,000h,000h,0d5h	; 44F0
+	defb 001h,0cfh,000h,0f7h,000h,000h,000h,000h,000h,000h,0d7h	; 44FB
+	defb 001h,0f8h,000h,017h,001h,000h,000h,000h,000h,000h,0d5h	; 4506
+	defb 001h,018h,001h,044h,001h,000h,000h,000h,000h,000h,0d2h	; 4511
+	defb 001h,045h,001h,052h,001h,000h,000h,000h,000h,000h,0d2h	; 451C
+	defb 001h,053h,001h,05eh,001h,000h,000h,000h,000h,000h,0d5h	; 4527
+	defb 001h,05fh,001h,081h,001h,000h,000h,000h,000h,000h,0d7h	; 4532
+	defb 001h,082h,001h,0a2h,001h,000h,000h,000h,000h,000h,0d5h	; 453D
+	defb 001h,0a3h,001h,0beh,001h,000h,000h,000h,000h,000h,0d5h	; 4548
+	defb 001h,0bfh,001h,0d2h,001h,000h,000h,000h,000h,000h,0d7h	; 4553
+	defb 001h,0d3h,001h,0feh,001h,000h,000h,000h,000h,000h,0d5h	; 455E
+	defb 001h,000h,002h,023h,002h,000h,000h,000h,000h,000h,0d3h	; 4569
+	defb 001h,024h,002h,039h,002h,000h,000h,000h,000h,000h,0d3h	; 4574
+	defb 001h,03ah,002h,067h,002h,000h,000h,000h,000h,000h,0dbh	; 457F
+	defb 001h,068h,002h,085h,002h,000h,000h,000h,000h,000h,0ceh	; 458A
+	defb 001h,086h,002h,0c0h,002h,000h,000h,000h,000h,000h,0d5h	; 4595
+	defb 001h,0c1h,002h,0d6h,002h,000h,000h,000h,000h,000h,0d7h	; 45A0
+	defb 001h,0d7h,002h,0e1h,002h,000h,000h,000h,000h,000h,0d9h	; 45AB
+	defb 001h,0e2h,002h,0e3h,002h,000h,000h,000h,000h,000h,0d9h	; 45B6
+	defb 001h,0e4h,002h,0edh,002h,000h,000h,000h,000h,000h,0d2h	; 45C1
+	defb 001h,0eeh,002h,0fah,002h,000h,000h,000h,000h,000h,0d7h	; 45CC
+	defb 001h,0fbh,002h,039h,003h,000h,000h,000h,000h,000h,0d7h	; 45D7
+	defb 001h,03ah,003h,054h,003h,000h,000h,000h,000h,000h,0dbh	; 45E2
+	defb 001h,055h,003h,05eh,003h,000h,000h,000h,000h,000h,0d7h	; 45ED
+	defb 001h,05fh,003h,076h,003h,000h,000h,000h,000h,000h,0d4h	; 45F8
+	defb 001h,077h,003h,084h,003h,000h,000h,000h,000h,000h,0d3h	; 4603
+	defb 001h,085h,003h,09fh,003h,000h,000h,000h,000h,000h,0d8h	; 460E
+	defb 001h,0a0h,003h,0aeh,003h,000h,000h,000h,000h,000h,0dch	; 4619
+	defb 001h,0afh,003h,0bdh,003h,000h,000h,000h,000h,000h,0dah	; 4624
+	defb 001h,0beh,003h,0cfh,003h,000h,000h,000h,000h,000h,0d8h	; 462F
+	defb 001h,0d0h,003h,0f2h,003h,000h,000h,000h,000h,000h,0d5h	; 463A
+	defb 001h,000h,004h,043h,004h,000h,000h,000h,000h,000h,0d7h	; 4645
+	defb 001h,044h,004h,060h,004h,000h,000h,000h,000h,000h,0d5h	; 4650
+	defb 001h,061h,004h,070h,004h,000h,000h,000h,000h,000h,0dfh	; 465B
+	defb 001h,071h,004h,098h,004h,000h,000h,000h,000h,000h,0d5h	; 4666
+	defb 001h,099h,004h,0fbh,004h,000h,000h,000h,000h,000h,0d2h	; 4671
+	defb 001h,0fch,004h,029h,005h,000h,000h,000h,000h,000h,0d5h	; 467C
+	defb 001h,02ah,005h,04fh,005h,000h,000h,000h,000h,000h,0d5h	; 4687
+	defb 001h,050h,005h,068h,005h,000h,000h,000h,000h,000h,0d5h	; 4692
+	defb 001h,069h,005h,084h,005h,000h,000h,000h,000h,000h,0d5h	; 469D
+	defb 001h,085h,005h,098h,005h,000h,000h,000h,000h,000h,0d7h	; 46A8
+	defb 001h,099h,005h,0bfh,005h,000h,000h,000h,000h,000h,0d8h	; 46B3
+	defb 001h,000h,006h,012h,006h,000h,000h,000h,000h,000h,0dfh	; 46BE
+	defb 001h,013h,006h,024h,006h,000h,000h,000h,000h,000h,0dfh	; 46C9
+	defb 001h,025h,006h,03ah,006h,000h,000h,000h,000h,000h,0dfh	; 46D4
+	defb 001h,03bh,006h,04dh,006h,000h,000h,000h,000h,000h,0dfh	; 46DF
+	defb 001h,04eh,006h,062h,006h,000h,000h,000h,000h,000h,0dfh	; 46EA
+	defb 001h,063h,006h,08ah,006h,000h,000h,000h,000h,000h,0dfh	; 46F5
+	defb 001h,08bh,006h,0b4h,006h,000h,000h,000h,000h,000h,0dfh	; 4700
+	defb 001h,0b5h,006h,0dch,006h,000h,000h,000h,000h,000h,0dfh	; 470B
+	defb 001h,0ddh,006h,003h,007h,000h,000h,000h,000h,000h,0dfh	; 4716
+	defb 001h,004h,007h,00fh,007h,000h,000h,000h,000h,000h,0dfh	; 4721
+	defb 001h,010h,007h,026h,007h,000h,000h,000h,000h,000h,0dfh	; 472C
+	defb 001h,027h,007h,042h,007h,000h,000h,000h,000h,000h,0dfh	; 4737
+	defb 001h,043h,007h,063h,007h,000h,000h,000h,000h,000h,0dfh	; 4742
+	defb 001h,064h,007h,08eh,007h,000h,000h,000h,000h,000h,0dfh	; 474D
+	defb 001h,08fh,007h,094h,007h,000h,000h,000h,000h,000h,0dfh	; 4758
+	defb 001h,095h,007h,0aah,007h,000h,000h,000h,000h,000h,0dfh	; 4763
+	defb 001h,0abh,007h,0d2h,007h,000h,000h,000h,000h,000h,0dfh	; 476E
+	defb 001h,0d3h,007h,0fah,007h,000h,000h,000h,000h,000h,0dfh	; 4779
+	defb 001h,0fbh,007h,0ffh,007h,000h,000h,000h,000h,000h,0dfh	; 4784
+	defb 001h,0c0h,005h,0dfh,005h,000h,000h,000h,000h,000h,0dfh	; 478F
+	defb 001h,0e0h,005h,0ffh,005h,000h,000h,000h,000h,000h,0dfh	; 479A
+	defb 001h,0f3h,003h,0feh,003h,000h,000h,000h,000h,000h,0d0h	; 47A5
+tbl_47B0:
+	defw 0,0,0,0,0,0,0,0	; 47B0 commands $C0+ (all zero)
+	defw 0,0,0,0,0,0,0,0	; 47C0
+	defw 0,0,0	; 47D0
 dat_47D6:
 	defs 00020h,000h	; 47D6
 dat_47F6:
-	defb 004h,000h,000h,068h,000h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h	; 47F6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,069h,000h,0d1h,000h,000h	; 4806
-	defb 000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 4816
-	defb 000h,000h,000h,000h,004h,0d2h,000h,006h,001h,000h,000h,000h,000h,000h,0b4h,06eh	; 4826
-	defb 080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,007h	; 4836
-	defb 001h,036h,001h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h	; 4846
-	defb 000h,0f4h,001h,000h,000h,000h,000h,000h,004h,037h,001h,0ffh,001h,000h,000h,000h	; 4856
-	defb 000h,000h,055h,055h,080h,050h,031h,000h,000h,0ffh,0ffh,00ah,000h,000h,000h,000h	; 4866
-	defb 000h,000h,004h,000h,002h,074h,002h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h	; 4876
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,075h,002h,050h	; 4886
-	defb 003h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h	; 4896
-	defb 000h,000h,000h,000h,000h,000h,004h,051h,003h,098h,003h,000h,000h,000h,000h,000h	; 48A6
-	defb 0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 48B6
-	defb 004h,099h,003h,0e0h,003h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h	; 48C6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0e1h,003h,0ffh,003h,000h	; 48D6
-	defb 000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 48E6
-	defb 000h,000h,000h,000h,004h,000h,004h,0dah,004h,000h,000h,000h,000h,000h,0b4h,06eh	; 48F6
-	defb 080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0dbh	; 4906
-	defb 004h,025h,005h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h	; 4916
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,026h,005h,06dh,005h,000h,000h,000h	; 4926
-	defb 000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4936
-	defb 000h,000h,004h,06eh,005h,0ffh,005h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h	; 4946
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,000h,006h,040h	; 4956
-	defb 006h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h	; 4966
-	defb 000h,000h,000h,000h,000h,000h,004h,041h,006h,000h,007h,000h,000h,000h,000h,000h	; 4976
-	defb 0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4986
-	defb 004h,043h,006h,000h,007h,000h,000h,000h,000h,000h,055h,055h,080h,000h,030h,000h	; 4996
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,073h,003h,0aeh,003h,000h	; 49A6
-	defb 000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 49B6
-	defb 000h,000h,000h,000h,004h,0afh,003h,0cah,003h,000h,000h,000h,000h,000h,05ah,037h	; 49C6
-	defb 0ffh,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0cbh	; 49D6
-	defb 003h,0ebh,003h,000h,000h,000h,000h,000h,0e7h,024h,080h,000h,030h,000h,000h,000h	; 49E6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,038h,001h,0ffh,001h,000h,000h,000h	; 49F6
-	defb 000h,000h,0b4h,06eh,080h,050h,031h,000h,000h,0ffh,0ffh,00ah,000h,000h,000h,000h	; 4A06
-	defb 000h,000h,004h,076h,002h,050h,003h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h	; 4A16
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,001h,004h,0dah	; 4A26
-	defb 004h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h	; 4A36
-	defb 000h,000h,000h,000h,000h,000h,004h,001h,007h,00fh,007h,000h,000h,000h,000h,000h	; 4A46
-	defb 0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4A56
-	defb 004h,010h,007h,01eh,007h,000h,000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h	; 4A66
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,01fh,007h,02bh,007h,000h	; 4A76
-	defb 000h,000h,000h,000h,0b4h,06eh,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 4A86
-	defb 000h,000h,000h,000h,004h,02ch,007h,07fh,007h,000h,000h,000h,000h,000h,055h,055h	; 4A96
-	defb 080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,006h,02eh	; 4AA6
-	defb 004h,0beh,004h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h	; 4AB6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,005h,0bfh,004h,037h,005h,000h,000h,000h	; 4AC6
-	defb 000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4AD6
-	defb 000h,000h,004h,038h,005h,0b0h,005h,000h,000h,000h,000h,000h,05ah,037h,080h,000h	; 4AE6
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0b1h,005h,0f9h	; 4AF6
-	defb 005h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h	; 4B06
-	defb 000h,000h,000h,000h,000h,000h,004h,000h,006h,057h,006h,000h,000h,000h,000h,000h	; 4B16
-	defb 05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4B26
-	defb 004h,058h,006h,090h,006h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h	; 4B36
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,091h,006h,0b4h,006h,000h	; 4B46
-	defb 000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 4B56
-	defb 000h,000h,000h,000h,004h,0b5h,006h,036h,007h,000h,000h,000h,000h,000h,05ah,037h	; 4B66
-	defb 080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,037h	; 4B76
-	defb 007h,0c6h,007h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h	; 4B86
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,0c7h,007h,0ffh,007h,000h,000h,000h	; 4B96
-	defb 000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4BA6
-	defb 000h,000h,004h,08fh,007h,0c7h,007h,000h,000h,000h,000h,000h,05ah,037h,080h,000h	; 4BB6
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0c8h,007h,0f8h	; 4BC6
-	defb 007h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h	; 4BD6
-	defb 000h,000h,000h,000h,000h,000h,004h,0f8h,001h,0ffh,001h,000h,000h,000h,000h,000h	; 4BE6
-	defb 0e7h,024h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4BF6
-	defb 004h,014h,006h,046h,006h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h	; 4C06
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,047h,006h,074h,006h,000h	; 4C16
-	defb 000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 4C26
-	defb 000h,000h,000h,000h,004h,075h,006h,0b1h,006h,000h,000h,000h,000h,000h,05ah,037h	; 4C36
-	defb 080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0b2h	; 4C46
-	defb 006h,0bbh,006h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h	; 4C56
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,0bch,006h,0d4h,006h,000h,000h,000h	; 4C66
-	defb 000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4C76
-	defb 000h,000h,004h,0d5h,006h,008h,007h,000h,000h,000h,000h,000h,05ah,037h,080h,001h	; 4C86
-	defb 031h,000h,000h,030h,03eh,000h,015h,000h,000h,000h,000h,000h,004h,009h,007h,043h	; 4C96
-	defb 007h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h	; 4CA6
-	defb 000h,001h,014h,000h,0ffh,00ah,004h,044h,007h,04ch,007h,000h,000h,000h,000h,000h	; 4CB6
-	defb 0e7h,024h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4CC6
-	defb 004h,04dh,007h,058h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h,000h,030h,000h	; 4CD6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,059h,007h,065h,007h,000h	; 4CE6
-	defb 000h,000h,000h,000h,0e7h,024h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 4CF6
-	defb 000h,000h,000h,000h,004h,049h,005h,050h,005h,000h,000h,000h,000h,000h,05ah,037h	; 4D06
-	defb 080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,051h	; 4D16
-	defb 005h,060h,005h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h	; 4D26
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,061h,005h,0dah,005h,000h,000h,000h	; 4D36
-	defb 000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4D46
-	defb 000h,000h,004h,0dbh,005h,0f2h,005h,000h,000h,000h,000h,000h,0e7h,024h,080h,000h	; 4D56
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,000h,004h,0f2h	; 4D66
-	defb 005h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h	; 4D76
-	defb 000h,000h,000h,000h,000h,000h,004h,0efh,005h,0fch,001h,000h,000h,000h,000h,000h	; 4D86
-	defb 05ah,037h,080h,001h,031h,000h,000h,010h,027h,032h,000h,001h,003h,000h,001h,00ah	; 4D96
-	defb 004h,066h,007h,071h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h,000h,030h,000h	; 4DA6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,072h,007h,07dh,007h,000h	; 4DB6
-	defb 000h,000h,000h,000h,0e7h,024h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 4DC6
-	defb 000h,000h,000h,000h,004h,07eh,007h,087h,007h,000h,000h,000h,000h,000h,0e7h,024h	; 4DD6
-	defb 080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,088h	; 4DE6
-	defb 007h,091h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h,000h,030h,000h,000h,000h	; 4DF6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,092h,007h,09bh,007h,000h,000h,000h	; 4E06
-	defb 000h,000h,0e7h,024h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E16
-	defb 000h,000h,004h,09ch,007h,0c8h,007h,000h,000h,000h,000h,000h,05ah,037h,080h,000h	; 4E26
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0c9h,007h,0f6h	; 4E36
-	defb 007h,000h,000h,000h,000h,000h,05ah,037h,080h,000h,030h,000h,000h,000h,000h,000h	; 4E46
-	defb 000h,000h,000h,000h,000h,000h,004h,09bh,002h,0b3h,002h,000h,000h,000h,000h,000h	; 4E56
-	defb 0e9h,024h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E66
-	defb 004h,0b3h,002h,0bbh,002h,000h,000h,000h,000h,000h,0e9h,024h,080h,000h,030h,000h	; 4E76
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0f8h,001h,0ffh,001h,000h	; 4E86
-	defb 000h,000h,000h,000h,0e7h,024h,080h,000h,030h,000h,000h,000h,000h,000h,000h,000h	; 4E96
-	defb 000h,000h,000h,000h,004h,0c4h,002h,0d7h,002h,000h,000h,000h,000h,000h,0e9h,024h	; 4EA6
-	defb 0ffh,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,0d8h	; 4EB6
-	defb 002h,0f3h,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh,000h,030h,000h,000h,000h	; 4EC6
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,004h,000h,002h,07fh,002h,000h,000h,000h	; 4ED6
-	defb 000h,000h,0e9h,024h,0ffh,004h,031h,0e9h,024h,0b0h,036h,040h,01fh,000h,000h,000h	; 4EE6
-	defb 000h,000h,004h,000h,002h,07fh,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh,000h	; 4EF6
-	defb 030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,004h,000h,002h,07fh	; 4F06
-	defb 002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh,000h,030h,000h,000h,000h,000h,000h	; 4F16
-	defb 000h,000h,000h,000h,000h,000h,004h,000h,002h,07fh,002h,000h,000h,000h,000h,000h	; 4F26
-	defb 0e9h,024h,0ffh,000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4F36
-dat_4F46:
-	defs 0001eh,000h	; 4F46
+	defb 004h,000h,000h,068h,000h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 47F6
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4803
+	defb 004h,069h,000h,0d1h,000h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4810
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 481D
+	defb 004h,0d2h,000h,006h,001h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 482A
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4837
+	defb 004h,007h,001h,036h,001h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4844
+	defb 000h,030h,000h,000h,000h,000h,0f4h,001h,000h,000h,000h,000h,000h	; 4851
+	defb 004h,037h,001h,0ffh,001h,000h,000h,000h,000h,000h,055h,055h,080h	; 485E
+	defb 050h,031h,000h,000h,0ffh,0ffh,00ah,000h,000h,000h,000h,000h,000h	; 486B
+	defb 004h,000h,002h,074h,002h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4878
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4885
+	defb 004h,075h,002h,050h,003h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4892
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 489F
+	defb 004h,051h,003h,098h,003h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 48AC
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 48B9
+	defb 004h,099h,003h,0e0h,003h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 48C6
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 48D3
+	defb 004h,0e1h,003h,0ffh,003h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 48E0
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 48ED
+	defb 004h,000h,004h,0dah,004h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 48FA
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4907
+	defb 004h,0dbh,004h,025h,005h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4914
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4921
+	defb 004h,026h,005h,06dh,005h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 492E
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 493B
+	defb 004h,06eh,005h,0ffh,005h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4948
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4955
+	defb 004h,000h,006h,040h,006h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4962
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 496F
+	defb 004h,041h,006h,000h,007h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 497C
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4989
+	defb 004h,043h,006h,000h,007h,000h,000h,000h,000h,000h,055h,055h,080h	; 4996
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 49A3
+	defb 004h,073h,003h,0aeh,003h,000h,000h,000h,000h,000h,05ah,037h,080h	; 49B0
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 49BD
+	defb 004h,0afh,003h,0cah,003h,000h,000h,000h,000h,000h,05ah,037h,0ffh	; 49CA
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 49D7
+	defb 004h,0cbh,003h,0ebh,003h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 49E4
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 49F1
+	defb 004h,038h,001h,0ffh,001h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 49FE
+	defb 050h,031h,000h,000h,0ffh,0ffh,00ah,000h,000h,000h,000h,000h,000h	; 4A0B
+	defb 004h,076h,002h,050h,003h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4A18
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4A25
+	defb 004h,001h,004h,0dah,004h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4A32
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4A3F
+	defb 004h,001h,007h,00fh,007h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4A4C
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4A59
+	defb 004h,010h,007h,01eh,007h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4A66
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4A73
+	defb 004h,01fh,007h,02bh,007h,000h,000h,000h,000h,000h,0b4h,06eh,080h	; 4A80
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4A8D
+	defb 004h,02ch,007h,07fh,007h,000h,000h,000h,000h,000h,055h,055h,080h	; 4A9A
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4AA7
+	defb 006h,02eh,004h,0beh,004h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4AB4
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4AC1
+	defb 005h,0bfh,004h,037h,005h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4ACE
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4ADB
+	defb 004h,038h,005h,0b0h,005h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4AE8
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4AF5
+	defb 004h,0b1h,005h,0f9h,005h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4B02
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4B0F
+	defb 004h,000h,006h,057h,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4B1C
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4B29
+	defb 004h,058h,006h,090h,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4B36
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4B43
+	defb 004h,091h,006h,0b4h,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4B50
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4B5D
+	defb 004h,0b5h,006h,036h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4B6A
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4B77
+	defb 004h,037h,007h,0c6h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4B84
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4B91
+	defb 004h,0c7h,007h,0ffh,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4B9E
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4BAB
+	defb 004h,08fh,007h,0c7h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4BB8
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4BC5
+	defb 004h,0c8h,007h,0f8h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4BD2
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4BDF
+	defb 004h,0f8h,001h,0ffh,001h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4BEC
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4BF9
+	defb 004h,014h,006h,046h,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4C06
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4C13
+	defb 004h,047h,006h,074h,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4C20
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4C2D
+	defb 004h,075h,006h,0b1h,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4C3A
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4C47
+	defb 004h,0b2h,006h,0bbh,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4C54
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4C61
+	defb 004h,0bch,006h,0d4h,006h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4C6E
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4C7B
+	defb 004h,0d5h,006h,008h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4C88
+	defb 001h,031h,000h,000h,030h,03eh,000h,015h,000h,000h,000h,000h,000h	; 4C95
+	defb 004h,009h,007h,043h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4CA2
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,001h,014h,000h,0ffh,00ah	; 4CAF
+	defb 004h,044h,007h,04ch,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4CBC
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4CC9
+	defb 004h,04dh,007h,058h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4CD6
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4CE3
+	defb 004h,059h,007h,065h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4CF0
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4CFD
+	defb 004h,049h,005h,050h,005h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4D0A
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4D17
+	defb 004h,051h,005h,060h,005h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4D24
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4D31
+	defb 004h,061h,005h,0dah,005h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4D3E
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4D4B
+	defb 004h,0dbh,005h,0f2h,005h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4D58
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4D65
+	defb 004h,000h,004h,0f2h,005h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4D72
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4D7F
+	defb 004h,0efh,005h,0fch,001h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4D8C
+	defb 001h,031h,000h,000h,010h,027h,032h,000h,001h,003h,000h,001h,00ah	; 4D99
+	defb 004h,066h,007h,071h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4DA6
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4DB3
+	defb 004h,072h,007h,07dh,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4DC0
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4DCD
+	defb 004h,07eh,007h,087h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4DDA
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4DE7
+	defb 004h,088h,007h,091h,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4DF4
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E01
+	defb 004h,092h,007h,09bh,007h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4E0E
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E1B
+	defb 004h,09ch,007h,0c8h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4E28
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E35
+	defb 004h,0c9h,007h,0f6h,007h,000h,000h,000h,000h,000h,05ah,037h,080h	; 4E42
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E4F
+	defb 004h,09bh,002h,0b3h,002h,000h,000h,000h,000h,000h,0e9h,024h,080h	; 4E5C
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E69
+	defb 004h,0b3h,002h,0bbh,002h,000h,000h,000h,000h,000h,0e9h,024h,080h	; 4E76
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E83
+	defb 004h,0f8h,001h,0ffh,001h,000h,000h,000h,000h,000h,0e7h,024h,080h	; 4E90
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4E9D
+	defb 004h,0c4h,002h,0d7h,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh	; 4EAA
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4EB7
+	defb 004h,0d8h,002h,0f3h,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh	; 4EC4
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4ED1
+	defb 004h,000h,002h,07fh,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh	; 4EDE
+	defb 004h,031h,0e9h,024h,0b0h,036h,040h,01fh,000h,000h,000h,000h,000h	; 4EEB
+	defb 004h,000h,002h,07fh,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh	; 4EF8
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4F05
+	defb 004h,000h,002h,07fh,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh	; 4F12
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4F1F
+	defb 004h,000h,002h,07fh,002h,000h,000h,000h,000h,000h,0e9h,024h,0ffh	; 4F2C
+	defb 000h,030h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 4F39
+tbl_4F46:
+	defw 0,0,0,0,0,0,0,0	; 4F46 commands $C0+ (all zero)
+	defw 0,0,0,0,0,0,0	; 4F56
 dat_4F64:
 	defb 000h,001h,002h,003h,004h,005h,006h,007h,008h,009h,00ah,00bh,00ch,00dh,00eh,00fh	; 4F64
 	defb 017h,018h,019h,009h,004h,00ah,00bh,011h,000h,000h,000h,000h,000h,01bh,01ch,01dh	; 4F74
 	defs 00020h,000h	; 4F84
-dat_4FA4:
-	defb 08dh,029h,069h,01dh,0fch,020h,000h,000h,035h,027h,0f2h,02bh,069h,031h,000h,000h	; 4FA4
-	defb 000h,000h,000h,000h,0b5h,02eh,02eh,034h,0b5h,01bh,025h,01fh,0f0h,022h,000h,025h	; 4FB4
-	defb 0e5h,052h,0bch,03ah,0d8h,041h,000h,000h,065h,04eh,0c5h,057h,076h,062h,000h,000h	; 4FC4
-	defb 000h,000h,000h,000h,000h,05dh,065h,068h,05ah,037h,030h,03eh,0b7h,045h,0ech,049h	; 4FD4
-	defb 0d8h,0a5h,035h,075h,068h,083h,000h,000h,060h,09ch,0c4h,0aeh,065h,0c4h,000h,000h	; 4FE4
-	defb 000h,000h,000h,000h,0eah,0b9h,00fh,0d0h,089h,06eh,020h,07ch,0cch,08bh,0dah,093h	; 4FF4
-	defb 000h,000h,0e1h,0e9h,0ffh,0ffh,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 5004
-	defb 000h,000h,000h,000h,000h,000h,000h,000h,0fch,0dch,0b9h,0f7h,000h,000h,000h,000h	; 5014
-	defb 00ah,00ah,00ah,016h,016h,016h,016h,016h,006h,006h,006h,015h,015h,015h,015h,015h	; 5024
-	defb 00ah,00ah,00ah,016h,016h,016h,016h,016h,00fh,00fh,00fh,010h,010h,010h,010h,010h	; 5034
-	defb 018h,018h,018h,017h,017h,017h,000h,000h,005h,005h,005h,005h,005h,005h,005h,005h	; 5044
-	defb 006h,006h,006h,006h,006h,006h,006h,006h,007h,007h,007h,007h,007h,007h,007h,007h	; 5054
-	defb 010h,010h,010h,010h,010h,010h,010h,010h,006h,006h,006h,006h,006h,006h,006h,006h	; 5064
-	defb 007h,007h,007h,007h,007h,007h,007h,007h,009h,009h,009h,009h,009h,009h,009h,009h	; 5074
-	defb 012h,012h,012h,012h,012h,012h,012h,012h,03ch,03ch,03ch,03ch,03ch,03ch,03ch,03ch	; 5084
-	defb 03dh,03dh,03dh,03dh,03dh,03dh,03dh,03dh,03eh,03eh,03eh,03eh,03eh,03eh,03eh,03eh	; 5094
-	defb 045h,045h,045h,045h,045h,045h,045h,045h,040h,040h,040h,041h,041h,041h,041h,041h	; 50A4
-	defb 042h,042h,042h,043h,043h,043h,043h,043h,044h,044h,044h,044h,044h,044h,044h,044h	; 50B4
-	defb 045h,045h,045h,045h,045h,045h,045h,045h,046h,046h,046h,046h,046h,046h,046h,046h	; 50C4
-dat_50D4:
-	defb 08dh,029h,069h,01dh,0fch,020h,000h,000h,035h,027h,0f2h,02bh,069h,031h,000h,000h	; 50D4
-	defb 000h,000h,000h,000h,0b5h,02eh,02eh,034h,0b5h,01bh,025h,01fh,0f0h,022h,000h,025h	; 50E4
-	defb 0e5h,052h,0bch,03ah,0d8h,041h,000h,000h,065h,04eh,0c5h,057h,076h,062h,000h,000h	; 50F4
-	defb 000h,000h,000h,000h,000h,05dh,065h,068h,05ah,037h,030h,03eh,0b7h,045h,0ech,049h	; 5104
-	defb 0d8h,0a5h,035h,075h,068h,083h,0fch,0dch,060h,09ch,0c4h,0aeh,065h,0c4h,000h,000h	; 5114
-	defb 000h,000h,000h,000h,0eah,0b9h,00fh,0d0h,089h,06eh,020h,07ch,0cch,08bh,0dah,093h	; 5124
-	defb 08dh,029h,069h,01dh,0fch,020h,000h,000h,035h,027h,0f2h,02bh,069h,031h,000h,000h	; 5134
-	defb 000h,000h,000h,000h,0b5h,02eh,02eh,034h,0b5h,01bh,025h,01fh,0f0h,022h,000h,025h	; 5144
-	defb 0e5h,052h,0bch,03ah,0d8h,041h,000h,000h,065h,04eh,0c5h,057h,076h,062h,000h,000h	; 5154
-	defb 000h,000h,000h,000h,000h,05dh,065h,068h,05ah,037h,030h,03eh,0b7h,045h,0ech,049h	; 5164
-	defb 0d8h,0a5h,035h,075h,068h,083h,0fch,0dch,060h,09ch,0c4h,0aeh,065h,0c4h,000h,000h	; 5174
-	defb 000h,000h,000h,000h,0eah,0b9h,00fh,0d0h,089h,06eh,020h,07ch,0cch,08bh,0dah,093h	; 5184
-	defb 095h,054h,06ch,03ch,088h,043h,000h,000h,015h,050h,075h,059h,026h,064h,000h,000h	; 5194
-	defb 000h,000h,000h,000h,0b0h,05eh,015h,06ah,00ah,039h,0e0h,03fh,067h,047h,09ch,04bh	; 51A4
-	defb 038h,0a9h,095h,078h,0c8h,086h,05ch,0e0h,0c0h,09fh,024h,0b2h,0c5h,0c7h,000h,000h	; 51B4
-	defb 000h,000h,000h,000h,04ah,0bdh,06fh,0d3h,0e9h,071h,080h,07fh,02ch,08fh,03ah,097h	; 51C4
+tbl_4FA4:
+	defw 0298dh,01d69h,020fch,0,02735h,02bf2h,03169h,0	; 4FA4
+	defw 0,0,02eb5h,0342eh,01bb5h,01f25h,022f0h,02500h	; 4FB4
+	defw 052e5h,03abch,041d8h,0,04e65h,057c5h,06276h,0	; 4FC4
+	defw 0,0,05d00h,06865h,0375ah,03e30h,045b7h,049ech	; 4FD4
+	defw 0a5d8h,07535h,08368h,0,09c60h,0aec4h,0c465h,0	; 4FE4
+	defw 0,0,0b9eah,0d00fh,06e89h,07c20h,08bcch,093dah	; 4FF4
+	defw 0,0e9e1h,0ffffh,0,0,0,0,0	; 5004
+	defw 0,0,0,0,0dcfch,0f7b9h,0,0	; 5014
+	defw 00a0ah,sub_160A,01616h,01616h,00606h,loc_1506,01515h,01515h	; 5024
+	defw 00a0ah,sub_160A,01616h,01616h,00f0fh,0100fh,01010h,01010h	; 5034
+	defw 01818h,01718h,01717h,0,00505h,00505h,00505h,00505h	; 5044
+	defw 00606h,00606h,00606h,00606h,00707h,00707h,00707h,00707h	; 5054
+	defw 01010h,01010h,01010h,01010h,00606h,00606h,00606h,00606h	; 5064
+	defw 00707h,00707h,00707h,00707h,00909h,00909h,00909h,00909h	; 5074
+	defw 01212h,01212h,01212h,01212h,03c3ch,03c3ch,03c3ch,03c3ch	; 5084
+	defw 03d3dh,03d3dh,03d3dh,03d3dh,03e3eh,03e3eh,03e3eh,03e3eh	; 5094
+	defw 04545h,04545h,04545h,04545h,04040h,04140h,04141h,04141h	; 50A4
+	defw 04242h,04342h,04343h,04343h,04444h,04444h,04444h,04444h	; 50B4
+	defw 04545h,04545h,04545h,04545h,04646h,04646h,04646h,04646h	; 50C4
+tbl_50D4:
+	defw 0298dh,01d69h,020fch,0,02735h,02bf2h,03169h,0	; 50D4
+	defw 0,0,02eb5h,0342eh,01bb5h,01f25h,022f0h,02500h	; 50E4
+	defw 052e5h,03abch,041d8h,0,04e65h,057c5h,06276h,0	; 50F4
+	defw 0,0,05d00h,06865h,0375ah,03e30h,045b7h,049ech	; 5104
+	defw 0a5d8h,07535h,08368h,0dcfch,09c60h,0aec4h,0c465h,0	; 5114
+	defw 0,0,0b9eah,0d00fh,06e89h,07c20h,08bcch,093dah	; 5124
+	defw 0298dh,01d69h,020fch,0,02735h,02bf2h,03169h,0	; 5134
+	defw 0,0,02eb5h,0342eh,01bb5h,01f25h,022f0h,02500h	; 5144
+	defw 052e5h,03abch,041d8h,0,04e65h,057c5h,06276h,0	; 5154
+	defw 0,0,05d00h,06865h,0375ah,03e30h,045b7h,049ech	; 5164
+	defw 0a5d8h,07535h,08368h,0dcfch,09c60h,0aec4h,0c465h,0	; 5174
+	defw 0,0,0b9eah,0d00fh,06e89h,07c20h,08bcch,093dah	; 5184
+	defw 05495h,03c6ch,04388h,0,05015h,05975h,06426h,0	; 5194
+	defw 0,0,05eb0h,06a15h,0390ah,03fe0h,04767h,04b9ch	; 51A4
+	defw 0a938h,07895h,086c8h,0e05ch,09fc0h,0b224h,0c7c5h,0	; 51B4
+	defw 0,0,0bd4ah,0d36fh,071e9h,07f80h,08f2ch,0973ah	; 51C4
 ; CommandTypeTable [C] 256 bytes, the type of each command: 1 for 1-9 and $10, 2 for $5C-$5F, 5 for $7F, 0 for the rest
 CommandTypeTable:
 	defb 000h,001h,001h,001h,001h,001h,001h,001h,001h,001h,000h,000h,000h,000h,000h,000h	; 51D4
@@ -6522,17 +7093,20 @@ dat_5314:
 	defb 010h,011h,012h,013h,014h,015h,016h,017h,018h,019h,01ah,01bh,01ch,01dh,01eh,01fh	; 5324
 	defb 020h,021h,022h,023h,024h,025h,026h,027h,028h,029h,02ah,02bh,02ch,02dh,02eh,041h	; 5334
 	defb 042h,043h,040h,033h,034h,035h,036h,037h,038h,039h,03ah,03bh,03ch,03dh,03eh,03fh	; 5344
-dat_5354:
+; SpecialEffect [I] an effect number ($00 here): StartEffect sets $FE40 = 4 when the effect started is this one, and command 55h checks $FE40 = 4
+SpecialEffect:
 	defb 07fh	; 5354
-dat_5355:
-	defb 09eh,003h,08fh,002h,0dfh,002h,000h,000h,06ah,003h,0d5h,003h,04eh,004h,000h,000h	; 5355
-	defb 000h,000h,000h,000h,010h,004h,08fh,004h,06ah,002h,0b6h,002h,00bh,003h,039h,003h	; 5365
-	defb 0b8h,003h,0a2h,002h,0f4h,002h,000h,000h,082h,003h,0f0h,003h,06ch,004h,000h,000h	; 5375
-	defb 000h,000h,000h,000h,02ch,004h,0b0h,004h,07ch,002h,0cah,002h,020h,003h,050h,003h	; 5385
-dat_5395:
-	defb 0f3h,009h,012h,00eh,089h,00ch,000h,000h,08ah,00ah,064h,009h,05eh,008h,000h,000h	; 5395
-	defb 000h,000h,000h,000h,0ddh,008h,0e6h,007h,0e8h,00eh,048h,00dh,0d5h,00bh,02bh,00bh	; 53A5
-	defb 0f3h,009h,012h,00eh,089h,00ch,000h,000h,08ah,00ah,064h,009h,05eh,008h,000h,000h	; 53B5
-	defb 000h,000h,000h,000h,0ddh,008h,0e6h,007h,07dh,00eh,048h,00dh,0d5h,00bh,02bh,00bh	; 53C5
+; FmFnumTable [I] FM F-numbers ($26A-$4B0) by note index bits 0-4 (12 notes in 16 slots)
+FmFnumTable:
+	defw 0039eh,0028fh,002dfh,0,0036ah,003d5h,loc_044E,0	; 5355 FM F-numbers by note index (bits 0-4)
+	defw 0,0,00410h,0048fh,0026ah,002b6h,0030bh,00339h	; 5365
+	defw 003b8h,002a2h,002f4h,0,00382h,003f0h,0046ch,0	; 5375
+	defw 0,0,0042ch,004b0h,0027ch,002cah,00320h,00350h	; 5385
+; SsgPeriodTable [I] SSG tone periods by note index bits 0-4
+SsgPeriodTable:
+	defw 009f3h,00e12h,00c89h,0,00a8ah,00964h,0085eh,0	; 5395 SSG periods by note index (bits 0-4)
+	defw 0,0,008ddh,007e6h,00ee8h,00d48h,00bd5h,00b2bh	; 53A5
+	defw 009f3h,00e12h,00c89h,0,00a8ah,00964h,0085eh,0	; 53B5
+	defw 0,0,008ddh,007e6h,00e7dh,00d48h,00bd5h,00b2bh	; 53C5
 	defs 0a42bh,000h	; 53D5 fill
 	defs 00800h,0ffh	; F800 fill

@@ -24,3 +24,33 @@ entry 20D5
 entry 24C6
 entry 0DF3
 text 003E 22  # version text
+# typed data (tools/sm1_data.py)
+data 1E75 28 8     # TimerIrq helper sub_1E59: byte per index
+data 1E9D 18 8
+data 2A16 8 8      # per FM algorithm: operators not written with the instrument's level (bits 0-3)
+words 2A1E 7       timer A values (YM $25 / $24), command 37h
+records 2A2C 8 8
+data 2A6C 14 8
+records 2A80 103 52 13 FM instrument
+words 3F6C 64      SoundTable: commands $20-$5F
+words 3FEC 32      EffectTable: commands $60-$7F
+song 402C
+song 4092
+song 40F8
+song 415E
+effect 43F7
+data 4499 20 8     # bit per command, 32 bytes (all zero)
+records 44B9 69 11
+words 47B0 19      commands $C0+ (all zero)
+data 47D6 20 8     # bit per command, 32 bytes (all zero)
+records 47F6 72 26 13
+words 4F46 15      commands $C0+ (all zero)
+data 4F64 40 16
+words 4FA4 152
+words 50D4 128
+data 51D4 100 16   # CommandTypeTable
+data 52D4 40 16
+data 5314 40 16
+data 5354 1
+words 5355 32      FM F-numbers by note index (bits 0-4)
+words 5395 32      SSG periods by note index (bits 0-4)

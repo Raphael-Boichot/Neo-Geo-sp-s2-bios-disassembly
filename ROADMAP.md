@@ -148,8 +148,9 @@ board, whatever the cartridge, so they belong to the BIOS.
 - [x] `sm1.sm1`, the Z80 sound program on the board (128 KB): Z80 disassembly in `sm1/` rebuilt byte
       for byte (`make check`), code traced (no unresolved jump), the commands SP-S2 sends run in MAME
       (`tools/mame_z80.sh`), the eyecatcher jingle found in it (docs/sound.md)
-- [ ] `sm1.sm1` L1-L4: type the data at `$2A16-$53D4` (sound tables, music), name the 576 automatic
-      labels and the RAM (585 raw operand lines)
+- [x] `sm1.sm1` L1: every data byte typed (instruments, sound and effect tables, 4 sounds and the coin
+      effect as headers and 50 parsed sequences); see docs/sound.md
+- [ ] `sm1.sm1` L3-L4: name the 548 automatic routine labels and the RAM still raw (411 operand lines)
 - [x] `000-lo.lo`, the sprite zoom table read by the video hardware (128 KB): rebuilt from its rule
       by `tools/lo_rom.py` (row z adds line bitreverse(z XOR $11)), SHA-1 checked by `make check`;
       the four board ROMs described in [`docs/bios_set.md`](docs/bios_set.md)

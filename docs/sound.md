@@ -74,7 +74,32 @@ recorded in MAME, have the same 7-second loudness envelope (correlation 0.9996; 
 - `rst 18h` / `rst 20h` write a YM2610 register (d = register, e = value) on port A / B, `rst 08h` /
   `rst 10h` are the waits between accesses. The YM2610 timer interrupt (`$0038`, `TimerIrq`) runs the
   sound engine, whose music sequences are read by an interpreter with 48 commands
-  (`SequenceCommandTable`).
+  (`SequenceStep`, `SequenceCommandTable`).
+
+### The data
+
+Everything from `$1E75` to `$53D4` is typed in the source (`sm1/hints.txt`, `tools/sm1_data.py`):
+
+| Address | Content | Tag |
+|---|---|---|
+| `$2A80` | `FmInstruments`: 103 FM instruments of 52 bytes (`LoadInstrument`) | C |
+| `$3F6C` | `SoundTable`: 64 pointers, sounds `$20-$5F`; only `$5C-$5F` are filled | C |
+| `$3FEC` | `EffectTable`: 32 pointers, effects `$60-$7F`; only `$7F` (the coin) is filled | C |
+| `$402C-$43F6` | the four sounds: a 49-byte header (11 channel pointers: FM 1-4, ADPCM-A 8-13, ADPCM-B 14) and the channel sequences | C |
+| `$43F7-$4498` | the coin effect: a 14-byte header (priority, SSG channels 5-7 and channel 0) and its sequences | C |
+| `$5355`, `$5395` | FM F-numbers and SSG periods by note index | I |
+| `$51D4` | `CommandTypeTable` | C |
+| other tables | timer A values, per-algorithm carriers, records of 11 and 26 bytes (`$44B9`, `$47F6`), word tables `$4FA4` and `$50D4`, empty tables for the unused command types 3 and 4 | I (sizes from the code; meaning partly) |
+
+A sequence is a list of events: a note, given as its length (`$01-$30`, or `$00` and a longer
+length), a level byte (bits 0-4 an attenuation, bit 6 a rest) and a pitch byte (high nibble the
+octave, low nibble the note, the index into `FmFnumTable` / `SsgPeriodTable`; I: the 203 notes never
+use the table's empty slots); an instrument (`$80` + number) with up to three bytes that have bit 7 set; or a command
+`$31-$5F` with its parameters (call, loop, tempo, volume, timer A, YM2610 write, end, repeat ...).
+Every one of the 50 sequences of the four sounds and the coin parses to its end marker, and the
+sequences and headers tile `$402C-$4498` with no gap: that is the check on the parameter counts.
+The sound test sounds use only channel 1 and repeat (command `42h`); the jingle uses the four FM
+channels and two sub-sequences.
 
 Disassembly status (`sm1/`, `make check` compares the rebuilt ROM):
 
@@ -82,9 +107,9 @@ Disassembly status (`sm1/`, `make check` compares the rebuilt ROM):
 |---|---|
 | L0 rebuilt byte for byte | done: `sm1/src/sm1.asm`, z80asm, SHA-1 `42f9d7dd...` |
 | L2 code traced | 5,188 instructions (10,614 bytes), no indirect jump left unresolved (`sm1/hints.txt`); 2,324 ran in MAME (`sm1/coverage.txt`), none outside the trace |
-| L1 data typed | not yet: `$2A16-$53D4` (10.7 KB: sound tables and music data) is still plain bytes |
-| L3 names | 51 names in `sm1/names.csv` (vectors, commands, queue, the routines above); 576 labels automatic |
-| L4 RAM | 15 RAM names; 585 lines still use raw RAM addresses |
+| L1 data typed | done: 10,785 data bytes typed (tables, records, headers, 50 sequences, one event per line); the 62 bytes left are the filler between the vectors |
+| L3 names | 132 names in `sm1/names.csv` (C 99, I 22, W 9, ? 2): vectors, ports, commands, queue, sequence commands, sounds, tables; 548 routine labels still automatic |
+| L4 RAM | channel blocks, loop and call stacks, register copies and the driver variables that are understood; 411 lines still use raw RAM addresses |
 
 ## Sources
 

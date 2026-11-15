@@ -26,6 +26,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from z80dis import decode  # noqa: E402
+import sm1_data  # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 SM1 = os.path.join(ROOT, 'sm1')
@@ -78,6 +79,7 @@ class Trace:
         self.end = max(i for i, b in enumerate(rom[:SIZE]) if b not in (0x00, 0xFF)) + 1
         self.resolved = set()
         self.numbers = set()   # instructions whose ROM-range operand is a number
+        self.items = {}        # typed data: address -> (size, directive, values, comment)
 
     def run(self, hints):
         work = [(v, 'sub') for v in VECTORS]
@@ -113,7 +115,20 @@ class Trace:
                 self.resolved.add(a)
             elif k == 'number':
                 self.numbers.add(a)
+            elif k == 'song':
+                sm1_data.song(self.rom, a, self.items, self.labels)
+            elif k == 'effect':
+                sm1_data.effect(self.rom, a, self.items, self.labels)
+            elif k == 'records':
+                n, size = int(h[2]), int(h[3])
+                width = int(h[4]) if len(h) > 4 else size
+                sm1_data.records(self.rom, a, n, size, width, self.items, self.labels,
+                                 ' '.join(h[5:]) or None)
+            elif k == 'words':
+                sm1_data.words(self.rom, a, int(h[2]), self.items, self.labels,
+                               comment=' '.join(h[3:]) or None)
         self.tables = tables
+        self.item_bytes = {i for s, it in self.items.items() for i in range(s, s + it[0])}
         while work:
             pc, kind = work.pop()
             if pc in self.code:
@@ -124,7 +139,7 @@ class Trace:
             while True:
                 if pc in self.code:
                     break
-                if pc in self.owner or any(s <= pc < s + d[0] for s, d in self.data.items()):
+                if pc in self.owner or pc in self.item_bytes or any(s <= pc < s + d[0] for s, d in self.data.items()):
                     self.bad.append((pc, 'runs into another instruction or data'))
                     break
                 ins = decode(self.rom, pc)
@@ -227,6 +242,16 @@ def gen_source(rom, out):
             counts['code'] += ins.size
             pc += ins.size
             continue
+        if pc in t.items:
+            size, directive, values, comment = t.items[pc]
+            if directive == 'defw':
+                vals = ['0' if v == 0 else (label_name(names, t.labels, v) or h16(v)) for v in values]
+            else:
+                vals = [f'0{v:02x}h' for v in values]
+            lines.append(f'\t{directive} ' + ','.join(vals) + f'\t; {pc:04X}' + (f' {comment}' if comment else ''))
+            counts['data'] += size
+            pc += size
+            continue
         if pc >= t.end:
             while pc < SIZE:
                 v = rom[pc]
@@ -239,7 +264,7 @@ def gen_source(rom, out):
             break
         # data up to the next code byte or label
         stop = pc + 1
-        while stop < t.end and stop not in t.code and label_name(names, t.labels, stop) is None:
+        while stop < t.end and stop not in t.code and stop not in t.items and label_name(names, t.labels, stop) is None:
             stop += 1
         d = t.data.get(pc)
         width = d[1] if d else 16

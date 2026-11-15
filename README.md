@@ -488,7 +488,7 @@ scenario `nogo_cartridge`:
 | [`src/`](src/) | Generated 68000 source (GNU as, Motorola syntax), ROM addresses in comments: `sp-s2.s` includes 14 modules (`header.s`, `tables.s`, `boot.s`, `system.s`, `power_on.s`, `calendar.s`, `card.s`, `boot_error.s`, `hardware_test.s`, `eyecatcher.s`, `video_io.s`, `how_to_play.s`, `test_mode.s`, `data_end.s`) |
 | [`gfx/sfix/`](gfx/sfix/) | The board fix ROM `sfix.sfix` as 16 indexed tile sheets (`make` rebuilds it) |
 | [`sm1/`](sm1/) | The board Z80 sound program `sm1.sm1`: `src/sm1.asm` (generated), `names.csv`, `hints.txt`, MAME coverage |
-| [`tools/sm1.py`](tools/sm1.py), [`tools/z80dis.py`](tools/z80dis.py) | Z80 decoder, tracer and source generator for `sm1.sm1`; build with z80asm and SHA-1 check |
+| [`tools/sm1.py`](tools/sm1.py), [`tools/z80dis.py`](tools/z80dis.py), [`tools/sm1_data.py`](tools/sm1_data.py) | Z80 decoder, tracer and source generator for `sm1.sm1` (with the sound data: headers, sequences, tables); build with z80asm and SHA-1 check |
 | [`tools/mame_z80.sh`](tools/mame_z80.sh), [`tools/mame_z80.lua`](tools/mame_z80.lua) | Traced MAME run of the Z80: sound commands by frame, Z80 trace, WAV recording; can send commands |
 | [`tools/mess_render.py`](tools/mess_render.py) | Replays MESS_OUT lists of the system ROM on a fix layer model: tiles used, picture |
 | [`tools/lo_rom.py`](tools/lo_rom.py) | The sprite shrink table `000-lo.lo` rebuilt from its rule (`make` builds it, `make check` compares it) |

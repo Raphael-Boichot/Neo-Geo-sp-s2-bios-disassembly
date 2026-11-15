@@ -693,7 +693,7 @@ loc_C199EE:
 	move.w	d0,(WorkIndexNew-A5_BASE,a5)	| C199F6
 loc_C199FA:
 	rts	| C199FA
-| CalendarFieldIndex [I] TestCalendar: cursor column to calendar byte
+| CalendarFieldIndex [C] TestCalendar: cursor column to calendar byte
 CalendarFieldIndex:
 	dc.b	0x01,0x02,0x00,0x04,0x05,0x06
 loc_C19A02:
@@ -722,10 +722,10 @@ loc_C19A2A:
 loc_C19A3E:
 	move.b	d3,(a1,d2.w)	| C19A3E
 	rts	| C19A42
-| CalendarFieldMax [I] TestCalendar: upper bound per calendar byte (BCD)
+| CalendarFieldMax [C] TestCalendar: upper bound per calendar byte (BCD)
 CalendarFieldMax:
 	dc.b	0x00,0x12,0x31,0x00,0x23,0x59,0x59,0x00
-| CalendarFieldMin [I] TestCalendar: lower bound per calendar byte (BCD)
+| CalendarFieldMin [C] TestCalendar: lower bound per calendar byte (BCD)
 CalendarFieldMin:
 	dc.b	0x00,0x01,0x01,0x00,0x00,0x00,0x00,0x00
 loc_C19A54:

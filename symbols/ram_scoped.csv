@@ -44,7 +44,7 @@ addr,name,tag,first,last,note
 10FD06,ErrorRead,C,C16ADA,C17061,"BootError: word read back (d1)"
 10FD08,ErrorNumber,C,C16ADA,C17061,"BootError: error number d6 (0-8)"
 10FD4E,NewDateFlag,C,C11A84,C12C77,"PowerOnSetup: 1 when the calendar date differs from LastBootDate (a new day), then BookNewDayPerGame runs"
-10FCEC,LedSlotDisplay,C,C11000,C12C77,"MvsLedUpdate: slot number shown on the slot LED, cycling through the slots every 4 frames (cleared at boot)"
+10FCEC,LedSlotDisplay,C,C11000,C12C77,"SystemIoMvs: slot number shown on the slot LED, cycling through the slots every 4 frames (cleared at boot)"
 10FCDC,CardStillInsertedTimer,C,C11000,C11645,"CardStillInserted: 256-frame countdown"
 10FCDB,IoCheckSlotCount,C,C17390,C1771B,"I/O check: number of slots, for IoCheckNextSlotLed"
 10FCDE,IoCheckLedCount,C,C17390,C1771B,"I/O check: LED test count (00, 11 .. 99, BCD)"

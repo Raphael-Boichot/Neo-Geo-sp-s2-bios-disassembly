@@ -84,20 +84,20 @@ loc_C18496:
 	dc.b	0xE5,0x0E,0x88,0x06,0x70,0x00,0xC8,0x02,0x67,0x02,0x70,0x04,0xCA,0x02,0x67,0x04
 	dc.b	0x00,0x00,0x00,0x08,0x47,0xED,0x0A,0x94,0x7E,0x03,0x4A,0x13,0x66,0x04,0x16,0xB4
 	dc.b	0x00,0x00,0x52,0x40,0x5C,0x8B,0x51,0xCF,0xFF,0xF2,0x49,0xEC,0x00,0x10,0x4E,0x75
-| DelayLonger [I] nested BSR chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): the depth sets the delay; used around Z80 and LED writes
+| DelayLonger [C] nested BSR chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): the depth sets the delay; used around Z80 and LED writes
 DelayLonger:
 	bsr.w	DelayShorter	| C184EC
-| Delay [I] nested BSR chain into sub_C18500: a fixed delay used between LED latch writes
+| Delay [C] link of the delay chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): each level is one bsr deeper
 Delay:
 	bsr.w	DelayShorter	| C184F0
-| DelayShort [I] see DelayLonger
+| DelayShort [C] see DelayLonger
 DelayShort:
 	bsr.w	DelayReturn	| C184F4
-| DelayShorter [I] see DelayLonger
+| DelayShorter [C] see DelayLonger
 DelayShorter:
 	bsr.w	DelayReturn	| C184F8
 	bsr.w	DelayReturn	| C184FC
-| DelayReturn [I] the rts that ends the delay chain
+| DelayReturn [C] the rts that ends the delay chain
 DelayReturn:
 	nop	| C18500
 	nop	| C18502

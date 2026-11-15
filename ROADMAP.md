@@ -10,8 +10,8 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
-| L2 traced and run | 9,252 instructions traced; 7,368 ran in MAME (79.6 %) over 81 scenarios, 6,558 without the forced ones; nothing ran outside the trace |
-| L3 names | 574 names (C 476, I 67, W 31); 1,039 automatic labels left, all `loc_` |
+| L2 traced and run | 9,252 instructions traced; 8,088 ran in MAME (87.4 %) over 88 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
+| L3 names | 574 names (C 527, I 16, W 31), the 16 I and 17 RAM I in `symbols/doubts.csv`; 1,039 automatic labels left, all `loc_` |
 | L4 RAM and registers | done: 273 RAM addresses used, all named (160 global names, 114 scoped), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
@@ -78,7 +78,7 @@ builds; `tools/fault_scenarios.py` (30 scenarios) says which runs are forced.
 - [x] CREDIT_DOWN in Top Player's Golf and Baseball Stars Professional: only with the US country code
       (forced); Blue's Journey: its wrapper has no caller
 
-## 3. Names (L3)
+## 3. Names (L3): done
 
 - [x] Every `sub_` named (0 left; 2026-11-15: card file system for the three card types, card utility
       helpers, slot scan and slot table merge, coins, software clock, controller reading, MESS_OUT
@@ -90,10 +90,14 @@ builds; `tools/fault_scenarios.py` (30 scenarios) says which runs are forced.
 - [x] Every `dat_` and `tbl_` named (0 left): text tables, menu tables, palettes, sprite data; the FBI and
       JAPAN ONLY screens found among them (run forced, `eyecatcher_us`, `eyecatcher_japan`)
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
-- [ ] Review the 67 I names (most are the 16-bit and type $80 card forms, never run: MAME has only the 8-bit card): confirm with a coverage run or a code read, or keep them as I with a reason
-- [ ] Doubts list: one line per `?` name, kept in `symbols/`
+- [x] Review the 67 I names: 51 confirmed (the 16-bit and type $80 card forms run on emulated cards,
+      `card_word_*` and `card_sparse_*`; the slot table merge run over three boots, `slots_*`; the rest by
+      a full code read and their runs); `SelectSlot` renamed `RegisterNewGame`, `MvsLedUpdate` renamed
+      `SystemIoMvs` (both did much more than their name)
+- [x] Doubts list: `symbols/doubts.csv`, one line per I name (16 ROM, 17 RAM) with the doubt and how to
+      settle it; most wait for step 6 (another system ROM) or for hardware MAME does not have
 
-Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reached 2026-11-15); left: the I review and the doubts list.
+Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reached 2026-11-15) and every I name has a line in the doubts list (done).
 
 ## 4. RAM, backup RAM and leftovers (L4): done
 

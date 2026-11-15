@@ -102,7 +102,7 @@ loc_C110E2:
 	dbra	d7,loc_C110E2	| C11128
 	jsr	(LspFirst).l	| C1112C
 	bra.w	loc_C1102C	| C11132
-| BiosStart [I] after the tests: MESS_OUT buffer, ControllerSetup, then SystemModeDispatch
+| BiosStart [C] after the power-on tests: resets BIOS_MESS_POINT to MessBuffer, ControllerSetup, then falls into SystemModeDispatch
 BiosStart:
 	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C11136
 	jsr	(ControllerSetup,pc)	| C1113E
@@ -122,10 +122,10 @@ SystemModeTable:
 	dc.l	SystemMode0
 	dc.l	SystemMode1
 	dc.l	SystemMode2
-| SystemMode0 [C] mode 0: selects the slot (SelectSlot), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)
+| SystemMode0 [C] mode 0: selects the slot (RegisterNewGame), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)
 SystemMode0:
 	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C11174
-	jsr	(SelectSlot,pc)	| C1117A
+	jsr	(RegisterNewGame,pc)	| C1117A
 	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C1117E
 	cmpi.b	#0x8,(BookSlot).l	| C11182
 	beq.w	loc_C11368	| C1118A

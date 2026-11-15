@@ -894,7 +894,7 @@ HwCalendarShowDate:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17D2A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17D2E
 	rts	| C17D32
-| PutMenuValueLine [I] appends a MESS_OUT line at VRAM d2, highlighted when d6 equals WorkIndexNew, followed by the BCD value d0 (leading 0 as a space)
+| PutMenuValueLine [C] appends a MESS_OUT line at VRAM d2, highlighted when d6 equals WorkIndexNew, followed by the BCD value d0 (leading 0 as a space)
 PutMenuValueLine:
 	move.w	#0x3,(a0)+	| C17D34
 	move.w	d2,(a0)+	| C17D38

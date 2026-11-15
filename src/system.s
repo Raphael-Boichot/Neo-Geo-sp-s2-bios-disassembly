@@ -19,7 +19,7 @@ loc_C11672:
 SystemIo:
 	lea.l	(BiosWorkRam).l,a5	| C1167A
 	addq.l	#0x1,(BIOS_FRAME_COUNTER-A5_BASE,a5)	| C11680
-	jsr	(MvsLedUpdate,pc)	| C11684
+	jsr	(SystemIoMvs,pc)	| C11684
 	jsr	(ReadControllers,pc)	| C11688
 	tst.w	(SystemIoBuildFlag).l	| C1168C
 	bne.w	loc_C11696	| C11692
@@ -99,7 +99,7 @@ loc_C1173A:
 	jsr	(CallDeductStartCredits,pc)	| C11774
 loc_C11778:
 	rts	| C11778
-| StartCreditCheck [I] MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
+| StartCreditCheck [C] MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
 StartCreditCheck:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1177A
 	beq.w	loc_C117C0	| C1177E

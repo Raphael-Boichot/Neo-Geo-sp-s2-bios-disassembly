@@ -9,7 +9,8 @@ All scenarios start in test mode ("Setting Mode" DIP on, MODE=dip): the menu is 
 Keys (seen in MAME): Up/Down move, A/B change a value (held: repeat), Left/Right change the column or
 digit, C goes back, D sets (code number, calendar). Inputs are described in tools/mame_inputs.lua.
 The card1m_* scenarios emulate a 1 Mbit RAM card (CARD1M in tools/mame_inputs.lua) and must run in order,
-as must book_days_* then test_book_keeping_days (book keeping data on three days in two months).
+as must book_days_* then test_book_keeping_days (book keeping data on three days in two months) and the
+slots_* chain (one backup RAM, the cartridge changed between boots).
 Environment: CARD_DIR (where card images and chained backup RAM are written, default .), FORMATTED_CARD (a card image
 formatted by a game, for the card scenarios), PLAYED_NVRAM (a MAME nvram folder after a few played
 credits, for test_book_keeping_played).
@@ -212,6 +213,12 @@ def scenarios():
     k = play_after(Keys(600))
     sc['book_days_today'] = ('sengoku2', dict(k.env(NVRAM='from:book_days_day_before'), MODE='boot'))
     sc['test_book_keeping_days'] = ('sengoku2', book_keeping().env(NVRAM='from:book_days_today'))
+    # Slot table over three boots sharing one backup RAM (run in this order): Sengoku 2, then League Bowling in its
+    # place (Sengoku 2 keeps its game index past the slot count and is listed in RemovedGames), then Sengoku 2 again
+    # (back on its old index, so its settings and book keeping follow it).
+    sc['slots_sengoku2'] = ('sengoku2', {'MODE': 'boot', 'LAST': '700', 'NVRAM': 'keep'})
+    sc['slots_lbowling'] = ('lbowling', {'MODE': 'boot', 'LAST': '700', 'NVRAM': 'from:slots_sengoku2'})
+    sc['slots_sengoku2_back'] = ('sengoku2', {'MODE': 'boot', 'LAST': '700', 'NVRAM': 'from:slots_lbowling'})
     k, dips = menu_exit()
     sc['test_menu_exit'] = ('sengoku2', k.env(DIPS=dips))
     return sc

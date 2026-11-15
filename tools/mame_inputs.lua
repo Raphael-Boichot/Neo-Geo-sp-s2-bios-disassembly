@@ -11,6 +11,9 @@
 --                   <file> (created blank if missing, saved when MAME stops). MAME itself only has the 2 KB
 --                   8-bit card (high byte $FF, mirrored every $1000), so a MEMCARD must also be inserted for
 --                   the card-present bits of REG_STATUS_B.
+--   CARD1M_AT=<frame> install the emulated card at that frame only (default 0)
+--   CARD1M_SPARSE=1 the same card without address line A1: $800000 and $800002 are the same word (the card
+--                   type $80 of CardDetect, a 16-bit card answering on every other word)
 -- Returns a function to call once per frame with the frame number.
 local function field(name)
   for _, port in pairs(manager.machine.ioport.ports) do
@@ -33,6 +36,8 @@ local function card_image()
   end
 end
 local c1m_path, c1m, c1m_taps = os.getenv("CARD1M"), nil, {}
+local c1m_shift = os.getenv("CARD1M_SPARSE") == "1" and 2 or 1   -- word index = offset >> 1, or >> 2 without A1
+local c1m_at = tonumber(os.getenv("CARD1M_AT") or "0")
 if c1m_path then
   c1m = {}
   local h = io.open(c1m_path, "rb")
@@ -53,9 +58,9 @@ local function c1m_install()   -- taps are dropped when MAME rebuilds the memory
   for _, t in ipairs(c1m_taps) do t:remove() end
   c1m_taps = {
     sp:install_read_tap(0x800000, 0x81FFFF, "card1m_r", function(offset, data, mask)
-      return c1m[(offset - 0x800000) >> 1] & mask | data & ~mask & 0xFFFF end),
+      return c1m[(offset - 0x800000) >> c1m_shift] & mask | data & ~mask & 0xFFFF end),
     sp:install_write_tap(0x800000, 0x81FFFF, "card1m_w", function(offset, data, mask)
-      local i = (offset - 0x800000) >> 1
+      local i = (offset - 0x800000) >> c1m_shift
       c1m[i] = c1m[i] & ~mask & 0xFFFF | data & mask end),
   }
 end
@@ -71,7 +76,7 @@ local function sel_install()
 end
 local has_select = (os.getenv("KEYS") or ""):find("Select") ~= nil or card_wp
 return function(f)
-  if c1m then c1m_install() end
+  if c1m and f >= c1m_at then c1m_install() end
   if has_select then
     sel_bits = 0
     for _, k in ipairs(keys) do

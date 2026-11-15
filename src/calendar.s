@@ -85,7 +85,7 @@ loc_C12D4A:
 	lsr.b	#0x1,d0	| C12D64
 	dbra	d7,loc_C12D4A	| C12D66
 	rts	| C12D6A
-| RtcCommand [I] sends the 4-bit command in d0 to the calendar chip, bit by bit through sub_C12DB0
+| RtcCommand [C] sends the 4-bit command in d0 to the calendar chip, low bit first: data bit, clock high, clock low (WriteRtcCtrl), then the strobe ($4)
 RtcCommand:
 	moveq	#0x3,d7	| C12D6C
 loc_C12D6E:
@@ -362,7 +362,7 @@ NeoClnIdText:
 | NoGoIdText [C] bytes N 0 O 0 G 0 O 0, compared with CART_NEOGEO_ID by CheckCartridgeId (the even letters of NEO-GEO with 0 between, as a cartridge with one byte lane would read: I). Sets SlotNumberMode. MAME: patched Sengoku 2 (scenario nogo_cartridge) skips the boot animation, shows SLOT 1 for 300 frames, then runs the game
 NoGoIdText:
 	dc.b	0x4E,0x00,0x4F,0x00,0x47,0x00,0x4F,0x00
-| VramTest [I] VRAM test through REG_VRAMRW, d4 start address, d5 count
+| VramTest [C] VRAM test through REG_VRAMRW, d4 start address, d5 count
 VramTest:
 	move.w	d4,-0x2(a1)	| C130AA
 	move.w	#0x5555,d0	| C130AE
@@ -422,7 +422,7 @@ loc_C1311E:
 	addq.w	#0x1,d0	| C1312C
 	dbra	d7,loc_C1311E	| C1312E
 	rts	| C13132
-| MemTestBlock [I] memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks
+| MemTestBlock [C] memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks
 MemTestBlock:
 	lea.l	(REG_DIPSW).l,a2	| C13134
 	movea.l	(a7)+,a6	| C1313A

@@ -76,31 +76,31 @@ C11BA8,WorkRamTestLoop,C,when REG_DIPSW reads 0 (all hard DIPs on): shows WORK R
 C11D44,BootErrorMemCard,C,"d6 = 7 (MEMORY CARD ERROR), then BootError"
 C11D8C,BootErrorCalendar,C,"d6 = 5 (CALENDAR ERROR) when BIOS_INT1_FRAME_COUNTER between two calendar pulses is outside $39-$3F (57-63 frames, about 1 s), then BootError"
 C11D94,WaitRtcPulse,C,"waits for a rising edge of bit 6 of REG_STATUS_A (calendar pulse, wiki register page)"
-C12D6C,RtcCommand,I,"sends the 4-bit command in d0 to the calendar chip, bit by bit through sub_C12DB0"
-C13134,MemTestBlock,I,"memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks"
+C12D6C,RtcCommand,C,"sends the 4-bit command in d0 to the calendar chip, low bit first: data bit, clock high, clock low (WriteRtcCtrl), then the strobe ($4)"
+C13134,MemTestBlock,C,"memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks"
 C125C8,BackupRamTest,C,"power-on test of backup RAM (test number in d6). Hard DIPs not all on: when BackupRamSignature equals BackupRamOkText, returns at once and the contents are kept; otherwise MemTestBlock on backup RAM, then ClearBackupRam. All hard DIPs on (REG_DIPSW = 0): MemTestBlock only, every time (WorkRamTestLoop). MAME: signature found on a second boot with the same nvram, ClearBackupRam on a first boot and on the boot after a NEO-CLN or NoGoIdText cartridge"
 C125F4,ClearBackupRam,C,"unlocks backup RAM, fills all 64 KB with zeros from $D10000 down, writes BackupRamSignature, copies BackupRamDefaults to $D0003A-$D00046, sets $D00122 = $23, SlotTable all $FFFF, $D001AC = $F0F0F0F0, $D001B0 = $FFFF, locks it. Book keeping and settings are lost"
-C130AA,VramTest,I,"VRAM test through REG_VRAMRW, d4 start address, d5 count"
-C184F0,Delay,I,nested BSR chain into sub_C18500: a fixed delay used between LED latch writes
+C130AA,VramTest,C,"VRAM test through REG_VRAMRW, d4 start address, d5 count"
+C184F0,Delay,C,link of the delay chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): each level is one bsr deeper
 C16ADA,BootError,C,error screen: message BootErrorMessages[d6]; for d6 < 5 also prints the failing address and data
 C16AB6,BootErrorMessages,C,"pointers to the boot error texts: 0 WORK RAM, 1 BACKUP RAM, 2 COLOR RAM BANK0, 3 COLOR RAM BANK1, 4 VIDEO RAM, 5 CALENDAR, 6 SYSTEM ROM, 7 MEMORY CARD"
 C11038,ClearRamAndVideo,C,"clears work RAM, both palette banks, the fix layer (FixClear), sprite VRAM, then LspFirst"
-C11136,BiosStart,I,"after the tests: MESS_OUT buffer, ControllerSetup, then SystemModeDispatch"
+C11136,BiosStart,C,"after the power-on tests: resets BIOS_MESS_POINT to MessBuffer, ControllerSetup, then falls into SystemModeDispatch"
 C11142,SystemModeDispatch,C,"resets the stack, then jumps through SystemModeTable by the low byte of BIOS_SYSTEM_MODE"
 C11168,SystemModeTable,C,"3 entries: SystemMode0, SystemMode1, SystemMode2"
-C11174,SystemMode0,C,"mode 0: selects the slot (SelectSlot), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)"
+C11174,SystemMode0,C,"mode 0: selects the slot (RegisterNewGame), loads the game soft DIPs (LoadGameSoftDips), then CallUser with request 0 (init)"
 C111A0,SystemMode1,C,"mode 1, eyecatcher: CART_EYECATCH_FLAG 0 runs the system ROM Eyecatcher, 1 calls the game (CallUser request 1), 2 skips to mode 2"
 C111EA,SystemMode2,C,"mode 2: only when SlotNumberMode is set, shows SLOT n (SlotText, CurrentSlot + 1) for up to 300 frames, ended early by SELECT P1 (bit 1 of BIOS_STATCHANGE_RAW); then CallUser with request 2 (demo), or 3 (title) when Credits is non-zero and $D00043 is 0"
 C17E26,Eyecatcher,C,"system ROM eyecatcher, reached when CART_EYECATCH_FLAG is 0: the NEO-GEO letters are sprites from the cartridge C ROM (bank CART_EYECATCH_BANK), MAX 330 MEGA / PRO-GEAR SPEC and the SNK logo are board fix ROM tiles (README, Eyecatcher assets); MAME boot sequence"
 C1850E,ReadControllers,C,"selects the joystick ports through REG_POUTPUT, reads REG_P1CNT/REG_P2CNT/REG_STATUS_B and updates BIOS_P1STATUS and the following input bytes"
-C126B4,MvsLedUpdate,I,MVS only: credit LED / marquee latch handling at the start of SystemIo
-C12BE6,PlayTimeCount,I,"MVS, while a game runs (BIOS_USER_MODE 2): every 60 frames adds 1 to a long in backup RAM ($D00048, through a4 = $D08000)"
+C126B4,SystemIoMvs,C,"MVS part of SystemIo: slot LED, I/O check LEDs, 1M card save request, the test button (TestModeEntry), the coin inputs (CountCoin x 2, CountService), the start compulsion reset on a coin, the coin sound, the mechanical coin counter pulses, HourClockTick and the two credit LED counters"
+C12BE6,PlayTimeCount,C,while P1 or P2 was playing on the previous frame (PlayerModPrevious = 1): every 60 frames (PlayTimeFrames) adds 1 to PlayTimeSeconds; then copies BIOS_PLAYER_MOD1-4 to PlayerModPrevious
 C11286,CallUser,C,"hands over to the game: BIOS_USER_REQUEST = d0, BIOS_SYSTEM_MODE = d1 | $80, cartridge vectors (REG_SWPROM), backup RAM locked, jmp CART_USER"
 C111DC,SlotText,C,"MESS_OUT text ""SLOT "" used by SystemMode2"
 C11612,LoadGameSoftDips,C,"copies the current game soft DIP block from backup RAM into BIOS_GAME_DIP (6 bytes, then 12 nibbles)"
-C121D6,SelectSlot,I,"scans the slot table in backup RAM ($D00124, 4 bytes per slot) from the slot in $D00109"
+C121D6,RegisterNewGame,C,"from BookSlot: the next slot whose game has no game index yet ($FFFF) gets the lowest free index (0-7), all its book keeping cleared (days, months, totals, hourly counts, day count) and its name copied from the cartridge soft DIP block (header $116 + region x 4) to GameNames; an entry marked $80 inside the slot count is cleared; called again by the boot for each slot. Ran with slots_lbowling"
 C116C8,CheckPlayerStart,C,"SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3"
-C1177A,StartCreditCheck,I,MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
+C1177A,StartCreditCheck,C,MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
 C1339A,CardFunctionTable,C,"8 entries indexed by BIOS_CRDF (wiki CARD: 0 format, 1 data search, 2 load, 3 save, 4 delete, 5 read data title, 6 save user name, 7 load user name)"
 C13A74,CardFormat,C,CARD function 0: format memory card (wiki); MAME: runs when the card utility formats a card (test build)
 C13D32,CardDataSearch,C,CARD function 1: data search (wiki); MAME with a blank card: called when the game starts
@@ -112,7 +112,7 @@ C1440E,CardSaveUserName,C,"CARD function 6: save user name (wiki); MAME (card ut
 C14472,CardLoadUserName,C,CARD function 7: load user name (wiki); MAME: runs when FILE USER'S NAME opens
 C12912,DeductStartCredits,C,after CART_PLAYER_START: for P1 and P2 (DeductPlayerCredit) takes the credits and counts the start in book keeping; MAME: credits 02 -> 01 on START
 C12934,DeductPlayerCredit,C,"if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters"
-C129C6,BookKeepingCount,I,adds to a book keeping counter at a2 (called for several counters per start)
+C129C6,BookKeepingCount,C,"adds 1 to the long at +4 of the 16-byte record a2, and to +8 when d2 is non-zero (DeductPlayerCredit: one call per record of today, the month, the game..)"
 C14E94,CardLock,C,"locks the memory card (REG_CRDLOCK1/2); pushed as the return address by Card, so it runs after every CARD call"
 C14EA2,ControllerTest,C,"unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame, never returns; ran in MAME from the hidden-programs build (scenario controller_test)"
 C14F32,PutInputBits,C,appends 10 characters 0/1 for the low bits of d1 (ControllerTest)
@@ -129,9 +129,9 @@ C13A3C,ClearFixLayer,C,resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) an
 C16AAA,PutHexByte,C,reads a byte at (a1)+ and appends it at (a0)+ as two hex characters
 C183E2,ByteToHex,C,"d0 byte -> two ASCII hex digits (high in d0, low in d1)"
 C183F0,NibbleToHex,C,d1 nibble -> ASCII '0'-'9' / 'A'-'F'
-C17D34,PutMenuValueLine,I,"appends a MESS_OUT line at VRAM d2, highlighted when d6 equals WorkIndexNew, followed by the BCD value d0 (leading 0 as a space)"
+C17D34,PutMenuValueLine,C,"appends a MESS_OUT line at VRAM d2, highlighted when d6 equals WorkIndexNew, followed by the BCD value d0 (leading 0 as a space)"
 C15946,WaitFrameGetP1,C,"WaitFrame, then returns P1 change bits in d0 (repeat bits in the high word); special handling when BIOS_P1STATUS is 3"
-C15986,CardUtilPutText,I,queues the MESS_OUT text at a2 followed by dat_C15CE0
+C15986,CardUtilPutText,C,queues the MESS_OUT text at a2 followed by dat_C15CE0
 C1597A,ReadCardDetect,C,"d0 = REG_STATUS_B & $30 (memory card detect bits, 0 = card inserted)"
 C1AE82,DivU32,C,"unsigned 32-bit division: d4 / d3 -> quotient in d4, remainder in d0"
 C14E86,CardUnlock,C,unlocks the memory card (REG_CRDUNLOCK1/2); counterpart of CardLock
@@ -148,7 +148,7 @@ C149A6,IsSnkRomCard,C,"compares the card header with ""SNK ROM "" (dat_C144F0): 
 C144F0,SnkRomCardId,C,"""SNK ROM "" card header"
 C11F94,SwitchSlot,C,"after sub_C11FB2: slot d5 to CurrentSlot and REG_SLOT, then the cartridge fix layer (REG_CRTFIX) and vectors (REG_SWPROM)"
 C1268A,WriteLedData,C,"writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay"
-C121C6,LockBackupRamUnless,I,locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set
+C121C6,LockBackupRamUnless,C,locks backup RAM (REG_SRAMLOCK) unless BIOS_BRAM_USED is set
 C12EAC,RtcCommandAlt,C,"4-bit command to the NEO-CLN cartridge calendar, like RtcCommand. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus"
 C174F2,PutBitChar,C,"appends 0 if the Z flag is set on entry, else 1 (I/O check)"
 C12D9E,RtcClockPulse,C,pulses the calendar clock line: WriteRtcCtrl 2 then 0
@@ -191,9 +191,9 @@ C1985A,HardDipComm2Text,C,ON [No 2]
 C19868,HardDipComm3Text,C,ON [No 3]
 C19876,HardDipComm4Text,C,ON [No 4]
 C19890,HardDipText,C,SETTING UP THE HARD DIP screen text
-C199FC,CalendarFieldIndex,I,TestCalendar: cursor column to calendar byte
-C19A44,CalendarFieldMax,I,TestCalendar: upper bound per calendar byte (BCD)
-C19A4C,CalendarFieldMin,I,TestCalendar: lower bound per calendar byte (BCD)
+C199FC,CalendarFieldIndex,C,TestCalendar: cursor column to calendar byte
+C19A44,CalendarFieldMax,C,TestCalendar: upper bound per calendar byte (BCD)
+C19A4C,CalendarFieldMin,C,TestCalendar: lower bound per calendar byte (BCD)
 C19A62,CalendarDrawNewTime,C,TestCalendar: draws THE TIME TO BE SET UP line with the cursor
 C19AC2,CalendarText,C,SETTING UP THE CALENDAR / CURRENT TIME / THE TIME TO BE SET UP
 C19C7E,SoftDipListCursor,C,"TestSoftDip list: erases the cursor at the old line, draws it at the new one"
@@ -373,44 +373,44 @@ C1613A,CardUtilErrorText,C,ERROR ON MEMORY CARD.
 C16158,CardUtilFullText,C,MEMORY CARD FULL.
 C16172,CardUtilWriteProtectedText,C,MEMORY CARD WRITE PROTECTED. (MAME: card_util_write_protected)
 C13804,CardRestoreRequest,C,"CardErrorFull: puts the game's CARD request back (BIOS_CRDF from ram_10FDC5, BIOS_CRDPTR, CRDSIZE, CRDNGH, CRDFILE from ram_10FE92-ram_10FE9A) before the save is tried again or given up"
-C13824,DataListMoveCursor,C,"erases the list cursor (char $20) at the old line and draws it (char $11) at the new line ram_10FEB8; the card-full list and the card utility COPY/DELETE lists"
+C13824,DataListMoveCursor,C,erases the list cursor (char $20) at the old line and draws it (char $11) at the new line ram_10FEB8; the card-full list and the card utility COPY/DELETE lists
 C13854,DataListPutCursor,C,"MESS_OUT entry for the list cursor: line = ram_10FEB6 mod 6 (ram_10FEB4), character d1"
 C13944,WaitFrameGetP1P2,C,"WaitFrame, then d0 = P1|P2 change bits (P1|P2 repeat bits in the high word); same special case as WaitFrameGetP1 when BIOS_P1STATUS = 3"
 C13986,CardErrorSaveScreen,C,"once per message (ram_10FEBA): copies the $500 fix-layer words to $10F300 (the BIOS work RAM below its variables), saves the colours $400002 and $400022, sets them to message colours and clears the fix layer"
 C139EC,CardErrorRestoreScreen,C,"undoes CardErrorSaveScreen: writes the saved fix layer back, restores the two colours, clears ram_10FEBA (end of CardError)"
 C13B5C,CardSumByte,C,"adds the low bytes of d6+1 words at a0 into d0 (CardFormat, 8-bit card: one byte per word)"
 C13B66,CardFormatFatByte,C,"8-bit card: clears one FAT copy (ram_10FD0E bytes at a0) and marks the first d6+1 blocks (header, directory, FATs) as used (2)"
-C13BF4,CardSumWord,I,"adds both bytes of d6+1 words at a0 into d0 (CardFormat, 16-bit card)"
-C13C02,CardFormatFatWord,I,"16-bit card: like CardFormatFatByte with two FAT entries per word"
-C13CEE,CardSumSparse,I,"adds both bytes of d6+1 words, every other word (CardFormat, card type $80)"
-C13CFE,CardFormatFatSparse,I,"card type $80 (16-bit card answering on every other word, CardDetect): like CardFormatFatWord with a 4-byte step"
+C13BF4,CardSumWord,C,"adds both bytes of d6+1 words at a0 into d0 (CardFormat, 16-bit card); ran in MAME on an emulated 16-bit card (card_word_*)"
+C13C02,CardFormatFatWord,C,16-bit card: like CardFormatFatByte with two FAT entries per word; ran in MAME on an emulated 16-bit card (card_word_*)
+C13CEE,CardSumSparse,C,"adds both bytes of d6+1 words, every other word (CardFormat, card type $80); ran in MAME on an emulated type $80 card (card_sparse_*)"
+C13CFE,CardFormatFatSparse,C,"card type $80 (16-bit card answering on every other word, CardDetect): like CardFormatFatWord with a 4-byte step; ran in MAME on an emulated type $80 card (card_sparse_*)"
 C144F8,CardFreeChainByte,C,"8-bit card: frees a file's blocks: follows the FAT chain from block d3, writing 0 (free), until an entry below 3 (end); CARD delete and save over old data"
-C14512,CardFreeChainWord,I,16-bit card form of CardFreeChainByte (two FAT entries per word)
-C1454C,CardFreeChainSparse,I,card type $80 form of CardFreeChainByte
+C14512,CardFreeChainWord,C,16-bit card form of CardFreeChainByte (two FAT entries per word); ran in MAME on an emulated 16-bit card (card_word_*)
+C1454C,CardFreeChainSparse,C,card type $80 form of CardFreeChainByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 C14588,CardFindFreeBlockByte,C,"8-bit card: d3 = offset of the first free FAT entry (0), at most ram_10FD08+1 entries"
-C145A8,CardFindFreeBlockWord,I,16-bit card form of CardFindFreeBlockByte
-C145D8,CardFindFreeBlockSparse,I,card type $80 form of CardFindFreeBlockByte
+C145A8,CardFindFreeBlockWord,C,16-bit card form of CardFindFreeBlockByte; ran in MAME on an emulated 16-bit card (card_word_*)
+C145D8,CardFindFreeBlockSparse,C,card type $80 form of CardFindFreeBlockByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 C1460C,CardFindFreeEntryByte,C,"8-bit card: a0 = first free directory entry (first byte $FF), 8-byte entries"
-C1461A,CardFindFreeEntryWord,I,"16-bit card form of CardFindFreeEntryByte (4-byte entries, high byte)"
-C1462A,CardFindFreeEntrySparse,I,card type $80 form of CardFindFreeEntryByte
+C1461A,CardFindFreeEntryWord,C,"16-bit card form of CardFindFreeEntryByte (4-byte entries, high byte); ran in MAME on an emulated 16-bit card (card_word_*)"
+C1462A,CardFindFreeEntrySparse,C,card type $80 form of CardFindFreeEntryByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 C1463A,CardNextBlockByte,C,8-bit card: d3 = FAT entry of block d3 (next block of the chain) then CardBlockAddressByte
-C14644,CardBlockAddressByte,C,"8-bit card: a3 = card base (a6) + block d3 x 128 (a 64-byte block takes 128 addresses)"
+C14644,CardBlockAddressByte,C,8-bit card: a3 = card base (a6) + block d3 x 128 (a 64-byte block takes 128 addresses)
 C14654,CardNextBlockWord,I,16-bit card form of CardNextBlockByte
-C1466A,CardBlockAddressWord,I,16-bit card: a3 = a6 + block d3 x 64
+C1466A,CardBlockAddressWord,C,16-bit card: a3 = a6 + block d3 x 64; ran in MAME on an emulated 16-bit card (card_word_*)
 C1467A,CardNextBlockSparse,I,card type $80 form of CardNextBlockByte
-C14692,CardBlockAddressSparse,I,card type $80: a3 = a6 + block d3 x 128
+C14692,CardBlockAddressSparse,C,card type $80: a3 = a6 + block d3 x 128; ran in MAME on an emulated type $80 card (card_sparse_*)
 C146A2,CardFindEntry,C,"searches the directory for the entry of BIOS_CRDNGH (two bytes) and BIOS_CRDFILE: d3 = 0 and a0 = entry when found, else d3 = -1; 8-bit card (8-byte entries) or 16-bit card (4-byte entries)"
-C1471C,CardFindEntrySparse,I,card type $80 form of CardFindEntry
+C1471C,CardFindEntrySparse,C,card type $80 form of CardFindEntry; ran in MAME on an emulated type $80 card (card_sparse_*)
 C14754,CardCheckFat,C,"checks the checksums of both FAT copies (card header +$1A, +$1C): a bad copy is rewritten from the good one, both bad = result $83; one routine per card type (8-bit here, 16-bit at loc_C14814, type $80 at loc_C148D0)"
-C147FA,CardFatSumByte,C,"8-bit card: d0 = sum of the low bytes of one FAT copy (ram_10FD0E bytes at a0)"
-C148B2,CardFatSumWord,I,16-bit card form of CardFatSumByte
-C14986,CardFatSumSparse,I,card type $80 form of CardFatSumByte
+C147FA,CardFatSumByte,C,8-bit card: d0 = sum of the low bytes of one FAT copy (ram_10FD0E bytes at a0)
+C148B2,CardFatSumWord,C,16-bit card form of CardFatSumByte; ran in MAME on an emulated 16-bit card (card_word_*)
+C14986,CardFatSumSparse,C,card type $80 form of CardFatSumByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 C14A3A,CardDetect,C,"finds the card type and size: an SNK ROM card from its header; else writes $AAAA/$5555 patterns: 8-bit card (ram_10FD15 = 0, size in $1000 steps up to $8000), 16-bit card (1, $800 steps up to $4000) or a 16-bit card on every other word ($80); then tests the whole card with $55/$AA and address patterns; d6 = size (0 = none or failed). Called by CardFormat"
 C14D30,CardLayoutByte,C,"sets the card layout from its size (CardLayoutTableByte): directory address ram_10FD04 and entry count ram_10FD08, FAT address ram_10FD0A and size ram_10FD0E, data start ram_10FD10"
 C14D58,CardLayoutTableByte,C,"16-byte rows per $1000 bytes of card: directory offset, entries-1, FAT offset, FAT size, data offset (8-bit card and type $80)"
-C14DE8,CardLayoutWord,I,16-bit card form of CardLayoutByte (CardLayoutTableWord)
-C14DF6,CardLayoutTableWord,I,"rows per $800 bytes of a 16-bit card, as CardLayoutTableByte"
-C156FE,CardUtilNameCursor,C,"FILE USER'S NAME: recolours the key under the old cursor (palette 0) and the new one (palette 1) on the fix layer (CardUtilKeyPositions)"
+C14DE8,CardLayoutWord,C,16-bit card form of CardLayoutByte (CardLayoutTableWord); ran in MAME on an emulated 16-bit card (card_word_*)
+C14DF6,CardLayoutTableWord,C,"rows per $800 bytes of a 16-bit card, as CardLayoutTableByte; ran in MAME on an emulated 16-bit card (card_word_*)"
+C156FE,CardUtilNameCursor,C,FILE USER'S NAME: recolours the key under the old cursor (palette 0) and the new one (palette 1) on the fix layer (CardUtilKeyPositions)
 C1571C,CardUtilColourKey,C,"sets the palette bits d3 of the fix-layer characters of one key, from its position to the next space"
 C15776,CardUtilDrawName,C,FILE USER'S NAME: MESS_OUT entry showing the 16 name characters kept at WorkRamStart
 C157A8,CardUtilMoveNameCursor,C,"FILE USER'S NAME: erases the character cursor at ram_10FEB0, then draws it (char $12) at ram_10FEB2"
@@ -420,7 +420,7 @@ C1583E,CardUtilMessageWait,C,"clears the fix layer, shows the text a2 and PUSH A
 C15818,CardUtilErrorTexts,C,"texts for CARD results $81-$85: not formatted, no data, error, full, write protected"
 C15866,CardUtilReadTitles,C,"reads every data title on the card (CARD 5 until result $82) into a table at $10C000 (20-byte title, NGH, file number per entry); ram_10FEB0 = last index; with no data, shows the result's message"
 C158BA,CardUtilDrawTitlePage,C,"draws up to 6 titles of the $10C000 table from index ram_10FEB2, with PREVIOUS PAGE / NEXT PAGE"
-C159A0,CardUtilMoveMenuCursor,C,"card utility menu: erases the cursor at the old line and draws it at the new one (WorkIndex)"
+C159A0,CardUtilMoveMenuCursor,C,card utility menu: erases the cursor at the old line and draws it at the new one (WorkIndex)
 C159D0,CardUtilPutMenuCursor,C,MESS_OUT entry for the menu cursor at line WorkIndex (3 fix rows per line)
 C159EE,CardUtilKeyPositions,C,fix-layer address of each key of the FILE USER'S NAME keyboard
 C15A98,CardUtilKeyMoves,C,"FILE USER'S NAME: for each key, the key reached with each of the four directions (4 bytes per key)"
@@ -431,60 +431,60 @@ C16590,MonitorPutVramWord,C,debug monitor DISPLAY V-RAM: reads the VRAM word at 
 C165A8,MonitorPutHexByte,C,appends the byte d0 as 2 hex digits (ByteToHex)
 C11DB0,PowerOnSetup,C,"after the power-on tests: clears the slot-mode fields, reads the calendar (start of the hour clock), on a new date advances the book keeping day (and month) rings, sets the slot count (bram_D00047: 2, 4 or 6 from REG_SYSTYPE and REG_STATUS_A), checks the Z80, scans the slots and merges the result into SlotTable; on a new day BookNewDayPerGame"
 C11F5A,ScanSlots,C,"for each slot: selects it, CheckCartridgeId, stores CART_NGH in the table at $10FD00 (4 bytes per slot) and keeps in bram_D00058 the first slot whose CART_EYECATCH_FLAG is 0"
-C11FB2,SoundSlotSwitch,I,"unless the Z80 already replies 1: sends sound command 1 (prepare for a slot switch, NeoGeoDev wiki) and waits up to 8 x 4 VBlanks for the reply 1; called by SwitchSlot and the slot code"
+C11FB2,SoundSlotSwitch,C,"unless the Z80 already replies 1: sends sound command 1 (prepare for a slot switch, NeoGeoDev wiki) and waits up to 8 x 4 VBlanks for the reply 1; called by SwitchSlot and the slot code"
 C12044,SlotClearDuplicates,C,"unless SlotNumberMode: clears the later slots holding the same NGH as an earlier one (NoGoIdText keeps duplicates, scenario nogo_cartridge)"
-C12074,SlotListRemoved,I,"lists in bram_D00164 (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot"
-C120B4,SlotKeepOuterEntries,I,"for the stored SlotTable entries past the slot count: their settings go to the same game if it is now in a slot, else to the removed list"
-C120EC,SlotCopyMovedSettings,I,"a game found in another slot than before keeps its settings index (+2) and date (+$20) from the stored SlotTable"
-C12118,SlotTableStore,I,"writes the scanned slots to SlotTable, then the removed games after them"
-C12142,SlotDateNewGames,I,a game with no settings index yet ($FFFF) gets LastBootDate as its date
+C12074,SlotListRemoved,C,lists in bram_D00164 (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot; ran with the slots_* chain: League Bowling in place of Sengoku 2 lists Sengoku 2 here
+C120B4,SlotKeepOuterEntries,C,"for the stored SlotTable entries past the slot count: their settings go to the same game if it is now in a slot, else to the removed list; ran with the slots_* chain: Sengoku 2 kept past the slot count with its index, back in slot 0 on the next boot"
+C120EC,SlotCopyMovedSettings,C,a game found in another slot than before keeps its settings index (+2) and date (+$20) from the stored SlotTable; ran with the slots_* chain: Sengoku 2 back on its old game index
+C12118,SlotTableStore,C,"writes the scanned slots to SlotTable, then the removed games after them; ran with the slots_* chain"
+C12142,SlotDateNewGames,C,a game with no settings index yet ($FFFF) gets LastBootDate as its date; ran with the slots_* chain (League Bowling dated on its first boot)
 C12160,BookNewDayPerGame,C,"on a new day: for each slot with a game, advances the game's day index (bram_D0011A, 36-day ring), clears and dates that day's record in BookGameDays and adds 1 to its long at $D00200"
-C122D8,SaveGameSoftDips,C,"copies BIOS_GAME_DIP (16 bytes) back to GameSoftDips for the game in CurrentSlot"
+C122D8,SaveGameSoftDips,C,copies BIOS_GAME_DIP (16 bytes) back to GameSoftDips for the game in CurrentSlot
 C12322,SaveGameBackupData,C,"copies the game's backup area (CART_BACKUP_PTR, CART_BACKUP_SIZE bytes) to backup RAM $D00320 + game index x $1000"
 C12372,PreviousSlot,I,"selects the previous slot holding a game and loads it (loc_C123F6, as NextSlot); never ran"
-C123A8,LoadCurrentSlot,C,"loads the backup data and soft DIPs of the game in CurrentSlot without switching (loc_C1241E)"
+C123A8,LoadCurrentSlot,C,loads the backup data and soft DIPs of the game in CurrentSlot without switching (loc_C1241E)
 C123C4,NextSlot,C,"selects the next slot holding a game: slot number on the LEDs, SwitchSlot, sound command 3; then copies the game's backup data from $D00320 + index x $1000, its soft DIPs to BIOS_GAME_DIP and sets the book keeping pointers (bram_D0010A, D001A4, D001A8, D0010E)"
 C124E6,BookGameMonthsTable,C,"BookGameMonths + game index x $C0, 8 entries"
 C12506,GetGameDaysPtr,C,a0 = the BookGameDays area of the game in slot bram_D00109 (BookGameDaysTable)
 C1251E,BookGameDaysTable,C,"BookGameDays + game index x $240, 8 entries"
-C1253E,GetGameDayCountPtr,I,a0 = $D00200 + game index x 4 (a long incremented by BookNewDayPerGame)
-C1255A,GetGameHourCountsPtr,I,"a0 = $D0A1A0 + game index x $60 (tbl_C12572): 24 longs, one per hour, incremented by DeductPlayerCredit at index bram_D0005A (the hour clock)"
+C1253E,GetGameDayCountPtr,C,a0 = $D00200 + game index x 4 (a long incremented by BookNewDayPerGame)
+C1255A,GetGameHourCountsPtr,C,"a0 = $D0A1A0 + game index x $60 (tbl_C12572): 24 longs, one per hour, incremented by DeductPlayerCredit at index bram_D0005A (the hour clock)"
 C12592,BookClearDatedRecord,C,clears the 16-byte record d0 of the ring at a0 and stores LastBootDate in it
 C125A4,BookClearRecord,C,clears the 16-byte record at a0 + d0
 C12860,HourClockTick,C,"software clock started from the calendar at power-on: every 60 VBlanks (bram_D0005D) adds a second (D0005C), minute (D0005B) and hour x 4 (D0005A, 0-$5C)"
 C128A6,CountCoin,C,"a coin on input d3: counts it (bram_D00024 + d4), adds it to today's and this month's CABINET/COIN records (offset d5), and when enough coins are in (Coin1Coins/Coin2Coins) gives the credits (Coin1Credits/Coin2Credits) to Credits in BCD, at most 99"
-C128E6,CountService,C,"the service switch: adds to the SERVICE counters of today's and this month's records and 1 credit"
+C128E6,CountService,C,the service switch: adds to the SERVICE counters of today's and this month's records and 1 credit
 C1299A,CreditDownCount,C,"CREDIT_DOWN: for P1 and P2 with BIOS_CREDIT_DEC1/2 set, takes the credit and counts the play like DeductPlayerCredit (CreditDownPlayer)"
 C129BC,CreditDownPlayer,C,one player of CreditDownCount (enters DeductPlayerCredit at loc_C1293C)
 C129D4,PlayCoinSound,C,"once per counted coin (ram_10FEE2), in system mode 2 or more: calls CART_COIN_SOUND, or sends sound command $7F"
 C12B8E,Card1MSaveWords,C,"copies d7 words from a1 to the 1M card at a0, writing (a3) each word (Card1MSaveCabinet; Card1MCopyWords is the recover side)"
 C12C24,BookAddPlayTime,C,"adds the counted play time (bram_D00048) to the PLAY TIME field (+$C) of today's, this month's and the game's records, then clears it"
-C17238,FixSetPalette1,C,"sets palette 1 ($1000) on d7+1 fix-layer words from the current VRAM address (crosshatch border)"
-C17460,IoCheckNextSlotLed,C,"I/O check: every 64 frames shows the next slot number (1 to the slot count) on the slot LED (IoCheckShowSlot)"
+C17238,FixSetPalette1,C,sets palette 1 ($1000) on d7+1 fix-layer words from the current VRAM address (crosshatch border)
+C17460,IoCheckNextSlotLed,C,I/O check: every 64 frames shows the next slot number (1 to the slot count) on the slot LED (IoCheckShowSlot)
 C17482,IoCheckNextLedCount,C,"I/O check: every 64 frames adds 11 (BCD) to the LED test count (00, 11 .. 99) and shows it on both LED counters"
-C174A8,IoCheckPutSystemBits,C,"I/O check: REG_SYSTYPE bit 7 and bits 0-2 of bram_D00021 as 0/1"
+C174A8,IoCheckPutSystemBits,C,I/O check: REG_SYSTYPE bit 7 and bits 0-2 of bram_D00021 as 0/1
 C17500,IoCheckPutDips,C,I/O check: the 8 hard DIP switches as 0/1
-C1752A,IoCheckPutPlayerBits,C,"I/O check: 10 bits of one player (joystick byte and two bits of ram_10FEDC) as 0/1"
-C17556,IoCheckShowSlot,C,"writes WorkIndexNew to the slot LED (WriteLedData) and prints the slot digit"
-C17590,IoCheckShowLed1,C,"the LED test count on the first LED counter (latch $EF) and on screen"
+C1752A,IoCheckPutPlayerBits,C,I/O check: 10 bits of one player (joystick byte and two bits of ram_10FEDC) as 0/1
+C17556,IoCheckShowSlot,C,writes WorkIndexNew to the slot LED (WriteLedData) and prints the slot digit
+C17590,IoCheckShowLed1,C,the LED test count on the first LED counter (latch $EF) and on screen
 C175A0,IoCheckShowLed2,C,"the LED test count on the second LED counter (latch $DF, digit order reversed) and on screen"
 C1779C,SoundTestCommands,C,"sound commands of the 4 sound test items ($03, $5D, $5C, $5E)"
-C177C0,SoundTestMoveCursor,C,"sound test: erases the cursor at the old item and draws it at ram_10FCDF"
+C177C0,SoundTestMoveCursor,C,sound test: erases the cursor at the old item and draws it at ram_10FCDF
 C177EC,SoundTestPutCursor,C,MESS_OUT entry for the sound test cursor
 C1780A,SoundTestDrawItems,C,"sound test: draws the item lines, the playing one (ram_10FCE2) in another text"
 C17CD4,HwCalendarShowDate,C,"hardware-test calendar: prints month, day, year, hour, minute, second (PutMenuValueLine)"
-C182F0,EyecatchFadeStep,C,"next step of the eyecatcher colour fade: colour set from EyecatchFadeIndex[WorkIndexNew] (EyecatchSetColours)"
+C182F0,EyecatchFadeStep,C,next step of the eyecatcher colour fade: colour set from EyecatchFadeIndex[WorkIndexNew] (EyecatchSetColours)
 C1830A,EyecatchSetSprites,C,"writes 18 sprite columns from VRAM address d0 (step $40): 4 tiles from a0 with attribute d1, then 28 empty tiles; the tile number is CART_EYECATCH_BANK x 256 + the byte, so the graphics come from the cartridge C ROM"
-C18346,EyecatchSetColours,C,"queues colour set d0 (12 bytes at EyecatchColourSets) for the next VBlank: 5 colours to $4001E2 and the backdrop $401FFE"
+C18346,EyecatchSetColours,C,queues colour set d0 (12 bytes at EyecatchColourSets) for the next VBlank: 5 colours to $4001E2 and the backdrop $401FFE
 C1F00E,EyecatchFadeIndex,C,colour set number for each step of the eyecatcher fade
-C1F03E,EyecatchColourSets,C,"12-byte colour sets (5 colours and the backdrop) of the eyecatcher fade"
-C184EC,DelayLonger,I,"nested BSR chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): the depth sets the delay; used around Z80 and LED writes"
-C184F4,DelayShort,I,see DelayLonger
-C184F8,DelayShorter,I,see DelayLonger
-C18500,DelayReturn,I,the rts that ends the delay chain
+C1F03E,EyecatchColourSets,C,12-byte colour sets (5 colours and the backdrop) of the eyecatcher fade
+C184EC,DelayLonger,C,nested BSR chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): the depth sets the delay; used around Z80 and LED writes
+C184F4,DelayShort,C,see DelayLonger
+C184F8,DelayShorter,C,see DelayLonger
+C18500,DelayReturn,C,the rts that ends the delay chain
 C185DE,CopyControllerState,C,"copies a player's status block (BIOS_P1STATUS..) to ram_10FEE8/ram_10FEEE; a mahjong controller (status 3, wiki) is converted to joystick bits first"
 C1861C,MahjongKeysToJoystick,I,"maps a mahjong controller key byte to joystick bits (bit 7 from bit 0 of d1, nibbles swapped)"
-C1862E,MahjongStartFilter,I,"mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held"
+C1862E,MahjongStartFilter,I,mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held
 C18656,UpdatePlayerInputs,C,"updates a player's input block (and the expanded block at +$C), or the mahjong rows"
 C1866C,UpdateInputBlock,C,"previous, current, change and repeat bytes of one input block; repeat after 16 frames, then every 8"
 C186C8,UpdateMahjongRow,I,current and change bytes of one mahjong key row
@@ -500,7 +500,7 @@ C18838,MessOutData,C,"MESS_OUT command 6 and the data writer: bytes or words fro
 C18814,MessOutDataInline,C,"MESS_OUT command 7: data that follows the command, then aligns the list pointer"
 C188DC,MessOutTiles8x16,C,"MESS_OUT command 8: a row of 8x16 characters given as tile numbers, upper then lower half"
 C18876,MessOutText8x16,C,"MESS_OUT command 9: a row of 8x16 ASCII text, upper then lower half (MessOutText8x16Row)"
-C188A0,MessOutText8x16Row,C,"one half-row of MessOutText8x16: maps each character to its tile until $FF"
+C188A0,MessOutText8x16Row,C,one half-row of MessOutText8x16: maps each character to its tile until $FF
 C18906,MessOutTiles8x16Row,C,one half-row of MessOutTiles8x16: writes the bytes as tile numbers until $FF
 C187DA,MessOutCall,C,MESS_OUT command 10: runs another list (pointer pushed at ram_10FEC6)
 C187EE,MessOutReturn,C,MESS_OUT command 11: back from MessOutCall
@@ -508,27 +508,27 @@ C187FE,MessOutRepeat,C,MESS_OUT command 12: writes one word d1 times
 C18808,MessOutSequence,C,"MESS_OUT command 13: writes d1 words, adding 1 each time"
 C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover)"
 C132B4,CardFillTest,C,"unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears"
-C13338,CardFillTestTitle,C,"20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save"
+C13338,CardFillTestTitle,C,20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save
 C00080,SystemRomChecksum,W,"checksum byte of the system ROM (NeoGeoDev wiki, SP-E: $4D here; the byte after it is the same); compared by the power-on test"
 C00082,SystemIdText,W,"NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK CORPORATION (ID text, wiki); its bytes start the checksummed area"
-C11000,CardFormatVersion,I,"word $0000 just before Reset: CardFormat writes it into the card header (8-bit and 16-bit cards)"
+C11000,CardFormatVersion,I,word $0000 just before Reset: CardFormat writes it into the card header (8-bit and 16-bit cards)
 C11001,CardFormatVersionLo,I,low byte of CardFormatVersion (CardFormat for a type $80 card)
-C1137A,SystemReturnModes,C,"SystemReturn: one handler per system mode (BIOS_SYSTEM_MODE low byte 0-6)"
+C1137A,SystemReturnModes,C,SystemReturn: one handler per system mode (BIOS_SYSTEM_MODE low byte 0-6)
 C116C6,SystemIoBuildFlag,I,"word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch"
 C117C2,StartCreditsNeeded,C,"credits needed for the start bits 1-3 (P1, P2, both): 1, 1, 2 (StartCreditCheck)"
-C117C6,StartFlagResult,C,"BIOS_START_FLAG for the start bits with enough credits (first 4) or not (last 4: 0)"
-C12572,BookGameHoursTable,I,"$D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)"
+C117C6,StartFlagResult,C,BIOS_START_FLAG for the start bits with enough credits (first 4) or not (last 4: 0)
+C12572,BookGameHoursTable,C,"$D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)"
 C12F88,YearWeekdayTable,C,"weekday of January 1st (0 = Sunday) for each two-digit year: 90-99 are 1990-1999, 00-89 are 2000-2089 (checked against the real calendar, tools/check_weekday.py)"
 C12FEC,MonthDaysTable,C,"days per month: 29 (February of a leap year), then January-December 31, 28, 31, 30 .."
-C16522,MonitorVramSteps,C,"debug monitor DISPLAY V-RAM: value added for each address digit"
+C16522,MonitorVramSteps,C,debug monitor DISPLAY V-RAM: value added for each address digit
 C1662E,MonitorMemorySteps,C,"MODIFY MEMORY: value added for each digit (6 address digits, then the value digits)"
-C166A2,MonitorVramDigitMoves,C,"MODIFY V-RAM: next digit for Left/Right"
+C166A2,MonitorVramDigitMoves,C,MODIFY V-RAM: next digit for Left/Right
 C16724,MonitorModifyVramSteps,C,MODIFY V-RAM: value added for each digit
 C167DA,MonitorRegisterDigitMoves,C,MODIFY REGISTER: next digit for Left/Right
 C16836,MonitorRegisterSteps,C,MODIFY REGISTER: value added for each value digit
 C16892,MonitorRegisterNames,C,"register names D0-D7, A0-A7, SR, PC (4 bytes each, MESS_OUT text)"
-C1704C,MonitorBlankRow,I,19 tile codes $FF ended by 0: the rows of MonitorCommandLine
-C17060,ScreenVersionTile,C,"tile $35 (5) written at fix address $7484 (top right) on the test menu and the hardware-test colour bars; the 5 seen in the MAME screenshots"
+C1704C,MonitorBlankRow,C,19 tile codes $FF ended by 0: the rows of MonitorCommandLine; ran in the monitor_* scenarios
+C17060,ScreenVersionTile,C,tile $35 (5) written at fix address $7484 (top right) on the test menu and the hardware-test colour bars; the 5 seen in the MAME screenshots
 C172BE,ColorBarsText,C,MESS_OUT data of the colour bars screen (RED GREEN BLUE WHITE)
 C17618,IoCheckText,C,MESS_OUT data of the I/O CHECK screen
 C17852,SoundTestItemTexts,C,"for each of the 4 sound test items, the text while playing and the normal text"
@@ -550,11 +550,11 @@ C17C94,HwCalendarMax,C,"largest BCD value of each calendar field (12, 31, 23, 59
 C17C9C,HwCalendarMin,C,smallest BCD value of each calendar field (month and day 1)
 C17D72,HwCalendarText,C,MESS_OUT data of SETTING UP THE CALENDAR (hardware test)
 C17EC8,EyecatchSteps,C,"10 step routines of the eyecatcher, by WorkIndex"
-C17EF0,EyecatchSpriteInit,I,MESS_OUT list sent first by Eyecatcher (writes sprite control data at VRAM $8400 and $8200)
+C17EF0,EyecatchSpriteInit,C,MESS_OUT list sent first by Eyecatcher (writes sprite control data at VRAM $8400 and $8200)
 C18402,ControllerTypeTable,I,"6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) for each ID code read from the ports by ControllerSetup"
 C18ADA,HowToPlayButtonTable,C,"for each of the 4 buttons, the MESS_OUT data released and pressed"
 C18AFA,HowToPlayScreen,C,MESS_OUT data of the HOW_TO_PLAY frame
-C18E06,HowToPlayStick,I,MESS_OUT data of the joystick picture
+C18E06,HowToPlayStick,C,the joystick picture of HOW_TO_PLAY (seen in MAME)
 C18E50,HowToPlayButton1,C,"first button, released (palette $A)"
 C18E74,HowToPlayButton2,C,"second button, released"
 C18E96,HowToPlayButton3,C,"third button, released"

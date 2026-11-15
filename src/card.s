@@ -626,7 +626,7 @@ loc_C13B9C:
 	nop	| C13BEC
 	move.w	d0,0x1C(a6)	| C13BEE
 	rts	| C13BF2
-| CardSumWord [I] adds both bytes of d6+1 words at a0 into d0 (CardFormat, 16-bit card)
+| CardSumWord [C] adds both bytes of d6+1 words at a0 into d0 (CardFormat, 16-bit card); ran in MAME on an emulated 16-bit card (card_word_*)
 CardSumWord:
 	move.w	(a0)+,d1	| C13BF4
 	add.b	d1,d0	| C13BF6
@@ -634,7 +634,7 @@ CardSumWord:
 	add.b	d1,d0	| C13BFA
 	dbra	d6,CardSumWord	| C13BFC
 	rts	| C13C00
-| CardFormatFatWord [I] 16-bit card: like CardFormatFatByte with two FAT entries per word
+| CardFormatFatWord [C] 16-bit card: like CardFormatFatByte with two FAT entries per word; ran in MAME on an emulated 16-bit card (card_word_*)
 CardFormatFatWord:
 	movem.l	a0,-(a7)	| C13C02
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C13C06
@@ -724,7 +724,7 @@ loc_C13C8E:
 	move.b	d0,d1	| C13CE6
 	move.w	d1,0x1C(a6)	| C13CE8
 	rts	| C13CEC
-| CardSumSparse [I] adds both bytes of d6+1 words, every other word (CardFormat, card type $80)
+| CardSumSparse [C] adds both bytes of d6+1 words, every other word (CardFormat, card type $80); ran in MAME on an emulated type $80 card (card_sparse_*)
 CardSumSparse:
 	move.w	(a0),d1	| C13CEE
 	add.b	d1,d0	| C13CF0
@@ -733,7 +733,7 @@ CardSumSparse:
 	addq.l	#0x4,a0	| C13CF6
 	dbra	d6,CardSumSparse	| C13CF8
 	rts	| C13CFC
-| CardFormatFatSparse [I] card type $80 (16-bit card answering on every other word, CardDetect): like CardFormatFatWord with a 4-byte step
+| CardFormatFatSparse [C] card type $80 (16-bit card answering on every other word, CardDetect): like CardFormatFatWord with a 4-byte step; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFormatFatSparse:
 	movem.l	a0,-(a7)	| C13CFE
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C13D02
@@ -1494,7 +1494,7 @@ CardFreeChainByte:
 	cmpi.b	#0x3,d4	| C1450A
 	bcc.b	CardFreeChainByte	| C1450E
 	rts	| C14510
-| CardFreeChainWord [I] 16-bit card form of CardFreeChainByte (two FAT entries per word)
+| CardFreeChainWord [C] 16-bit card form of CardFreeChainByte (two FAT entries per word); ran in MAME on an emulated 16-bit card (card_word_*)
 CardFreeChainWord:
 	andi.w	#0xFF,d3	| C14512
 	btst.b	#0x0,d3	| C14516
@@ -1517,7 +1517,7 @@ loc_C14536:
 	cmpi.b	#0x3,d3	| C14544
 	bcc.b	CardFreeChainWord	| C14548
 	rts	| C1454A
-| CardFreeChainSparse [I] card type $80 form of CardFreeChainByte
+| CardFreeChainSparse [C] card type $80 form of CardFreeChainByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFreeChainSparse:
 	andi.w	#0xFF,d3	| C1454C
 	add.w	d3,d3	| C14550
@@ -1556,7 +1556,7 @@ loc_C14590:
 loc_C145A4:
 	swap	d7	| C145A4
 	rts	| C145A6
-| CardFindFreeBlockWord [I] 16-bit card form of CardFindFreeBlockByte
+| CardFindFreeBlockWord [C] 16-bit card form of CardFindFreeBlockByte; ran in MAME on an emulated 16-bit card (card_word_*)
 CardFindFreeBlockWord:
 	swap	d7	| C145A8
 	moveq	#0x0,d3	| C145AA
@@ -1579,7 +1579,7 @@ loc_C145CA:
 loc_C145D4:
 	swap	d7	| C145D4
 	rts	| C145D6
-| CardFindFreeBlockSparse [I] card type $80 form of CardFindFreeBlockByte
+| CardFindFreeBlockSparse [C] card type $80 form of CardFindFreeBlockByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFindFreeBlockSparse:
 	swap	d7	| C145D8
 	moveq	#0x0,d3	| C145DA
@@ -1613,7 +1613,7 @@ CardFindFreeEntryByte:
 	dbra	d7,CardFindFreeEntryByte	| C14614
 loc_C14618:
 	rts	| C14618
-| CardFindFreeEntryWord [I] 16-bit card form of CardFindFreeEntryByte (4-byte entries, high byte)
+| CardFindFreeEntryWord [C] 16-bit card form of CardFindFreeEntryByte (4-byte entries, high byte); ran in MAME on an emulated 16-bit card (card_word_*)
 CardFindFreeEntryWord:
 	move.w	(a0),d0	| C1461A
 	lsr.w	#0x8,d0	| C1461C
@@ -1622,7 +1622,7 @@ CardFindFreeEntryWord:
 	addq.l	#0x4,a0	| C14622
 	dbra	d7,CardFindFreeEntryWord	| C14624
 	rts	| C14628
-| CardFindFreeEntrySparse [I] card type $80 form of CardFindFreeEntryByte
+| CardFindFreeEntrySparse [C] card type $80 form of CardFindFreeEntryByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFindFreeEntrySparse:
 	move.w	(a0),d0	| C1462A
 	lsr.w	#0x8,d0	| C1462C
@@ -1654,7 +1654,7 @@ CardNextBlockWord:
 	bra.b	CardBlockAddressWord	| C14664
 loc_C14666:
 	move.w	-0x1(a1,d3.w),d3	| C14666
-| CardBlockAddressWord [I] 16-bit card: a3 = a6 + block d3 x 64
+| CardBlockAddressWord [C] 16-bit card: a3 = a6 + block d3 x 64; ran in MAME on an emulated 16-bit card (card_word_*)
 CardBlockAddressWord:
 	move.w	d3,d4	| C1466A
 	andi.l	#0xFF,d4	| C1466C
@@ -1673,7 +1673,7 @@ CardNextBlockSparse:
 	bra.b	CardBlockAddressSparse	| C1468C
 loc_C1468E:
 	move.w	(a1,d3.w),d3	| C1468E
-| CardBlockAddressSparse [I] card type $80: a3 = a6 + block d3 x 128
+| CardBlockAddressSparse [C] card type $80: a3 = a6 + block d3 x 128; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardBlockAddressSparse:
 	move.w	d3,d4	| C14692
 	andi.l	#0xFF,d4	| C14694
@@ -1730,7 +1730,7 @@ loc_C14712:
 	move.w	d7,d3	| C14718
 loc_C1471A:
 	rts	| C1471A
-| CardFindEntrySparse [I] card type $80 form of CardFindEntry
+| CardFindEntrySparse [C] card type $80 form of CardFindEntry; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFindEntrySparse:
 	moveq	#0x0,d3	| C1471C
 	movea.l	(CardDirectory-A5_BASE,a5),a0	| C1471E
@@ -1891,7 +1891,7 @@ loc_C148A4:
 	dbra	d7,loc_C148A4	| C148A6
 	move.w	0x1C(a6),0x1A(a6)	| C148AA
 	rts	| C148B0
-| CardFatSumWord [I] 16-bit card form of CardFatSumByte
+| CardFatSumWord [C] 16-bit card form of CardFatSumByte; ran in MAME on an emulated 16-bit card (card_word_*)
 CardFatSumWord:
 	move.b	d0,(REG_DIPSW).l	| C148B2
 	moveq	#0x0,d0	| C148B8
@@ -1978,7 +1978,7 @@ loc_C1496C:
 	move.b	d1,d0	| C1497E
 	move.w	d0,0x1C(a6)	| C14980
 	rts	| C14984
-| CardFatSumSparse [I] card type $80 form of CardFatSumByte
+| CardFatSumSparse [C] card type $80 form of CardFatSumByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFatSumSparse:
 	move.b	d0,(REG_DIPSW).l	| C14986
 	moveq	#0x0,d0	| C1498C
@@ -2363,13 +2363,13 @@ CardLayoutTableByte:
 	dc.b	0x00,0x00,0x00,0x80,0x00,0xBF,0x00,0x00,0x06,0x00,0x01,0x80,0x00,0x00,0x03,0x00
 	dc.b	0x00,0x00,0x00,0x80,0x00,0xDF,0x00,0x00,0x07,0x00,0x02,0x00,0x00,0x00,0x04,0x00
 	dc.b	0x00,0x00,0x00,0x80,0x00,0xFF,0x00,0x00,0x08,0x00,0x02,0x00,0x00,0x00,0x04,0x00
-| CardLayoutWord [I] 16-bit card form of CardLayoutByte (CardLayoutTableWord)
+| CardLayoutWord [C] 16-bit card form of CardLayoutByte (CardLayoutTableWord); ran in MAME on an emulated 16-bit card (card_word_*)
 CardLayoutWord:
 	lsr.w	#0x7,d6	| C14DE8
 	andi.w	#0xFFF0,d6	| C14DEA
 	lea.l	(CardLayoutTableWord,pc,d6.w),a0	| C14DEE
 	bra.w	loc_C14D3A	| C14DF2
-| CardLayoutTableWord [I] rows per $800 bytes of a 16-bit card, as CardLayoutTableByte
+| CardLayoutTableWord [C] rows per $800 bytes of a 16-bit card, as CardLayoutTableByte; ran in MAME on an emulated 16-bit card (card_word_*)
 CardLayoutTableWord:
 	dc.b	0x00,0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x80,0x00,0x1F,0x00,0x00,0x00,0x80,0x00,0x40,0x00,0x00,0x00,0x80
@@ -3244,7 +3244,7 @@ ReadCardDetect:
 	move.b	(REG_STATUS_B).l,d0	| C1597A
 	andi.b	#0x30,d0	| C15980
 	rts	| C15984
-| CardUtilPutText [I] queues the MESS_OUT text at a2 followed by dat_C15CE0
+| CardUtilPutText [C] queues the MESS_OUT text at a2 followed by dat_C15CE0
 CardUtilPutText:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15986
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1598A

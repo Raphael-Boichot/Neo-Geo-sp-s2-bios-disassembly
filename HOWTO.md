@@ -160,6 +160,8 @@ reason), the speculative entries that ran, and which scenarios use each BIOS cal
 | `MEMCARD2=<file> MEMCARD2_AT=<frame>` | insert a second card later (after `MEMCARD_OUT`), e.g. for the card utility COPY |
 | `MEMCARD_WP=1` | the card reads as write-protected (`REG_STATUS_B` bit 6 set through a read tap) |
 | `CARD1M=<file>` | emulate a 1 Mbit 16-bit RAM card at `$800000` with memory taps (keep a `MEMCARD` inserted too) |
+| `CARD1M_SPARSE=1` | the same card without address line A1 (`$800000` and `$800002` are one word): card type `$80` of `CardDetect` |
+| `CARD1M_AT=<frame>` | install the emulated card only from that frame (a blank type `$80` card at power-on fails the boot card test) |
 | `NVRAM_DIR=<dir>` (environment of `mame_coverage.sh`) | keep the backup RAM between runs |
 
 ### Test mode scenarios

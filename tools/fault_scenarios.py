@@ -109,6 +109,27 @@ SCENARIOS = {
         'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0',
         'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
                 + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 B'}),
+    # The same loop on the other two card types of CardDetect, emulated with memory taps (CARD1M in mame_inputs.lua;
+    # a formatted 2 KB card stays in the slot for the card-present bits). Run in this order, the card image kept in
+    # CARD_DIR: a blank card is formatted (CARD 3 returns $81, CardError formats it at once on an MVS), then the
+    # next run fills it, shows the full list and deletes the selected data. A blank type $80 card in the slot at
+    # power-on fails the power-on card test (boot error 7, the aliased words), so that card goes in at frame 400.
+    'card_word_format': ('sengoku2', 900, '', {'ROMS': 'MONITOR_ROMS/cardfill', 'MODE': 'dip', 
+        'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0', 'CARD1M': 'c16new:card_word',
+        'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
+                + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 A'}),
+    'card_word_fill': ('sengoku2', 1300, '', {'ROMS': 'MONITOR_ROMS/cardfill', 'MODE': 'dip', 
+        'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0', 'CARD1M': 'c16:card_word',
+        'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
+                + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 A'}),
+    'card_sparse_format': ('sengoku2', 900, '', {'ROMS': 'MONITOR_ROMS/cardfill', 'MODE': 'dip', 'CARD1M_SPARSE': '1', 'CARD1M_AT': '400', 
+        'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0', 'CARD1M': 'c16new:card_sparse',
+        'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
+                + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 A'}),
+    'card_sparse_fill': ('sengoku2', 1300, '', {'ROMS': 'MONITOR_ROMS/cardfill', 'MODE': 'dip', 'CARD1M_SPARSE': '1', 'CARD1M_AT': '400', 
+        'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0', 'CARD1M': 'c16:card_sparse',
+        'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
+                + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 A'}),
     # League Bowling offers MEMORY CARD SAVE before the first frame; YES (A) calls CARD 3 then CARD_ERROR.
     # Blank card: result $81, CardError formats it (MVS) and saves again. Write-protected (MEMCARD_WP):
     # $85, MEMORY CARD WRITE PROTECTED. PUSH ANY BUTTON. Not forced (the switch is emulated).
@@ -126,6 +147,11 @@ def env_of(name, tmp):
     for k, v in extra.items():
         if v == 'card':
             v = os.path.join(tmp, name + '.neo')
+        elif v.startswith(('c16new:', 'c16:')):  # emulated 16-bit card (CARD1M) kept in CARD_DIR between runs
+            tag, base = v.split(':', 1)
+            v = os.path.abspath(os.path.join(os.environ.get('CARD_DIR', tmp), base + '.bin'))
+            if tag == 'c16new' and os.path.exists(v):
+                os.remove(v)
         elif v.startswith(('card:', 'card2:')):
             tag, src = v.split(':', 1)          # a fresh copy of a card image (or a blank card)
             v = os.path.join(tmp, f'{name}_{tag}.neo')

@@ -368,7 +368,7 @@ SwitchSlot:
 	move.b	d0,(REG_CRTFIX).l	| C11FA4
 	move.b	d0,(REG_SWPROM).l	| C11FAA
 	rts	| C11FB0
-| SoundSlotSwitch [I] unless the Z80 already replies 1: sends sound command 1 (prepare for a slot switch, NeoGeoDev wiki) and waits up to 8 x 4 VBlanks for the reply 1; called by SwitchSlot and the slot code
+| SoundSlotSwitch [C] unless the Z80 already replies 1: sends sound command 1 (prepare for a slot switch, NeoGeoDev wiki) and waits up to 8 x 4 VBlanks for the reply 1; called by SwitchSlot and the slot code
 SoundSlotSwitch:
 	move.b	(REG_SOUND).l,d0	| C11FB2
 	subq.b	#0x1,d0	| C11FB8
@@ -440,7 +440,7 @@ loc_C1206C:
 	bne.b	loc_C12052	| C12070
 loc_C12072:
 	rts	| C12072
-| SlotListRemoved [I] lists in bram_D00164 (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot
+| SlotListRemoved [C] lists in bram_D00164 (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot; ran with the slots_* chain: League Bowling in place of Sengoku 2 lists Sengoku 2 here
 SlotListRemoved:
 	lea.l	(RemovedGames-A4_BASE,a4),a0	| C12074
 	moveq	#0x7,d7	| C12078
@@ -467,7 +467,7 @@ loc_C120AC:
 	cmp.w	d4,d7	| C120AE
 	bne.b	loc_C1208C	| C120B0
 	rts	| C120B2
-| SlotKeepOuterEntries [I] for the stored SlotTable entries past the slot count: their settings go to the same game if it is now in a slot, else to the removed list
+| SlotKeepOuterEntries [C] for the stored SlotTable entries past the slot count: their settings go to the same game if it is now in a slot, else to the removed list; ran with the slots_* chain: Sengoku 2 kept past the slot count with its index, back in slot 0 on the next boot
 SlotKeepOuterEntries:
 	move.w	d4,d6	| C120B4
 loc_C120B6:
@@ -491,7 +491,7 @@ loc_C120E2:
 	cmpi.w	#0x20,d6	| C120E4
 	bne.b	loc_C120B6	| C120E8
 	rts	| C120EA
-| SlotCopyMovedSettings [I] a game found in another slot than before keeps its settings index (+2) and date (+$20) from the stored SlotTable
+| SlotCopyMovedSettings [C] a game found in another slot than before keeps its settings index (+2) and date (+$20) from the stored SlotTable; ran with the slots_* chain: Sengoku 2 back on its old game index
 SlotCopyMovedSettings:
 	moveq	#0x0,d6	| C120EC
 loc_C120EE:
@@ -513,7 +513,7 @@ loc_C12110:
 	cmp.w	d4,d6	| C12112
 	bne.b	loc_C120EE	| C12114
 	rts	| C12116
-| SlotTableStore [I] writes the scanned slots to SlotTable, then the removed games after them
+| SlotTableStore [C] writes the scanned slots to SlotTable, then the removed games after them; ran with the slots_* chain
 SlotTableStore:
 	moveq	#0x0,d6	| C12118
 loc_C1211A:
@@ -530,7 +530,7 @@ loc_C12130:
 	cmpi.w	#0x20,d6	| C1213A
 	bne.b	loc_C12130	| C1213E
 	rts	| C12140
-| SlotDateNewGames [I] a game with no settings index yet ($FFFF) gets LastBootDate as its date
+| SlotDateNewGames [C] a game with no settings index yet ($FFFF) gets LastBootDate as its date; ran with the slots_* chain (League Bowling dated on its first boot)
 SlotDateNewGames:
 	moveq	#0x0,d6	| C12142
 loc_C12144:
@@ -580,15 +580,15 @@ loc_C121B0:
 	cmp.b	(SlotCount-A4_BASE,a4),d0	| C121BE
 	bcs.b	loc_C12166	| C121C2
 	rts	| C121C4
-| LockBackupRamUnless [I] locks backup RAM (REG_SRAMLOCK) unless ram_10FEBF is set
+| LockBackupRamUnless [C] locks backup RAM (REG_SRAMLOCK) unless BIOS_BRAM_USED is set
 LockBackupRamUnless:
 	tst.b	(BIOS_BRAM_USED).l	| C121C6
 	bne.b	loc_C121D4	| C121CC
 	move.b	d0,(REG_SRAMLOCK).l	| C121CE
 loc_C121D4:
 	rts	| C121D4
-| SelectSlot [I] scans the slot table in backup RAM ($D00124, 4 bytes per slot) from the slot in $D00109
-SelectSlot:
+| RegisterNewGame [C] from BookSlot: the next slot whose game has no game index yet ($FFFF) gets the lowest free index (0-7), all its book keeping cleared (days, months, totals, hourly counts, day count) and its name copied from the cartridge soft DIP block (header $116 + region x 4) to GameNames; an entry marked $80 inside the slot count is cleared; called again by the boot for each slot. Ran with slots_lbowling
+RegisterNewGame:
 	lea.l	(BramA4Base).l,a4	| C121D6
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C121DC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C121E0
@@ -872,7 +872,7 @@ GetGameDaysPtr:
 BookGameDaysTable:
 	dc.b	0x00,0xD0,0x83,0x20,0x00,0xD0,0x85,0x60,0x00,0xD0,0x87,0xA0,0x00,0xD0,0x89,0xE0
 	dc.b	0x00,0xD0,0x8C,0x20,0x00,0xD0,0x8E,0x60,0x00,0xD0,0x90,0xA0,0x00,0xD0,0x92,0xE0
-| GetGameDayCountPtr [I] a0 = $D00200 + game index x 4 (a long incremented by BookNewDayPerGame)
+| GetGameDayCountPtr [C] a0 = $D00200 + game index x 4 (a long incremented by BookNewDayPerGame)
 GetGameDayCountPtr:
 	moveq	#0x0,d0	| C1253E
 	move.b	(BookSlot-A4_BASE,a4),d0	| C12540
@@ -883,7 +883,7 @@ GetGameDayCountPtr:
 	lea.l	(BookGameDayCount-A4_BASE,a4),a0	| C12550
 	lea.l	(a0,d0.w),a0	| C12554
 	rts	| C12558
-| GetGameHourCountsPtr [I] a0 = $D0A1A0 + game index x $60 (tbl_C12572): 24 longs, one per hour, incremented by DeductPlayerCredit at index bram_D0005A (the hour clock)
+| GetGameHourCountsPtr [C] a0 = $D0A1A0 + game index x $60 (tbl_C12572): 24 longs, one per hour, incremented by DeductPlayerCredit at index bram_D0005A (the hour clock)
 GetGameHourCountsPtr:
 	moveq	#0x0,d0	| C1255A
 	move.b	(BookSlot-A4_BASE,a4),d0	| C1255C
@@ -893,7 +893,7 @@ GetGameHourCountsPtr:
 	lsl.w	#0x2,d0	| C1256A
 	movea.l	(BookGameHoursTable,pc,d0.w),a0	| C1256C
 	rts	| C12570
-| BookGameHoursTable [I] $D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)
+| BookGameHoursTable [C] $D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)
 BookGameHoursTable:
 	dc.b	0x00,0xD0,0xA1,0xA0,0x00,0xD0,0xA2,0x00,0x00,0xD0,0xA2,0x60,0x00,0xD0,0xA2,0xC0
 	dc.b	0x00,0xD0,0xA3,0x20,0x00,0xD0,0xA3,0x80,0x00,0xD0,0xA3,0xE0,0x00,0xD0,0xA4,0x40
@@ -983,8 +983,8 @@ WriteLedData:
 	bsr.w	Delay	| C126A6
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C126AA
 	rts	| C126B2
-| MvsLedUpdate [I] MVS only: credit LED / marquee latch handling at the start of SystemIo
-MvsLedUpdate:
+| SystemIoMvs [C] MVS part of SystemIo: slot LED, I/O check LEDs, 1M card save request, the test button (TestModeEntry), the coin inputs (CountCoin x 2, CountService), the start compulsion reset on a coin, the coin sound, the mechanical coin counter pulses, HourClockTick and the two credit LED counters
+SystemIoMvs:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C126B4
 	bne.b	loc_C126BC	| C126B8
 	rts	| C126BA
@@ -1247,7 +1247,7 @@ CreditDownPlayer:
 	move.b	(a3)+,d4	| C129BE
 	beq.b	loc_C12996	| C129C0
 	bra.w	loc_C1293C	| C129C2
-| BookKeepingCount [I] adds to a book keeping counter at a2 (called for several counters per start)
+| BookKeepingCount [C] adds 1 to the long at +4 of the 16-byte record a2, and to +8 when d2 is non-zero (DeductPlayerCredit: one call per record of today, the month, the game..)
 BookKeepingCount:
 	addq.l	#0x1,0x4(a2)	| C129C6
 	tst.b	d2	| C129CA
@@ -1401,7 +1401,7 @@ Card1MStoredText:
 	dc.b	0xFF,0xFF,0x00,0x05,0x00,0x03,0x01,0x08
 	.ascii	"AT A MEMORY CARD."
 	dc.b	0xFF,0x00,0x00
-| PlayTimeCount [I] MVS, while a game runs (BIOS_USER_MODE 2): every 60 frames adds 1 to a long in backup RAM ($D00048, through a4 = $D08000)
+| PlayTimeCount [C] while P1 or P2 was playing on the previous frame (PlayerModPrevious = 1): every 60 frames (PlayTimeFrames) adds 1 to PlayTimeSeconds; then copies BIOS_PLAYER_MOD1-4 to PlayerModPrevious
 PlayTimeCount:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12BE6
 	lea.l	(BramA4Base).l,a4	| C12BEC

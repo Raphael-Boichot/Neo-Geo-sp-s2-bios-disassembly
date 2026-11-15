@@ -187,3 +187,133 @@ FC80,ModulationBlocks,I,"16-byte block per channel (ModulationBlock), loaded fro
 FE31,EffectLock,C,"set by commands 4 and 6, cleared by 7 and 9: effects are refused while it is set"
 1BF9,TickParamsA,?,"per-tick routine on the block $FA88-$FAA3 (counters $FA9C, $FAA3): runs in MAME, purpose not found"
 1CB5,TickParamsB,?,"per-tick routine on $FA8E-$FA96 (a word step): runs in MAME, purpose not found"
+01CE,StartAdpcmASound,I,"command type 3 ($01C4): an ADPCM-A sample sound from AdpcmASampleTable on one of three voices (AdpcmAFindVoice), refused while EffectLock is set unless it is SpecialEffect; no command of this ROM has type 3"
+01FE,AdpcmAKeyOn,I,"ADPCM-A note on: key (YM port B $00), flag reset (YM $1C), the sample's addresses and its repeat record (AdpcmARepeatRecord)"
+0276,AdpcmAWriteAddresses,C,"YM2610 port B $10+a, $18+a, $20+a, $28+a = l, h, c, b: start and end address of ADPCM-A channel a (YM2610 register map)"
+0294,AdpcmADeadEntry,I,"di / sub 8 / ld b,a before AdpcmARepeat: a second entry nothing calls"
+0298,AdpcmARepeat,I,"end-of-sample interrupt of ADPCM-A channel b (TimerIrq, one call per channel): restarts the sample while its repeat count (AdpcmARepeatRecord) is not used up"
+02EE,AdpcmAReleaseVoice,I,frees the voice block of the channel (AdpcmVoice)
+02FC,AdpcmVoice,C,"ix = AdpcmVoices + (a - 3) x 9; carry set when a < 3"
+0315,AdpcmARepeatRecord,C,"hl = AdpcmARepeatRecords + a x 7"
+0325,LookupTable5314,?,"a = byte of the table at $5314 for command a - $C0 (unused command types)"
+0330,AdpcmASample,C,"ix = AdpcmASampleTable + e x 11"
+0345,AdpcmAFindVoice,I,"picks one of the three AdpcmVoices: a free one, else one of lower priority (+2 / +8 against the sample's +0); carry when none"
+042A,AdpcmAFindVoice2,I,"the same search, marking the voice with $FF instead of 0 (+7)"
+0498,StartAdpcmBSound,I,"command type 4 ($048E): an ADPCM-B sample sound from AdpcmBSampleTable, unless one of higher priority plays; no command of this ROM has type 4"
+05BF,AdpcmBPlay,C,"starts ADPCM-B: YM2610 $11 (L/R), $14/$15, $10 reset and start, $1C flags, $19/$1A delta-N from hl, $12/$13 start and $14/$15 end from the sample record (YM2610 register map)"
+0687,AdpcmBSetDelta,C,"YM2610 $19/$1A (ADPCM-B delta-N, the pitch) = hl, and $1B (volume) unless an envelope runs"
+06B9,AdpcmBTick,I,"TimerIrq: counts down the ADPCM-B repeat ($FC3E) and restarts or stops the sample"
+0714,AdpcmBRestoreParams,C,copies the 26 bytes AdpcmBSavedParams back to AdpcmBParams
+0733,AdpcmBWriteAddresses,C,"YM2610 $12, $13, $14, $15 (ADPCM-B start and end) = l, h, c, b, kept in ModulationBlocks +2 to +5"
+075C,AdpcmBSample,C,"ix = AdpcmBSampleTable + a x 26"
+0773,LookupTable52D4,?,"a = byte of the table at $52D4 for command a - $80"
+077E,LookupTable4F64,?,"a = byte of the table at $4F64 for command a - $40; nothing calls it"
+0789,AdpcmBSaveParams,C,copies the 26 bytes of AdpcmBParams to AdpcmBSavedParams
+0796,AdpcmBLoadParams,C,"copies the envelope fields of the sample record (+13 to +25) to AdpcmBParams"
+0875,CompareFc36,?,"cp of $FC36 with b, ret: nothing calls it"
+0C66,CommandBitTest,C,"tests bit a (high bit first) of the 256-bit table at hl (the tables at $4499 and $47D6, both empty)"
+0CEE,ClearRepeatIfOwner,I,clears the ADPCM-A repeat record of channel c when the voice belongs to sound $FE22
+0DDA,WaitCommandMode,?,"waits for the next command and keeps its low 2 bits in $FE25; nothing calls it"
+0DF3,SetMode3,?,"$FE25 = 3; nothing calls it"
+0E1D,WaitCommandTempo,?,"waits for the next command and uses it as the tempo (SetTempo); nothing calls it"
+11C1,SsgSlideStep,I,"one step of an SsgSlide block: period - step, written to the SSG tone registers, ends at period $70"
+1218,SsgSlideEnd,C,"stops the slide channel: block cleared, SsgSilence, EffectPlaying cleared"
+1224,ClampSsgPeriod,C,"hl = at least $70; sets $FE3F when it had to clamp"
+13BA,AdpcmAChannelNote,I,"ChannelKeyOn for an ADPCM-A song channel (8-13): level and AdpcmAKeyOn unless a voice of an effect holds it"
+140E,AdpcmBChannelNote,I,"ChannelKeyOn for the ADPCM-B song channel (14): pitch from AdpcmBDeltaTable, AdpcmBPlay"
+15A3,Table5024Entry,?,"hl = $5024 + a x 8 (inside the word table at $4FA4)"
+15B0,LookupTable4F64b,?,a = byte of the table at $4F64 for index a
+15BB,AdpcmANoteSample,I,"for an ADPCM-A note: octave bits select a byte, the note nibble a word of the table at $50D4"
+15E1,AdpcmBNoteDelta,I,"for an ADPCM-B note: the delta-N (pitch) word from AdpcmBDeltaTable by octave and note"
+1603,YmTimerStop,C,"YM2610 register $27 = 0: timers stopped; nothing calls it"
+160A,YmTimerControl3A,C,"register $27 = $3A; nothing calls it"
+1813,SignExtendE,C,"d = $FF (called by Multiply when e is negative)"
+1886,FadeTick,I,"TimerIrq: adds the fade speed to $FE34, every overflow steps $FE35 by 100 and runs FadeStep"
+18A0,FadeStep,I,"one step of a fade: raises the attenuation of the song channels and stops the song at the end"
+1935,ClearFade,C,"+1 and +2 of the channel at ix = 0"
+193E,FadeSetLimit,I,"+1 = $7E and bit 3 of +0 set (the fade has reached the end)"
+1947,FadeSetBit4,?,"+6 = 1, bit 4 of +0 set; nothing calls it"
+1950,FadeSetBit5,I,"bit 5 of +0 set, a = 0"
+1957,ReturnZero,C,"xor a, ret"
+1959,ClearAdpcmAFadeStarts,I,clears +1 of the six ADPCM-A song channels
+196F,FmFadeLevel,I,"FM channel: total level from the fade and the channel level (FmSetTotalLevel), at most $78"
+1991,AdpcmAFadeLevel,I,"ADPCM-A channel: level minus the fade (AdpcmAWriteLevel)"
+19D0,AdpcmBFadeLevel,I,"ADPCM-B: volume minus the fade (AdpcmBWriteVolume)"
+1AA6,SwapDeHl,C,ex de,hl / ret
+1AE8,ModulationUp,I,"adds the step to the modulation value (+6/+7), turns at the top (ModulationTop)"
+1AFF,ModulationDown,I,"subtracts the step, turns at the bottom (ModulationBottom)"
+1B68,ModulationTop,I,"sets bit 1 of +8 (going down) and returns the top value"
+1B73,ModulationBottom,I,"clears bit 1 of +8 and returns 0"
+1B7B,FmWriteFnumOffset,C,"FM channel: F-number from the register copy (FmShadowFnum) + bc to YM $A4+ch / $A0+ch (vibrato); entered as a return address (ld hl,1B7B / push hl)"
+1BAA,FmShadowFnum,C,"hl = the F-number of FM channel a from FmShadowA/B (+$70 and +$74)"
+1C7A,AdpcmBEnvelopeStart,I,"starts the ADPCM-B volume envelope (AdpcmBParams $FA9C-$FAA3, YM $1B)"
+1E03,SetFa98,?,"$FA98 = 1, bc = ($FA94)"
+1E0D,AdpcmBEnvelopeReset,I,"clears the ADPCM-B pitch envelope counters ($FA8C, $FA8E, $FA98) and reloads $FA91"
+20D5,DeadRet20D5,C,a ret nothing calls
+24C6,DeadRet24C6,C,a ret nothing calls
+29E5,AdpcmAWriteLevel,C,"YM2610 port B $08 + a (ADPCM-A channel level and L/R) = b, copy at AdpcmALevels + a + 8"
+2A02,AdpcmBWriteVolume,C,"YM2610 $1B (ADPCM-B volume) = b, copy at ModulationBlocks +11"
+44B9,AdpcmASampleTable,I,"69 ADPCM-A sample records of 11 bytes (AdpcmASample): priority, addresses, repeat; no sound of this ROM uses them"
+47F6,AdpcmBSampleTable,I,"72 ADPCM-B sample records of 26 bytes (AdpcmBSample): addresses, pitch, envelope; no sound of this ROM uses them"
+4FA4,AdpcmBDeltaTable,I,"ADPCM-B delta-N (pitch) words by octave and note (AdpcmBNoteDelta)"
+50D4,AdpcmANoteTable,I,"words by note for ADPCM-A notes (AdpcmANoteSample)"
+4499,CommandBitsA,I,"256 bits, one per command (CommandBitTest); all clear"
+47D6,CommandBitsB,I,"256 bits, one per command; all clear: commands $10+ never go to the type 4 path here"
+47B0,Type3SoundTable,I,"pointers for commands $C0+ of type 3; all zero"
+4F46,Type4SoundTable,I,"pointers for commands $C0+ of type 4; all zero"
+FBEC,AdpcmVoices,I,"three 9-byte voice blocks for the ADPCM-A sounds (AdpcmVoice)"
+FC07,AdpcmARepeatRecords,I,"7-byte repeat record per ADPCM-A channel: count, start and end addresses (AdpcmARepeat)"
+FC50,AdpcmALevels,C,"copies of YM port B $08-$0D at +8 (AdpcmAWriteLevel)"
+FA8A,AdpcmBParams,I,"26-byte block of the ADPCM-B envelope and pitch state ($FA8A-$FAA3), saved and restored as a whole"
+FA88,AdpcmBEnvelopeOn,I,"ADPCM-B envelope enabled (tested when $FE2F is 0; AdpcmBEnvelopeStart, TickParamsA)"
+FA89,AdpcmBEnvelopeOn2,I,"the same, tested when $FE2F is set"
+FAA4,AdpcmBSavedParams,C,"copy of AdpcmBParams (AdpcmBSaveParams / AdpcmBRestoreParams)"
+FCD0,AdpcmBChannel,I,"channel block of the ADPCM-B sounds (type 4)"
+FE34,FadeAccumulator,I,fade speed accumulator (FadeTick)
+FE35,FadeCounter,I,"fade step counter, +100 per overflow (FadeTick)"
+0428,DeadPopRet,C,pop af / ret that nothing calls
+2A6C,ChannelBitTable,C,"bit masks 1, 2, 4, 8, $10, $20 by channel (ADPCM-A key on, YM port B $00 and flag register $1C; SSG mixer), then 14 zeros"
+2A2C,GateTimeTable,I,"8 x 8 bytes (rising 0 to 7 by row): the short note time of NoteLengthTimes when the length gives none, row = ChannelOwner value"
+4F64,CommandParams40,?,"64 bytes, one per command $40-$7F (LookupTable4F64, LookupTable4F64b)"
+52D4,CommandParams80,?,"64 bytes, one per command $80-$BF (LookupTable52D4)"
+5314,CommandParamsC0,?,"64 bytes, one per command $C0-$FF (LookupTable5314)"
+FABE,AdpcmAMaster,I,"ADPCM-A master block (iy): +0 flags, +1 and +6/+7 from the song header (+24 to +26), YM port B $01 total level"
+FAC6,AdpcmBState,I,"ADPCM-B state block (iy) of AdpcmBLoadParams and TimerIrq"
+FC31,LfoValue1,I,"set by SeqLfo, read by AdpcmBChannelNote"
+FC32,LfoValue2,I,"set by SeqLfo, read by AdpcmBChannelNote"
+FC33,PitchEnvelopeOn,I,"enables TickParamsB (read when $FE2F is 0); set by SeqLfo, cleared by Init"
+FC34,PitchEnvelopeOn2,I,"the same, read when AdpcmBEffectMode is set"
+FC35,AdpcmBSoundOn,I,"set while an ADPCM-B sound effect (type 4) plays; StartAdpcmBSound, AdpcmBTick, AdpcmBStop"
+FC36,AdpcmBSoundPriority,I,priority of the ADPCM-B sound effect playing
+FC37,AdpcmBNoteLevel,I,level of the last ADPCM-B song note (AdpcmBChannelNote)
+FC38,EnginePass2,I,"set by TimerIrq around its second pass over the channels; changes the stack entries (ChannelStackEntry) and the ADPCM paths"
+FC39,SeqFlagFC39,?,written by one sequence command handler only
+FC3A,ModulationOff,I,"4 bytes, one per FM channel 1-4: UpdateModulation runs only when it is 0"
+FC3E,AdpcmBRepeatCount,I,"repeat count of the ADPCM-B sample ($FF forever), AdpcmBTick"
+FC3F,AdpcmBRepeatStart,I,word: start address of the repeated ADPCM-B sample
+FC41,AdpcmBRepeatEnd,I,word: end address of the repeated ADPCM-B sample
+FC43,AdpcmBLastAddress,I,word: last address for the ADPCM-B repeat (AdpcmBRestoreParams)
+FE1D,AdpcmBFadeOn,I,"set by the second optional instrument byte path (SeqSetDetune area); AdpcmBFade runs while it is set"
+FE1E,AdpcmBFadeStep,I,step of AdpcmBFade
+FE1F,AdpcmBFadeVolume,I,"volume of AdpcmBFade, written to YM $1B"
+FE22,BitTestCommand,I,"the command of the last CommandBitTest, compared by ClearRepeatIfOwner"
+FE23,CurrentSound,I,"the sound PlaySoundCommand / Command2Eyecatcher started; read by PlaySoundA and the ADPCM-A notes"
+FE25,CommandMode,?,"set to 3 by Init, written by two routines nothing calls"
+FE28,SongStarting,I,"$FF from PlaySoundA, cleared by the stop commands and SeqEnd"
+FE29,SongRunning,I,"$FF from PlaySoundA, cleared by the stop commands and SeqEnd; TimerIrq runs the song channels while it is set"
+FE2D,TimerTickA,I,counter of TimerIrq
+FE2E,TimerTickB,I,"counter of TimerIrq, read by ChannelPitch"
+FE2F,AdpcmBEffectMode,I,"set while an ADPCM-B sound effect owns the ADPCM-B channel; selects the second set of flags (FA89, FC34)"
+FE32,TimerIrqFlag,?,written once by TimerIrq
+FE33,TimerIrqPhase,I,"phase of TimerIrq, tested several times in it"
+FE36,SysFlagFE36,?,written by one system command handler only
+FE37,SysFlagFE37,?,written by one system command handler only
+FE3C,StartSoundParam,I,"sound (and word) given by SeqStartSound, read by AdpcmBChannelNote"
+FE3E,SsgSlideMode,I,"selects the end test of SsgSlideStep; set by CommandBitTest and a sequence command"
+FE3F,SsgSlideClamped,C,set to 1 by ClampSsgPeriod when the period reached $70
+FE40,SpecialEffectKind,C,"3 when the ADPCM-B sound started is SpecialEffect, 4 when the effect started is (StartAdpcmBSound, StartEffect); SsgSilence and the stop paths skip it then"
+FE42,AdpcmHold1,I,"AdpcmKeyOff leaves a channel group keyed while it is set"
+FE43,AdpcmHold2,I,the same for the next group
+FE44,AdpcmHold3,I,the same for the next group
+FE45,SsgNoiseOn,I,"SsgNoteOn: d (the noise flag of the note) kept for the mixer bits"
+FE5C,QueueLimit,I,"QueueCheckFull compares QueueWrite with it; set by MainLoop"

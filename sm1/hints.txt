@@ -54,3 +54,41 @@ data 5314 40 16
 data 5354 1
 words 5355 32      FM F-numbers by note index (bits 0-4)
 words 5395 32      SSG periods by note index (bits 0-4)
+# RAM blocks: addresses inside are written Name+offset
+ramblock F806 0B
+ramblock F811 0B
+ramblock F81C 0B
+ramblock F827 130   # LoopStacks: 16 bytes x 19 channel numbers
+ramblock F957 130   # CallStacks
+ramblock FA8A 1A
+ramblock FAA4 1A
+ramblock FACE 10
+ramblock FADE 87
+ramblock FB65 87
+ramblock FBEC 1B
+ramblock FC07 2A
+ramblock FC50 10
+ramblock FC80 50
+ramblock FCD0 09
+ramblock FCD9 0F
+ramblock FCE8 10
+ramblock FCF8 10
+ramblock FD08 10
+ramblock FD18 10
+ramblock FD28 10
+ramblock FD38 10
+ramblock FD48 10
+ramblock FD58 10
+ramblock FD68 10
+ramblock FD78 10
+ramblock FD88 10
+ramblock FD98 10
+ramblock FDA8 10
+ramblock FDB8 10
+ramblock FDC8 10
+ramblock FDD8 10
+ramblock FDE8 10
+ramblock FDF8 10
+ramblock FE08 10
+ramblock F800 06    # SsgPeriodA-C
+ramblock FFFC 04

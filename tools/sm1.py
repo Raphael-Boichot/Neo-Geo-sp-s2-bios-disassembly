@@ -15,6 +15,7 @@ Hints: sm1/hints.txt, one per line:
     imm ADDR                     the 16-bit operand of the instruction at ADDR is a ROM address
                                  (automatic for ld hl/ix/iy,nn with nn in the program)
     number ADDR                  the ROM-range operand at ADDR is a number, not an address
+    ramblock ADDR SIZE           RAM block (named in names.csv): addresses inside it are written Name+offset
     jpind ADDR                   the jp (hl/ix/iy) at ADDR is resolved by another hint
     text ADDR LEN                ASCII text
 """
@@ -79,6 +80,7 @@ class Trace:
         self.end = max(i for i, b in enumerate(rom[:SIZE]) if b not in (0x00, 0xFF)) + 1
         self.resolved = set()
         self.numbers = set()   # instructions whose ROM-range operand is a number
+        self.ramblocks = []    # (base, size): RAM inside a block is written Name+offset
         self.items = {}        # typed data: address -> (size, directive, values, comment)
 
     def run(self, hints):
@@ -115,6 +117,8 @@ class Trace:
                 self.resolved.add(a)
             elif k == 'number':
                 self.numbers.add(a)
+            elif k == 'ramblock':
+                self.ramblocks.append((a, int(h[2], 16)))
             elif k == 'song':
                 sm1_data.song(self.rom, a, self.items, self.labels)
             elif k == 'effect':
@@ -216,6 +220,10 @@ def gen_source(rom, out):
                 return n
         if kind == 'imm' and v in ram:
             return ram[v]
+        if kind in ('mem', 'imm') and v >= t.end:
+            for base, size in t.ramblocks:
+                if base < v < base + size and base in ram:
+                    return f'{ram[base]}+{v - base}'
         return h16(v)
 
     pc = 0

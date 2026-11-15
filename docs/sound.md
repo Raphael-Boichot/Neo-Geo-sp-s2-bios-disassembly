@@ -118,8 +118,17 @@ Disassembly status (`sm1/`, `make check` compares the rebuilt ROM):
 | L0 rebuilt byte for byte | done: `sm1/src/sm1.asm`, z80asm, SHA-1 `42f9d7dd...` |
 | L2 code traced | 5,188 instructions (10,614 bytes), no indirect jump left unresolved (`sm1/hints.txt`); 2,324 ran in MAME (`sm1/coverage.txt`), none outside the trace |
 | L1 data typed | done: 10,785 data bytes typed (tables, records, headers, 50 sequences, one event per line); the 62 bytes left are the filler between the vectors |
-| L3 names | 188 names in `sm1/names.csv` (C 134, I 41, W 9, ? 4): every routine that runs in MAME, the commands, sequence commands, sounds and tables; 67 routines never run and stay `sub_` (engine paths no sound here uses), 419 `loc_` jump labels automatic as in the system ROM source |
-| L4 RAM | channel blocks, loop and call stacks, modulation blocks, register copies, locks and the driver variables that are understood; 391 lines still use raw RAM addresses (fields of the engine's parameter blocks) |
+| L3 names | done: 318 names in `sm1/names.csv` (C 166, I 120, W 9, ? 23): every routine and table. The 67 routines that never run (ADPCM-A and ADPCM-B sound paths, fades, slides, commands of the unused types 3 and 4) are named from their code and the YM2610 registers they write, mostly I; 419 `loc_` jump labels stay automatic as in the system ROM source |
+| L4 RAM | done: no raw RAM operand left. Variables by name; fields of the 37 blocks declared in `sm1/hints.txt` (`ramblock`) written `Name+offset` (`Channel8+1`, `LoopStacks+16`) |
+
+### What the engine can do that this ROM does not use
+
+The driver is a general one: besides the FM and SSG sounds it plays, it has paths for ADPCM-A samples
+(command type 3: `StartAdpcmASound`, three voices with priorities, sample records at
+`AdpcmASampleTable`, repeats) and ADPCM-B samples (type 4: `StartAdpcmBSound`, `AdpcmBPlay`, pitch and
+volume envelopes, repeats), fades (`FadeTick`, `FadeStep`) and SSG pitch slides. No command of this
+ROM has type 3 or 4 and no sound uses those channels, and the board has no sample ROM of its own, so
+these paths never run (I: named from the code and the YM2610 registers they write).
 
 ## Sources
 

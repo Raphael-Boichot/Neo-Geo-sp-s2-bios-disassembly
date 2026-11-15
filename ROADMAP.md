@@ -117,8 +117,7 @@ One page per subsystem in `docs/`, from the code and the MAME runs, with address
 - [ ] Memory card: CARD functions, card format, the card utility
 - [ ] Test mode: menu structure and how each item stores its settings
 - [ ] Interrupts: VBlank (SystemInt1), timer (SystemInt2), when each vector table is mapped
-- [ ] Sound commands sent to the Z80
-- [ ] Board fix ROM: confirm every tile range of `symbols/sfix.csv` from the screens that use it (`$700-$8FF` not matched yet)
+- [ ] Sound commands sent to the Z80 (with step 7, `sm1.sm1`)
 
 ## 6. Other SNK system ROMs (L3, L6)
 
@@ -129,9 +128,23 @@ Public references, allowed for comparison.
 - [ ] Document what the region byte and the system type change
 - [ ] List what differs between versions (bug fixes, new screens)
 
+## 7. The other ROMs of the BIOS set (L0-L3, L5)
+
+`neogeo.zip` holds three ROMs of the MVS motherboard besides the system ROM. They ship with every
+board, whatever the cartridge, so they belong to the BIOS.
+
+- [x] `sfix.sfix`, board fix ROM (128 KB): 16 tile sheets in `gfx/sfix/`, rebuilt and checked by
+      `make check`; tile ranges in `symbols/sfix.csv`
+- [ ] `sfix.sfix`: confirm every tile range from the screens that use it (`$700-$8FF` not matched yet)
+- [ ] `sm1.sm1`, the Z80 sound program on the board (128 KB): what the system ROM's sound commands do
+      (1 slot switch, 3 reset, $5C-$5E sound test, $7F coin), whether it plays the eyecatcher music;
+      Z80 disassembly that rebuilds it byte for byte
+- [ ] `000-lo.lo`, the sprite zoom table read by the video hardware (128 KB): rebuilt from a
+      generator or kept as data, with a byte-identical check
+
 ## Not now: custom system ROM
 
-The priority is the disassembly. Work on a modified system ROM waits until steps 1-6 are done; the
+The priority is the disassembly. Work on a modified system ROM waits until steps 1-7 are done; the
 only build changes meanwhile are test builds that help the disassembly (reaching hidden code,
 relocation checks).
 

@@ -50,6 +50,10 @@ SCENARIOS = {
                               {'KEYS': '1500:Coin 1,1530:Coin 1,1560:Coin 1,1590:Coin 2,1620:Coin 2,1700:1 Player Start,' + ','.join(f'{f}:P1 A' for f in range(1800, 2300, 45))}),
     'bstars_us_credit_down': ('bstars', 2300, 'bpset 11fe,1,{b@10fd83=1; g}||bpset 12b6,1,{b@10fd83=1; g}',
                               {'KEYS': '1500:Coin 1,1530:Coin 1,1560:Coin 1,1590:Coin 2,1620:Coin 2,1700:1 Player Start,' + ','.join(f'{f}:P1 A' for f in range(1800, 2300, 45))}),
+    # end of the eyecatcher with BIOS_COUNTRY_CODE forced (SP-S2 is European, code 2): USA shows the FBI screen,
+    # Japan the JAPAN ONLY warning, each for 300 frames (Sengoku 2 leaves the eyecatcher to the system ROM)
+    'eyecatcher_us': ('sengoku2', 1100, 'bpset c18208,1,{b@10fd83=1; g}', {'MODE': 'boot'}),
+    'eyecatcher_japan': ('sengoku2', 1100, 'bpset c18208,1,{b@10fd83=0; g}', {'MODE': 'boot'}),
     'boot_error_aes_colours': ('sengoku2', 300,
                                'bpset c13154,d6==0,{d1=d1^1; g}||bpset c16aee,1,{sr=sr|4; g}', {}),
     # not forced: every hard DIP switch on at power-on repeats the work and backup RAM tests

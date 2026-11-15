@@ -509,3 +509,67 @@ C18808,MessOutSequence,C,"MESS_OUT command 13: writes d1 words, adding 1 each ti
 C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover)"
 C132B4,CardFillTest,C,"unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears"
 C13338,CardFillTestTitle,C,"20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save"
+C00080,SystemRomChecksum,W,"checksum byte of the system ROM (NeoGeoDev wiki, SP-E: $4D here; the byte after it is the same); compared by the power-on test"
+C00082,SystemIdText,W,"NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK CORPORATION (ID text, wiki); its bytes start the checksummed area"
+C11000,CardFormatVersion,I,"word $0000 just before Reset: CardFormat writes it into the card header (8-bit and 16-bit cards)"
+C11001,CardFormatVersionLo,I,low byte of CardFormatVersion (CardFormat for a type $80 card)
+C1137A,SystemReturnModes,C,"SystemReturn: one handler per system mode (BIOS_SYSTEM_MODE low byte 0-6)"
+C116C6,SystemIoBuildFlag,I,"word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch"
+C117C2,StartCreditsNeeded,C,"credits needed for the start bits 1-3 (P1, P2, both): 1, 1, 2 (StartCreditCheck)"
+C117C6,StartFlagResult,C,"BIOS_START_FLAG for the start bits with enough credits (first 4) or not (last 4: 0)"
+C12572,BookGameHoursTable,I,"$D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)"
+C12F88,YearWeekdayTable,C,"100 bytes: weekday offset of each year 00-99 (CheckCalendarDate computes the weekday from it)"
+C12FEC,MonthDaysTable,C,"days per month: 29 (February of a leap year), then January-December 31, 28, 31, 30 .."
+C16522,MonitorVramSteps,C,"debug monitor DISPLAY V-RAM: value added for each address digit"
+C1662E,MonitorMemorySteps,C,"MODIFY MEMORY: value added for each digit (6 address digits, then the value digits)"
+C166A2,MonitorVramDigitMoves,C,"MODIFY V-RAM: next digit for Left/Right"
+C16724,MonitorModifyVramSteps,C,MODIFY V-RAM: value added for each digit
+C167DA,MonitorRegisterDigitMoves,C,MODIFY REGISTER: next digit for Left/Right
+C16836,MonitorRegisterSteps,C,MODIFY REGISTER: value added for each value digit
+C16892,MonitorRegisterNames,C,"register names D0-D7, A0-A7, SR, PC (4 bytes each, MESS_OUT text)"
+C1704C,MonitorBlankRow,I,19 tile codes $FF ended by 0: the rows of MonitorCommandLine
+C17060,ScreenVersionTile,C,"tile $35 (5) written at fix address $7484 (top right) on the test menu and the hardware-test colour bars; the 5 seen in the MAME screenshots"
+C172BE,ColorBarsText,C,MESS_OUT data of the colour bars screen (RED GREEN BLUE WHITE)
+C17618,IoCheckText,C,MESS_OUT data of the I/O CHECK screen
+C17852,SoundTestItemTexts,C,"for each of the 4 sound test items, the text while playing and the normal text"
+C17872,SoundTestOffTextLit,C,SOUND OFF while selected (palette 1)
+C17880,SoundTestOffText,C,SOUND OFF
+C1788E,SoundTestRightTextLit,C,RIGHT while playing (sound command $5D)
+C17898,SoundTestRightText,C,RIGHT
+C178A2,SoundTestLeftTextLit,C,LEFT while playing (sound command $5C)
+C178AC,SoundTestLeftText,C,LEFT
+C178B6,SoundTestCenterTextLit,C,CENTER while playing (sound command $5E)
+C178C2,SoundTestCenterText,C,CENTER
+C178EA,SoundTestText,C,MESS_OUT data of the SOUND TEST screen
+C17A46,MemCardTestText,C,MESS_OUT data of the MEMORY CARD TEST screen
+C17A7A,MemCardTestOkText,C,MEMORY CARD TEST OK
+C17A96,MemCardTestErrorText,C,MEMORY CARD TEST ERROR
+C17B10,BackupClearText,C,MESS_OUT data of the BACKUP CLEAR screen
+C17C4C,HwCalendarFieldOrder,C,"hardware-test calendar: the field shown on each line (month, day, year, hour, minute, second)"
+C17C94,HwCalendarMax,C,"largest BCD value of each calendar field (12, 31, 23, 59, 59)"
+C17C9C,HwCalendarMin,C,smallest BCD value of each calendar field (month and day 1)
+C17D72,HwCalendarText,C,MESS_OUT data of SETTING UP THE CALENDAR (hardware test)
+C17EC8,EyecatchSteps,C,"10 step routines of the eyecatcher, by WorkIndex"
+C17EF0,EyecatchSpriteInit,I,MESS_OUT list sent first by Eyecatcher (writes sprite control data at VRAM $8400 and $8200)
+C18402,ControllerTypeTable,I,"6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) for each ID code read from the ports by ControllerSetup"
+C18ADA,HowToPlayButtonTable,C,"for each of the 4 buttons, the MESS_OUT data released and pressed"
+C18AFA,HowToPlayScreen,C,MESS_OUT data of the HOW_TO_PLAY frame
+C18E06,HowToPlayStick,I,MESS_OUT data of the joystick picture
+C18E50,HowToPlayButton1,C,"first button, released (palette $A)"
+C18E74,HowToPlayButton2,C,"second button, released"
+C18E96,HowToPlayButton3,C,"third button, released"
+C18EBC,HowToPlayButton4,C,"fourth button, released"
+C18EE2,HowToPlayButton1Lit,C,"first button, pressed (palette $B)"
+C18F06,HowToPlayButton2Lit,C,"second button, pressed"
+C18F28,HowToPlayButton3Lit,C,"third button, pressed"
+C18F4E,HowToPlayButton4Lit,C,"fourth button, pressed"
+C1F02E,EyecatchFadeIndex2,C,second part of EyecatchFadeIndex (used by a later eyecatcher step)
+C1F27E,EyecatchLogoTiles1,C,tile numbers of the first sprite group of the eyecatcher logo (EyecatchSetSprites)
+C1F2C6,EyecatchLogoTiles2,C,tile numbers of the second sprite group
+C1F30E,EyecatchFixMess,C,MESS_OUT list writing EyecatchFixTiles at fix address $71F6
+C1F32C,EyecatchFixTiles,C,fix tile numbers of the eyecatcher text line
+C1F34A,EyecatchTextTiles,I,"fix words ($F0xx: palette F, tile xx) drawn one by one by an eyecatcher step (pointer in ram_10FCE2)"
+C1F3CA,HowToPlayPalettes,C,"HowToPlay: 14 palettes copied to $400000, followed by the animation data (pointer kept in ram_10FCEE)"
+C1F58A,FbiScreenPalette,C,palette 1 of the FBI screen
+C1F5AA,FbiScreen,C,"MESS_OUT tiles of the FBI seal screen (WINNERS DON'T USE DRUGS) shown for 300 frames after the eyecatcher on an MVS with country code USA (BIOS_COUNTRY_CODE 1); never with SP-S2 (forced, scenario eyecatcher_us)"
+C1F652,JapanOnlyWarningText,C,"WARNING THIS GAME IS FOR USE IN JAPAN ONLY. .. shown for 300 frames after the eyecatcher with country code 0 (Japan); never with SP-S2 (forced, scenario eyecatcher_japan)"

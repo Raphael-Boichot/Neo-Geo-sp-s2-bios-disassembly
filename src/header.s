@@ -33,9 +33,11 @@
 	dc.l	loc_C00426
 	dc.l	loc_C00426
 	dc.l	loc_C00426
-dat_C00080:
+| SystemRomChecksum [W] checksum byte of the system ROM (NeoGeoDev wiki, SP-E: $4D here; the byte after it is the same); compared by the power-on test
+SystemRomChecksum:
 	dc.b	0x4D,0x4D
-dat_C00082:
+| SystemIdText [W] NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK CORPORATION (ID text, wiki); its bytes start the checksummed area
+SystemIdText:
 	.ascii	"NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK CORPORATION"
 	.org	0x00400,0xFF	| C000BF-C003FF free (833 bytes)
 | SystemType [W] system type byte, $80 = MVS (NeoGeoDev wiki System ROM); Reset copies the word $C00400 into BIOS_MVS_FLAG and BIOS_COUNTRY_CODE

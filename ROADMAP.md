@@ -10,8 +10,8 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
-| L2 traced and run | 9,252 instructions traced; 7,348 ran in MAME (79.4 %) over 75 scenarios, 6,541 without the forced ones; nothing ran outside the trace |
-| L3 names | 510 names (C 423, I 58, W 29); 1,103 automatic labels left: 0 `sub_`, 49 `dat_`, 15 `tbl_`, 1,039 `loc_` |
+| L2 traced and run | 9,252 instructions traced; 7,354 ran in MAME (79.5 %) over 77 scenarios, 6,541 without the forced ones; nothing ran outside the trace |
+| L3 names | 574 names (C 476, I 67, W 31); 1,039 automatic labels left, all `loc_` |
 | L4 RAM and registers | 225 RAM addresses used, 95 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
@@ -51,7 +51,7 @@ Not reachable: `CabinetSettingsOld` (`$C19CF6-$C1A105`), an older cabinet page a
 ## 2. Error and rare paths (L2): done
 
 Paths that need a fault, reached with `DEBUG_CMDS` breakpoints that fake the condition or with test
-builds; `tools/fault_scenarios.py` (28 scenarios) says which runs are forced.
+builds; `tools/fault_scenarios.py` (30 scenarios) says which runs are forced.
 
 - [x] Boot error screens (`BootError`, `$C16ADA`): work RAM, backup RAM, both palette banks, video RAM,
       calendar, system ROM, memory card, Z80, and the AES colour form (forced, `boot_error_*`)
@@ -86,12 +86,13 @@ builds; `tools/fault_scenarios.py` (28 scenarios) says which runs are forced.
   - [x] `boot.s`: CardStillInserted, GetSoftDipPointer (with SystemType, SystemRegion and the two texts)
   - [x] `calendar.s`: RtcReadBits, RtcReadBitsAlt, CheckCartridgeId (and the three ID texts)
   - [x] `test_mode.s`: all 92 routines, tables and texts, `CodeNumberDraw` renamed (it was `TestCodeNumberCard`)
-- [ ] Every `dat_` and `tbl_` named (64 left): text tables, menu tables, palettes, sprite data
+- [x] Every `dat_` and `tbl_` named (0 left): text tables, menu tables, palettes, sprite data; the FBI and
+      JAPAN ONLY screens found among them (run forced, `eyecatcher_us`, `eyecatcher_japan`)
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
-- [ ] Review the 58 I names (most are the 16-bit and type $80 card forms, never run: MAME has only the 8-bit card): confirm with a coverage run or a code read, or keep them as I with a reason
+- [ ] Review the 67 I names (most are the 16-bit and type $80 card forms, never run: MAME has only the 8-bit card): confirm with a coverage run or a code read, or keep them as I with a reason
 - [ ] Doubts list: one line per `?` name, kept in `symbols/`
 
-Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
+Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reached 2026-11-15); left: the I review and the doubts list.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 

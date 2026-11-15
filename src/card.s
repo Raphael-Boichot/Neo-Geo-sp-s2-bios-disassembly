@@ -514,7 +514,7 @@ loc_C13AAE:
 	lsr.w	#0x8,d1	| C13AB8
 	move.w	d1,(a0)+	| C13ABA
 	move.w	(ram_10FD16-A5_BASE,a5),(a0)+	| C13ABC
-	move.w	(dat_C11000,pc),(a0)+	| C13AC0
+	move.w	(CardFormatVersion,pc),(a0)+	| C13AC0
 	move.w	d0,(a0)+	| C13AC4
 	move.w	d0,(a0)+	| C13AC6
 	move.w	d0,(a0)+	| C13AC8
@@ -668,7 +668,7 @@ loc_C13C3C:
 	move.w	(ram_10FD16-A5_BASE,a5),(a0)	| C13C48
 	addq.l	#0x4,a0	| C13C4C
 	moveq	#0x0,d1	| C13C4E
-	move.b	(dat_C11001,pc),d1	| C13C50
+	move.b	(CardFormatVersionLo,pc),d1	| C13C50
 	move.w	d1,(a0)	| C13C54
 	addq.l	#0x4,a0	| C13C56
 	move.w	d0,(a0)	| C13C58
@@ -3738,7 +3738,7 @@ loc_C164D4:
 	move.l	(ram_10FD62-A5_BASE,a5),d0	| C164DE
 	move.w	(ram_10FD76-A5_BASE,a5),d2	| C164E2
 	lsl.w	#0x2,d2	| C164E6
-	move.l	(tbl_C16522,pc,d2.w),d2	| C164E8
+	move.l	(MonitorVramSteps,pc,d2.w),d2	| C164E8
 	andi.b	#0x1,d3	| C164EC
 	beq.b	loc_C164F4	| C164F0
 	neg.l	d2	| C164F2
@@ -3760,7 +3760,8 @@ loc_C16516:
 loc_C1651C:
 	move.l	d0,(ram_10FD62-A5_BASE,a5)	| C1651C
 	rts	| C16520
-tbl_C16522:
+| MonitorVramSteps [C] debug monitor DISPLAY V-RAM: value added for each address digit
+MonitorVramSteps:
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x20
 loc_C16536:
@@ -3840,7 +3841,7 @@ loc_C165F0:
 	beq.w	loc_C1665C	| C165F6
 	move.w	(ram_10FD76-A5_BASE,a5),d2	| C165FA
 	lsl.w	#0x2,d2	| C165FE
-	move.l	(tbl_C1662E,pc,d2.w),d2	| C16600
+	move.l	(MonitorMemorySteps,pc,d2.w),d2	| C16600
 	andi.b	#0x1,d3	| C16604
 	beq.b	loc_C1660C	| C16608
 	neg.l	d2	| C1660A
@@ -3854,7 +3855,8 @@ loc_C1660C:
 	movea.l	d0,a1	| C16626
 	move.w	(a1),(ram_10FD70-A5_BASE,a5)	| C16628
 	rts	| C1662C
-tbl_C1662E:
+| MonitorMemorySteps [C] MODIFY MEMORY: value added for each digit (6 address digits, then the value digits)
+MonitorMemorySteps:
 	dc.b	0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x02,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
@@ -3884,9 +3886,10 @@ MonitorModifyVram:
 	moveq	#0xA,d2	| C16694
 loc_C16696:
 	add.w	(ram_10FD76-A5_BASE,a5),d2	| C16696
-	move.b	(tbl_C166A2,pc,d2.w),(ram_10FD77-A5_BASE,a5)	| C1669A
+	move.b	(MonitorVramDigitMoves,pc,d2.w),(ram_10FD77-A5_BASE,a5)	| C1669A
 	rts	| C166A0
-tbl_C166A2:
+| MonitorVramDigitMoves [C] MODIFY V-RAM: next digit for Left/Right
+MonitorVramDigitMoves:
 	dc.b	0x00,0x01,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x02,0x00,0x01,0x09,0x02,0x03,0x04
 	dc.b	0x05,0x06,0x07,0x08
 loc_C166B6:
@@ -3895,7 +3898,7 @@ loc_C166B6:
 	beq.w	loc_C16752	| C166BC
 	move.w	(ram_10FD76-A5_BASE,a5),d2	| C166C0
 	lsl.w	#0x2,d2	| C166C4
-	move.l	(tbl_C16724,pc,d2.w),d2	| C166C6
+	move.l	(MonitorModifyVramSteps,pc,d2.w),d2	| C166C6
 	andi.b	#0x1,d3	| C166CA
 	beq.b	loc_C166D2	| C166CE
 	neg.l	d2	| C166D0
@@ -3927,7 +3930,8 @@ loc_C16708:
 	nop	| C16718
 	move.w	(REG_VRAMRW).l,(ram_10FD70-A5_BASE,a5)	| C1671A
 	rts	| C16722
-tbl_C16724:
+| MonitorModifyVramSteps [C] MODIFY V-RAM: value added for each digit
+MonitorModifyVramSteps:
 	dc.b	0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
@@ -3956,7 +3960,7 @@ MonitorModifyRegister:
 	moveq	#0x13,d0	| C16794
 loc_C16796:
 	lsl.w	#0x2,d0	| C16796
-	lea.l	(dat_C16892,pc),a2	| C16798
+	lea.l	(MonitorRegisterNames,pc),a2	| C16798
 	nop	| C1679C
 	move.l	(a2,d0.w),(a0)+	| C1679E
 	clr.w	(a0)+	| C167A2
@@ -3976,9 +3980,10 @@ loc_C167B8:
 	moveq	#0xE,d0	| C167CC
 loc_C167CE:
 	add.w	(ram_10FD76-A5_BASE,a5),d0	| C167CE
-	move.b	(tbl_C167DA,pc,d0.w),(ram_10FD77-A5_BASE,a5)	| C167D2
+	move.b	(MonitorRegisterDigitMoves,pc,d0.w),(ram_10FD77-A5_BASE,a5)	| C167D2
 	rts	| C167D8
-tbl_C167DA:
+| MonitorRegisterDigitMoves [C] MODIFY REGISTER: next digit for Left/Right
+MonitorRegisterDigitMoves:
 	dc.b	0x06,0x00,0x00,0x00,0x00,0x00,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x00,0x0D,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C
 loc_C167F6:
@@ -4005,13 +4010,14 @@ loc_C16824:
 	lea.l	(ram_10FD00-A5_BASE,a5),a4	| C1682A
 	move.l	(a4,d1.w),(ram_10FD70-A5_BASE,a5)	| C1682E
 	rts	| C16834
-tbl_C16836:
+| MonitorRegisterSteps [C] MODIFY REGISTER: value added for each value digit
+MonitorRegisterSteps:
 	dc.b	0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00
 	dc.b	0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
 loc_C16856:
 	subq.w	#0x6,d0	| C16856
 	lsl.w	#0x2,d0	| C16858
-	move.l	(tbl_C16836,pc,d0.w),d1	| C1685A
+	move.l	(MonitorRegisterSteps,pc,d0.w),d1	| C1685A
 	btst.b	#0x0,d3	| C1685E
 	bne.b	loc_C16866	| C16862
 	neg.l	d1	| C16864
@@ -4030,7 +4036,8 @@ loc_C1686C:
 	jsr	(MonitorShowRegisters,pc)	| C1688C
 loc_C16890:
 	rts	| C16890
-dat_C16892:
+| MonitorRegisterNames [C] register names D0-D7, A0-A7, SR, PC (4 bytes each, MESS_OUT text)
+MonitorRegisterNames:
 	dc.b	0x44,0x30,0x20,0xFF,0x44,0x31,0x20,0xFF,0x44,0x32,0x20,0xFF,0x44,0x33,0x20,0xFF
 	dc.b	0x44,0x34,0x20,0xFF,0x44,0x35,0x20,0xFF,0x44,0x36,0x20,0xFF,0x44,0x37,0x20,0xFF
 	dc.b	0x41,0x30,0x20,0xFF,0x41,0x31,0x20,0xFF,0x41,0x32,0x20,0xFF,0x41,0x33,0x20,0xFF

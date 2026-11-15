@@ -21,7 +21,7 @@ SystemIo:
 	addq.l	#0x1,(FrameCounter-A5_BASE,a5)	| C11680
 	jsr	(MvsLedUpdate,pc)	| C11684
 	jsr	(ReadControllers,pc)	| C11688
-	tst.w	(dat_C116C6).l	| C1168C
+	tst.w	(SystemIoBuildFlag).l	| C1168C
 	bne.w	loc_C11696	| C11692
 loc_C11696:
 	tst.b	(ram_10FEE1-A5_BASE,a5)	| C11696
@@ -42,7 +42,8 @@ loc_C116B2:
 	jsr	(PlayTimeCount,pc)	| C116C0
 loc_C116C4:
 	rts	| C116C4
-dat_C116C6:
+| SystemIoBuildFlag [I] word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch
+SystemIoBuildFlag:
 	dc.b	0x00,0x01
 | CheckPlayerStart [C] SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3
 CheckPlayerStart:
@@ -113,20 +114,22 @@ loc_C1179A:
 	move.b	(REG_DIPSW).l,d1	| C1179A
 	andi.b	#0x40,d1	| C117A0
 	beq.w	loc_C117B8	| C117A4
-	move.b	(tbl_C117C2,pc,d0.w),d1	| C117A8
+	move.b	(StartCreditsNeeded,pc,d0.w),d1	| C117A8
 	move.b	(Credits).l,d2	| C117AC
 	cmp.b	d1,d2	| C117B2
 	bcc.b	loc_C117B8	| C117B4
 	addq.b	#0x4,d0	| C117B6
 loc_C117B8:
-	move.b	(tbl_C117C6,pc,d0.w),d0	| C117B8
+	move.b	(StartFlagResult,pc,d0.w),d0	| C117B8
 loc_C117BC:
 	move.b	d0,(BIOS_START_FLAG-A5_BASE,a5)	| C117BC
 loc_C117C0:
 	rts	| C117C0
-tbl_C117C2:
+| StartCreditsNeeded [C] credits needed for the start bits 1-3 (P1, P2, both): 1, 1, 2 (StartCreditCheck)
+StartCreditsNeeded:
 	dc.b	0x02,0x01,0x01,0x02
-tbl_C117C6:
+| StartFlagResult [C] BIOS_START_FLAG for the start bits with enough credits (first 4) or not (last 4: 0)
+StartFlagResult:
 	dc.b	0x03,0x01,0x02,0x03,0x00,0x00,0x00,0x00
 | CreditCheck [W] target of CREDIT_CHECK: MVS, free play off (hard DIP 7, bit 6 of REG_DIPSW): BCD check of the requested credits ($10FDB0) against Credits
 CreditCheck:
@@ -257,7 +260,7 @@ loc_C11954:
 	move.b	d0,(REG_DIPSW).l	| C11954
 	add.b	(a0)+,d0	| C1195A
 	dbra	d7,loc_C11954	| C1195C
-	lea.l	(dat_C00082).l,a0	| C11960
+	lea.l	(SystemIdText).l,a0	| C11960
 	move.l	#0x1FF7E,d7	| C11966
 loc_C1196C:
 	move.b	d0,(REG_DIPSW).l	| C1196C
@@ -265,7 +268,7 @@ loc_C1196C:
 	subq.l	#0x1,d7	| C11974
 	bne.b	loc_C1196C	| C11976
 	moveq	#0x4,d6	| C11978
-	cmp.b	(dat_C00080).l,d0	| C1197A
+	cmp.b	(SystemRomChecksum).l,d0	| C1197A
 	bne.w	loc_C11A64	| C11980
 loc_C11984:
 	move.b	#0x5,(BIOS_CRDF).l	| C11984

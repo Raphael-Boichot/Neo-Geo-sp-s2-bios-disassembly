@@ -80,7 +80,7 @@ TestMenu:
 	clr.w	(a0)+	| C190BA
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C190BC
 	move.w	#0x7484,(REG_VRAMADDR).l	| C190C0
-	move.w	(dat_C17060,pc),(REG_VRAMRW).l	| C190C8
+	move.w	(ScreenVersionTile,pc),(REG_VRAMRW).l	| C190C8
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C190D0
 	move.w	(WorkIndex-A5_BASE,a5),(WorkIndexNew-A5_BASE,a5)	| C190D4
 	jsr	(TestMenuDrawCursor,pc)	| C190DA

@@ -14,7 +14,7 @@ Eyecatcher:
 loc_C17E4C:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17E4C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17E50
-	move.l	#dat_C17EF0,(a0)+	| C17E54
+	move.l	#EyecatchSpriteInit,(a0)+	| C17E54
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17E5A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17E5E
 	jsr	(WaitFrame,pc)	| C17E62
@@ -46,10 +46,11 @@ loc_C17EA8:
 loc_C17EBA:
 	move.w	(WorkIndex-A5_BASE,a5),d0	| C17EBA
 	lsl.w	#0x2,d0	| C17EBE
-	movea.l	(tbl_C17EC8,pc,d0.w),a0	| C17EC0
+	movea.l	(EyecatchSteps,pc,d0.w),a0	| C17EC0
 	jsr	(a0)	| C17EC4
 	bra.b	loc_C17E4C	| C17EC6
-tbl_C17EC8:
+| EyecatchSteps [C] 10 step routines of the eyecatcher, by WorkIndex
+EyecatchSteps:
 	dc.l	loc_C17F0E
 	dc.l	loc_C18012
 	dc.l	loc_C18074
@@ -60,7 +61,8 @@ tbl_C17EC8:
 	dc.l	loc_C181AE
 	dc.l	loc_C18208
 	dc.l	loc_C182A6
-dat_C17EF0:
+| EyecatchSpriteInit [I] MESS_OUT list sent first by Eyecatcher (writes sprite control data at VRAM $8400 and $8200)
+EyecatchSpriteInit:
 	dc.b	0x03,0x01,0x00,0x24,0x01,0x02,0x00,0x03,0x84,0x01,0x00,0x04,0x00,0x10,0xFC,0x00
 	dc.b	0x00,0x03,0x82,0x01,0x00,0x06,0x00,0x03,0x80,0x01,0x00,0x06,0x00,0x00
 loc_C17F0E:
@@ -90,13 +92,13 @@ loc_C17F4A:
 	jsr	(FixClear,pc)	| C17F62
 	jsr	(LspFirst,pc)	| C17F66
 	move.l	#0xDDD0000,(0x400002).l	| C17F6A
-	lea.l	(dat_C1F27E).l,a0	| C17F74
+	lea.l	(EyecatchLogoTiles1).l,a0	| C17F74
 	move.w	#0x40,d0	| C17F7A
 	move.b	(CART_EYECATCH_BANK).w,d2	| C17F7E
 	lsl.w	#0x8,d2	| C17F82
 	move.w	#0xF01,d1	| C17F84
 	jsr	(EyecatchSetSprites,pc)	| C17F88
-	lea.l	(dat_C1F2C6).l,a0	| C17F8C
+	lea.l	(EyecatchLogoTiles2).l,a0	| C17F8C
 	move.w	#0x4C0,d0	| C17F92
 	move.w	#0xF00,d1	| C17F96
 	jsr	(EyecatchSetSprites,pc)	| C17F9A
@@ -107,7 +109,7 @@ loc_C17FAC:
 	move.w	d2,(a1)	| C17FAC
 	dbra	d6,loc_C17FAC	| C17FAE
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17FB2
-	move.l	#dat_C1F30E,(a0)+	| C17FB6
+	move.l	#EyecatchFixMess,(a0)+	| C17FB6
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17FBC
 	lea.l	(ram_10FC48-A5_BASE,a5),a0	| C17FC0
 	move.w	#0xE404,(a0)+	| C17FC4
@@ -189,7 +191,7 @@ loc_C18082:
 	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C180C0
 	move.w	#0x0,(ram_10FCDE-A5_BASE,a5)	| C180C6
 	move.w	#0x71B0,(ram_10FCE0-A5_BASE,a5)	| C180CC
-	move.l	#dat_C1F34A,(ram_10FCE2-A5_BASE,a5)	| C180D2
+	move.l	#EyecatchTextTiles,(ram_10FCE2-A5_BASE,a5)	| C180D2
 loc_C180DA:
 	rts	| C180DA
 loc_C180DC:
@@ -258,7 +260,7 @@ loc_C181AE:
 	andi.w	#0x1,d0	| C181B8
 	bne.b	loc_C18206	| C181BC
 	move.w	(WorkIndexNew-A5_BASE,a5),d1	| C181BE
-	lea.l	(dat_C1F02E).l,a0	| C181C2
+	lea.l	(EyecatchFadeIndex2).l,a0	| C181C2
 	moveq	#0x0,d0	| C181C8
 	move.b	(a0,d1.w),d0	| C181CA
 	bsr.w	EyecatchSetColours	| C181CE
@@ -295,7 +297,7 @@ loc_C1822C:
 	move.b	d0,(REG_BRDFIX).l	| C18240
 	clr.l	(0x400002).l	| C18246
 	lea.l	(0x400020).l,a0	| C1824C
-	lea.l	(dat_C1F58A).l,a1	| C18252
+	lea.l	(FbiScreenPalette).l,a1	| C18252
 	moveq	#0x7,d7	| C18258
 loc_C1825A:
 	move.l	(a1)+,(a0)+	| C1825A
@@ -303,7 +305,7 @@ loc_C1825A:
 	jsr	(ClearFixLayer,pc)	| C18260
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18264
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C18268
-	move.l	#dat_C1F5AA,(a0)+	| C1826C
+	move.l	#FbiScreen,(a0)+	| C1826C
 loc_C18272:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C18272
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18276
@@ -315,7 +317,7 @@ loc_C18288:
 	jsr	(ClearFixLayer,pc)	| C18292
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18296
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1829A
-	move.l	#dat_C1F652,(a0)+	| C1829E
+	move.l	#JapanOnlyWarningText,(a0)+	| C1829E
 	bra.b	loc_C18272	| C182A4
 loc_C182A6:
 	subq.w	#0x1,(ram_10FCDC-A5_BASE,a5)	| C182A6

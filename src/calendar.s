@@ -229,7 +229,7 @@ WriteRtcCtrlAlt:
 	rts	| C12EF6
 | CheckCalendarDate [I] converts BIOS_YEAR/BIOS_MONTH.. from BCD and checks them against limits (dat_C12FEC); d7 non-zero when invalid; runs before SetupCalendar in MAME
 CheckCalendarDate:
-	lea.l	(dat_C12FEC,pc),a1	| C12EF8
+	lea.l	(MonthDaysTable,pc),a1	| C12EF8
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12EFC
 	jsr	(BcdToBinary,pc)	| C12F00
 	move.b	d0,(ram_10FD00-A5_BASE,a5)	| C12F04
@@ -275,7 +275,7 @@ loc_C12F68:
 	add.w	d0,d7	| C12F68
 	subq.w	#0x1,d7	| C12F6A
 	move.b	(ram_10FD00-A5_BASE,a5),d0	| C12F6C
-	move.b	(tbl_C12F88,pc,d0.w),d0	| C12F70
+	move.b	(YearWeekdayTable,pc,d0.w),d0	| C12F70
 	add.w	d0,d7	| C12F74
 	divu.w	#0x7,d7	| C12F76
 	swap	d7	| C12F7A
@@ -285,7 +285,8 @@ loc_C12F68:
 loc_C12F84:
 	moveq	#0x1,d7	| C12F84
 	rts	| C12F86
-tbl_C12F88:
+| YearWeekdayTable [C] 100 bytes: weekday offset of each year 00-99 (CheckCalendarDate computes the weekday from it)
+YearWeekdayTable:
 	dc.b	0x06,0x01,0x02,0x03,0x04,0x06,0x00,0x01,0x02,0x04,0x05,0x06,0x00,0x02,0x03,0x04
 	dc.b	0x05,0x00,0x01,0x02,0x03,0x05,0x06,0x00,0x01,0x03,0x04,0x05,0x06,0x01,0x02,0x03
 	dc.b	0x04,0x06,0x00,0x01,0x02,0x04,0x05,0x06,0x00,0x02,0x03,0x04,0x05,0x00,0x01,0x02
@@ -293,7 +294,8 @@ tbl_C12F88:
 	dc.b	0x02,0x04,0x05,0x06,0x00,0x02,0x03,0x04,0x05,0x00,0x01,0x02,0x03,0x05,0x06,0x00
 	dc.b	0x01,0x03,0x04,0x05,0x06,0x01,0x02,0x03,0x04,0x06,0x01,0x02,0x03,0x05,0x06,0x00
 	dc.b	0x01,0x03,0x04,0x05
-dat_C12FEC:
+| MonthDaysTable [C] days per month: 29 (February of a leap year), then January-December 31, 28, 31, 30 ..
+MonthDaysTable:
 	dc.b	0x1D,0x1F,0x1C,0x1F,0x1E,0x1F,0x1E,0x1F,0x1F,0x1E,0x1F,0x1E,0x1F,0x00
 | CheckCartridgeId [C] slot scan, per slot: Z set (d7 = 0) for a game: CART_NEOGEO_ID = NEO-GEO and the code at CART_SECURITY_PTR (even address) equal to the 122 bytes at $C146A2-$C1471B of the system ROM's card code. CART_NEOGEO_ID = NEO-CLN: a cartridge with its own calendar chip (I: a service cartridge for setting the time): stores the slot in NeoClnSlot, clears the first long of BackupRamSignature, copies the cartridge calendar to the board calendar (ReadCalendarAlt, SetupCalendar) and jumps to HardwareTest, which opens on its calendar screen. NoGoIdText: sets SlotNumberMode, clears the first long of BackupRamSignature and SlotTable, returns Z set (a game). MAME: both special IDs ran (scenarios neo_cln_cartridge, nogo_cartridge)
 CheckCartridgeId:

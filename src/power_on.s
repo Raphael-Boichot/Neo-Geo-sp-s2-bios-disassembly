@@ -99,7 +99,7 @@ loc_C11C36:
 	move.b	d0,(REG_DIPSW).l	| C11C36
 	add.b	(a0)+,d0	| C11C3C
 	dbra	d7,loc_C11C36	| C11C3E
-	lea.l	(dat_C00082).l,a0	| C11C42
+	lea.l	(SystemIdText).l,a0	| C11C42
 	move.l	#0x1FF7E,d7	| C11C48
 loc_C11C4E:
 	move.b	d0,(REG_DIPSW).l	| C11C4E
@@ -107,7 +107,7 @@ loc_C11C4E:
 	subq.l	#0x1,d7	| C11C56
 	bne.b	loc_C11C4E	| C11C58
 	moveq	#0x6,d6	| C11C5A
-	cmp.b	(dat_C00080).l,d0	| C11C5C
+	cmp.b	(SystemRomChecksum).l,d0	| C11C5C
 	bne.w	loc_C11D46	| C11C62
 loc_C11C66:
 	move.b	#0x5,(BIOS_CRDF).l	| C11C66
@@ -891,9 +891,10 @@ GetGameHourCountsPtr:
 	lea.l	(SlotTable-A4_BASE,a4),a0	| C12562
 	move.w	0x2(a0,d0.w),d0	| C12566
 	lsl.w	#0x2,d0	| C1256A
-	movea.l	(tbl_C12572,pc,d0.w),a0	| C1256C
+	movea.l	(BookGameHoursTable,pc,d0.w),a0	| C1256C
 	rts	| C12570
-tbl_C12572:
+| BookGameHoursTable [I] $D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)
+BookGameHoursTable:
 	dc.b	0x00,0xD0,0xA1,0xA0,0x00,0xD0,0xA2,0x00,0x00,0xD0,0xA2,0x60,0x00,0xD0,0xA2,0xC0
 	dc.b	0x00,0xD0,0xA3,0x20,0x00,0xD0,0xA3,0x80,0x00,0xD0,0xA3,0xE0,0x00,0xD0,0xA4,0x40
 | BookClearDatedRecord [C] clears the 16-byte record d0 of the ring at a0 and stores LastBootDate in it

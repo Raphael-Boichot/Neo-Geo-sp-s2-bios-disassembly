@@ -148,10 +148,10 @@ HwTestColorBars:
 	jsr	(ClearFixLayer,pc)	| C1727C
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17280
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17284
-	move.l	#dat_C172BE,(a0)+	| C17288
+	move.l	#ColorBarsText,(a0)+	| C17288
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1728E
 	move.w	#0x7484,(REG_VRAMADDR).l	| C17292
-	move.w	(dat_C17060,pc),(REG_VRAMRW).l	| C1729A
+	move.w	(ScreenVersionTile,pc),(REG_VRAMRW).l	| C1729A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C172A2
 	move.w	#0x3,(WorkIndex-A5_BASE,a5)	| C172A6
 	rts	| C172AC
@@ -162,7 +162,8 @@ HwTestColorBarsFrame:
 	move.w	#0x4,(WorkIndex-A5_BASE,a5)	| C172B6
 loc_C172BC:
 	rts	| C172BC
-dat_C172BE:
+| ColorBarsText [C] MESS_OUT data of the colour bars screen (RED GREEN BLUE WHITE)
+ColorBarsText:
 	dc.b	0x00,0x03,0x70,0x69,0x01,0x08
 	.ascii	"  RED    GREEN     BLUE    WHITE"
 	dc.b	0xFF,0xFF,0x00,0x03,0x70,0x6D,0x11,0x08,0x20,0x20,0x20,0x20,0x20,0x20,0xFF,0xFF
@@ -195,7 +196,7 @@ loc_C173C2:
 	move.b	d0,(ram_10FCDB-A5_BASE,a5)	| C173C2
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C173C6
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C173CA
-	move.l	#dat_C17618,(a0)+	| C173CE
+	move.l	#IoCheckText,(a0)+	| C173CE
 	move.b	(REG_DIPSW).l,d0	| C173D4
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C173DA
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C173DE
@@ -391,7 +392,8 @@ loc_C175FC:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1760E
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17612
 	rts	| C17616
-dat_C17618:
+| IoCheckText [C] MESS_OUT data of the I/O CHECK screen
+IoCheckText:
 	dc.b	0x00,0x01,0x00,0xFF,0x20,0x02,0x00,0x03,0x71,0xE5,0x00,0x07
 	.ascii	"I/O CHECK"
 	dc.b	0xFF,0x00,0x03,0x71,0x87,0x00,0x07,0x50,0x31,0x20,0x50,0x32,0xFF,0x00,0x03,0x70
@@ -429,7 +431,7 @@ HwTestSound:
 	jsr	(ClearFixLayer,pc)	| C1772A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1772E
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17732
-	move.l	#dat_C178EA,(a0)+	| C17736
+	move.l	#SoundTestText,(a0)+	| C17736
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1773C
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17740
 	clr.w	(ram_10FCDE-A5_BASE,a5)	| C17744
@@ -508,7 +510,7 @@ SoundTestDrawItems:
 	clr.l	(a0)+	| C17812
 	move.w	#0x3,(a0)+	| C17814
 	move.w	#0x720A,(a0)+	| C17818
-	lea.l	(dat_C17852,pc),a1	| C1781C
+	lea.l	(SoundTestItemTexts,pc),a1	| C1781C
 	moveq	#0x0,d7	| C17820
 loc_C17822:
 	move.l	(a1),d1	| C17822
@@ -528,40 +530,49 @@ loc_C1782E:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17848
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1784C
 	rts	| C17850
-dat_C17852:
-	dc.l	dat_C17872
-	dc.l	dat_C17880
-	dc.l	dat_C1788E
-	dc.l	dat_C17898
-	dc.l	dat_C178A2
-	dc.l	dat_C178AC
-	dc.l	dat_C178B6
-	dc.l	dat_C178C2
-dat_C17872:
+| SoundTestItemTexts [C] for each of the 4 sound test items, the text while playing and the normal text
+SoundTestItemTexts:
+	dc.l	SoundTestOffTextLit
+	dc.l	SoundTestOffText
+	dc.l	SoundTestRightTextLit
+	dc.l	SoundTestRightText
+	dc.l	SoundTestLeftTextLit
+	dc.l	SoundTestLeftText
+	dc.l	SoundTestCenterTextLit
+	dc.l	SoundTestCenterText
+| SoundTestOffTextLit [C] SOUND OFF while selected (palette 1)
+SoundTestOffTextLit:
 	dc.b	0x11,0x08
 	.ascii	"SOUND OFF"
 	dc.b	0xFF,0x00,0x0B
-dat_C17880:
+| SoundTestOffText [C] SOUND OFF
+SoundTestOffText:
 	dc.b	0x01,0x08
 	.ascii	"SOUND OFF"
 	dc.b	0xFF,0x00,0x0B
-dat_C1788E:
+| SoundTestRightTextLit [C] RIGHT while playing (sound command $5D)
+SoundTestRightTextLit:
 	dc.b	0x11,0x08
 	.ascii	"RIGHT"
 	dc.b	0xFF,0x00,0x0B
-dat_C17898:
+| SoundTestRightText [C] RIGHT
+SoundTestRightText:
 	dc.b	0x01,0x08
 	.ascii	"RIGHT"
 	dc.b	0xFF,0x00,0x0B
-dat_C178A2:
+| SoundTestLeftTextLit [C] LEFT while playing (sound command $5C)
+SoundTestLeftTextLit:
 	dc.b	0x11,0x08,0x4C,0x45,0x46,0x54,0xFF,0xFF,0x00,0x0B
-dat_C178AC:
+| SoundTestLeftText [C] LEFT
+SoundTestLeftText:
 	dc.b	0x01,0x08,0x4C,0x45,0x46,0x54,0xFF,0xFF,0x00,0x0B
-dat_C178B6:
+| SoundTestCenterTextLit [C] CENTER while playing (sound command $5E)
+SoundTestCenterTextLit:
 	dc.b	0x11,0x08
 	.ascii	"CENTER"
 	dc.b	0xFF,0xFF,0x00,0x0B
-dat_C178C2:
+| SoundTestCenterText [C] CENTER
+SoundTestCenterText:
 	dc.b	0x01,0x08
 	.ascii	"CENTER"
 	dc.b	0xFF,0xFF,0x00,0x0B
@@ -573,7 +584,8 @@ loc_C178D8:
 	dbra	d7,loc_C178D8	| C178DC
 	move.b	#0x7,(REG_SOUND).l	| C178E0
 	rts	| C178E8
-dat_C178EA:
+| SoundTestText [C] MESS_OUT data of the SOUND TEST screen
+SoundTestText:
 	dc.b	0x00,0x03,0x71,0x87,0x01,0x08
 	.ascii	"SOUND TEST"
 	dc.b	0xFF,0xFF,0x00,0x00
@@ -582,7 +594,7 @@ HwTestMemCard:
 	jsr	(ClearFixLayer,pc)	| C178FE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17902
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17906
-	move.l	#dat_C17A46,(a0)+	| C1790A
+	move.l	#MemCardTestText,(a0)+	| C1790A
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17910
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17914
 	move.w	#0x9,(WorkIndex-A5_BASE,a5)	| C17918
@@ -661,10 +673,10 @@ loc_C179E6:
 	cmp.b	d0,d3	| C179FC
 	bne.w	loc_C17A0C	| C179FE
 	dbra	d7,loc_C179E6	| C17A02
-	lea.l	(dat_C17A7A,pc),a1	| C17A06
+	lea.l	(MemCardTestOkText,pc),a1	| C17A06
 	bra.b	loc_C17A10	| C17A0A
 loc_C17A0C:
-	lea.l	(dat_C17A96,pc),a1	| C17A0C
+	lea.l	(MemCardTestErrorText,pc),a1	| C17A0C
 loc_C17A10:
 	move.b	d0,(REG_CRDLOCK2).l	| C17A10
 	move.b	d0,(REG_CRDLOCK1).l	| C17A16
@@ -681,17 +693,20 @@ loc_C17A36:
 	move.w	#0xA,(WorkIndex-A5_BASE,a5)	| C17A3E
 loc_C17A44:
 	rts	| C17A44
-dat_C17A46:
+| MemCardTestText [C] MESS_OUT data of the MEMORY CARD TEST screen
+MemCardTestText:
 	dc.b	0x00,0x03,0x71,0x86,0x01,0x08
 	.ascii	"MEMORY CARD TEST"
 	dc.b	0xFF,0xFF,0x00,0x03,0x70,0xEA,0x01,0x08
 	.ascii	"INSERT MEMORY CARD"
 	dc.b	0xFF,0xFF,0x00,0x00
-dat_C17A7A:
+| MemCardTestOkText [C] MEMORY CARD TEST OK
+MemCardTestOkText:
 	dc.b	0x00,0x03,0x70,0xEC,0x01,0x08
 	.ascii	"MEMORY CARD TEST OK"
 	dc.b	0xFF,0x00,0x00
-dat_C17A96:
+| MemCardTestErrorText [C] MEMORY CARD TEST ERROR
+MemCardTestErrorText:
 	dc.b	0x00,0x03,0x70,0xEC,0x01,0x08
 	.ascii	"MEMORY CARD TEST ERROR"
 	dc.b	0xFF,0xFF,0x00,0x00
@@ -700,7 +715,7 @@ HwTestBackupClear:
 	jsr	(ClearFixLayer,pc)	| C17AB6
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17ABA
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17ABE
-	move.l	#dat_C17B10,(a0)+	| C17AC2
+	move.l	#BackupClearText,(a0)+	| C17AC2
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17AC8
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17ACC
 	move.w	#0xB,(WorkIndex-A5_BASE,a5)	| C17AD0
@@ -725,7 +740,8 @@ loc_C17B08:
 	move.w	#0xC,(WorkIndex-A5_BASE,a5)	| C17B08
 loc_C17B0E:
 	rts	| C17B0E
-dat_C17B10:
+| BackupClearText [C] MESS_OUT data of the BACKUP CLEAR screen
+BackupClearText:
 	dc.b	0x00,0x03,0x71,0x49,0x01,0x08
 	.ascii	"BACKUP CLEAR"
 	dc.b	0xFF,0xFF,0x00,0x03,0x71,0x0C,0x01,0x08
@@ -742,7 +758,7 @@ HwTestCalendar:
 	moveq	#0x7,d6	| C17B7A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17B7C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17B80
-	move.l	#dat_C17D72,(a0)+	| C17B84
+	move.l	#HwCalendarText,(a0)+	| C17B84
 	clr.l	(a0)+	| C17B8A
 	move.w	#0x720A,d2	| C17B8C
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C17B90
@@ -801,7 +817,8 @@ loc_C17C3E:
 	move.w	d0,(WorkIndexNew-A5_BASE,a5)	| C17C46
 loc_C17C4A:
 	rts	| C17C4A
-tbl_C17C4C:
+| HwCalendarFieldOrder [C] hardware-test calendar: the field shown on each line (month, day, year, hour, minute, second)
+HwCalendarFieldOrder:
 	dc.b	0x01,0x02,0x00,0x04,0x05,0x06
 loc_C17C52:
 	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C17C52
@@ -815,23 +832,25 @@ loc_C17C68:
 	moveq	#0x0,d2	| C17C68
 	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C17C6A
 	lea.l	(BIOS_YEAR-A5_BASE,a5),a1	| C17C6E
-	move.b	(tbl_C17C4C,pc,d0.w),d2	| C17C72
+	move.b	(HwCalendarFieldOrder,pc,d0.w),d2	| C17C72
 	move.b	(a1,d2.w),d3	| C17C76
 loc_C17C7A:
 	sub.b	d4,d4	| C17C7A
 	abcd	d1,d3	| C17C7C
 	tst.b	d2	| C17C7E
 	beq.b	loc_C17C8E	| C17C80
-	cmp.b	(tbl_C17C94,pc,d2.w),d3	| C17C82
+	cmp.b	(HwCalendarMax,pc,d2.w),d3	| C17C82
 	bhi.b	loc_C17C7A	| C17C86
-	cmp.b	(tbl_C17C9C,pc,d2.w),d3	| C17C88
+	cmp.b	(HwCalendarMin,pc,d2.w),d3	| C17C88
 	bcs.b	loc_C17C7A	| C17C8C
 loc_C17C8E:
 	move.b	d3,(a1,d2.w)	| C17C8E
 	rts	| C17C92
-tbl_C17C94:
+| HwCalendarMax [C] largest BCD value of each calendar field (12, 31, 23, 59, 59)
+HwCalendarMax:
 	dc.b	0x00,0x12,0x31,0x00,0x23,0x59,0x59,0x00
-tbl_C17C9C:
+| HwCalendarMin [C] smallest BCD value of each calendar field (month and day 1)
+HwCalendarMin:
 	dc.b	0x00,0x01,0x01,0x00,0x00,0x00,0x00,0x00
 loc_C17CA4:
 	move.b	(NeoClnSlot).l,d5	| C17CA4
@@ -899,7 +918,8 @@ loc_C17D60:
 	move.w	#0xFF00,(a0)+	| C17D6A
 	addq.w	#0x1,d6	| C17D6E
 	rts	| C17D70
-dat_C17D72:
+| HwCalendarText [C] MESS_OUT data of SETTING UP THE CALENDAR (hardware test)
+HwCalendarText:
 	dc.b	0x00,0x03,0x71,0x04,0x01,0x08
 	.ascii	"SETTING UP THE CALENDAR"
 	dc.b	0xFF,0x00,0x03,0x71,0x47,0x01,0x08

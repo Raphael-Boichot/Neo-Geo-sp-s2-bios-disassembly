@@ -25,6 +25,7 @@ CallStacks:	equ 0f957h	; [C] return addresses of commands 35h/36h (call, return)
 TimerAShadow:	equ 0faceh	; [C] copy of the timer A value: +4 YM $24, +5 YM $25 (command 37h)
 FmShadowA:	equ 0fadeh	; [I] FM operator register copies of channels 1-2 (port A), written by the instrument loader sub_162E
 FmShadowB:	equ 0fb65h	; [I] the same for channels 3-4 (port B)
+ModulationBlocks:	equ 0fc80h	; [I] 16-byte block per channel (ModulationBlock), loaded from the instrument (LoadModulation)
 ChannelOwner:	equ 0fcd9h	; [C] one byte per channel number (0-14): written by sub_28EC with b & 7 when a sound takes the channel
 Channel1:	equ 0fce8h	; [C] 16-byte block of song channel 1 (FM): +0 flags, +9/+10 sequence pointer, +11/+12 sequence start (PlaySound)
 Channel2:	equ 0fcf8h	; [C] song channel 2 (FM)
@@ -51,7 +52,8 @@ EffectParam:	equ 0fe1ah	; [I] effect header byte +13 (sub_0881); also command 51
 EngineStack:	equ 0fe20h	; [C] stack pointer saved by TimerIrq; commands 40h, 47h and 55h restore it to leave the channel
 Tempo:	equ 0fe2bh	; [I] song header byte +23, also command 33h; applied by sub_28FE
 NoNewCommand:	equ 0fe2ch	; [C] $FF once TakeCommand has taken the command; the NMI clears it
-SoundLock:	equ 0fe30h	; [C] $FF from Init: PlaySound plays nothing until command 7 clears it (MAME)
+SoundLock:	equ 0fe30h	; [C] $FF from Init and commands 4 and 5: PlaySound plays nothing until command 7 or 8 clears it (MAME)
+EffectLock:	equ 0fe31h	; [C] set by commands 4 and 6, cleared by 7 and 9: effects are refused while it is set
 CurrentChannel:	equ 0fe38h	; [C] the channel number the engine is working on (0-14)
 SoundCommand:	equ 0fe39h	; [C] the command being run
 EffectCommand:	equ 0fe3ah	; [C] the command number of the effect being started (sub_0881)
@@ -81,7 +83,8 @@ RstDelayShort:
 RstDelay:
 	jp Delay	; 0010
 	defb 000h	; 0013
-dat_0014:
+; RomChecksum [C] checksum byte: the sum of $0000-$EFFF (this byte included) is $D4 (Command10SelfTest; checked here: $D4)
+RomChecksum:
 	defb 0d4h,02ch,000h,000h	; 0014
 ; RstYmWriteA [C] rst 18h: jp YmWriteA
 RstYmWriteA:
@@ -125,7 +128,7 @@ Nmi:
 	or a	; 0083
 	jr nz,loc_00A8	; 0084
 	ld a,080h	; 0086
-	call sub_0B66	; 0088
+	call QueueCheckFull	; 0088
 	ld a,(QueueWrite)	; 008B
 	and 007h	; 008E
 	ld e,a	; 0090
@@ -174,12 +177,12 @@ Init:
 	ld a,0ffh	; 00E7
 	ld (NoNewCommand),a	; 00E9
 	ld (SoundLock),a	; 00EC
-	ld (0fe31h),a	; 00EF
+	ld (EffectLock),a	; 00EF
 	ld a,003h	; 00F2
 	ld (0fe25h),a	; 00F4
-	call sub_09A3	; 00F7
-	call sub_09D5	; 00FA
-	call sub_09BC	; 00FD
+	call FmKeyOffAll	; 00F7
+	call AdpcmKeyOff	; 00FA
+	call SsgSilence	; 00FD
 	ld a,001h	; 0100
 	out (PORT_C0),a	; 0102
 	ld de,02730h	; 0104
@@ -195,7 +198,7 @@ Init:
 	ld (0fe29h),a	; 0120
 	ld (0fe28h),a	; 0123
 	ld a,003h	; 0126
-	call sub_2910	; 0128
+	call SetTimerA	; 0128
 	ld a,00ah	; 012B
 	ld (0fe1eh),a	; 012D
 	call SilenceAll	; 0130
@@ -298,7 +301,7 @@ sub_01CE:
 	cp b	; 01DA
 	pop bc	; 01DB
 	jr z,loc_01E3	; 01DC
-	ld a,(0fe31h)	; 01DE
+	ld a,(EffectLock)	; 01DE
 	or a	; 01E1
 	ret nz	; 01E2
 loc_01E3:
@@ -602,7 +605,7 @@ loc_03AA:
 	ld l,e	; 03B7
 	push hl	; 03B8
 	pop ix	; 03B9
-	ld a,(0fe31h)	; 03BB
+	ld a,(EffectLock)	; 03BB
 	or a	; 03BE
 	ret nz	; 03BF
 	call sub_042A	; 03C0
@@ -638,7 +641,7 @@ loc_03F4:
 	ld a,00dh	; 0402
 loc_0404:
 	ld b,007h	; 0404
-	call sub_28EC	; 0406
+	call SetChannelOwner	; 0406
 	ld (iy+0),000h	; 0409
 	ld a,(ix+3)	; 040D
 	or 0c0h	; 0410
@@ -723,7 +726,7 @@ sub_0498:
 	cp b	; 04B1
 	pop bc	; 04B2
 	jr z,loc_04BC	; 04B3
-	ld a,(0fe31h)	; 04B5
+	ld a,(EffectLock)	; 04B5
 	or a	; 04B8
 	ret nz	; 04B9
 	jr loc_04C1	; 04BA
@@ -756,7 +759,7 @@ loc_04DB:
 	ld (iy+0),0ffh	; 04EC
 	ld a,(ix+0)	; 04F0
 	ld (iy+2),a	; 04F3
-	ld iy,0fc80h	; 04F6
+	ld iy,ModulationBlocks	; 04F6
 	ld d,011h	; 04FA
 	ld a,(ix+14)	; 04FC
 	and 030h	; 04FF
@@ -1011,7 +1014,7 @@ loc_0720:
 	ld l,e	; 0730
 	jr loc_06D4	; 0731
 sub_0733:
-	ld iy,0fc80h	; 0733
+	ld iy,ModulationBlocks	; 0733
 	ld d,012h	; 0737
 	ld e,l	; 0739
 	ld (iy+2),e	; 073A
@@ -1119,7 +1122,7 @@ loc_07E8:
 	cp b	; 0801
 	pop bc	; 0802
 	jr z,loc_080A	; 0803
-	ld a,(0fe31h)	; 0805
+	ld a,(EffectLock)	; 0805
 	or a	; 0808
 	ret nz	; 0809
 loc_080A:
@@ -1152,7 +1155,7 @@ loc_0827:
 	ld iy,ExtraChannel0	; 0841
 	ld a,00eh	; 0845
 	ld b,007h	; 0847
-	call sub_28EC	; 0849
+	call SetChannelOwner	; 0849
 	ld (iy+0),000h	; 084C
 	ld a,(ix+4)	; 0850
 	or 0c0h	; 0853
@@ -1178,7 +1181,7 @@ CoinSound:
 	ld (EffectCommand),a	; 087E
 ; StartEffect [C] starts effect SoundCommand - $60 from EffectTable on channels 5, 6, 7 and 0, unless a higher-priority effect plays (CoinSound)
 StartEffect:
-	call sub_098F	; 0881
+	call ClearSsgSlides	; 0881
 	sub 060h	; 0884
 	ld e,a	; 0886
 	ld d,000h	; 0887
@@ -1199,7 +1202,7 @@ StartEffect:
 	cp b	; 08A1
 	pop bc	; 08A2
 	jr z,loc_08AC	; 08A3
-	ld a,(0fe31h)	; 08A5
+	ld a,(EffectLock)	; 08A5
 	or a	; 08A8
 	ret nz	; 08A9
 	jr loc_08B1	; 08AA
@@ -1219,7 +1222,7 @@ loc_08BF:
 	ld (EffectPriority),a	; 08C0
 	ld a,0ffh	; 08C3
 	ld (EffectPlaying),a	; 08C5
-	call sub_09BC	; 08C8
+	call SsgSilence	; 08C8
 	ld de,00010h	; 08CB
 	ld hl,LoopStacks	; 08CE
 	ld (hl),000h	; 08D1
@@ -1239,7 +1242,7 @@ loc_08BF:
 	ld (hl),000h	; 08EC
 	ld a,005h	; 08EE
 	ld b,007h	; 08F0
-	call sub_28EC	; 08F2
+	call SetChannelOwner	; 08F2
 	ld (iy+0),000h	; 08F5
 	ld a,(ix+9)	; 08F9
 	ld (iy+1),a	; 08FC
@@ -1253,7 +1256,7 @@ loc_08BF:
 	add iy,de	; 0914
 	ld a,006h	; 0916
 	ld b,007h	; 0918
-	call sub_28EC	; 091A
+	call SetChannelOwner	; 091A
 	ld (iy+0),000h	; 091D
 	ld a,(ix+10)	; 0921
 	ld (iy+1),a	; 0924
@@ -1267,7 +1270,7 @@ loc_08BF:
 	add iy,de	; 093C
 	ld a,007h	; 093E
 	ld b,007h	; 0940
-	call sub_28EC	; 0942
+	call SetChannelOwner	; 0942
 	ld (iy+0),000h	; 0945
 	ld a,(ix+11)	; 0949
 	ld (iy+1),a	; 094C
@@ -1280,7 +1283,7 @@ loc_08BF:
 	ld iy,EffectChannel0	; 0961
 	ld a,000h	; 0965
 	ld b,007h	; 0967
-	call sub_28EC	; 0969
+	call SetChannelOwner	; 0969
 	ld (iy+0),000h	; 096C
 	ld a,(ix+12)	; 0970
 	ld (iy+1),a	; 0973
@@ -1293,7 +1296,8 @@ loc_08BF:
 	ld a,(ix+13)	; 0988
 	ld (EffectParam),a	; 098B
 	ret	; 098E
-sub_098F:
+; ClearSsgSlides [C] clears the first byte of SsgSlideA/B/C
+ClearSsgSlides:
 	push af	; 098F
 	push hl	; 0990
 	ld hl,SsgSlideA	; 0991
@@ -1305,7 +1309,8 @@ sub_098F:
 	pop hl	; 09A0
 	pop af	; 09A1
 	ret	; 09A2
-sub_09A3:
+; FmKeyOffAll [C] YM2610 register $28 (key on/off) = $01, $02, $05, $06: the four FM channels off
+FmKeyOffAll:
 	ld de,02801h	; 09A3
 	call YmWriteA	; 09A6
 	ld de,02802h	; 09A9
@@ -1315,7 +1320,8 @@ sub_09A3:
 	ld de,02806h	; 09B5
 	call YmWriteA	; 09B8
 	ret	; 09BB
-sub_09BC:
+; SsgSilence [C] SSG volumes (YM $08, $09, $0A) = 0, unless $FE40 = 4
+SsgSilence:
 	ld a,(0fe40h)	; 09BC
 	cp 004h	; 09BF
 	ret z	; 09C1
@@ -1326,7 +1332,8 @@ sub_09BC:
 	ld de,00a00h	; 09CE
 	call YmWriteA	; 09D1
 	ret	; 09D4
-sub_09D5:
+; AdpcmKeyOff [I] YM2610 port B register $00 (ADPCM-A key) dumps and SSG mixer writes
+AdpcmKeyOff:
 	push ix	; 09D5
 	ld d,000h	; 09D7
 	exx	; 09D9
@@ -1384,7 +1391,8 @@ loc_0A38:
 	call YmWriteB	; 0A41
 	pop ix	; 0A44
 	ret	; 0A46
-sub_0A47:
+; AdpcmBStop [I] if an ADPCM-B sound plays: YM2610 $10 reset and $1C flag writes, clears its flags
+AdpcmBStop:
 	ld a,(0fe2fh)	; 0A47
 	or a	; 0A4A
 	jr nz,loc_0A55	; 0A4B
@@ -1498,17 +1506,17 @@ loc_0B1E:
 loc_0B21:
 	jp SoftReset	; 0B21
 loc_0B24:
-	jp loc_0D0A	; 0B24
+	jp Command4StopAll	; 0B24
 loc_0B27:
-	jp loc_0D37	; 0B27
+	jp Command5StopMusic	; 0B27
 loc_0B2A:
-	jp loc_0D4F	; 0B2A
+	jp Command6StopEffects	; 0B2A
 loc_0B2D:
 	jp Command7Enable	; 0B2D
 loc_0B30:
-	jp loc_0D72	; 0B30
+	jp Command8EnableMusic	; 0B30
 loc_0B33:
-	jp loc_0D7F	; 0B33
+	jp Command9EnableEffects	; 0B33
 loc_0B36:
 	jp loc_0D8B	; 0B36
 loc_0B39:
@@ -1522,7 +1530,7 @@ loc_0B42:
 loc_0B45:
 	jp loc_0E0E	; 0B45
 loc_0B48:
-	jp Command10	; 0B48
+	jp Command10SelfTest	; 0B48
 loc_0B4B:
 	jp loc_0DB3	; 0B4B
 loc_0B4E:
@@ -1541,7 +1549,8 @@ loc_0B60:
 	jp loc_0C3D	; 0B60
 loc_0B63:
 	jp loc_0C7D	; 0B63
-sub_0B66:
+; QueueCheckFull [I] steps QueueWrite on when it has reached $FE5C
+QueueCheckFull:
 	ld a,(0fe5ch)	; 0B66
 	ld c,a	; 0B69
 	ld a,(QueueWrite)	; 0B6A
@@ -1573,7 +1582,7 @@ NmiReset:
 ; NmiCommand10 [C] command $10, from the NMI: resets the stack and returns into Command10
 NmiCommand10:
 	ld sp,StackTop	; 0B97
-	ld hl,Command10	; 0B9A
+	ld hl,Command10SelfTest	; 0B9A
 	push hl	; 0B9D
 	retn	; 0B9E
 ; CommandNone [C] system command 0 (and the unused entries): ret
@@ -1760,7 +1769,8 @@ SoftReset:
 	out (PORT_REPLY),a	; 0D03
 	out (PORT_SOUND_CODE),a	; 0D05
 	jp Reset	; 0D07
-loc_0D0A:
+; Command4StopAll [C] command 4: clears the queue, keys off the FM channels, silences SSG and ADPCM, then locks both music (SoundLock) and effects (EffectLock). Run in MAME
+Command4StopAll:
 	di	; 0D0A
 	xor a	; 0D0B
 	ld (RandomReplyOn),a	; 0D0C
@@ -1770,36 +1780,38 @@ loc_0D0A:
 	ld (0fe29h),a	; 0D16
 	ld (0fe28h),a	; 0D19
 	ld (0fcd0h),a	; 0D1C
-	call sub_0A47	; 0D1F
-	call sub_09A3	; 0D22
-	call sub_09D5	; 0D25
-	call sub_09BC	; 0D28
-	call sub_1611	; 0D2B
+	call AdpcmBStop	; 0D1F
+	call FmKeyOffAll	; 0D22
+	call AdpcmKeyOff	; 0D25
+	call SsgSilence	; 0D28
+	call YmTimerControl35	; 0D2B
 	ld a,0ffh	; 0D2E
-	ld (0fe31h),a	; 0D30
+	ld (EffectLock),a	; 0D30
 	ld (SoundLock),a	; 0D33
 	ret	; 0D36
-loc_0D37:
+; Command5StopMusic [C] command 5: clears the queue, keys off the FM channels and locks the music (SoundLock). Run in MAME
+Command5StopMusic:
 	di	; 0D37
 	xor a	; 0D38
 	ld (RandomReplyOn),a	; 0D39
 	call ClearCommandQueue	; 0D3C
-	call sub_09A3	; 0D3F
+	call FmKeyOffAll	; 0D3F
 	ld a,0ffh	; 0D42
 	ld (SoundLock),a	; 0D44
-	call sub_1611	; 0D47
+	call YmTimerControl35	; 0D47
 	xor a	; 0D4A
 	ld (0fe29h),a	; 0D4B
 	ret	; 0D4E
-loc_0D4F:
+; Command6StopEffects [C] command 6: clears the queue, stops ADPCM-B, silences the SSG and locks the effects (EffectLock). Run in MAME
+Command6StopEffects:
 	di	; 0D4F
 	xor a	; 0D50
 	ld (RandomReplyOn),a	; 0D51
 	call ClearCommandQueue	; 0D54
-	call sub_0A47	; 0D57
-	call sub_09BC	; 0D5A
+	call AdpcmBStop	; 0D57
+	call SsgSilence	; 0D5A
 	ld a,0ffh	; 0D5D
-	ld (0fe31h),a	; 0D5F
+	ld (EffectLock),a	; 0D5F
 	ret	; 0D62
 ; Command7Enable [C] command 7: clears the queue, silences the YM2610 (SilenceAll) and clears SoundLock and $FE31: after a reset, $5C-$5F play only once 7 has been sent (MAME). The hardware test sends 3 then 7 for SOUND OFF and on entering the sound test
 Command7Enable:
@@ -1808,9 +1820,10 @@ Command7Enable:
 	call SilenceAll	; 0D67
 	xor a	; 0D6A
 	ld (SoundLock),a	; 0D6B
-	ld (0fe31h),a	; 0D6E
+	ld (EffectLock),a	; 0D6E
 	ret	; 0D71
-loc_0D72:
+; Command8EnableMusic [C] command 8: clears SoundLock (music allowed again). Run in MAME
+Command8EnableMusic:
 	di	; 0D72
 	call ClearCommandQueue	; 0D73
 	xor a	; 0D76
@@ -1818,11 +1831,12 @@ loc_0D72:
 	call SilenceAll	; 0D7A
 	xor a	; 0D7D
 	ret	; 0D7E
-loc_0D7F:
+; Command9EnableEffects [C] command 9: clears EffectLock. Run in MAME
+Command9EnableEffects:
 	di	; 0D7F
 	call ClearCommandQueue	; 0D80
 	xor a	; 0D83
-	ld (0fe31h),a	; 0D84
+	ld (EffectLock),a	; 0D84
 	call SilenceAll	; 0D87
 	ret	; 0D8A
 loc_0D8B:
@@ -1902,7 +1916,7 @@ loc_0E0E:
 	ret z	; 0E14
 	xor a	; 0E15
 	ld (EffectPlaying),a	; 0E16
-	call sub_09BC	; 0E19
+	call SsgSilence	; 0E19
 	ret	; 0E1C
 sub_0E1D:
 	ld a,0ffh	; 0E1D
@@ -1916,8 +1930,8 @@ sub_0E1D:
 	ld a,(SoundCommand)	; 0E2E
 	call SetTempo	; 0E31
 	ret	; 0E34
-; Command10 [I] command $10: a loop over the ROM with ix as return address and flags kept in the shadow registers; a ROM or RAM check whose result is not understood yet
-Command10:
+; Command10SelfTest [C] command $10: self test, flags in the shadow a' starting at $80: bit 0 ROM sum of $0000-$EFFF against RomChecksum, bit 1 RAM $55/$AA, bit 2 RAM address test; then Command10Reply. SP-S2 never sends it; MAME: reply 1 (all passed)
+Command10SelfTest:
 	di	; 0E35
 	ld a,(InRamLoop)	; 0E36
 	exx	; 0E39
@@ -1941,7 +1955,7 @@ loc_0E47:
 loc_0E52:
 	pop af	; 0E52
 	ld b,a	; 0E53
-	ld a,(dat_0014)	; 0E54
+	ld a,(RomChecksum)	; 0E54
 	cp b	; 0E57
 	jr z,loc_0E60	; 0E58
 	ex af,af'	; 0E5A
@@ -1953,9 +1967,10 @@ loc_0E60:
 	res 0,a	; 0E61
 	ex af,af'	; 0E63
 loc_0E64:
-	ld ix,sub_0E6A	; 0E64
+	ld ix,Command10Reply	; 0E64
 	jr loc_0E79	; 0E68
-sub_0E6A:
+; Command10Reply [C] end of Command10SelfTest: replies 1 when every test passed (flags still $80), else 0, then jp Reset. MAME: command $10 replied 1 about 64 frames later
+Command10Reply:
 	ex af,af'	; 0E6A
 	cp 080h	; 0E6B
 	ld a,001h	; 0E6D
@@ -2042,7 +2057,8 @@ loc_0EE9:
 PlaySound:
 	di	; 0EEF
 	ld a,(SoundCommand)	; 0EF0
-sub_0EF3:
+; PlaySoundA [C] plays sound a ($20-$5F), refused while SoundLock is set (PlaySound and SeqStartSound enter here)
+PlaySoundA:
 	push af	; 0EF3
 	ld a,(SoundLock)	; 0EF4
 	or a	; 0EF7
@@ -2078,7 +2094,7 @@ loc_0F17:
 	push hl	; 0F2E
 	pop ix	; 0F2F
 	ld iy,Channel1	; 0F31
-	call sub_09A3	; 0F35
+	call FmKeyOffAll	; 0F35
 	ld hl,0f837h	; 0F38
 	ld de,00010h	; 0F3B
 	ld (hl),000h	; 0F3E
@@ -2118,7 +2134,7 @@ loc_0F71:
 	call SetTempo	; 0F7C
 	ld a,001h	; 0F7F
 	ld b,007h	; 0F81
-	call sub_28EC	; 0F83
+	call SetChannelOwner	; 0F83
 	ld (iy+0),000h	; 0F86
 	ld a,(ix+27)	; 0F8A
 	or 0c0h	; 0F8D
@@ -2135,7 +2151,7 @@ loc_0F71:
 	add iy,de	; 0FAC
 	ld a,002h	; 0FAE
 	ld b,007h	; 0FB0
-	call sub_28EC	; 0FB2
+	call SetChannelOwner	; 0FB2
 	ld (iy+0),000h	; 0FB5
 	ld a,(ix+29)	; 0FB9
 	or 0c0h	; 0FBC
@@ -2152,7 +2168,7 @@ loc_0F71:
 	add iy,de	; 0FDB
 	ld a,003h	; 0FDD
 	ld b,007h	; 0FDF
-	call sub_28EC	; 0FE1
+	call SetChannelOwner	; 0FE1
 	ld (iy+0),000h	; 0FE4
 	ld a,(ix+31)	; 0FE8
 	or 0c0h	; 0FEB
@@ -2169,7 +2185,7 @@ loc_0F71:
 	add iy,de	; 100A
 	ld a,004h	; 100C
 	ld b,007h	; 100E
-	call sub_28EC	; 1010
+	call SetChannelOwner	; 1010
 	ld (iy+0),000h	; 1013
 	ld a,(ix+33)	; 1017
 	or 0c0h	; 101A
@@ -2186,7 +2202,7 @@ loc_0F71:
 	add iy,de	; 1039
 	ld a,008h	; 103B
 	ld b,007h	; 103D
-	call sub_28EC	; 103F
+	call SetChannelOwner	; 103F
 	ld (iy+0),000h	; 1042
 	ld a,(ix+35)	; 1046
 	or 0c0h	; 1049
@@ -2201,7 +2217,7 @@ loc_0F71:
 	add iy,de	; 1063
 	ld a,009h	; 1065
 	ld b,007h	; 1067
-	call sub_28EC	; 1069
+	call SetChannelOwner	; 1069
 	ld (iy+0),000h	; 106C
 	ld a,(ix+37)	; 1070
 	or 0c0h	; 1073
@@ -2216,7 +2232,7 @@ loc_0F71:
 	add iy,de	; 108D
 	ld a,00ah	; 108F
 	ld b,007h	; 1091
-	call sub_28EC	; 1093
+	call SetChannelOwner	; 1093
 	ld (iy+0),000h	; 1096
 	ld a,(ix+39)	; 109A
 	or 0c0h	; 109D
@@ -2231,7 +2247,7 @@ loc_0F71:
 	add iy,de	; 10B7
 	ld a,00bh	; 10B9
 	ld b,007h	; 10BB
-	call sub_28EC	; 10BD
+	call SetChannelOwner	; 10BD
 	ld (iy+0),000h	; 10C0
 	ld a,(ix+41)	; 10C4
 	or 0c0h	; 10C7
@@ -2246,7 +2262,7 @@ loc_0F71:
 	add iy,de	; 10E1
 	ld a,00ch	; 10E3
 	ld b,007h	; 10E5
-	call sub_28EC	; 10E7
+	call SetChannelOwner	; 10E7
 	ld (iy+0),000h	; 10EA
 	ld a,(ix+43)	; 10EE
 	or 0c0h	; 10F1
@@ -2261,7 +2277,7 @@ loc_0F71:
 	add iy,de	; 110B
 	ld a,00dh	; 110D
 	ld b,007h	; 110F
-	call sub_28EC	; 1111
+	call SetChannelOwner	; 1111
 	ld (iy+0),000h	; 1114
 	ld a,(ix+45)	; 1118
 	or 0c0h	; 111B
@@ -2276,7 +2292,7 @@ loc_0F71:
 	add iy,de	; 1135
 	ld a,00eh	; 1137
 	ld b,007h	; 1139
-	call sub_28EC	; 113B
+	call SetChannelOwner	; 113B
 	ld (iy+0),000h	; 113E
 	ld a,(ix+47)	; 1142
 	or 0c0h	; 1145
@@ -2303,13 +2319,14 @@ loc_0F71:
 	ld hl,00000h	; 1180
 	ld (0fe34h),hl	; 1183
 loc_1186:
-	call sub_161F	; 1186
+	call YmTimerControl2F	; 1186
 	ret	; 1189
 loc_118A:
 	pop af	; 118A
 	ret	; 118B
-sub_118C:
-	ld a,(0fe31h)	; 118C
+; UpdateSsgSlides [I] per frame, for the three SsgSlide blocks in use (none while EffectLock is set)
+UpdateSsgSlides:
+	ld a,(EffectLock)	; 118C
 	or a	; 118F
 	jp nz,loc_11B3	; 1190
 	push ix	; 1193
@@ -2331,7 +2348,7 @@ loc_11A6:
 	pop ix	; 11B0
 	ret	; 11B2
 loc_11B3:
-	call sub_09BC	; 11B3
+	call SsgSilence	; 11B3
 	ld a,(0fe40h)	; 11B6
 	cp 004h	; 11B9
 	ret z	; 11BB
@@ -2387,7 +2404,7 @@ loc_1217:
 	ret	; 1217
 sub_1218:
 	ld (ix+0),000h	; 1218
-	call sub_09BC	; 121C
+	call SsgSilence	; 121C
 	xor a	; 121F
 	ld (EffectPlaying),a	; 1220
 	ret	; 1223
@@ -2410,7 +2427,8 @@ loc_1231:
 	ld hl,00070h	; 1239
 	pop af	; 123C
 	ret	; 123D
-sub_123E:
+; FmKeyOn [C] keys on FM channel a: register $28 with the operator mask, then the F-number from FmFnumTable
+FmKeyOn:
 	push hl	; 123E
 	push ix	; 123F
 	exx	; 1241
@@ -2509,13 +2527,14 @@ loc_129C:
 	inc hl	; 12CA
 	ld (hl),d	; 12CB
 	exx	; 12CC
-	call sub_1BC7	; 12CD
+	call StartModulation	; 12CD
 loc_12D0:
 	pop ix	; 12D0
 	pop hl	; 12D2
 	ret	; 12D3
-sub_12D4:
-	call sub_1397	; 12D4
+; SsgNoteOn [I] SSG channel a: tone period from SsgPeriodTable, mixer register $07
+SsgNoteOn:
+	call SsgSlideActive	; 12D4
 	ret c	; 12D7
 	push hl	; 12D8
 	sub 005h	; 12D9
@@ -2610,7 +2629,8 @@ loc_134F:
 	rst 010h	; 1362
 	pop hl	; 1363
 	ret	; 1364
-sub_1365:
+; SsgSetNoise [C] SSG noise period (YM $06) and mixer bits (YM $07) from EffectParam
+SsgSetNoise:
 	ld a,d	; 1365
 	or a	; 1366
 	jr z,loc_1385	; 1367
@@ -2642,7 +2662,8 @@ loc_1385:
 	ld e,a	; 1392
 	call YmWriteA	; 1393
 	ret	; 1396
-sub_1397:
+; SsgSlideActive [C] carry set when the SsgSlide block of channel a (5-7) is in use
+SsgSlideActive:
 	push af	; 1397
 	push hl	; 1398
 	cp 005h	; 1399
@@ -2742,7 +2763,7 @@ loc_1439:
 	jr nz,loc_144A	; 143D
 loc_143F:
 	push ix	; 143F
-	ld ix,0fc80h	; 1441
+	ld ix,ModulationBlocks	; 1441
 	ld (ix+11),b	; 1445
 	pop ix	; 1448
 loc_144A:
@@ -2764,7 +2785,7 @@ loc_144A:
 	call sub_075C	; 1466
 	pop hl	; 1469
 	push iy	; 146A
-	ld iy,0fc80h	; 146C
+	ld iy,ModulationBlocks	; 146C
 	exx	; 1470
 	ld a,(0fc35h)	; 1471
 	or a	; 1474
@@ -2800,7 +2821,7 @@ loc_14A3:
 	call sub_075C	; 14AA
 	pop hl	; 14AD
 	push iy	; 14AE
-	ld iy,0fc80h	; 14B0
+	ld iy,ModulationBlocks	; 14B0
 	exx	; 14B4
 	ld a,(0fc35h)	; 14B5
 	or a	; 14B8
@@ -2835,7 +2856,7 @@ loc_14E7:
 	ld l,(ix+10)	; 14EB
 	ld h,(ix+11)	; 14EE
 	push iy	; 14F1
-	ld iy,0fc80h	; 14F3
+	ld iy,ModulationBlocks	; 14F3
 	exx	; 14F7
 	ld a,(0fc35h)	; 14F8
 	or a	; 14FB
@@ -2869,16 +2890,17 @@ loc_152A:
 	call sub_0687	; 152B
 	pop iy	; 152E
 	jp loc_12D0	; 1530
-sub_1533:
+; ChannelKeyOn [C] note on for CurrentChannel by kind: FM (1-4) FmKeyOn, SSG (5-7) SsgNoteOn, ADPCM-A (8-13), ADPCM-B (14)
+ChannelKeyOn:
 	or a	; 1533
 	jp z,loc_1385	; 1534
 	cp 005h	; 1537
 	jr nc,loc_153E	; 1539
-	jp sub_123E	; 153B
+	jp FmKeyOn	; 153B
 loc_153E:
 	cp 008h	; 153E
 	jr nc,loc_1545	; 1540
-	jp sub_12D4	; 1542
+	jp SsgNoteOn	; 1542
 loc_1545:
 	cp 00eh	; 1545
 	jp z,loc_1581	; 1547
@@ -3024,15 +3046,18 @@ sub_160A:
 	ld de,0273ah	; 160A
 	call YmWriteA	; 160D
 	ret	; 1610
-sub_1611:
+; YmTimerControl35 [C] YM2610 register $27 (timer control) = $35
+YmTimerControl35:
 	ld de,02735h	; 1611
 	call YmWriteA	; 1614
 	ret	; 1617
-sub_1618:
+; YmTimerControl1F [C] register $27 = $1F
+YmTimerControl1F:
 	ld de,0271fh	; 1618
 	call YmWriteA	; 161B
 	ret	; 161E
-sub_161F:
+; YmTimerControl2F [C] register $27 = $2F
+YmTimerControl2F:
 	ld de,0272fh	; 161F
 	call YmWriteA	; 1622
 	ret	; 1625
@@ -3088,7 +3113,7 @@ loc_165D:
 	ld bc,00004h	; 1662
 	ld a,(ix+2)	; 1665
 	cp 004h	; 1668
-	call nc,sub_17B1	; 166A
+	call nc,NegateOr4	; 166A
 	rrca	; 166D
 	rrca	; 166E
 	rrca	; 166F
@@ -3098,7 +3123,7 @@ loc_165D:
 	add hl,bc	; 1675
 	ld a,(ix+4)	; 1676
 	cp 004h	; 1679
-	call nc,sub_17B1	; 167B
+	call nc,NegateOr4	; 167B
 	rrca	; 167E
 	rrca	; 167F
 	rrca	; 1680
@@ -3108,7 +3133,7 @@ loc_165D:
 	add hl,bc	; 1686
 	ld a,(ix+3)	; 1687
 	cp 004h	; 168A
-	call nc,sub_17B1	; 168C
+	call nc,NegateOr4	; 168C
 	rrca	; 168F
 	rrca	; 1690
 	rrca	; 1691
@@ -3118,7 +3143,7 @@ loc_165D:
 	add hl,bc	; 1697
 	ld a,(ix+5)	; 1698
 	cp 004h	; 169B
-	call nc,sub_17B1	; 169D
+	call nc,NegateOr4	; 169D
 	rrca	; 16A0
 	rrca	; 16A1
 	rrca	; 16A2
@@ -3284,21 +3309,23 @@ loc_1736:
 	and 0c0h	; 17A3
 	or (ix+50)	; 17A5
 	ld (hl),a	; 17A8
-	call sub_17B6	; 17A9
+	call LoadModulation	; 17A9
 loc_17AC:
 	pop hl	; 17AC
 	pop ix	; 17AD
 	pop af	; 17AF
 	ret	; 17B0
-sub_17B1:
+; NegateOr4 [C] a = -a | 4
+NegateOr4:
 	neg	; 17B1
 	or 004h	; 17B3
 	ret	; 17B5
-sub_17B6:
+; LoadModulation [I] copies the instrument's bytes +42 to +48 into the channel's ModulationBlocks entry (vibrato or envelope)
+LoadModulation:
 	push iy	; 17B6
 	ld a,(CurrentChannel)	; 17B8
 	ld b,a	; 17BB
-	ld iy,0fc80h	; 17BC
+	ld iy,ModulationBlocks	; 17BC
 	ld de,00010h	; 17C0
 loc_17C3:
 	add iy,de	; 17C3
@@ -3315,14 +3342,15 @@ loc_17C3:
 	ld b,(ix+46)	; 17E3
 	ld e,(ix+47)	; 17E6
 	ld d,000h	; 17E9
-	call sub_17FD	; 17EB
+	call Multiply	; 17EB
 	ld (iy+4),e	; 17EE
 	ld (iy+5),d	; 17F1
 	ld a,(ix+48)	; 17F4
 	ld (iy+15),a	; 17F7
 	pop iy	; 17FA
 	ret	; 17FC
-sub_17FD:
+; Multiply [C] de = e x b (e signed), by repeated addition
+Multiply:
 	ld hl,00000h	; 17FD
 	ld a,b	; 1800
 	or a	; 1801
@@ -3341,7 +3369,8 @@ loc_180F:
 sub_1813:
 	ld d,0ffh	; 1813
 	ret	; 1815
-sub_1816:
+; FmWriteLevels [I] writes the operator levels of FM channel a from the register copies
+FmWriteLevels:
 	cp 005h	; 1816
 	ret nc	; 1818
 	or a	; 1819
@@ -3538,7 +3567,7 @@ loc_1983:
 loc_1989:
 	ld b,a	; 1989
 	ld a,(CurrentChannel)	; 198A
-	call sub_294C	; 198D
+	call FmSetTotalLevel	; 198D
 	ret	; 1990
 sub_1991:
 	bit 0,(ix+1)	; 1991
@@ -3611,7 +3640,8 @@ loc_1A09:
 	xor a	; 1A11
 	ld (0fe23h),a	; 1A12
 	jp loc_2781	; 1A15
-sub_1A18:
+; UpdateModulation [I] per tick for FM channels 1-4: steps the ModulationBlocks entry
+UpdateModulation:
 	cp 005h	; 1A18
 	ret nc	; 1A1A
 	ld b,a	; 1A1B
@@ -3626,7 +3656,7 @@ sub_1A18:
 	ex af,af'	; 1A27
 	ld a,b	; 1A28
 	ex af,af'	; 1A29
-	call sub_1BED	; 1A2A
+	call ModulationBlock	; 1A2A
 	ld e,(iy+4)	; 1A2D
 	ld d,(iy+5)	; 1A30
 	ld hl,00000h	; 1A33
@@ -3838,11 +3868,12 @@ loc_1BB6:
 	ld d,(hl)	; 1BC4
 	ex de,hl	; 1BC5
 	ret	; 1BC6
-sub_1BC7:
+; StartModulation [I] restarts the channel's ModulationBlocks entry at a new note
+StartModulation:
 	push iy	; 1BC7
 	ld a,(CurrentChannel)	; 1BC9
 	ld b,a	; 1BCC
-	call sub_1BED	; 1BCD
+	call ModulationBlock	; 1BCD
 	ld a,(iy+3)	; 1BD0
 	or a	; 1BD3
 	jr z,loc_1BE6	; 1BD4
@@ -3856,14 +3887,16 @@ loc_1BE6:
 	set 3,(iy+8)	; 1BE6
 	pop iy	; 1BEA
 	ret	; 1BEC
-sub_1BED:
-	ld iy,0fc80h	; 1BED
+; ModulationBlock [C] iy = ModulationBlocks + b x 16
+ModulationBlock:
+	ld iy,ModulationBlocks	; 1BED
 	ld de,00010h	; 1BF1
 loc_1BF4:
 	add iy,de	; 1BF4
 	djnz loc_1BF4	; 1BF6
 	ret	; 1BF8
-sub_1BF9:
+; TickParamsA [?] per-tick routine on the block $FA88-$FAA3 (counters $FA9C, $FAA3): runs in MAME, purpose not found
+TickParamsA:
 	ld a,(0fe2fh)	; 1BF9
 	or a	; 1BFC
 	jr nz,loc_1C06	; 1BFD
@@ -3968,7 +4001,8 @@ loc_1CA7:
 	ld a,(0faa1h)	; 1CAE
 	ld (0faa3h),a	; 1CB1
 	ret	; 1CB4
-sub_1CB5:
+; TickParamsB [?] per-tick routine on $FA8E-$FA96 (a word step): runs in MAME, purpose not found
+TickParamsB:
 	ld a,(0fe2fh)	; 1CB5
 	or a	; 1CB8
 	jr nz,loc_1CC2	; 1CB9
@@ -4155,7 +4189,8 @@ sub_1E0D:
 	ld (0fa98h),a	; 1E1D
 	ld (0fa8eh),a	; 1E20
 	ret	; 1E23
-sub_1E24:
+; AdpcmBFade [I] steps the ADPCM-B volume (YM $1B) down by $FE1E while $FE1D is set
+AdpcmBFade:
 	ld a,(0fe2fh)	; 1E24
 	or a	; 1E27
 	ret nz	; 1E28
@@ -4186,10 +4221,11 @@ loc_1E48:
 	ld (hl),a	; 1E56
 	pop hl	; 1E57
 	ret	; 1E58
-sub_1E59:
+; TransposeNote [C] pitch nibble a plus b semitones: NoteSemitoneTable turns the nibble into a semitone, SemitoneNoteTable back into a nibble with the octave carry ($20)
+TransposeNote:
 	ld e,a	; 1E59
 	ld d,000h	; 1E5A
-	ld hl,dat_1E75	; 1E5C
+	ld hl,NoteSemitoneTable	; 1E5C
 	add hl,de	; 1E5F
 	ld c,(hl)	; 1E60
 	ld a,b	; 1E61
@@ -4203,17 +4239,19 @@ loc_1E6C:
 	ld e,a	; 1E6C
 	ld d,0ffh	; 1E6D
 loc_1E6F:
-	ld hl,dat_1E9D	; 1E6F
+	ld hl,SemitoneNoteTable	; 1E6F
 	add hl,de	; 1E72
 	ld e,(hl)	; 1E73
 	ret	; 1E74
-dat_1E75:
+; NoteSemitoneTable [C] semitone of each pitch nibble: C=$C, C#=1, D=$D, D#=2, E=$E, F=$F, F#=4, G=0, G#=5, A=$A, A#=6, B=$B (3, 7, 8, 9 unused): the nibble spells the note name
+NoteSemitoneTable:
 	defb 007h,001h,003h,000h,006h,008h,00ah,000h	; 1E75
 	defb 000h,000h,009h,00bh,000h,002h,004h,005h	; 1E7D
 	defb 0ach,0c1h,0cdh,0c2h,0ceh,0cfh,0c4h,0c0h	; 1E85
 	defb 0c5h,0cah,0c6h,0cbh,0cch,0e1h,0edh,0e2h	; 1E8D
 	defb 0eeh,0efh,0e4h,0e0h,0e5h,0eah,0e6h,0ebh	; 1E95
-dat_1E9D:
+; SemitoneNoteTable [C] pitch nibble of semitones 0-23 (+$20 for the next octave)
+SemitoneNoteTable:
 	defb 00ch,001h,00dh,002h,00eh,00fh,004h,000h	; 1E9D
 	defb 005h,00ah,006h,00bh,02ch,021h,02dh,022h	; 1EA5
 	defb 02eh,02fh,024h,020h,025h,02ah,026h,02bh	; 1EAD
@@ -4268,37 +4306,37 @@ loc_1F1D:
 	ld (0fe2dh),a	; 1F1E
 	ld a,001h	; 1F21
 	ld (0fc38h),a	; 1F23
-	call sub_118C	; 1F26
-	call sub_1CB5	; 1F29
-	call sub_1BF9	; 1F2C
-	call sub_1E24	; 1F2F
+	call UpdateSsgSlides	; 1F26
+	call TickParamsB	; 1F29
+	call TickParamsA	; 1F2C
+	call AdpcmBFade	; 1F2F
 	ld a,001h	; 1F32
-	call sub_1A18	; 1F34
+	call UpdateModulation	; 1F34
 	ld a,002h	; 1F37
-	call sub_1A18	; 1F39
+	call UpdateModulation	; 1F39
 	ld a,003h	; 1F3C
-	call sub_1A18	; 1F3E
+	call UpdateModulation	; 1F3E
 	ld a,004h	; 1F41
-	call sub_1A18	; 1F43
+	call UpdateModulation	; 1F43
 	ld a,(EffectPlaying)	; 1F46
 	or a	; 1F49
 	jp z,loc_1F7D	; 1F4A
 	ld a,005h	; 1F4D
 	ld (CurrentChannel),a	; 1F4F
 	ld ix,EffectChannel5	; 1F52
-	call sub_20BE	; 1F56
+	call ChannelTick	; 1F56
 	ld a,006h	; 1F59
 	ld (CurrentChannel),a	; 1F5B
 	ld ix,EffectChannel6	; 1F5E
-	call sub_20BE	; 1F62
+	call ChannelTick	; 1F62
 	ld a,007h	; 1F65
 	ld (CurrentChannel),a	; 1F67
 	ld ix,EffectChannel7	; 1F6A
-	call sub_20BE	; 1F6E
+	call ChannelTick	; 1F6E
 	ld a,000h	; 1F71
 	ld (CurrentChannel),a	; 1F73
 	ld ix,EffectChannel0	; 1F76
-	call sub_20BE	; 1F7A
+	call ChannelTick	; 1F7A
 loc_1F7D:
 	ld a,(0fbf3h)	; 1F7D
 	or a	; 1F80
@@ -4306,7 +4344,7 @@ loc_1F7D:
 	ld a,00bh	; 1F83
 	ld (CurrentChannel),a	; 1F85
 	ld ix,ExtraChannel5	; 1F88
-	call sub_20BE	; 1F8C
+	call ChannelTick	; 1F8C
 loc_1F8F:
 	ld a,(0fbfch)	; 1F8F
 	or a	; 1F92
@@ -4314,7 +4352,7 @@ loc_1F8F:
 	ld a,00ch	; 1F95
 	ld (CurrentChannel),a	; 1F97
 	ld ix,ExtraChannel6	; 1F9A
-	call sub_20BE	; 1F9E
+	call ChannelTick	; 1F9E
 loc_1FA1:
 	ld a,(0fc05h)	; 1FA1
 	or a	; 1FA4
@@ -4322,7 +4360,7 @@ loc_1FA1:
 	ld a,00dh	; 1FA7
 	ld (CurrentChannel),a	; 1FA9
 	ld ix,ExtraChannel7	; 1FAC
-	call sub_20BE	; 1FB0
+	call ChannelTick	; 1FB0
 loc_1FB3:
 	ld a,(0fc35h)	; 1FB3
 	or a	; 1FB6
@@ -4331,7 +4369,7 @@ loc_1FB3:
 	ld a,00eh	; 1FBE
 	ld (CurrentChannel),a	; 1FC0
 	ld ix,ExtraChannel0	; 1FC3
-	call sub_20BE	; 1FC7
+	call ChannelTick	; 1FC7
 	jp loc_2253	; 1FCA
 loc_1FCD:
 	xor a	; 1FCD
@@ -4348,82 +4386,83 @@ loc_1FCD:
 	ld a,001h	; 1FEA
 	ld (CurrentChannel),a	; 1FEC
 	ld ix,Channel1	; 1FEF
-	call sub_20BE	; 1FF3
+	call ChannelTick	; 1FF3
 	ld a,(0fe23h)	; 1FF6
 	or a	; 1FF9
 	call nz,sub_196F	; 1FFA
 	ld a,002h	; 1FFD
 	ld (CurrentChannel),a	; 1FFF
 	ld ix,Channel2	; 2002
-	call sub_20BE	; 2006
+	call ChannelTick	; 2006
 	ld a,(0fe23h)	; 2009
 	or a	; 200C
 	call nz,sub_196F	; 200D
 	ld a,003h	; 2010
 	ld (CurrentChannel),a	; 2012
 	ld ix,Channel3	; 2015
-	call sub_20BE	; 2019
+	call ChannelTick	; 2019
 	ld a,(0fe23h)	; 201C
 	or a	; 201F
 	call nz,sub_196F	; 2020
 	ld a,004h	; 2023
 	ld (CurrentChannel),a	; 2025
 	ld ix,Channel4	; 2028
-	call sub_20BE	; 202C
+	call ChannelTick	; 202C
 	ld a,(0fe23h)	; 202F
 	or a	; 2032
 	call nz,sub_196F	; 2033
 	ld a,008h	; 2036
 	ld (CurrentChannel),a	; 2038
 	ld ix,Channel8	; 203B
-	call sub_20BE	; 203F
+	call ChannelTick	; 203F
 	ld a,(0fe23h)	; 2042
 	or a	; 2045
 	call nz,sub_1991	; 2046
 	ld a,009h	; 2049
 	ld (CurrentChannel),a	; 204B
 	ld ix,Channel9	; 204E
-	call sub_20BE	; 2052
+	call ChannelTick	; 2052
 	ld a,(0fe23h)	; 2055
 	or a	; 2058
 	call nz,sub_1991	; 2059
 	ld a,00ah	; 205C
 	ld (CurrentChannel),a	; 205E
 	ld ix,Channel10	; 2061
-	call sub_20BE	; 2065
+	call ChannelTick	; 2065
 	ld a,(0fe23h)	; 2068
 	or a	; 206B
 	call nz,sub_1991	; 206C
 	ld a,00bh	; 206F
 	ld (CurrentChannel),a	; 2071
 	ld ix,Channel11	; 2074
-	call sub_20BE	; 2078
+	call ChannelTick	; 2078
 	ld a,(0fe23h)	; 207B
 	or a	; 207E
 	call nz,sub_1991	; 207F
 	ld a,00ch	; 2082
 	ld (CurrentChannel),a	; 2084
 	ld ix,Channel12	; 2087
-	call sub_20BE	; 208B
+	call ChannelTick	; 208B
 	ld a,(0fe23h)	; 208E
 	or a	; 2091
 	call nz,sub_1991	; 2092
 	ld a,00dh	; 2095
 	ld (CurrentChannel),a	; 2097
 	ld ix,Channel13	; 209A
-	call sub_20BE	; 209E
+	call ChannelTick	; 209E
 	ld a,(0fe23h)	; 20A1
 	or a	; 20A4
 	call nz,sub_1991	; 20A5
 	ld a,00eh	; 20A8
 	ld (CurrentChannel),a	; 20AA
 	ld ix,Channel14	; 20AD
-	call sub_20BE	; 20B1
+	call ChannelTick	; 20B1
 	ld a,(0fe23h)	; 20B4
 	or a	; 20B7
 	call nz,sub_19D0	; 20B8
 	jp loc_2253	; 20BB
-sub_20BE:
+; ChannelTick [I] counts the channel's note times down (+4 then +5) and keys the note off
+ChannelTick:
 	bit 0,(ix+1)	; 20BE
 	ret z	; 20C2
 	bit 0,(ix+0)	; 20C3
@@ -4450,7 +4489,7 @@ loc_20D6:
 	jp z,loc_2141	; 20F4
 	cp 008h	; 20F7
 	jp nc,loc_214E	; 20F9
-	call sub_21E3	; 20FC
+	call ChannelPitch	; 20FC
 	ld a,(CurrentChannel)	; 20FF
 	cp 005h	; 2102
 	jr nc,loc_2133	; 2104
@@ -4465,33 +4504,33 @@ loc_2115:
 loc_2117:
 	ld b,a	; 2117
 	ld a,(CurrentChannel)	; 2118
-	call sub_294C	; 211B
+	call FmSetTotalLevel	; 211B
 	bit 3,(ix+0)	; 211E
 	jr nz,loc_212F	; 2122
 	push af	; 2124
 	push bc	; 2125
 	push de	; 2126
 	ld d,000h	; 2127
-	call sub_1533	; 2129
+	call ChannelKeyOn	; 2129
 	pop de	; 212C
 	pop bc	; 212D
 	pop af	; 212E
 loc_212F:
-	call sub_123E	; 212F
+	call FmKeyOn	; 212F
 	ret	; 2132
 loc_2133:
 	ld a,(ix+3)	; 2133
 	ld b,a	; 2136
 	ld a,(CurrentChannel)	; 2137
-	call sub_29D8	; 213A
-	call sub_12D4	; 213D
+	call SsgWriteLevel	; 213A
+	call SsgNoteOn	; 213D
 	ret	; 2140
 loc_2141:
 	ld a,(ix+0)	; 2141
 	and 0f0h	; 2144
 	ld d,a	; 2146
 	ld e,(ix+13)	; 2147
-	call sub_1365	; 214A
+	call SsgSetNoise	; 214A
 	ret	; 214D
 loc_214E:
 	cp 00eh	; 214E
@@ -4526,7 +4565,7 @@ loc_2174:
 	ld e,a	; 2188
 	jr loc_218E	; 2189
 loc_218B:
-	call sub_21E3	; 218B
+	call ChannelPitch	; 218B
 loc_218E:
 	ld a,(iy+7)	; 218E
 	add a,(ix+2)	; 2191
@@ -4570,10 +4609,11 @@ loc_21D2:
 	ld e,a	; 21DE
 	call YmWriteA	; 21DF
 	ret	; 21E2
-sub_21E3:
+; ChannelPitch [C] pitch of the channel: TransposeNote of +6 by +7, plus +13, +14 and the octave bits of +0
+ChannelPitch:
 	ld a,(ix+6)	; 21E3
 	ld b,(ix+7)	; 21E6
-	call sub_1E59	; 21E9
+	call TransposeNote	; 21E9
 	ld a,(ix+0)	; 21EC
 	and 0f0h	; 21EF
 	ld d,a	; 21F1
@@ -4593,7 +4633,7 @@ loc_21FB:
 	ret nz	; 220D
 	ld a,(CurrentChannel)	; 220E
 	ld d,000h	; 2211
-	call sub_1533	; 2213
+	call ChannelKeyOn	; 2213
 	ret	; 2216
 loc_2217:
 	dec (ix+5)	; 2217
@@ -4611,13 +4651,13 @@ loc_222E:
 	cp 008h	; 2233
 	jr nc,loc_223F	; 2235
 	ld d,000h	; 2237
-	call sub_1533	; 2239
+	call ChannelKeyOn	; 2239
 	jp loc_20D6	; 223C
 loc_223F:
 	cp 00eh	; 223F
 	jp c,loc_20D6	; 2241
 	ld d,000h	; 2244
-	call sub_1533	; 2246
+	call ChannelKeyOn	; 2246
 	jp loc_20D6	; 2249
 loc_224C:
 	cp 001h	; 224C
@@ -4627,10 +4667,10 @@ loc_2253:
 	ld a,(0fe2eh)	; 2253
 	or a	; 2256
 	jp nz,loc_2260	; 2257
-	call sub_161F	; 225A
+	call YmTimerControl2F	; 225A
 	jp loc_2263	; 225D
 loc_2260:
-	call sub_1618	; 2260
+	call YmTimerControl1F	; 2260
 loc_2263:
 	pop iy	; 2263
 	pop ix	; 2265
@@ -4664,16 +4704,17 @@ loc_228B:
 	ex af,af'	; 228F
 	call LoadInstrument	; 2290
 	ld a,(CurrentChannel)	; 2293
-	call sub_1816	; 2296
+	call FmWriteLevels	; 2296
 	inc hl	; 2299
 	bit 7,(hl)	; 229A
-	call nz,sub_22AC	; 229C
+	call nz,SeqSetLevel	; 229C
 	bit 7,(hl)	; 229F
-	call nz,sub_22DC	; 22A1
+	call nz,SeqSetDetune	; 22A1
 	bit 7,(hl)	; 22A4
-	call nz,sub_22D4	; 22A6
+	call nz,SeqSetParam15	; 22A6
 	jp SequenceStep	; 22A9
-sub_22AC:
+; SeqSetLevel [C] first optional instrument byte: level (- $88 on FM and SSG, - $80 on ADPCM-A unless $FE23, - $B8 on ADPCM-B) to +2
+SeqSetLevel:
 	ld a,(CurrentChannel)	; 22AC
 	cp 008h	; 22AF
 	jr nc,loc_22BB	; 22B1
@@ -4699,13 +4740,15 @@ loc_22CC:
 	ld (ix+2),a	; 22CF
 	inc hl	; 22D2
 	ret	; 22D3
-sub_22D4:
+; SeqSetParam15 [I] third optional instrument byte - $B8 to +15
+SeqSetParam15:
 	ld a,(hl)	; 22D4
 	sub 0b8h	; 22D5
 	ld (ix+15),a	; 22D7
 	inc hl	; 22DA
 	ret	; 22DB
-sub_22DC:
+; SeqSetDetune [I] second optional instrument byte: a signed step (bit 0 the sign) to +14
+SeqSetDetune:
 	ld a,(hl)	; 22DC
 	and 00fh	; 22DD
 	bit 0,a	; 22DF
@@ -4732,7 +4775,7 @@ loc_22FA:
 	ex af,af'	; 22FA
 	ld a,(CurrentChannel)	; 22FB
 	ex af,af'	; 22FE
-	call sub_28AA	; 22FF
+	call NoteLengthTimes	; 22FF
 	ld (ix+4),b	; 2302
 	ld (ix+5),a	; 2305
 	inc hl	; 2308
@@ -5119,7 +5162,7 @@ SeqEffectEnd:
 loc_258B:
 	xor a	; 258B
 	ld (EffectPlaying),a	; 258C
-	call sub_09BC	; 258F
+	call SsgSilence	; 258F
 	ld sp,(EngineStack)	; 2592
 	jp loc_2253	; 2596
 loc_2599:
@@ -5292,7 +5335,7 @@ loc_2660:
 SeqStartSound:
 	exx	; 2683
 	ld a,(hl)	; 2684
-	call sub_0EF3	; 2685
+	call PlaySoundA	; 2685
 	ld sp,(EngineStack)	; 2688
 	jp loc_2253	; 268C
 loc_268F:
@@ -5364,7 +5407,7 @@ loc_26F0:
 	ld l,a	; 26F8
 	ld h,000h	; 26F9
 	ld de,0faaeh	; 26FB
-	call sub_271A	; 26FE
+	call SetPanBits	; 26FE
 	call YmWriteA	; 2701
 	exx	; 2704
 	ret	; 2705
@@ -5376,11 +5419,12 @@ loc_2706:
 	ld l,a	; 270C
 	ld h,000h	; 270D
 	ld de,0fb35h	; 270F
-	call sub_271A	; 2712
+	call SetPanBits	; 2712
 	call YmWriteB	; 2715
 	exx	; 2718
 	ret	; 2719
-sub_271A:
+; SetPanBits [I] command 44h path: the channel's 2 high bits (left/right) into its register copy
+SetPanBits:
 	add hl,de	; 271A
 	ld a,03fh	; 271B
 	and (hl)	; 271D
@@ -5463,7 +5507,7 @@ loc_2781:
 	xor a	; 2781
 	ld (0fe29h),a	; 2782
 	ld (0fe28h),a	; 2785
-	call sub_09A3	; 2788
+	call FmKeyOffAll	; 2788
 	ld a,(0fe2fh)	; 278B
 	or a	; 278E
 	jr nz,loc_27A3	; 278F
@@ -5497,7 +5541,7 @@ SeqJump:
 ; SeqLoopStart [C] commands 31h, 32h: push a loop (count byte) on the channel's LoopStacks entry
 SeqLoopStart:
 	ld hl,LoopStacks	; 27C4
-	call sub_27DD	; 27C7
+	call ChannelStackEntry	; 27C7
 	exx	; 27CA
 	ld a,(hl)	; 27CB
 	inc hl	; 27CC
@@ -5506,7 +5550,7 @@ SeqLoopStart:
 	ld c,a	; 27CF
 	inc (hl)	; 27D0
 	ld a,(hl)	; 27D1
-	call sub_2814	; 27D2
+	call AddTimes3	; 27D2
 	pop de	; 27D5
 	ld (hl),c	; 27D6
 	inc hl	; 27D7
@@ -5515,7 +5559,8 @@ SeqLoopStart:
 	ld (hl),d	; 27DA
 	exx	; 27DB
 	ret	; 27DC
-sub_27DD:
+; ChannelStackEntry [C] hl += CurrentChannel x 16 (LoopStacks, CallStacks), with channels 11-13 and 16 remapped while $FC38 is set
+ChannelStackEntry:
 	ld a,(0fc38h)	; 27DD
 	or a	; 27E0
 	jr nz,loc_27EF	; 27E1
@@ -5552,7 +5597,8 @@ loc_280C:
 loc_2810:
 	ld a,012h	; 2810
 	jr loc_27E6	; 2812
-sub_2814:
+; AddTimes3 [C] hl += a x 3
+AddTimes3:
 	ld e,a	; 2814
 	add a,a	; 2815
 	add a,e	; 2816
@@ -5563,11 +5609,11 @@ sub_2814:
 ; SeqLoopEnd [C] commands 34h, 38h: back to the loop start until the count runs out
 SeqLoopEnd:
 	ld hl,LoopStacks	; 281C
-	call sub_27DD	; 281F
+	call ChannelStackEntry	; 281F
 	ld a,(hl)	; 2822
 	ld b,h	; 2823
 	ld c,l	; 2824
-	call sub_2814	; 2825
+	call AddTimes3	; 2825
 	dec (hl)	; 2828
 	jr z,loc_2833	; 2829
 	inc hl	; 282B
@@ -5587,10 +5633,10 @@ loc_2833:
 ; SeqCall [C] command 35h: call the sub-sequence at the word that follows (CallStacks)
 SeqCall:
 	ld hl,CallStacks	; 2838
-	call sub_27DD	; 283B
+	call ChannelStackEntry	; 283B
 	inc (hl)	; 283E
 	ld a,(hl)	; 283F
-	call sub_2814	; 2840
+	call AddTimes3	; 2840
 	exx	; 2843
 	ld e,(hl)	; 2844
 	inc hl	; 2845
@@ -5610,12 +5656,12 @@ SeqReturn:
 	exx	; 2851
 	push hl	; 2852
 	ld hl,CallStacks	; 2853
-	call sub_27DD	; 2856
+	call ChannelStackEntry	; 2856
 	ld a,(hl)	; 2859
 	or a	; 285A
 	jr z,loc_2867	; 285B
 	dec (hl)	; 285D
-	call sub_2814	; 285E
+	call AddTimes3	; 285E
 	ld e,(hl)	; 2861
 	inc hl	; 2862
 	ld h,(hl)	; 2863
@@ -5653,7 +5699,7 @@ loc_288B:
 	exx	; 288B
 	ld b,(hl)	; 288C
 	ld a,(CurrentChannel)	; 288D
-	call sub_28EC	; 2890
+	call SetChannelOwner	; 2890
 	inc hl	; 2893
 	ret	; 2894
 loc_2895:
@@ -5672,7 +5718,8 @@ SeqVolume:
 	ld (ix+7),a	; 28A5
 	inc hl	; 28A8
 	ret	; 28A9
-sub_28AA:
+; NoteLengthTimes [C] turns the length byte into the two counters +4/+5 (gate and note), scaled by the channel's ChannelOwner value
+NoteLengthTimes:
 	push hl	; 28AA
 	ld c,a	; 28AB
 	rrca	; 28AC
@@ -5727,7 +5774,8 @@ loc_28E9:
 	sub b	; 28E9
 	pop hl	; 28EA
 	ret	; 28EB
-sub_28EC:
+; SetChannelOwner [C] ChannelOwner[a] = b & 7
+SetChannelOwner:
 	push af	; 28EC
 	push hl	; 28ED
 	push de	; 28EE
@@ -5752,7 +5800,8 @@ SetTempo:
 	ld (ix+6),a	; 290A
 	pop ix	; 290D
 	ret	; 290F
-sub_2910:
+; SetTimerA [C] TimerATable[a & $0F] to YM2610 $25 and $24, kept in TimerAShadow
+SetTimerA:
 	push ix	; 2910
 	ld ix,TimerAShadow	; 2912
 	and 00fh	; 2916
@@ -5794,7 +5843,8 @@ YmWriteB:
 	rst 010h	; 2949
 	pop af	; 294A
 	ret	; 294B
-sub_294C:
+; FmSetTotalLevel [I] writes FM channel a's operator total levels ($40+) for level b
+FmSetTotalLevel:
 	push af	; 294C
 	push bc	; 294D
 	push de	; 294E
@@ -5842,38 +5892,43 @@ loc_296B:
 	add hl,de	; 298E
 	ld a,(hl)	; 298F
 	bit 0,a	; 2990
-	call nz,sub_29AB	; 2992
+	call nz,FmWriteOp1	; 2992
 	bit 1,a	; 2995
-	call nz,sub_29B4	; 2997
+	call nz,FmWriteOp3	; 2997
 	bit 2,a	; 299A
-	call nz,sub_29BD	; 299C
+	call nz,FmWriteOp2	; 299C
 	bit 3,a	; 299F
-	call nz,sub_29C6	; 29A1
+	call nz,FmWriteOp4	; 29A1
 	pop ix	; 29A4
 	pop hl	; 29A6
 	pop de	; 29A7
 	pop bc	; 29A8
 	pop af	; 29A9
 	ret	; 29AA
-sub_29AB:
+; FmWriteOp1 [I] operator register +$00 of the FM channel (copy at +16)
+FmWriteOp1:
 	ld (ix+16),b	; 29AB
 	ld l,000h	; 29AE
-	call sub_29CB	; 29B0
+	call FmWriteOperator	; 29B0
 	ret	; 29B3
-sub_29B4:
+; FmWriteOp3 [I] operator register +$08 (copy at +24)
+FmWriteOp3:
 	ld (ix+24),b	; 29B4
 	ld l,008h	; 29B7
-	call sub_29CB	; 29B9
+	call FmWriteOperator	; 29B9
 	ret	; 29BC
-sub_29BD:
+; FmWriteOp2 [I] operator register +$04 (copy at +20)
+FmWriteOp2:
 	ld (ix+20),b	; 29BD
 	ld l,004h	; 29C0
-	call sub_29CB	; 29C2
+	call FmWriteOperator	; 29C2
 	ret	; 29C5
-sub_29C6:
+; FmWriteOp4 [I] operator register +$0C (copy at +28)
+FmWriteOp4:
 	ld (ix+28),b	; 29C6
 	ld l,00ch	; 29C9
-sub_29CB:
+; FmWriteOperator [C] writes register a + l, value b, through the port pair in c'
+FmWriteOperator:
 	ex af,af'	; 29CB
 	add a,l	; 29CC
 	exx	; 29CD
@@ -5885,7 +5940,8 @@ sub_29CB:
 	out (c),b	; 29D4
 	rst 010h	; 29D6
 	ret	; 29D7
-sub_29D8:
+; SsgWriteLevel [C] SSG volume: register a + 3 (8, 9, 10 for channels 5, 6, 7) = b
+SsgWriteLevel:
 	ex af,af'	; 29D8
 	push de	; 29D9
 	add a,003h	; 29DA
@@ -5917,7 +5973,7 @@ sub_29E5:
 sub_2A02:
 	push de	; 2A02
 	push ix	; 2A03
-	ld ix,0fc80h	; 2A05
+	ld ix,ModulationBlocks	; 2A05
 	ld (ix+11),b	; 2A09
 	ld d,01bh	; 2A0C
 	ld e,b	; 2A0E
@@ -6383,7 +6439,7 @@ SoundLeft:
 seq_405D:
 	defb 0e4h,088h,080h,0b8h	; 405D instrument 64h, 88 80 b8
 	defb 044h,002h	; 4061 44h command 02
-	defb 030h,088h,0ach	; 4063 length 30h, level 08h +flag, octave A note C
+	defb 030h,088h,0ach	; 4063 length 30h, level 08h +flag, C octave A
 	defb 030h,040h,000h	; 4066 length 30h, rest (40h, 00h)
 	defb 042h	; 4069 42h repeat from the start
 seq_406A:
@@ -6425,7 +6481,7 @@ SoundRight:
 seq_40C3:
 	defb 0e4h,088h,080h,0b8h	; 40C3 instrument 64h, 88 80 b8
 	defb 044h,001h	; 40C7 44h command 01
-	defb 030h,088h,0ach	; 40C9 length 30h, level 08h +flag, octave A note C
+	defb 030h,088h,0ach	; 40C9 length 30h, level 08h +flag, C octave A
 	defb 030h,040h,000h	; 40CC length 30h, rest (40h, 00h)
 	defb 042h	; 40CF 42h repeat from the start
 seq_40D0:
@@ -6467,7 +6523,7 @@ SoundCenter:
 seq_4129:
 	defb 0e4h,088h,080h,0b8h	; 4129 instrument 64h, 88 80 b8
 	defb 044h,003h	; 412D 44h command 03
-	defb 030h,088h,0ach	; 412F length 30h, level 08h +flag, octave A note C
+	defb 030h,088h,0ach	; 412F length 30h, level 08h +flag, C octave A
 	defb 030h,040h,000h	; 4132 length 30h, rest (40h, 00h)
 	defb 042h	; 4135 42h repeat from the start
 seq_4136:
@@ -6510,45 +6566,45 @@ seq_418F:
 	defb 0e6h,088h,084h,0b8h	; 418F instrument 66h, 88 84 b8
 	defb 035h	; 4193 call
 	defw sub_seq_41A0	; 4194
-	defb 00ch,012h,06ah	; 4196 length 0Ch, level 12h, octave 6 note A
-	defb 00ch,015h,06ah	; 4199 length 0Ch, level 15h, octave 6 note A
+	defb 00ch,012h,06ah	; 4196 length 0Ch, level 12h, A octave 6
+	defb 00ch,015h,06ah	; 4199 length 0Ch, level 15h, A octave 6
 	defb 001h,040h,000h	; 419C length 01h, rest (40h, 00h)
 	defb 040h	; 419F 40h end of the sound
 sub_seq_41A0:
-	defb 012h,080h,060h	; 41A0 length 12h, level 00h +flag, octave 6 note 0
-	defb 012h,008h,060h	; 41A3 length 12h, level 08h, octave 6 note 0
-	defb 012h,080h,06eh	; 41A6 length 12h, level 00h +flag, octave 6 note E
-	defb 012h,008h,06eh	; 41A9 length 12h, level 08h, octave 6 note E
-	defb 00ch,080h,06bh	; 41AC length 0Ch, level 00h +flag, octave 6 note B
-	defb 00ch,008h,06bh	; 41AF length 0Ch, level 08h, octave 6 note B
-	defb 00ch,080h,06ah	; 41B2 length 0Ch, level 00h +flag, octave 6 note A
-	defb 00ch,002h,06ah	; 41B5 length 0Ch, level 02h, octave 6 note A
-	defb 00ch,004h,06ah	; 41B8 length 0Ch, level 04h, octave 6 note A
-	defb 00ch,006h,06ah	; 41BB length 0Ch, level 06h, octave 6 note A
-	defb 00ch,008h,06ah	; 41BE length 0Ch, level 08h, octave 6 note A
-	defb 00ch,00ah,06ah	; 41C1 length 0Ch, level 0Ah, octave 6 note A
-	defb 00ch,00ch,06ah	; 41C4 length 0Ch, level 0Ch, octave 6 note A
-	defb 00ch,00eh,06ah	; 41C7 length 0Ch, level 0Eh, octave 6 note A
-	defb 012h,080h,08ch	; 41CA length 12h, level 00h +flag, octave 8 note C
-	defb 012h,008h,08ch	; 41CD length 12h, level 08h, octave 8 note C
-	defb 012h,080h,06bh	; 41D0 length 12h, level 00h +flag, octave 6 note B
-	defb 012h,008h,06bh	; 41D3 length 12h, level 08h, octave 6 note B
-	defb 00ch,080h,060h	; 41D6 length 0Ch, level 00h +flag, octave 6 note 0
-	defb 00ch,008h,060h	; 41D9 length 0Ch, level 08h, octave 6 note 0
-	defb 00ch,080h,06ah	; 41DC length 0Ch, level 00h +flag, octave 6 note A
-	defb 00ch,003h,06ah	; 41DF length 0Ch, level 03h, octave 6 note A
-	defb 00ch,006h,06ah	; 41E2 length 0Ch, level 06h, octave 6 note A
-	defb 00ch,009h,06ah	; 41E5 length 0Ch, level 09h, octave 6 note A
-	defb 00ch,00ch,06ah	; 41E8 length 0Ch, level 0Ch, octave 6 note A
-	defb 00ch,00fh,06ah	; 41EB length 0Ch, level 0Fh, octave 6 note A
+	defb 012h,080h,060h	; 41A0 length 12h, level 00h +flag, G octave 6
+	defb 012h,008h,060h	; 41A3 length 12h, level 08h, G octave 6
+	defb 012h,080h,06eh	; 41A6 length 12h, level 00h +flag, E octave 6
+	defb 012h,008h,06eh	; 41A9 length 12h, level 08h, E octave 6
+	defb 00ch,080h,06bh	; 41AC length 0Ch, level 00h +flag, B octave 6
+	defb 00ch,008h,06bh	; 41AF length 0Ch, level 08h, B octave 6
+	defb 00ch,080h,06ah	; 41B2 length 0Ch, level 00h +flag, A octave 6
+	defb 00ch,002h,06ah	; 41B5 length 0Ch, level 02h, A octave 6
+	defb 00ch,004h,06ah	; 41B8 length 0Ch, level 04h, A octave 6
+	defb 00ch,006h,06ah	; 41BB length 0Ch, level 06h, A octave 6
+	defb 00ch,008h,06ah	; 41BE length 0Ch, level 08h, A octave 6
+	defb 00ch,00ah,06ah	; 41C1 length 0Ch, level 0Ah, A octave 6
+	defb 00ch,00ch,06ah	; 41C4 length 0Ch, level 0Ch, A octave 6
+	defb 00ch,00eh,06ah	; 41C7 length 0Ch, level 0Eh, A octave 6
+	defb 012h,080h,08ch	; 41CA length 12h, level 00h +flag, C octave 8
+	defb 012h,008h,08ch	; 41CD length 12h, level 08h, C octave 8
+	defb 012h,080h,06bh	; 41D0 length 12h, level 00h +flag, B octave 6
+	defb 012h,008h,06bh	; 41D3 length 12h, level 08h, B octave 6
+	defb 00ch,080h,060h	; 41D6 length 0Ch, level 00h +flag, G octave 6
+	defb 00ch,008h,060h	; 41D9 length 0Ch, level 08h, G octave 6
+	defb 00ch,080h,06ah	; 41DC length 0Ch, level 00h +flag, A octave 6
+	defb 00ch,003h,06ah	; 41DF length 0Ch, level 03h, A octave 6
+	defb 00ch,006h,06ah	; 41E2 length 0Ch, level 06h, A octave 6
+	defb 00ch,009h,06ah	; 41E5 length 0Ch, level 09h, A octave 6
+	defb 00ch,00ch,06ah	; 41E8 length 0Ch, level 0Ch, A octave 6
+	defb 00ch,00fh,06ah	; 41EB length 0Ch, level 0Fh, A octave 6
 	defb 036h	; 41EE 36h return
 seq_41EF:
 	defb 0e6h,08ah,084h,0b2h	; 41EF instrument 66h, 8a 84 b2
 	defb 003h,040h,000h	; 41F3 length 03h, rest (40h, 00h)
 	defb 035h	; 41F6 call
 	defw sub_seq_41A0	; 41F7
-	defb 00ch,012h,06ah	; 41F9 length 0Ch, level 12h, octave 6 note A
-	defb 009h,015h,06ah	; 41FC length 09h, level 15h, octave 6 note A
+	defb 00ch,012h,06ah	; 41F9 length 0Ch, level 12h, A octave 6
+	defb 009h,015h,06ah	; 41FC length 09h, level 15h, A octave 6
 	defb 001h,040h,000h	; 41FF length 01h, rest (40h, 00h)
 	defb 040h	; 4202 40h end of the sound
 seq_4203:
@@ -6558,165 +6614,165 @@ seq_4203:
 	defb 001h,040h,000h	; 420A length 01h, rest (40h, 00h)
 	defb 040h	; 420D 40h end of the sound
 sub_seq_420E:
-	defb 003h,080h,060h	; 420E length 03h, level 00h +flag, octave 6 note 0
-	defb 003h,008h,060h	; 4211 length 03h, level 08h, octave 6 note 0
-	defb 003h,080h,08ch	; 4214 length 03h, level 00h +flag, octave 8 note C
-	defb 003h,008h,08ch	; 4217 length 03h, level 08h, octave 8 note C
+	defb 003h,080h,060h	; 420E length 03h, level 00h +flag, G octave 6
+	defb 003h,008h,060h	; 4211 length 03h, level 08h, G octave 6
+	defb 003h,080h,08ch	; 4214 length 03h, level 00h +flag, C octave 8
+	defb 003h,008h,08ch	; 4217 length 03h, level 08h, C octave 8
 	defb 044h,001h	; 421A 44h command 01
-	defb 003h,080h,08dh	; 421C length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 421F length 03h, level 08h, octave 8 note D
-	defb 003h,080h,08fh	; 4222 length 03h, level 00h +flag, octave 8 note F
-	defb 003h,008h,08fh	; 4225 length 03h, level 08h, octave 8 note F
+	defb 003h,080h,08dh	; 421C length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 421F length 03h, level 08h, D octave 8
+	defb 003h,080h,08fh	; 4222 length 03h, level 00h +flag, F octave 8
+	defb 003h,008h,08fh	; 4225 length 03h, level 08h, F octave 8
 	defb 044h,003h	; 4228 44h command 03
-	defb 003h,080h,080h	; 422A length 03h, level 00h +flag, octave 8 note 0
-	defb 003h,008h,080h	; 422D length 03h, level 08h, octave 8 note 0
-	defb 003h,080h,08fh	; 4230 length 03h, level 00h +flag, octave 8 note F
-	defb 003h,008h,08fh	; 4233 length 03h, level 08h, octave 8 note F
+	defb 003h,080h,080h	; 422A length 03h, level 00h +flag, G octave 8
+	defb 003h,008h,080h	; 422D length 03h, level 08h, G octave 8
+	defb 003h,080h,08fh	; 4230 length 03h, level 00h +flag, F octave 8
+	defb 003h,008h,08fh	; 4233 length 03h, level 08h, F octave 8
 	defb 044h,002h	; 4236 44h command 02
-	defb 003h,080h,08dh	; 4238 length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 423B length 03h, level 08h, octave 8 note D
-	defb 003h,080h,08ch	; 423E length 03h, level 00h +flag, octave 8 note C
-	defb 003h,008h,08ch	; 4241 length 03h, level 08h, octave 8 note C
+	defb 003h,080h,08dh	; 4238 length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 423B length 03h, level 08h, D octave 8
+	defb 003h,080h,08ch	; 423E length 03h, level 00h +flag, C octave 8
+	defb 003h,008h,08ch	; 4241 length 03h, level 08h, C octave 8
 	defb 044h,003h	; 4244 44h command 03
-	defb 003h,080h,08dh	; 4246 length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 4249 length 03h, level 08h, octave 8 note D
-	defb 003h,080h,060h	; 424C length 03h, level 00h +flag, octave 6 note 0
-	defb 003h,008h,060h	; 424F length 03h, level 08h, octave 6 note 0
+	defb 003h,080h,08dh	; 4246 length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 4249 length 03h, level 08h, D octave 8
+	defb 003h,080h,060h	; 424C length 03h, level 00h +flag, G octave 6
+	defb 003h,008h,060h	; 424F length 03h, level 08h, G octave 6
 	defb 044h,001h	; 4252 44h command 01
-	defb 003h,080h,08ch	; 4254 length 03h, level 00h +flag, octave 8 note C
-	defb 003h,008h,08ch	; 4257 length 03h, level 08h, octave 8 note C
-	defb 003h,080h,08dh	; 425A length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 425D length 03h, level 08h, octave 8 note D
+	defb 003h,080h,08ch	; 4254 length 03h, level 00h +flag, C octave 8
+	defb 003h,008h,08ch	; 4257 length 03h, level 08h, C octave 8
+	defb 003h,080h,08dh	; 425A length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 425D length 03h, level 08h, D octave 8
 	defb 044h,003h	; 4260 44h command 03
-	defb 003h,080h,08dh	; 4262 length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 4265 length 03h, level 08h, octave 8 note D
-	defb 003h,080h,060h	; 4268 length 03h, level 00h +flag, octave 6 note 0
-	defb 003h,008h,060h	; 426B length 03h, level 08h, octave 6 note 0
+	defb 003h,080h,08dh	; 4262 length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 4265 length 03h, level 08h, D octave 8
+	defb 003h,080h,060h	; 4268 length 03h, level 00h +flag, G octave 6
+	defb 003h,008h,060h	; 426B length 03h, level 08h, G octave 6
 	defb 044h,002h	; 426E 44h command 02
-	defb 003h,080h,08ch	; 4270 length 03h, level 00h +flag, octave 8 note C
-	defb 003h,008h,08ch	; 4273 length 03h, level 08h, octave 8 note C
-	defb 003h,080h,08dh	; 4276 length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 4279 length 03h, level 08h, octave 8 note D
+	defb 003h,080h,08ch	; 4270 length 03h, level 00h +flag, C octave 8
+	defb 003h,008h,08ch	; 4273 length 03h, level 08h, C octave 8
+	defb 003h,080h,08dh	; 4276 length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 4279 length 03h, level 08h, D octave 8
 	defb 044h,003h	; 427C 44h command 03
-	defb 003h,080h,06ah	; 427E length 03h, level 00h +flag, octave 6 note A
-	defb 003h,008h,06ah	; 4281 length 03h, level 08h, octave 6 note A
-	defb 003h,080h,08dh	; 4284 length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 4287 length 03h, level 08h, octave 8 note D
+	defb 003h,080h,06ah	; 427E length 03h, level 00h +flag, A octave 6
+	defb 003h,008h,06ah	; 4281 length 03h, level 08h, A octave 6
+	defb 003h,080h,08dh	; 4284 length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 4287 length 03h, level 08h, D octave 8
 	defb 044h,001h	; 428A 44h command 01
-	defb 003h,080h,08eh	; 428C length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 428F length 03h, level 08h, octave 8 note E
-	defb 003h,080h,080h	; 4292 length 03h, level 00h +flag, octave 8 note 0
-	defb 003h,008h,080h	; 4295 length 03h, level 08h, octave 8 note 0
+	defb 003h,080h,08eh	; 428C length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 428F length 03h, level 08h, E octave 8
+	defb 003h,080h,080h	; 4292 length 03h, level 00h +flag, G octave 8
+	defb 003h,008h,080h	; 4295 length 03h, level 08h, G octave 8
 	defb 044h,003h	; 4298 44h command 03
-	defb 003h,080h,08ah	; 429A length 03h, level 00h +flag, octave 8 note A
-	defb 003h,008h,08ah	; 429D length 03h, level 08h, octave 8 note A
-	defb 003h,080h,080h	; 42A0 length 03h, level 00h +flag, octave 8 note 0
-	defb 003h,008h,080h	; 42A3 length 03h, level 08h, octave 8 note 0
+	defb 003h,080h,08ah	; 429A length 03h, level 00h +flag, A octave 8
+	defb 003h,008h,08ah	; 429D length 03h, level 08h, A octave 8
+	defb 003h,080h,080h	; 42A0 length 03h, level 00h +flag, G octave 8
+	defb 003h,008h,080h	; 42A3 length 03h, level 08h, G octave 8
 	defb 044h,002h	; 42A6 44h command 02
-	defb 003h,080h,08eh	; 42A8 length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 42AB length 03h, level 08h, octave 8 note E
-	defb 003h,080h,08dh	; 42AE length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 42B1 length 03h, level 08h, octave 8 note D
+	defb 003h,080h,08eh	; 42A8 length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 42AB length 03h, level 08h, E octave 8
+	defb 003h,080h,08dh	; 42AE length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 42B1 length 03h, level 08h, D octave 8
 	defb 044h,003h	; 42B4 44h command 03
-	defb 003h,080h,08eh	; 42B6 length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 42B9 length 03h, level 08h, octave 8 note E
-	defb 003h,080h,06ah	; 42BC length 03h, level 00h +flag, octave 6 note A
-	defb 003h,008h,06ah	; 42BF length 03h, level 08h, octave 6 note A
+	defb 003h,080h,08eh	; 42B6 length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 42B9 length 03h, level 08h, E octave 8
+	defb 003h,080h,06ah	; 42BC length 03h, level 00h +flag, A octave 6
+	defb 003h,008h,06ah	; 42BF length 03h, level 08h, A octave 6
 	defb 044h,001h	; 42C2 44h command 01
-	defb 003h,080h,08dh	; 42C4 length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 42C7 length 03h, level 08h, octave 8 note D
-	defb 003h,080h,08eh	; 42CA length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 42CD length 03h, level 08h, octave 8 note E
+	defb 003h,080h,08dh	; 42C4 length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 42C7 length 03h, level 08h, D octave 8
+	defb 003h,080h,08eh	; 42CA length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 42CD length 03h, level 08h, E octave 8
 	defb 044h,003h	; 42D0 44h command 03
-	defb 003h,080h,08eh	; 42D2 length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 42D5 length 03h, level 08h, octave 8 note E
-	defb 003h,080h,06ah	; 42D8 length 03h, level 00h +flag, octave 6 note A
-	defb 003h,008h,06ah	; 42DB length 03h, level 08h, octave 6 note A
+	defb 003h,080h,08eh	; 42D2 length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 42D5 length 03h, level 08h, E octave 8
+	defb 003h,080h,06ah	; 42D8 length 03h, level 00h +flag, A octave 6
+	defb 003h,008h,06ah	; 42DB length 03h, level 08h, A octave 6
 	defb 044h,002h	; 42DE 44h command 02
-	defb 003h,080h,08dh	; 42E0 length 03h, level 00h +flag, octave 8 note D
-	defb 003h,008h,08dh	; 42E3 length 03h, level 08h, octave 8 note D
-	defb 003h,080h,08eh	; 42E6 length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 42E9 length 03h, level 08h, octave 8 note E
+	defb 003h,080h,08dh	; 42E0 length 03h, level 00h +flag, D octave 8
+	defb 003h,008h,08dh	; 42E3 length 03h, level 08h, D octave 8
+	defb 003h,080h,08eh	; 42E6 length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 42E9 length 03h, level 08h, E octave 8
 	defb 044h,003h	; 42EC 44h command 03
-	defb 003h,080h,08ch	; 42EE length 03h, level 00h +flag, octave 8 note C
-	defb 003h,008h,08ch	; 42F1 length 03h, level 08h, octave 8 note C
-	defb 003h,080h,08eh	; 42F4 length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 42F7 length 03h, level 08h, octave 8 note E
+	defb 003h,080h,08ch	; 42EE length 03h, level 00h +flag, C octave 8
+	defb 003h,008h,08ch	; 42F1 length 03h, level 08h, C octave 8
+	defb 003h,080h,08eh	; 42F4 length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 42F7 length 03h, level 08h, E octave 8
 	defb 044h,001h	; 42FA 44h command 01
-	defb 003h,080h,080h	; 42FC length 03h, level 00h +flag, octave 8 note 0
-	defb 003h,008h,080h	; 42FF length 03h, level 08h, octave 8 note 0
-	defb 003h,080h,086h	; 4302 length 03h, level 00h +flag, octave 8 note 6
-	defb 003h,008h,086h	; 4305 length 03h, level 08h, octave 8 note 6
+	defb 003h,080h,080h	; 42FC length 03h, level 00h +flag, G octave 8
+	defb 003h,008h,080h	; 42FF length 03h, level 08h, G octave 8
+	defb 003h,080h,086h	; 4302 length 03h, level 00h +flag, A# octave 8
+	defb 003h,008h,086h	; 4305 length 03h, level 08h, A# octave 8
 	defb 044h,003h	; 4308 44h command 03
-	defb 003h,080h,0ach	; 430A length 03h, level 00h +flag, octave A note C
-	defb 003h,008h,0ach	; 430D length 03h, level 08h, octave A note C
-	defb 003h,080h,086h	; 4310 length 03h, level 00h +flag, octave 8 note 6
-	defb 003h,008h,086h	; 4313 length 03h, level 08h, octave 8 note 6
+	defb 003h,080h,0ach	; 430A length 03h, level 00h +flag, C octave A
+	defb 003h,008h,0ach	; 430D length 03h, level 08h, C octave A
+	defb 003h,080h,086h	; 4310 length 03h, level 00h +flag, A# octave 8
+	defb 003h,008h,086h	; 4313 length 03h, level 08h, A# octave 8
 	defb 044h,002h	; 4316 44h command 02
-	defb 003h,080h,080h	; 4318 length 03h, level 00h +flag, octave 8 note 0
-	defb 003h,008h,080h	; 431B length 03h, level 08h, octave 8 note 0
-	defb 003h,080h,08eh	; 431E length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 4321 length 03h, level 08h, octave 8 note E
+	defb 003h,080h,080h	; 4318 length 03h, level 00h +flag, G octave 8
+	defb 003h,008h,080h	; 431B length 03h, level 08h, G octave 8
+	defb 003h,080h,08eh	; 431E length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 4321 length 03h, level 08h, E octave 8
 	defb 044h,003h	; 4324 44h command 03
-	defb 003h,080h,086h	; 4326 length 03h, level 00h +flag, octave 8 note 6
-	defb 003h,008h,086h	; 4329 length 03h, level 08h, octave 8 note 6
-	defb 003h,080h,08ch	; 432C length 03h, level 00h +flag, octave 8 note C
-	defb 003h,008h,08ch	; 432F length 03h, level 08h, octave 8 note C
+	defb 003h,080h,086h	; 4326 length 03h, level 00h +flag, A# octave 8
+	defb 003h,008h,086h	; 4329 length 03h, level 08h, A# octave 8
+	defb 003h,080h,08ch	; 432C length 03h, level 00h +flag, C octave 8
+	defb 003h,008h,08ch	; 432F length 03h, level 08h, C octave 8
 	defb 044h,001h	; 4332 44h command 01
-	defb 003h,080h,08eh	; 4334 length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 4337 length 03h, level 08h, octave 8 note E
-	defb 003h,080h,080h	; 433A length 03h, level 00h +flag, octave 8 note 0
-	defb 003h,008h,080h	; 433D length 03h, level 08h, octave 8 note 0
+	defb 003h,080h,08eh	; 4334 length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 4337 length 03h, level 08h, E octave 8
+	defb 003h,080h,080h	; 433A length 03h, level 00h +flag, G octave 8
+	defb 003h,008h,080h	; 433D length 03h, level 08h, G octave 8
 	defb 044h,003h	; 4340 44h command 03
-	defb 003h,080h,086h	; 4342 length 03h, level 00h +flag, octave 8 note 6
-	defb 003h,008h,086h	; 4345 length 03h, level 08h, octave 8 note 6
-	defb 003h,080h,08ch	; 4348 length 03h, level 00h +flag, octave 8 note C
-	defb 003h,008h,08ch	; 434B length 03h, level 08h, octave 8 note C
+	defb 003h,080h,086h	; 4342 length 03h, level 00h +flag, A# octave 8
+	defb 003h,008h,086h	; 4345 length 03h, level 08h, A# octave 8
+	defb 003h,080h,08ch	; 4348 length 03h, level 00h +flag, C octave 8
+	defb 003h,008h,08ch	; 434B length 03h, level 08h, C octave 8
 	defb 044h,002h	; 434E 44h command 02
-	defb 003h,080h,08eh	; 4350 length 03h, level 00h +flag, octave 8 note E
-	defb 003h,008h,08eh	; 4353 length 03h, level 08h, octave 8 note E
-	defb 003h,080h,080h	; 4356 length 03h, level 00h +flag, octave 8 note 0
-	defb 003h,008h,080h	; 4359 length 03h, level 08h, octave 8 note 0
+	defb 003h,080h,08eh	; 4350 length 03h, level 00h +flag, E octave 8
+	defb 003h,008h,08eh	; 4353 length 03h, level 08h, E octave 8
+	defb 003h,080h,080h	; 4356 length 03h, level 00h +flag, G octave 8
+	defb 003h,008h,080h	; 4359 length 03h, level 08h, G octave 8
 	defb 044h,003h	; 435C 44h command 03
-	defb 003h,080h,06ah	; 435E length 03h, level 00h +flag, octave 6 note A
-	defb 003h,008h,06ah	; 4361 length 03h, level 08h, octave 6 note A
-	defb 003h,082h,08dh	; 4364 length 03h, level 02h +flag, octave 8 note D
-	defb 003h,00ah,08dh	; 4367 length 03h, level 0Ah, octave 8 note D
+	defb 003h,080h,06ah	; 435E length 03h, level 00h +flag, A octave 6
+	defb 003h,008h,06ah	; 4361 length 03h, level 08h, A octave 6
+	defb 003h,082h,08dh	; 4364 length 03h, level 02h +flag, D octave 8
+	defb 003h,00ah,08dh	; 4367 length 03h, level 0Ah, D octave 8
 	defb 044h,001h	; 436A 44h command 01
-	defb 003h,084h,08eh	; 436C length 03h, level 04h +flag, octave 8 note E
-	defb 003h,00ch,08eh	; 436F length 03h, level 0Ch, octave 8 note E
-	defb 003h,086h,08ah	; 4372 length 03h, level 06h +flag, octave 8 note A
-	defb 003h,00eh,08ah	; 4375 length 03h, level 0Eh, octave 8 note A
+	defb 003h,084h,08eh	; 436C length 03h, level 04h +flag, E octave 8
+	defb 003h,00ch,08eh	; 436F length 03h, level 0Ch, E octave 8
+	defb 003h,086h,08ah	; 4372 length 03h, level 06h +flag, A octave 8
+	defb 003h,00eh,08ah	; 4375 length 03h, level 0Eh, A octave 8
 	defb 044h,003h	; 4378 44h command 03
-	defb 003h,088h,06ah	; 437A length 03h, level 08h +flag, octave 6 note A
-	defb 003h,010h,06ah	; 437D length 03h, level 10h, octave 6 note A
-	defb 003h,08ah,08dh	; 4380 length 03h, level 0Ah +flag, octave 8 note D
-	defb 003h,012h,08dh	; 4383 length 03h, level 12h, octave 8 note D
+	defb 003h,088h,06ah	; 437A length 03h, level 08h +flag, A octave 6
+	defb 003h,010h,06ah	; 437D length 03h, level 10h, A octave 6
+	defb 003h,08ah,08dh	; 4380 length 03h, level 0Ah +flag, D octave 8
+	defb 003h,012h,08dh	; 4383 length 03h, level 12h, D octave 8
 	defb 044h,002h	; 4386 44h command 02
-	defb 003h,08ch,08eh	; 4388 length 03h, level 0Ch +flag, octave 8 note E
-	defb 003h,014h,08eh	; 438B length 03h, level 14h, octave 8 note E
-	defb 003h,08eh,08ah	; 438E length 03h, level 0Eh +flag, octave 8 note A
-	defb 003h,016h,08ah	; 4391 length 03h, level 16h, octave 8 note A
+	defb 003h,08ch,08eh	; 4388 length 03h, level 0Ch +flag, E octave 8
+	defb 003h,014h,08eh	; 438B length 03h, level 14h, E octave 8
+	defb 003h,08eh,08ah	; 438E length 03h, level 0Eh +flag, A octave 8
+	defb 003h,016h,08ah	; 4391 length 03h, level 16h, A octave 8
 	defb 044h,003h	; 4394 44h command 03
-	defb 003h,090h,06ah	; 4396 length 03h, level 10h +flag, octave 6 note A
-	defb 003h,018h,06ah	; 4399 length 03h, level 18h, octave 6 note A
-	defb 003h,092h,08dh	; 439C length 03h, level 12h +flag, octave 8 note D
-	defb 003h,01ah,08dh	; 439F length 03h, level 1Ah, octave 8 note D
+	defb 003h,090h,06ah	; 4396 length 03h, level 10h +flag, A octave 6
+	defb 003h,018h,06ah	; 4399 length 03h, level 18h, A octave 6
+	defb 003h,092h,08dh	; 439C length 03h, level 12h +flag, D octave 8
+	defb 003h,01ah,08dh	; 439F length 03h, level 1Ah, D octave 8
 	defb 044h,001h	; 43A2 44h command 01
-	defb 003h,094h,08eh	; 43A4 length 03h, level 14h +flag, octave 8 note E
-	defb 003h,01ch,08eh	; 43A7 length 03h, level 1Ch, octave 8 note E
-	defb 003h,096h,08ah	; 43AA length 03h, level 16h +flag, octave 8 note A
-	defb 003h,01eh,08ah	; 43AD length 03h, level 1Eh, octave 8 note A
+	defb 003h,094h,08eh	; 43A4 length 03h, level 14h +flag, E octave 8
+	defb 003h,01ch,08eh	; 43A7 length 03h, level 1Ch, E octave 8
+	defb 003h,096h,08ah	; 43AA length 03h, level 16h +flag, A octave 8
+	defb 003h,01eh,08ah	; 43AD length 03h, level 1Eh, A octave 8
 	defb 044h,003h	; 43B0 44h command 03
-	defb 003h,098h,06ah	; 43B2 length 03h, level 18h +flag, octave 6 note A
-	defb 003h,01fh,06ah	; 43B5 length 03h, level 1Fh, octave 6 note A
-	defb 003h,09ah,08dh	; 43B8 length 03h, level 1Ah +flag, octave 8 note D
-	defb 003h,01fh,08dh	; 43BB length 03h, level 1Fh, octave 8 note D
+	defb 003h,098h,06ah	; 43B2 length 03h, level 18h +flag, A octave 6
+	defb 003h,01fh,06ah	; 43B5 length 03h, level 1Fh, A octave 6
+	defb 003h,09ah,08dh	; 43B8 length 03h, level 1Ah +flag, D octave 8
+	defb 003h,01fh,08dh	; 43BB length 03h, level 1Fh, D octave 8
 	defb 044h,002h	; 43BE 44h command 02
-	defb 003h,09ch,08eh	; 43C0 length 03h, level 1Ch +flag, octave 8 note E
-	defb 003h,01fh,08eh	; 43C3 length 03h, level 1Fh, octave 8 note E
-	defb 003h,09eh,08ah	; 43C6 length 03h, level 1Eh +flag, octave 8 note A
-	defb 003h,01fh,08ah	; 43C9 length 03h, level 1Fh, octave 8 note A
+	defb 003h,09ch,08eh	; 43C0 length 03h, level 1Ch +flag, E octave 8
+	defb 003h,01fh,08eh	; 43C3 length 03h, level 1Fh, E octave 8
+	defb 003h,09eh,08ah	; 43C6 length 03h, level 1Eh +flag, A octave 8
+	defb 003h,01fh,08ah	; 43C9 length 03h, level 1Fh, A octave 8
 	defb 036h	; 43CC 36h return
 seq_43CD:
 	defb 0e5h,090h,082h,0b2h	; 43CD instrument 65h, 90 82 b2
@@ -6754,54 +6810,54 @@ EffectCoin:
 seq_4405:
 	defb 053h,00eh,000h,001h	; 4405 53h SSG envelope (YM $0D, $0B, $0C) 0e 00 01
 	defb 051h,000h	; 4409 51h command 00
-	defb 004h,08ah,08dh	; 440B length 04h, level 0Ah +flag, octave 8 note D
-	defb 004h,006h,08dh	; 440E length 04h, level 06h, octave 8 note D
-	defb 004h,08ah,0ach	; 4411 length 04h, level 0Ah +flag, octave A note C
-	defb 004h,006h,0ach	; 4414 length 04h, level 06h, octave A note C
-	defb 004h,08ah,0abh	; 4417 length 04h, level 0Ah +flag, octave A note B
-	defb 004h,006h,0abh	; 441A length 04h, level 06h, octave A note B
-	defb 004h,088h,0abh	; 441D length 04h, level 08h +flag, octave A note B
-	defb 004h,004h,0abh	; 4420 length 04h, level 04h, octave A note B
-	defb 004h,086h,0abh	; 4423 length 04h, level 06h +flag, octave A note B
-	defb 004h,003h,0abh	; 4426 length 04h, level 03h, octave A note B
-	defb 004h,084h,0abh	; 4429 length 04h, level 04h +flag, octave A note B
-	defb 004h,002h,0abh	; 442C length 04h, level 02h, octave A note B
-	defb 004h,082h,0abh	; 442F length 04h, level 02h +flag, octave A note B
-	defb 004h,001h,0abh	; 4432 length 04h, level 01h, octave A note B
+	defb 004h,08ah,08dh	; 440B length 04h, level 0Ah +flag, D octave 8
+	defb 004h,006h,08dh	; 440E length 04h, level 06h, D octave 8
+	defb 004h,08ah,0ach	; 4411 length 04h, level 0Ah +flag, C octave A
+	defb 004h,006h,0ach	; 4414 length 04h, level 06h, C octave A
+	defb 004h,08ah,0abh	; 4417 length 04h, level 0Ah +flag, B octave A
+	defb 004h,006h,0abh	; 441A length 04h, level 06h, B octave A
+	defb 004h,088h,0abh	; 441D length 04h, level 08h +flag, B octave A
+	defb 004h,004h,0abh	; 4420 length 04h, level 04h, B octave A
+	defb 004h,086h,0abh	; 4423 length 04h, level 06h +flag, B octave A
+	defb 004h,003h,0abh	; 4426 length 04h, level 03h, B octave A
+	defb 004h,084h,0abh	; 4429 length 04h, level 04h +flag, B octave A
+	defb 004h,002h,0abh	; 442C length 04h, level 02h, B octave A
+	defb 004h,082h,0abh	; 442F length 04h, level 02h +flag, B octave A
+	defb 004h,001h,0abh	; 4432 length 04h, level 01h, B octave A
 	defb 055h	; 4435 55h end of the effect
 seq_4436:
 	defb 002h,040h,000h	; 4436 length 02h, rest (40h, 00h)
-	defb 004h,08ah,08fh	; 4439 length 04h, level 0Ah +flag, octave 8 note F
-	defb 004h,006h,08fh	; 443C length 04h, level 06h, octave 8 note F
-	defb 004h,08ah,0aeh	; 443F length 04h, level 0Ah +flag, octave A note E
-	defb 004h,006h,0aeh	; 4442 length 04h, level 06h, octave A note E
-	defb 004h,08ah,0cdh	; 4445 length 04h, level 0Ah +flag, octave C note D
-	defb 004h,006h,0cdh	; 4448 length 04h, level 06h, octave C note D
-	defb 004h,088h,0cdh	; 444B length 04h, level 08h +flag, octave C note D
-	defb 004h,004h,0cdh	; 444E length 04h, level 04h, octave C note D
-	defb 004h,086h,0cdh	; 4451 length 04h, level 06h +flag, octave C note D
-	defb 004h,003h,0cdh	; 4454 length 04h, level 03h, octave C note D
-	defb 004h,084h,0cdh	; 4457 length 04h, level 04h +flag, octave C note D
-	defb 004h,002h,0cdh	; 445A length 04h, level 02h, octave C note D
-	defb 004h,082h,0cdh	; 445D length 04h, level 02h +flag, octave C note D
-	defb 004h,001h,0cdh	; 4460 length 04h, level 01h, octave C note D
+	defb 004h,08ah,08fh	; 4439 length 04h, level 0Ah +flag, F octave 8
+	defb 004h,006h,08fh	; 443C length 04h, level 06h, F octave 8
+	defb 004h,08ah,0aeh	; 443F length 04h, level 0Ah +flag, E octave A
+	defb 004h,006h,0aeh	; 4442 length 04h, level 06h, E octave A
+	defb 004h,08ah,0cdh	; 4445 length 04h, level 0Ah +flag, D octave C
+	defb 004h,006h,0cdh	; 4448 length 04h, level 06h, D octave C
+	defb 004h,088h,0cdh	; 444B length 04h, level 08h +flag, D octave C
+	defb 004h,004h,0cdh	; 444E length 04h, level 04h, D octave C
+	defb 004h,086h,0cdh	; 4451 length 04h, level 06h +flag, D octave C
+	defb 004h,003h,0cdh	; 4454 length 04h, level 03h, D octave C
+	defb 004h,084h,0cdh	; 4457 length 04h, level 04h +flag, D octave C
+	defb 004h,002h,0cdh	; 445A length 04h, level 02h, D octave C
+	defb 004h,082h,0cdh	; 445D length 04h, level 02h +flag, D octave C
+	defb 004h,001h,0cdh	; 4460 length 04h, level 01h, D octave C
 	defb 055h	; 4463 55h end of the effect
 seq_4464:
 	defb 004h,040h,000h	; 4464 length 04h, rest (40h, 00h)
-	defb 004h,08ah,08ah	; 4467 length 04h, level 0Ah +flag, octave 8 note A
-	defb 004h,004h,08ah	; 446A length 04h, level 04h, octave 8 note A
-	defb 004h,08ah,0a0h	; 446D length 04h, level 0Ah +flag, octave A note 0
-	defb 004h,006h,0a0h	; 4470 length 04h, level 06h, octave A note 0
-	defb 004h,08ah,0c4h	; 4473 length 04h, level 0Ah +flag, octave C note 4
-	defb 004h,004h,0c4h	; 4476 length 04h, level 04h, octave C note 4
-	defb 004h,088h,0c4h	; 4479 length 04h, level 08h +flag, octave C note 4
-	defb 004h,004h,0c4h	; 447C length 04h, level 04h, octave C note 4
-	defb 004h,086h,0c4h	; 447F length 04h, level 06h +flag, octave C note 4
-	defb 004h,003h,0c4h	; 4482 length 04h, level 03h, octave C note 4
-	defb 004h,084h,0c4h	; 4485 length 04h, level 04h +flag, octave C note 4
-	defb 004h,002h,0c4h	; 4488 length 04h, level 02h, octave C note 4
-	defb 004h,082h,0c4h	; 448B length 04h, level 02h +flag, octave C note 4
-	defb 004h,001h,0c4h	; 448E length 04h, level 01h, octave C note 4
+	defb 004h,08ah,08ah	; 4467 length 04h, level 0Ah +flag, A octave 8
+	defb 004h,004h,08ah	; 446A length 04h, level 04h, A octave 8
+	defb 004h,08ah,0a0h	; 446D length 04h, level 0Ah +flag, G octave A
+	defb 004h,006h,0a0h	; 4470 length 04h, level 06h, G octave A
+	defb 004h,08ah,0c4h	; 4473 length 04h, level 0Ah +flag, F# octave C
+	defb 004h,004h,0c4h	; 4476 length 04h, level 04h, F# octave C
+	defb 004h,088h,0c4h	; 4479 length 04h, level 08h +flag, F# octave C
+	defb 004h,004h,0c4h	; 447C length 04h, level 04h, F# octave C
+	defb 004h,086h,0c4h	; 447F length 04h, level 06h +flag, F# octave C
+	defb 004h,003h,0c4h	; 4482 length 04h, level 03h, F# octave C
+	defb 004h,084h,0c4h	; 4485 length 04h, level 04h +flag, F# octave C
+	defb 004h,002h,0c4h	; 4488 length 04h, level 02h, F# octave C
+	defb 004h,082h,0c4h	; 448B length 04h, level 02h +flag, F# octave C
+	defb 004h,001h,0c4h	; 448E length 04h, level 01h, F# octave C
 	defb 055h	; 4491 55h end of the effect
 seq_4492:
 	defb 030h,040h,000h	; 4492 length 30h, rest (40h, 00h)

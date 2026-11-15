@@ -13,6 +13,15 @@ _G.z80_command_tap = io:install_read_tap(0x0000, 0xffff, "soundcmd", function(of
   end
   return data
 end)
+-- port $0C writes: the reply the 68k reads in REG_SOUND ("SOUNDREPLY frame F value V" when it changes;
+-- set REPLYLOG=all to log every write)
+local last_reply, all_replies = nil, os.getenv("REPLYLOG") == "all"
+_G.z80_reply_tap = io:install_write_tap(0x0000, 0xffff, "soundreply", function(offset, data, mask)
+  if offset & 0xff == 0x0c and (all_replies or data ~= last_reply) then
+    print(string.format("SOUNDREPLY frame %d value %02X", scr:frame_number(), data))
+    last_reply = data
+  end
+end)
 local plan = {}
 for f, v in (os.getenv("SENDCMD") or ""):gmatch("(%d+):(%x+)") do plan[tonumber(f)] = tonumber(v, 16) end
 emu.register_frame_done(function()

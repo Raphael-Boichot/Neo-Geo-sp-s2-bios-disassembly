@@ -42,10 +42,16 @@ def word(rom, a):
     return rom[a] | (rom[a + 1] << 8)
 
 
+# the pitch nibble spells the note (NoteSemitoneTable at $1E75): A-F are A-F, 0 is G, sharps 1, 2, 4, 5, 6
+NOTE_NAMES = {0xC: 'C', 0x1: 'C#', 0xD: 'D', 0x2: 'D#', 0xE: 'E', 0xF: 'F', 0x4: 'F#', 0x0: 'G',
+              0x5: 'G#', 0xA: 'A', 0x6: 'A#', 0xB: 'B'}
+
+
 def note_text(level, pitch):
     if level & 0x40:
         return f'rest ({level:02X}h, {pitch:02X}h)'
-    return f'level {level & 0x1F:02X}h{" +flag" if level & 0x80 else ""}, octave {pitch >> 4:X} note {pitch & 15:X}'
+    name = NOTE_NAMES.get(pitch & 15, f'?{pitch & 15:X}')
+    return f'level {level & 0x1F:02X}h{" +flag" if level & 0x80 else ""}, {name} octave {pitch >> 4:X}'
 
 
 def parse_sequence(rom, a, items, labels, kind='seq'):

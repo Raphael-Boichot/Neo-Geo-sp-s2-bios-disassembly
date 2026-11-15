@@ -150,7 +150,8 @@ board, whatever the cartridge, so they belong to the BIOS.
       (`tools/mame_z80.sh`), the eyecatcher jingle found in it (docs/sound.md)
 - [x] `sm1.sm1` L1: every data byte typed (instruments, sound and effect tables, 4 sounds and the coin
       effect as headers and 50 parsed sequences); see docs/sound.md
-- [ ] `sm1.sm1` L3-L4: name the 548 automatic routine labels and the RAM still raw (411 operand lines)
+- [x] `sm1.sm1` short naming pass: every routine that runs in MAME named, commands 4-9 and `$10` run
+- [ ] `sm1.sm1` rest: 67 routines never run (unused engine paths) and 391 raw RAM operand lines
 - [x] `000-lo.lo`, the sprite zoom table read by the video hardware (128 KB): rebuilt from its rule
       by `tools/lo_rom.py` (row z adds line bitreverse(z XOR $11)), SHA-1 checked by `make check`;
       the four board ROMs described in [`docs/bios_set.md`](docs/bios_set.md)

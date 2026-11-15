@@ -34,7 +34,7 @@ PC0,PORT_C0,W,"mirror of port $00 (only address bits 2-3 decoded, wiki); Init wr
 0BAF,PrepareSwitch,C,"command 1: keys off and silences every YM2610 channel, writes jp $FFFD at $FFFD in RAM, replies 1 and jumps there: the Z80 waits in RAM while the 68k changes the Z80 ROM (MAME: Z80 at $FFFD after command 1)"
 0CFC,SoftReset,C,"command 3: SoftResetFlag = 1, clears the reply and the code, jp Reset (MAME: the next instruction traced is $0000, in the newly selected ROM)"
 0D63,Command7Enable,C,"command 7: clears the queue, silences the YM2610 (SilenceAll) and clears SoundLock and $FE31: after a reset, $5C-$5F play only once 7 has been sent (MAME). The hardware test sends 3 then 7 for SOUND OFF and on entering the sound test"
-0E35,Command10,I,"command $10: a loop over the ROM with ix as return address and flags kept in the shadow registers; a ROM or RAM check whose result is not understood yet"
+0E35,Command10SelfTest,C,"command $10: self test, flags in the shadow a' starting at $80: bit 0 ROM sum of $0000-$EFFF against RomChecksum, bit 1 RAM $55/$AA, bit 2 RAM address test; then Command10Reply. SP-S2 never sends it; MAME: reply 1 (all passed)"
 15FC,SilenceAll,I,"YM2610 register writes that silence the channels (called by Init and Command7StopAll)"
 1626,DelayShort,C,ret: the time of the rst itself
 1627,Delay,C,"push and pop bc, de, hl: a slightly longer delay between YM2610 accesses"
@@ -53,7 +53,7 @@ FE47,QueueWrite,C,next free CommandQueue entry (0-7)
 FE48,CommandQueue,C,"8 entries of 2 bytes: $FF while waiting, then the command"
 FE58,CommandWait,I,"set while a command waits for the previous one (loop at $0C3D); the NMI then stores the command straight in SoundCommand"
 FE65,RandomReplyOn,I,"cleared by most system commands; MainLoop sends random replies while it is set"
-FE30,SoundLock,C,"$FF from Init: PlaySound plays nothing until command 7 clears it (MAME)"
+FE30,SoundLock,C,"$FF from Init and commands 4 and 5: PlaySound plays nothing until command 7 or 8 clears it (MAME)"
 FE66,InRamLoop,C,1 while the Z80 waits in RAM after command 1 (PrepareSwitch)
 FE68,SoftResetFlag,C,set to 1 by SoftReset before jumping to Reset
 FE69,ReplyValue,I,"random value (ld a,r) sent with bit 7 as the reply after each command"
@@ -131,3 +131,59 @@ FFFC,StackTop,C,initial stack pointer (Init and the system commands)
 5354,SpecialEffect,I,"an effect number ($00 here): StartEffect sets $FE40 = 4 when the effect started is this one, and command 55h checks $FE40 = 4"
 5355,FmFnumTable,I,"FM F-numbers ($26A-$4B0) by note index bits 0-4 (12 notes in 16 slots)"
 5395,SsgPeriodTable,I,"SSG tone periods by note index bits 0-4"
+0014,RomChecksum,C,"checksum byte: the sum of $0000-$EFFF (this byte included) is $D4 (Command10SelfTest; checked here: $D4)"
+0D0A,Command4StopAll,C,"command 4: clears the queue, keys off the FM channels, silences SSG and ADPCM, then locks both music (SoundLock) and effects (EffectLock). Run in MAME"
+0D37,Command5StopMusic,C,"command 5: clears the queue, keys off the FM channels and locks the music (SoundLock). Run in MAME"
+0D4F,Command6StopEffects,C,"command 6: clears the queue, stops ADPCM-B, silences the SSG and locks the effects (EffectLock). Run in MAME"
+0D72,Command8EnableMusic,C,"command 8: clears SoundLock (music allowed again). Run in MAME"
+0D7F,Command9EnableEffects,C,"command 9: clears EffectLock. Run in MAME"
+0E6A,Command10Reply,C,"end of Command10SelfTest: replies 1 when every test passed (flags still $80), else 0, then jp Reset. MAME: command $10 replied 1 about 64 frames later"
+098F,ClearSsgSlides,C,clears the first byte of SsgSlideA/B/C
+09A3,FmKeyOffAll,C,"YM2610 register $28 (key on/off) = $01, $02, $05, $06: the four FM channels off"
+09BC,SsgSilence,C,"SSG volumes (YM $08, $09, $0A) = 0, unless $FE40 = 4"
+09D5,AdpcmKeyOff,I,"YM2610 port B register $00 (ADPCM-A key) dumps and SSG mixer writes"
+0A47,AdpcmBStop,I,"if an ADPCM-B sound plays: YM2610 $10 reset and $1C flag writes, clears its flags"
+0B66,QueueCheckFull,I,"steps QueueWrite on when it has reached $FE5C"
+0EF3,PlaySoundA,C,"plays sound a ($20-$5F), refused while SoundLock is set (PlaySound and SeqStartSound enter here)"
+118C,UpdateSsgSlides,I,"per frame, for the three SsgSlide blocks in use (none while EffectLock is set)"
+123E,FmKeyOn,C,"keys on FM channel a: register $28 with the operator mask, then the F-number from FmFnumTable"
+12D4,SsgNoteOn,I,"SSG channel a: tone period from SsgPeriodTable, mixer register $07"
+1365,SsgSetNoise,C,"SSG noise period (YM $06) and mixer bits (YM $07) from EffectParam"
+1397,SsgSlideActive,C,"carry set when the SsgSlide block of channel a (5-7) is in use"
+1533,ChannelKeyOn,C,"note on for CurrentChannel by kind: FM (1-4) FmKeyOn, SSG (5-7) SsgNoteOn, ADPCM-A (8-13), ADPCM-B (14)"
+1611,YmTimerControl35,C,YM2610 register $27 (timer control) = $35
+1618,YmTimerControl1F,C,register $27 = $1F
+161F,YmTimerControl2F,C,register $27 = $2F
+17B1,NegateOr4,C,"a = -a | 4"
+17B6,LoadModulation,I,"copies the instrument's bytes +42 to +48 into the channel's ModulationBlocks entry (vibrato or envelope)"
+17FD,Multiply,C,"de = e x b (e signed), by repeated addition"
+1816,FmWriteLevels,I,"writes the operator levels of FM channel a from the register copies"
+1A18,UpdateModulation,I,per tick for FM channels 1-4: steps the ModulationBlocks entry
+1BC7,StartModulation,I,restarts the channel's ModulationBlocks entry at a new note
+1BED,ModulationBlock,C,"iy = ModulationBlocks + b x 16"
+1E24,AdpcmBFade,I,"steps the ADPCM-B volume (YM $1B) down by $FE1E while $FE1D is set"
+1E59,TransposeNote,C,"pitch nibble a plus b semitones: NoteSemitoneTable turns the nibble into a semitone, SemitoneNoteTable back into a nibble with the octave carry ($20)"
+1E75,NoteSemitoneTable,C,"semitone of each pitch nibble: C=$C, C#=1, D=$D, D#=2, E=$E, F=$F, F#=4, G=0, G#=5, A=$A, A#=6, B=$B (3, 7, 8, 9 unused): the nibble spells the note name"
+1E9D,SemitoneNoteTable,C,"pitch nibble of semitones 0-23 (+$20 for the next octave)"
+20BE,ChannelTick,I,counts the channel's note times down (+4 then +5) and keys the note off
+21E3,ChannelPitch,C,"pitch of the channel: TransposeNote of +6 by +7, plus +13, +14 and the octave bits of +0"
+22AC,SeqSetLevel,C,"first optional instrument byte: level (- $88 on FM and SSG, - $80 on ADPCM-A unless $FE23, - $B8 on ADPCM-B) to +2"
+22D4,SeqSetParam15,I,third optional instrument byte - $B8 to +15
+22DC,SeqSetDetune,I,"second optional instrument byte: a signed step (bit 0 the sign) to +14"
+271A,SetPanBits,I,"command 44h path: the channel's 2 high bits (left/right) into its register copy"
+27DD,ChannelStackEntry,C,"hl += CurrentChannel x 16 (LoopStacks, CallStacks), with channels 11-13 and 16 remapped while $FC38 is set"
+2814,AddTimes3,C,hl += a x 3
+28AA,NoteLengthTimes,C,"turns the length byte into the two counters +4/+5 (gate and note), scaled by the channel's ChannelOwner value"
+28EC,SetChannelOwner,C,"ChannelOwner[a] = b & 7"
+2910,SetTimerA,C,"TimerATable[a & $0F] to YM2610 $25 and $24, kept in TimerAShadow"
+294C,FmSetTotalLevel,I,"writes FM channel a's operator total levels ($40+) for level b"
+29AB,FmWriteOp1,I,"operator register +$00 of the FM channel (copy at +16)"
+29B4,FmWriteOp3,I,"operator register +$08 (copy at +24)"
+29BD,FmWriteOp2,I,"operator register +$04 (copy at +20)"
+29C6,FmWriteOp4,I,"operator register +$0C (copy at +28)"
+29CB,FmWriteOperator,C,"writes register a + l, value b, through the port pair in c'"
+29D8,SsgWriteLevel,C,"SSG volume: register a + 3 (8, 9, 10 for channels 5, 6, 7) = b"
+FC80,ModulationBlocks,I,"16-byte block per channel (ModulationBlock), loaded from the instrument (LoadModulation)"
+FE31,EffectLock,C,"set by commands 4 and 6, cleared by 7 and 9: effects are refused while it is set"
+1BF9,TickParamsA,?,"per-tick routine on the block $FA88-$FAA3 (counters $FA9C, $FAA3): runs in MAME, purpose not found"
+1CB5,TickParamsB,?,"per-tick routine on $FA8E-$FA96 (a word step): runs in MAME, purpose not found"

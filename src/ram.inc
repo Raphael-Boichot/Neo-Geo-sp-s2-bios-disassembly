@@ -1,6 +1,8 @@
 | RAM used by the system ROM - generated; names come from symbols/ram.csv
 
 	.equ	WorkRamStart,0x100000
+	.equ	ram_100013,0x100013
+	.equ	ram_108000,0x108000
 	.equ	ram_10C000,0x10C000
 	.equ	BiosWorkRam,0x10F300
 	.equ	ram_10F500,0x10F500
@@ -185,36 +187,36 @@
 	.equ	NoStartCompulsion,0xD00043
 	.equ	StartCompulsionTime,0xD00044
 	.equ	DemoSoundOff,0xD00046
-	.equ	bram_D00047,0xD00047
-	.equ	bram_D00048,0xD00048
+	.equ	SlotCount,0xD00047
+	.equ	PlayTimeSeconds,0xD00048
 	.equ	bram_D0004C,0xD0004C
-	.equ	bram_D00058,0xD00058
-	.equ	bram_D0005A,0xD0005A
-	.equ	bram_D0005B,0xD0005B
-	.equ	bram_D0005C,0xD0005C
-	.equ	bram_D0005D,0xD0005D
+	.equ	EyecatchSlot,0xD00058
+	.equ	ClockHour4,0xD0005A
+	.equ	ClockMinute,0xD0005B
+	.equ	ClockSecond,0xD0005C
+	.equ	ClockFrames,0xD0005D
 	.equ	NeoClnSlot,0xD0005E
 	.equ	SlotNumberMode,0xD00060
 	.equ	LastBootDate,0xD00104
 	.equ	bram_D00105,0xD00105
 	.equ	CurrentSlot,0xD00108
-	.equ	bram_D00109,0xD00109
-	.equ	bram_D0010A,0xD0010A
-	.equ	bram_D0010E,0xD0010E
-	.equ	bram_D00112,0xD00112
-	.equ	bram_D00116,0xD00116
-	.equ	bram_D0011A,0xD0011A
+	.equ	BookSlot,0xD00109
+	.equ	BookGameTodayPtr,0xD0010A
+	.equ	BookGameTotalPtr,0xD0010E
+	.equ	BookTodayPtr,0xD00112
+	.equ	BookMonthPtr,0xD00116
+	.equ	BookGameDayIndex,0xD0011A
 	.equ	BookDayIndex,0xD00122
 	.equ	SlotTable,0xD00124
-	.equ	bram_D00164,0xD00164
-	.equ	bram_D001A4,0xD001A4
-	.equ	bram_D001A8,0xD001A8
+	.equ	RemovedGames,0xD00164
+	.equ	BookGameMonthPtr,0xD001A4
+	.equ	BookGameHoursPtr,0xD001A8
 	.equ	CodeNumber,0xD001AC
 	.equ	CabinetNumber,0xD001B0
-	.equ	bram_D00200,0xD00200
+	.equ	BookGameDayCount,0xD00200
 	.equ	GameSoftDips,0xD00220
 	.equ	GameNames,0xD002A0
-	.equ	bram_D00320,0xD00320
+	.equ	GameBackupData,0xD00320
 	.equ	bram_D08000,0xD08000
 	.equ	BookGameDays,0xD08320
 	.equ	BookGameMonths,0xD09520

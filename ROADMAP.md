@@ -9,10 +9,10 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | Level | State |
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
-| L1 every byte typed | done: code 32,834 B, data 21,515 B, free 76,723 B |
-| L2 traced and run | 9,223 instructions traced; 7,161 ran in MAME (77.6 %) over 73 scenarios, 6,541 without the forced ones; nothing ran outside the trace |
-| L3 names | 373 names (C 324, I 20, W 29); 1,233 automatic labels left: 105 `sub_`, 55 `dat_`, 24 `tbl_`, 1,049 `loc_` |
-| L4 RAM and registers | 223 RAM addresses used, 77 named; 30 backup RAM accesses through a4 left raw |
+| L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
+| L2 traced and run | 9,252 instructions traced; 7,348 ran in MAME (79.4 %) over 75 scenarios, 6,541 without the forced ones; nothing ran outside the trace |
+| L3 names | 510 names (C 423, I 58, W 29); 1,103 automatic labels left: 0 `sub_`, 49 `dat_`, 15 `tbl_`, 1,039 `loc_` |
+| L4 RAM and registers | 225 RAM addresses used, 95 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
 
@@ -21,15 +21,15 @@ Coverage and automatic routines by module:
 | Module | Ran in MAME | `sub_` left |
 |---|---|---|
 | `test_mode.s` | 90 % (2,061 / 2,294; 219 of the rest is the unreachable `CabinetSettingsOld`) | 0 |
-| `card.s` (card utility, card errors, debug monitor) | 56 % (1,761 / 3,139) | 47 |
+| `card.s` (card utility, card errors, debug monitor) | 60 % (1,912 / 3,168) | 0 |
 | `boot_error.s` | 86 % (76 / 88, forced) | 0 |
 | `system.s` | 61 % | 0 |
 | `calendar.s` | 98 % | 0 |
-| `video_io.s` | 73 % | 14 |
-| `power_on.s` | 93 % | 28 |
-| `eyecatcher.s` | 96 % | 3 |
+| `video_io.s` | 83 % | 0 |
+| `power_on.s` | 93 % | 0 |
+| `eyecatcher.s` | 96 % | 0 |
 | `boot.s` | 95 % | 0 |
-| `hardware_test.s` | 90 % | 13 |
+| `hardware_test.s` | 90 % | 0 |
 | `how_to_play.s` | 90 % | 0 |
 
 ## 1. Test mode coverage (L2): done
@@ -48,10 +48,10 @@ Coverage and automatic routines by module:
 
 Not reachable: `CabinetSettingsOld` (`$C19CF6-$C1A105`), an older cabinet page after a `jmp`.
 
-## 2. Error and rare paths (L2): done except the full card
+## 2. Error and rare paths (L2): done
 
 Paths that need a fault, reached with `DEBUG_CMDS` breakpoints that fake the condition or with test
-builds; `tools/fault_scenarios.py` (26 scenarios) says which runs are forced.
+builds; `tools/fault_scenarios.py` (28 scenarios) says which runs are forced.
 
 - [x] Boot error screens (`BootError`, `$C16ADA`): work RAM, backup RAM, both palette banks, video RAM,
       calendar, system ROM, memory card, Z80, and the AES colour form (forced, `boot_error_*`)
@@ -70,7 +70,8 @@ builds; `tools/fault_scenarios.py` (26 scenarios) says which runs are forced.
       (all backup RAM zeroed, defaults written); seen in MAME with five boots sharing one nvram
 - [x] Card error cases: blank card (League Bowling: CARD_ERROR formats it), write-protected card (League
       Bowling and the card utility); what 29 games do with a blank card
-- [ ] Card error: the full card (`CardErrorFull`, `$C1363E`): needs a card filled with saves
+- [x] Card error: the full card (`CardErrorFull`): reached with `CardFillTest` (`$C132B4`), an unreferenced
+      loop that fills the card, found typed as data and run from a test build (`card_full_*`)
 - [x] Card utility COPY (`CardUtilCopy`) with two cards, the same card and an unformatted target, and the
       controller test, as coverage scenarios of the hidden-programs build
 - [x] CREDIT_DOWN in Top Player's Golf and Baseball Stars Professional: only with the US country code
@@ -78,21 +79,23 @@ builds; `tools/fault_scenarios.py` (26 scenarios) says which runs are forced.
 
 ## 3. Names (L3)
 
-- [ ] Every `sub_` named (110 left), card next, then power_on and video_io
+- [x] Every `sub_` named (0 left; 2026-11-15: card file system for the three card types, card utility
+      helpers, slot scan and slot table merge, coins, software clock, controller reading, MESS_OUT
+      commands, hardware test and eyecatcher helpers)
   - [x] `system.s`: CreditCheckPlayer, CallDeductStartCredits, DemoEndCheck
   - [x] `boot.s`: CardStillInserted, GetSoftDipPointer (with SystemType, SystemRegion and the two texts)
   - [x] `calendar.s`: RtcReadBits, RtcReadBitsAlt, CheckCartridgeId (and the three ID texts)
   - [x] `test_mode.s`: all 92 routines, tables and texts, `CodeNumberDraw` renamed (it was `TestCodeNumberCard`)
-- [ ] Every `dat_` and `tbl_` named (128 left): text tables, menu tables, palettes, sprite data
+- [ ] Every `dat_` and `tbl_` named (64 left): text tables, menu tables, palettes, sprite data
 - [ ] `loc_` stay automatic unless a name helps reading (loop heads, error exits)
-- [ ] Review the 28 I names: confirm with a coverage run or a code read, or keep them as I with a reason
+- [ ] Review the 58 I names (most are the 16-bit and type $80 card forms, never run: MAME has only the 8-bit card): confirm with a coverage run or a code read, or keep them as I with a reason
 - [ ] Doubts list: one line per `?` name, kept in `symbols/`
 
 Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_`.
 
 ## 4. RAM, backup RAM and leftovers (L4)
 
-- [ ] Name every work RAM variable used (146 automatic), checking all readers and writers first
+- [ ] Name every work RAM variable used (130 automatic), checking all readers and writers first
 - [ ] Backup RAM map at `$D00000`: board settings, soft DIPs per game, game names, book keeping rings and
       code/cabinet numbers are named; still to map: `$D0011A`, `$D09B20`, the slot data, the card area
 - [ ] The 30 backup RAM accesses through a4 that cannot be proven: name them or explain each one

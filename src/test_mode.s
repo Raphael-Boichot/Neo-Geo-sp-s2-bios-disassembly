@@ -6,7 +6,7 @@ TestModeEntry:
 	lea.l	(BiosWorkRam).l,a5	| C18F74
 	move.w	#0x2700,sr	| C18F7A
 	clr.w	(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C18F7E
-	jsr	(sub_C11FB2,pc)	| C18F82
+	jsr	(SoundSlotSwitch,pc)	| C18F82
 	move.b	d0,(REG_SWPBIOS).l	| C18F86
 	move.b	d0,(REG_BRDFIX).l	| C18F8C
 	moveq	#0x0,d0	| C18F92
@@ -778,7 +778,7 @@ CalendarText:
 	dc.b	0x20,0x3A,0x20,0x20,0x3A,0xFF,0x00,0x00
 | TestSoftDip [C] menu item: SETTING UP THE CABINET (soft DIP) screen; ran only in that MAME scenario
 TestSoftDip:
-	jsr	(sub_C11FB2,pc)	| C19B76
+	jsr	(SoundSlotSwitch,pc)	| C19B76
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C19B7A
 	moveq	#0x0,d0	| C19B80
 	move.w	#0x1D,d7	| C19B82
@@ -807,7 +807,7 @@ loc_C19BA2:
 loc_C19BC2:
 	addq.l	#0x4,a2	| C19BC2
 	addq.b	#0x1,d6	| C19BC4
-	cmp.b	(bram_D00047-A4_BASE,a4),d6	| C19BC6
+	cmp.b	(SlotCount-A4_BASE,a4),d6	| C19BC6
 	bcs.b	loc_C19BA2	| C19BCA
 	move.b	d5,(ram_10FCE6-A5_BASE,a5)	| C19BCC
 	addq.b	#0x1,d5	| C19BD0
@@ -1222,7 +1222,7 @@ CabinetOldText:
 	dc.b	0xFF,0xFF,0x00,0x00
 | SoftDipEditor [C] soft DIP of the game in the selected slot: maps that slot, builds the row list from the game's soft DIP block (times, counts, lists: type and index per row in ram_10FC00), copies its 16 bytes from GameSoftDips to BIOS_GAME_DIP; 8 rows per page; Up/Down, A/B change (held: repeat), Left/Right minutes or seconds of a time; C saves (SoftDipSave). MAME: test_soft_dip_* (Sengoku 2, Riding Hero, Alpha Mission II, Top Player's Golf)
 SoftDipEditor:
-	jsr	(sub_C11FB2).l	| C1A106
+	jsr	(SoundSlotSwitch).l	| C1A106
 	jsr	(WaitFrame,pc)	| C1A10C
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1A110
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1A116
@@ -2148,7 +2148,7 @@ BookGame:
 	mulu.w	#0x240,d0	| C1AB8E
 	addi.l	#BookGameDays,d0	| C1AB92
 	movea.l	d0,a2	| C1AB98
-	addi.l	#bram_D0011A,d1	| C1AB9A
+	addi.l	#BookGameDayIndex,d1	| C1AB9A
 	movea.l	d1,a3	| C1ABA0
 	move.b	(a3),d0	| C1ABA2
 	lea.l	(ram_10F500-A5_BASE,a5),a1	| C1ABA4
@@ -3050,10 +3050,10 @@ Card1MRestore:
 	move.l	(a0)+,(LastBootDate-A4_BASE,a4)	| C1B7E0
 	move.l	(a0)+,(CurrentSlot-A4_BASE,a4)	| C1B7E4
 	dc.w	0x2E3C,0x0000,0x0025	| C1B7E8: move.l #$25, d7
-	lea.l	(bram_D0011A-A4_BASE,a4),a1	| C1B7EE
+	lea.l	(BookGameDayIndex-A4_BASE,a4),a1	| C1B7EE
 	jsr	(Card1MCopyWords,pc)	| C1B7F2
 	move.l	#0x90,d7	| C1B7F6
-	lea.l	(bram_D00200-A4_BASE,a4),a1	| C1B7FC
+	lea.l	(BookGameDayCount-A4_BASE,a4),a1	| C1B7FC
 	jsr	(Card1MCopyWords,pc)	| C1B800
 	move.l	#0x10F0,d7	| C1B804
 	lea.l	(BookGameDays-A4_BASE,a4),a1	| C1B80A

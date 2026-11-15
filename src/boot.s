@@ -125,7 +125,7 @@ SystemMode0:
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11174
 	jsr	(SelectSlot,pc)	| C1117A
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1117E
-	cmpi.b	#0x8,(bram_D00109).l	| C11182
+	cmpi.b	#0x8,(BookSlot).l	| C11182
 	beq.w	loc_C11368	| C1118A
 	jsr	(LoadGameSoftDips,pc)	| C1118E
 	clr.b	(BIOS_USER_MODE-A5_BASE,a5)	| C11192
@@ -266,15 +266,15 @@ tbl_C1137A:
 	dc.l	loc_C114FC
 loc_C11396:
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11396
-	move.b	(bram_D00109).l,d0	| C1139C
+	move.b	(BookSlot).l,d0	| C1139C
 	cmpi.b	#0x8,d0	| C113A2
 	beq.b	CheckSettingMode	| C113A6
-	jsr	(sub_C122D8,pc)	| C113A8
-	jsr	(sub_C12322,pc)	| C113AC
+	jsr	(SaveGameSoftDips,pc)	| C113A8
+	jsr	(SaveGameBackupData,pc)	| C113AC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C113B0
-	move.b	(bram_D00109).l,d0	| C113B6
+	move.b	(BookSlot).l,d0	| C113B6
 	addq.b	#0x1,d0	| C113BC
-	move.b	d0,(bram_D00109).l	| C113BE
+	move.b	d0,(BookSlot).l	| C113BE
 	move.b	d0,(REG_SRAMLOCK).l	| C113C4
 	cmpi.b	#0x8,d0	| C113CA
 	bcc.b	CheckSettingMode	| C113CE
@@ -291,7 +291,7 @@ CheckSettingMode:
 	beq.w	TestModeEntry	| C113E8
 	tst.w	(SlotNumberMode).l	| C113EC
 	bne.w	loc_C11418	| C113F2
-	move.b	(bram_D00058).l,d5	| C113F6
+	move.b	(EyecatchSlot).l,d5	| C113F6
 	bmi.b	loc_C11418	| C113FC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C113FE
 	jsr	(SwitchSlot,pc)	| C11404
@@ -300,7 +300,7 @@ CheckSettingMode:
 	bra.b	loc_C113D2	| C11416
 loc_C11418:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11418
-	jsr	(sub_C123C4,pc)	| C1141E
+	jsr	(NextSlot,pc)	| C1141E
 	move.b	(CurrentSlot).l,d5	| C11422
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C11428
 	jsr	(WriteLedData,pc)	| C1142C
@@ -310,15 +310,15 @@ loc_C11432:
 	move.b	(CurrentSlot).l,d5	| C11438
 	jsr	(WriteLedData,pc)	| C1143E
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C11442
-	jsr	(sub_C123A8,pc)	| C11448
+	jsr	(LoadCurrentSlot,pc)	| C11448
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1144C
 	rts	| C11450
 loc_C11452:
 	clr.b	(ram_10FEC5-A5_BASE,a5)	| C11452
-	jsr	(sub_C12C24,pc)	| C11456
+	jsr	(BookAddPlayTime,pc)	| C11456
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C1145A
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C11460
-	jsr	(sub_C12322,pc)	| C11466
+	jsr	(SaveGameBackupData,pc)	| C11466
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C1146A
 	tst.b	(NoStartCompulsion).l	| C1146E
 	bne.b	loc_C11486	| C11474
@@ -335,9 +335,9 @@ loc_C11498:
 loc_C1149A:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1149A
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114A0
-	jsr	(sub_C12322,pc)	| C114A6
-	jsr	(sub_C123C4,pc)	| C114AA
-	move.b	(bram_D00058).l,d0	| C114AE
+	jsr	(SaveGameBackupData,pc)	| C114A6
+	jsr	(NextSlot,pc)	| C114AA
+	move.b	(EyecatchSlot).l,d0	| C114AE
 	cmp.b	(CurrentSlot).l,d0	| C114B4
 	bne.b	loc_C114C2	| C114BA
 	move.b	#0x1,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114BC
@@ -347,15 +347,15 @@ loc_C114C2:
 loc_C114C8:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114C8
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114CE
-	jsr	(sub_C12322,pc)	| C114D4
-	jsr	(sub_C123C4,pc)	| C114D8
+	jsr	(SaveGameBackupData,pc)	| C114D4
+	jsr	(NextSlot,pc)	| C114D8
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114DC
 	rts	| C114E0
 loc_C114E2:
 	move.b	#0x2,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C114E2
 	move.b	#0x1,(ram_10FEBF-A5_BASE,a5)	| C114E8
-	jsr	(sub_C12322,pc)	| C114EE
-	jsr	(sub_C12372,pc)	| C114F2
+	jsr	(SaveGameBackupData,pc)	| C114EE
+	jsr	(PreviousSlot,pc)	| C114F2
 	clr.b	(ram_10FEBF-A5_BASE,a5)	| C114F6
 	rts	| C114FA
 loc_C114FC:
@@ -364,7 +364,7 @@ loc_C114FC:
 | CardStillInserted [C] system mode 3 (back from the game) while a memory card is still inserted (REG_STATUS_B bits 4-5 = 0): maps the system ROM vectors and fix, shows YOUR CARD IS STILL INSERTED. (CardStillInsertedTextJp when BIOS_COUNTRY_CODE = 0), flashes palette entry $400002 for up to 256 frames or until the card is removed, then maps the cartridge back. Ran in MAME after the Sengoku 2 card save
 CardStillInserted:
 	move.w	#0x2700,sr	| C11504
-	jsr	(sub_C11FB2,pc)	| C11508
+	jsr	(SoundSlotSwitch,pc)	| C11508
 	move.b	#0x1,(ram_10FEDB-A5_BASE,a5)	| C1150C
 	move.w	#0x2000,sr	| C11512
 	jsr	(WaitFrame,pc)	| C11516
@@ -404,7 +404,7 @@ loc_C1158E:
 loc_C11596:
 	move.w	#0x0,(0x400002).l	| C11596
 	move.w	#0x2700,sr	| C1159E
-	jsr	(sub_C11FB2,pc)	| C115A2
+	jsr	(SoundSlotSwitch,pc)	| C115A2
 	move.b	#0x1,(ram_10FEDB-A5_BASE,a5)	| C115A6
 	move.w	#0x2000,sr	| C115AC
 	jsr	(WaitFrame,pc)	| C115B0

@@ -168,7 +168,7 @@ CreditDown:
 	lea.l	(BiosWorkRam).l,a5	| C11820
 	clr.b	(ram_10FEE0-A5_BASE,a5)	| C11826
 	move.b	#0x3,(BIOS_SYSTEM_MODE_LO-A5_BASE,a5)	| C1182A
-	jsr	(sub_C1299A,pc)	| C11830
+	jsr	(CreditDownCount,pc)	| C11830
 	rts	| C11834
 | CallDeductStartCredits [C] jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSTEM_MODE_LO = 3)
 CallDeductStartCredits:

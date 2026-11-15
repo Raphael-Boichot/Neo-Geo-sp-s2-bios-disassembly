@@ -83,17 +83,21 @@ loc_C18496:
 	dc.b	0xE5,0x0E,0x88,0x06,0x70,0x00,0xC8,0x02,0x67,0x02,0x70,0x04,0xCA,0x02,0x67,0x04
 	dc.b	0x00,0x00,0x00,0x08,0x47,0xED,0x0A,0x94,0x7E,0x03,0x4A,0x13,0x66,0x04,0x16,0xB4
 	dc.b	0x00,0x00,0x52,0x40,0x5C,0x8B,0x51,0xCF,0xFF,0xF2,0x49,0xEC,0x00,0x10,0x4E,0x75
-sub_C184EC:
-	bsr.w	sub_C184F8	| C184EC
+| DelayLonger [I] nested BSR chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): the depth sets the delay; used around Z80 and LED writes
+DelayLonger:
+	bsr.w	DelayShorter	| C184EC
 | Delay [I] nested BSR chain into sub_C18500: a fixed delay used between LED latch writes
 Delay:
-	bsr.w	sub_C184F8	| C184F0
-sub_C184F4:
-	bsr.w	sub_C18500	| C184F4
-sub_C184F8:
-	bsr.w	sub_C18500	| C184F8
-	bsr.w	sub_C18500	| C184FC
-sub_C18500:
+	bsr.w	DelayShorter	| C184F0
+| DelayShort [I] see DelayLonger
+DelayShort:
+	bsr.w	DelayReturn	| C184F4
+| DelayShorter [I] see DelayLonger
+DelayShorter:
+	bsr.w	DelayReturn	| C184F8
+	bsr.w	DelayReturn	| C184FC
+| DelayReturn [I] the rts that ends the delay chain
+DelayReturn:
 	nop	| C18500
 	nop	| C18502
 	nop	| C18504
@@ -108,14 +112,14 @@ ReadControllers:
 	lea.l	(REG_POUTPUT).l,a2	| C18518
 	moveq	#0x0,d1	| C1851E
 	move.b	#0x12,(a2)	| C18520
-	bsr.b	sub_C184F4	| C18524
+	bsr.b	DelayShort	| C18524
 	move.b	(REG_STATUS_B).l,d1	| C18526
 	move.b	(REG_P2CNT).l,d5	| C1852C
 	swap	d5	| C18532
 	move.b	(REG_P1CNT).l,d5	| C18534
 	lsl.b	#0x4,d1	| C1853A
 	move.b	#0x1B,(a2)	| C1853C
-	bsr.b	sub_C184F4	| C18540
+	bsr.b	DelayShort	| C18540
 	move.b	(REG_STATUS_B).l,d2	| C18542
 	move.b	(REG_P2CNT).l,d4	| C18548
 	swap	d4	| C1854E
@@ -131,22 +135,22 @@ ReadControllers:
 	cmpi.b	#0x3,(BIOS_P2STATUS-A5_BASE,a5)	| C18570
 	bne.b	loc_C1857C	| C18576
 loc_C18578:
-	jsr	(sub_C186DA,pc)	| C18578
+	jsr	(ReadMahjongRows,pc)	| C18578
 loc_C1857C:
 	move.b	#0xCF,d7	| C1857C
-	jsr	(sub_C18656,pc)	| C18580
+	jsr	(UpdatePlayerInputs,pc)	| C18580
 	swap	d4	| C18584
 	swap	d5	| C18586
 	swap	d6	| C18588
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C1858A
 	move.b	#0x3F,d7	| C1858E
-	jsr	(sub_C18656,pc)	| C18592
+	jsr	(UpdatePlayerInputs,pc)	| C18592
 	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C18596
 	moveq	#0x1,d0	| C1859A
-	jsr	(sub_C1862E,pc)	| C1859C
+	jsr	(MahjongStartFilter,pc)	| C1859C
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C185A0
 	moveq	#0x3,d0	| C185A4
-	jsr	(sub_C1862E,pc)	| C185A6
+	jsr	(MahjongStartFilter,pc)	| C185A6
 	move.b	d2,(ram_10FEDC-A5_BASE,a5)	| C185AA
 	move.b	d3,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C185AE
 	andi.b	#0x55,d2	| C185B2
@@ -156,10 +160,11 @@ loc_C1857C:
 	move.b	#0x0,(REG_POUTPUT).l	| C185C2
 	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C185CA
 	lea.l	(ram_10FEE8-A5_BASE,a5),a1	| C185CE
-	jsr	(sub_C185DE,pc)	| C185D2
+	jsr	(CopyControllerState,pc)	| C185D2
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C185D6
 	lea.l	(ram_10FEEE-A5_BASE,a5),a1	| C185DA
-sub_C185DE:
+| CopyControllerState [C] copies a player's status block (BIOS_P1STATUS..) to ram_10FEE8/ram_10FEEE; a mahjong controller (status 3, wiki) is converted to joystick bits first
+CopyControllerState:
 	cmpi.b	#0x3,(a0)	| C185DE
 	beq.b	loc_C185EE	| C185E2
 	move.l	(a0),(a1)	| C185E4
@@ -169,16 +174,17 @@ loc_C185EE:
 	move.b	#0x1,(a1)	| C185EE
 	move.b	0x1(a0),d0	| C185F2
 	move.b	0x2(a0),d1	| C185F6
-	jsr	(sub_C1861C,pc)	| C185FA
+	jsr	(MahjongKeysToJoystick,pc)	| C185FA
 	move.b	d0,0x1(a1)	| C185FE
 	move.b	d0,0x2(a1)	| C18602
 	move.b	0xD(a0),d0	| C18606
 	move.b	0xE(a0),d1	| C1860A
-	jsr	(sub_C1861C,pc)	| C1860E
+	jsr	(MahjongKeysToJoystick,pc)	| C1860E
 	move.b	d0,0x3(a1)	| C18612
 	move.b	d0,0x4(a1)	| C18616
 	rts	| C1861A
-sub_C1861C:
+| MahjongKeysToJoystick [I] maps a mahjong controller key byte to joystick bits (bit 7 from bit 0 of d1, nibbles swapped)
+MahjongKeysToJoystick:
 	bclr.b	#0x7,d0	| C1861C
 	btst.b	#0x0,d1	| C18620
 	beq.b	loc_C1862A	| C18624
@@ -186,7 +192,8 @@ sub_C1861C:
 loc_C1862A:
 	ror.b	#0x4,d0	| C1862A
 	rts	| C1862C
-sub_C1862E:
+| MahjongStartFilter [I] mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held
+MahjongStartFilter:
 	cmpi.b	#0x3,(a0)	| C1862E
 	bne.b	loc_C18654	| C18632
 	btst.l	d0,d2	| C18634
@@ -204,16 +211,18 @@ loc_C18650:
 	bclr.b	d0,d3	| C18652
 loc_C18654:
 	rts	| C18654
-sub_C18656:
+| UpdatePlayerInputs [C] updates a player's input block (and the expanded block at +$C), or the mahjong rows
+UpdatePlayerInputs:
 	cmpi.b	#0x3,(a0)	| C18656
 	beq.b	loc_C186B4	| C1865A
 	move.b	d4,d0	| C1865C
-	jsr	(sub_C1866C,pc)	| C1865E
+	jsr	(UpdateInputBlock,pc)	| C1865E
 	lea.l	0xC(a0),a0	| C18662
 	tst.b	(a0)	| C18666
 	beq.b	loc_C186A6	| C18668
 	move.b	d5,d0	| C1866A
-sub_C1866C:
+| UpdateInputBlock [C] previous, current, change and repeat bytes of one input block; repeat after 16 frames, then every 8
+UpdateInputBlock:
 	not.b	d0	| C1866C
 	move.b	0x2(a0),d1	| C1866E
 	cmp.b	d0,d1	| C18672
@@ -246,12 +255,13 @@ loc_C186B4:
 	and.b	d7,d2	| C186B4
 	and.b	d7,d3	| C186B6
 	move.b	d6,d0	| C186B8
-	jsr	(sub_C186C8,pc)	| C186BA
+	jsr	(UpdateMahjongRow,pc)	| C186BA
 	move.b	d5,d0	| C186BE
-	jsr	(sub_C186C8,pc)	| C186C0
+	jsr	(UpdateMahjongRow,pc)	| C186C0
 	lsr.w	#0x8,d6	| C186C4
 	move.b	d6,d0	| C186C6
-sub_C186C8:
+| UpdateMahjongRow [I] current and change bytes of one mahjong key row
+UpdateMahjongRow:
 	addq.l	#0x1,a0	| C186C8
 	not.b	d0	| C186CA
 	move.b	(a0),d1	| C186CC
@@ -260,15 +270,16 @@ sub_C186C8:
 	and.b	d0,d1	| C186D2
 	move.b	d1,0xC(a0)	| C186D4
 	rts	| C186D8
-sub_C186DA:
+| ReadMahjongRows [I] reads two more key rows through REG_POUTPUT ($24 and $09) into d6
+ReadMahjongRows:
 	move.b	#0x24,(a2)	| C186DA
-	bsr.w	sub_C184F4	| C186DE
+	bsr.w	DelayShort	| C186DE
 	move.b	(REG_P2CNT).l,d6	| C186E2
 	swap	d6	| C186E8
 	move.b	(REG_P1CNT).l,d6	| C186EA
 	lsl.l	#0x8,d6	| C186F0
 	move.b	#0x9,(a2)	| C186F2
-	bsr.w	sub_C184F4	| C186F6
+	bsr.w	DelayShort	| C186F6
 	move.b	(REG_P1CNT).l,d6	| C186FA
 	swap	d6	| C18700
 	move.b	(REG_P2CNT).l,d6	| C18702
@@ -310,64 +321,73 @@ loc_C18768:
 	cmpi.b	#0xE,d0	| C1876E
 	bcc.b	loc_C1874E	| C18772
 	lsl.w	#0x2,d0	| C18774
-	movea.l	(tbl_C1877E,pc,d0.w),a3	| C18776
+	movea.l	(MessOutCommands,pc,d0.w),a3	| C18776
 	jsr	(a3)	| C1877A
 	bra.b	loc_C18768	| C1877C
-tbl_C1877E:
-	dc.l	loc_C187B6
-	dc.l	loc_C187C4
-	dc.l	loc_C187CC
-	dc.l	loc_C187D4
-	dc.l	loc_C1881A
-	dc.l	loc_C18832
-	dc.l	sub_C18838
-	dc.l	loc_C18814
-	dc.l	loc_C188DC
-	dc.l	loc_C18876
-	dc.l	loc_C187DA
-	dc.l	loc_C187EE
-	dc.l	loc_C187FE
-	dc.l	loc_C18808
-loc_C187B6:
+| MessOutCommands [C] MESS_OUT command handlers 0-13: end, format, auto-increment, VRAM address, data at a pointer, add to address, resume data, inline data, 8x16 tiles, 8x16 text, call a list, return, repeat a word, write increasing words
+MessOutCommands:
+	dc.l	MessOutEnd
+	dc.l	MessOutFormat
+	dc.l	MessOutIncrement
+	dc.l	MessOutAddress
+	dc.l	MessOutDataPointer
+	dc.l	MessOutAddAddress
+	dc.l	MessOutData
+	dc.l	MessOutDataInline
+	dc.l	MessOutTiles8x16
+	dc.l	MessOutText8x16
+	dc.l	MessOutCall
+	dc.l	MessOutReturn
+	dc.l	MessOutRepeat
+	dc.l	MessOutSequence
+| MessOutEnd [C] MESS_OUT command 0: end of the list (next list pointer)
+MessOutEnd:
 	or.l	d4,d4	| C187B6
 	bne.b	loc_C187BC	| C187B8
 	movea.l	a1,a0	| C187BA
 loc_C187BC:
 	move.l	#loc_C18746,(a7)	| C187BC
 	rts	| C187C2
-loc_C187C4:
+| MessOutFormat [C] MESS_OUT command 1: data format in d5 (bytes or words, end code or count)
+MessOutFormat:
 	swap	d1	| C187C4
 	move.l	d1,d5	| C187C6
 	move.w	(a1)+,d5	| C187C8
 	rts	| C187CA
-loc_C187CC:
+| MessOutIncrement [C] MESS_OUT command 2: VRAM auto-increment
+MessOutIncrement:
 	ext.w	d1	| C187CC
 	move.w	d1,0x2(a4)	| C187CE
 	rts	| C187D2
-loc_C187D4:
+| MessOutAddress [C] MESS_OUT command 3: VRAM address
+MessOutAddress:
 	move.w	(a1)+,d6	| C187D4
 	move.w	d6,(a6)	| C187D6
 	rts	| C187D8
-loc_C187DA:
+| MessOutCall [C] MESS_OUT command 10: runs another list (pointer pushed at ram_10FEC6)
+MessOutCall:
 	move.l	(a1)+,d0	| C187DA
 	movea.l	(ram_10FEC6).l,a3	| C187DC
 	move.l	a1,(a3)+	| C187E2
 	move.l	a3,(ram_10FEC6).l	| C187E4
 	movea.l	d0,a1	| C187EA
 	rts	| C187EC
-loc_C187EE:
+| MessOutReturn [C] MESS_OUT command 11: back from MessOutCall
+MessOutReturn:
 	movea.l	(ram_10FEC6).l,a3	| C187EE
 	movea.l	-(a3),a1	| C187F4
 	move.l	a3,(ram_10FEC6).l	| C187F6
 	rts	| C187FC
-loc_C187FE:
+| MessOutRepeat [C] MESS_OUT command 12: writes one word d1 times
+MessOutRepeat:
 	move.w	(a1)+,d0	| C187FE
 loc_C18800:
 	move.w	d0,(a4)	| C18800
 	subq.b	#0x1,d1	| C18802
 	bne.b	loc_C18800	| C18804
 	rts	| C18806
-loc_C18808:
+| MessOutSequence [C] MESS_OUT command 13: writes d1 words, adding 1 each time
+MessOutSequence:
 	move.w	(a1)+,d0	| C18808
 loc_C1880A:
 	move.w	d0,(a4)	| C1880A
@@ -375,15 +395,17 @@ loc_C1880A:
 	subq.b	#0x1,d1	| C1880E
 	bne.b	loc_C1880A	| C18810
 	rts	| C18812
-loc_C18814:
+| MessOutDataInline [C] MESS_OUT command 7: data that follows the command, then aligns the list pointer
+MessOutDataInline:
 	movea.l	a1,a2	| C18814
 	moveq	#0x0,d3	| C18816
 	bra.b	loc_C1881E	| C18818
-loc_C1881A:
+| MessOutDataPointer [C] MESS_OUT command 4: writes the data at a pointer (MessOutData)
+MessOutDataPointer:
 	movea.l	(a1)+,a2	| C1881A
 	moveq	#0x1,d3	| C1881C
 loc_C1881E:
-	bsr.w	sub_C18838	| C1881E
+	bsr.w	MessOutData	| C1881E
 	or.b	d3,d3	| C18822
 	bne.b	loc_C18830	| C18824
 	move.l	a2,d0	| C18826
@@ -392,11 +414,13 @@ loc_C1881E:
 	movea.l	d0,a1	| C1882E
 loc_C18830:
 	rts	| C18830
-loc_C18832:
+| MessOutAddAddress [C] MESS_OUT command 5: adds to the VRAM address
+MessOutAddAddress:
 	add.w	(a1)+,d6	| C18832
 	move.w	d6,(a6)	| C18834
 	rts	| C18836
-sub_C18838:
+| MessOutData [C] MESS_OUT command 6 and the data writer: bytes or words from a2 to VRAM, until the end code or for a count (format bits 16-17 of d5)
+MessOutData:
 	btst.b	#0x11,d5	| C18838
 	bne.b	loc_C1885C	| C1883C
 	move.w	d5,d2	| C1883E
@@ -432,23 +456,25 @@ loc_C1886E:
 	bne.b	loc_C1886E	| C18872
 loc_C18874:
 	rts	| C18874
-loc_C18876:
+| MessOutText8x16 [C] MESS_OUT command 9: a row of 8x16 ASCII text, upper then lower half (MessOutText8x16Row)
+MessOutText8x16:
 	move.w	#0x20,0x2(a4)	| C18876
 	move.b	d1,d2	| C1887C
 	lsl.w	#0x8,d2	| C1887E
 	movea.l	a1,a2	| C18880
-	jsr	(sub_C188A0,pc)	| C18882
+	jsr	(MessOutText8x16Row,pc)	| C18882
 	addq.w	#0x1,d6	| C18886
 	move.w	d6,(a6)	| C18888
 	movea.l	a1,a2	| C1888A
 	addi.w	#0x100,d2	| C1888C
-	jsr	(sub_C188A0,pc)	| C18890
+	jsr	(MessOutText8x16Row,pc)	| C18890
 	move.l	a2,d0	| C18894
 	addq.l	#0x1,d0	| C18896
 	andi.w	#0xFFFE,d0	| C18898
 	movea.l	d0,a1	| C1889C
 	rts	| C1889E
-sub_C188A0:
+| MessOutText8x16Row [C] one half-row of MessOutText8x16: maps each character to its tile until $FF
+MessOutText8x16Row:
 	move.b	(a2)+,d2	| C188A0
 	cmpi.b	#0xFF,d2	| C188A2
 	beq.b	loc_C188DA	| C188A6
@@ -468,33 +494,35 @@ loc_C188BE:
 	addi.b	#0x40,d1	| C188CE
 loc_C188D2:
 	move.w	d1,(a4)	| C188D2
-	bra.b	sub_C188A0	| C188D4
+	bra.b	MessOutText8x16Row	| C188D4
 loc_C188D6:
 	move.w	d2,(a4)	| C188D6
-	bra.b	sub_C188A0	| C188D8
+	bra.b	MessOutText8x16Row	| C188D8
 loc_C188DA:
 	rts	| C188DA
-loc_C188DC:
+| MessOutTiles8x16 [C] MESS_OUT command 8: a row of 8x16 characters given as tile numbers, upper then lower half
+MessOutTiles8x16:
 	move.w	#0x20,0x2(a4)	| C188DC
 	move.b	d1,d2	| C188E2
 	lsl.w	#0x8,d2	| C188E4
 	movea.l	a1,a2	| C188E6
-	jsr	(sub_C18906,pc)	| C188E8
+	jsr	(MessOutTiles8x16Row,pc)	| C188E8
 	addq.w	#0x1,d6	| C188EC
 	move.w	d6,(a6)	| C188EE
 	movea.l	a1,a2	| C188F0
 	addi.w	#0x100,d2	| C188F2
-	jsr	(sub_C18906,pc)	| C188F6
+	jsr	(MessOutTiles8x16Row,pc)	| C188F6
 	move.l	a2,d0	| C188FA
 	addq.l	#0x1,d0	| C188FC
 	andi.w	#0xFFFE,d0	| C188FE
 	movea.l	d0,a1	| C18902
 	rts	| C18904
-sub_C18906:
+| MessOutTiles8x16Row [C] one half-row of MessOutTiles8x16: writes the bytes as tile numbers until $FF
+MessOutTiles8x16Row:
 	move.b	(a2)+,d2	| C18906
 	cmpi.b	#0xFF,d2	| C18908
 	beq.b	loc_C18912	| C1890C
 	move.w	d2,(a4)	| C1890E
-	bra.b	sub_C18906	| C18910
+	bra.b	MessOutTiles8x16Row	| C18910
 loc_C18912:
 	rts	| C18912

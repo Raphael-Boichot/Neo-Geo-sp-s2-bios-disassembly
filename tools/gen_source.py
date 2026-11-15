@@ -163,7 +163,8 @@ class Gen:
                 self.want(struct.unpack('>I', self.rom[tbl - BASE + 4 * i:tbl - BASE + 4 * i + 4])[0], 'code')
         # pointer-looking longs inside data ($00C0xxxx / $00C1xxxx, even)
         for off in range(0x100, SIZE - 3, 2):
-            if any(self.kinds[off + k] != 'D' for k in range(4)) or off in self.ptr_longs:
+            if any(self.kinds[off + k] != 'D' for k in range(4)) or off in self.ptr_longs or \
+                    off + BASE in t.hints.get('number', ()):
                 continue
             v = struct.unpack('>I', self.rom[off:off + 4])[0]
             if T.in_rom(v) and self.kinds[v - BASE] != 'F' and \

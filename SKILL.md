@@ -135,6 +135,12 @@ Status checks: `make check` (L0), `tools/stats.py` (L1-L5 counts), `tools/covera
   the gating variable is written (search the absolute address in the game ROM, `move.w $10FD82` too)
   before playing longer. MAME watchpoints (`wpset ... {logerror}`) logged nothing in these headless
   runs; breakpoints that print memory worked.
+- Code can hide inside a data block too: `CardFillTest` ($C132B4) sat in zero padding before `Card`,
+  typed as bytes, and a data table read as `.ascii "rWqZq"` (fix-layer addresses). Scan data blocks for
+  `lea BiosWorkRam,a5` ($4BF9 $0010 $F300) and other routine prologues, and short mixed-case `.ascii`
+  runs; give data that only looks like text a region in `symbols/regions.csv` whose name has Table.
+- The source generator turns any even long $00C0xxxx/$00C1xxxx in data into a pointer: a size word
+  $00C0 followed by $0000 became `dc.l dat_C00000`; `number ADDR` in `tools/hints.txt` stops it.
 - Printable bytes are not text: three numeric tables at `$C02000-$C042FF` were first shown as 57 % text.
   Text needs mostly letters and no long counting run, and is never looked for inside a named table.
 - A comment like `| C1B86E-C1EFFF free` must not be read as an instruction address by the listing check.

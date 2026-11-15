@@ -94,6 +94,17 @@ SCENARIOS = {
         'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,600:P1 C,640:P1 A'}),
     'monitor_zerodiv': ('sengoku2', 700, '', {'ROMS': 'MONITOR_ROMS/zerodiv', 'MODE': 'dip',
         'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,600:P1 C,640:P1 A'}),
+    # CardFillTest (unreferenced card save loop) from test-menu item 4 (monitor_test.py cardfill build, forced): fills
+    # a formatted card in one frame (27 saves), CARD 3 returns $84 and CardError shows the full-card list (both pages);
+    # A deletes the selected data and saves again, B gives up; CardFillTest then loops until the watchdog resets
+    'card_full_delete': ('sengoku2', 1300, '', {'ROMS': 'MONITOR_ROMS/cardfill', 'MODE': 'dip',
+        'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0',
+        'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
+                + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 A'}),
+    'card_full_exit': ('sengoku2', 1300, '', {'ROMS': 'MONITOR_ROMS/cardfill', 'MODE': 'dip',
+        'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0',
+        'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
+                + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 B'}),
     # League Bowling offers MEMORY CARD SAVE before the first frame; YES (A) calls CARD 3 then CARD_ERROR.
     # Blank card: result $81, CardError formats it (MVS) and saves again. Write-protected (MEMCARD_WP):
     # $85, MEMORY CARD WRITE PROTECTED. PUSH ANY BUTTON. Not forced (the switch is emulated).

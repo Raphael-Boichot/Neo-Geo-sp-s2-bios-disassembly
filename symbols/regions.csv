@@ -4,3 +4,4 @@ C00400,C004DB,BIOS call table,W,6-byte slots called by games (NeoGeoDev wiki BIO
 C02000,C02FFF,ScaleTableA,I,64 x 64 decreasing rows
 C03000,C03FFF,ScaleTableB,I,64 x 64 ramps
 C04000,C042FF,AbsSineTable,I,384 words |sin|
+C17BFA,C17C05,HwCalendarFixAddressTable,I,6 fix-layer addresses (words) after HwTestCalendar; not text

@@ -7,7 +7,8 @@ In the release, every exception vector points to a BIOS call slot that does `jmp
 build points those slots at the monitor entries of the matching exception instead, and points
 test-menu item 4 (SETTING UP THE CODE NUMBER) at a stub in free space that raises EXCEPTION
 (default illegal): illegal, address, privilege, trace, zerodiv; or checksum, which raises no
-exception and calls the CHECKSUM_LOOP slot (nothing calls it in the release either).
+exception and calls the CHECKSUM_LOOP slot (nothing calls it in the release either); or cardfill,
+which jumps to the unreferenced CardFillTest (saves until the memory card is full).
 <out_dir>/sp-s2.sp1 has its checksum fixed.
 """
 import os
@@ -36,7 +37,8 @@ STUBS = {'illegal': '\tillegal\n',
          'privilege': '\tandi.w\t#0xDFFF,sr\n\tmove.w\t#0x2700,sr\n',   # leave supervisor mode, then a privileged instruction
          'trace': '\tori.w\t#0x8000,sr\n\tnop\n',
          'zerodiv': '\tmoveq\t#0,d1\n\tdivu.w\td1,d0\n',
-         'checksum': '\tjsr\t(CHECKSUM_LOOP).l\n'}
+         'checksum': '\tjsr\t(CHECKSUM_LOOP).l\n',
+         'cardfill': '\tjmp\t(CardFillTest).l\n'}
 
 path = os.path.join(out, 'header.s')
 src = open(path).read()

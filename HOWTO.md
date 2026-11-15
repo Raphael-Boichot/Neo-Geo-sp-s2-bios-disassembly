@@ -169,9 +169,9 @@ backup RAM and 1M card from one to the next: run them in order.
 `tools/fault_scenarios.py list | run NAME | shot NAME OUT.png`: boot errors faked by a breakpoint at
 the compare that detects them, the all-DIPs RAM test loop, card errors (League Bowling) and the card
 utility COPY (`HIDDEN_ROMS`: a ROM folder with the `hidden_programs_test.py` build; `SAVED_CARD`,
-`FORMATTED_CARD`: card images). `tools/monitor_test.py OUT [illegal|address|privilege|trace|zerodiv|checksum]`
+`FORMATTED_CARD`: card images). `tools/monitor_test.py OUT [illegal|address|privilege|trace|zerodiv|checksum|cardfill]`
 builds a BIOS whose exception slots jump to the debug monitor (`checksum`: test-menu item 4 calls the
-CHECKSUM_LOOP slot instead); put each `sp-s2.sp1` in a copy of `neogeo.zip` in `$MONITOR_ROMS/<name>/`
+CHECKSUM_LOOP slot instead; `cardfill`: it jumps to CardFillTest, with a formatted card in the slot); put each `sp-s2.sp1` in a copy of `neogeo.zip` in `$MONITOR_ROMS/<name>/`
 (with the game zip) for the `monitor_*` and `checksum_loop` scenarios. The `*_us_credit_down` scenarios
 write 1 (USA) into BIOS_COUNTRY_CODE when the game copies it.
 

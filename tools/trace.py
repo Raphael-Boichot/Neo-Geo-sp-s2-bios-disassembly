@@ -187,7 +187,7 @@ def free_mask(rom, minrun=32):
 
 
 def load_hints(path):
-    hints = {'entry': [], 'noreturn': set(), 'longtable': []}
+    hints = {'entry': [], 'noreturn': set(), 'longtable': [], 'number': set()}
     if not path:
         return hints
     for line in open(path):
@@ -202,6 +202,8 @@ def load_hints(path):
             hints['noreturn'].add(val)
         elif key == 'longtable':
             hints['longtable'].append(val)
+        elif key == 'number':
+            hints['number'].add(val)
     return hints
 
 

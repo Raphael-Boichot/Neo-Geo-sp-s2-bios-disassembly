@@ -10,7 +10,7 @@ HowToPlay:
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C1892A
 	move.w	#0x7,(REG_IRQACK).l	| C18930
 	move.w	#0x2000,sr	| C18938
-	jsr	(sub_C11FB2,pc)	| C1893C
+	jsr	(SoundSlotSwitch,pc)	| C1893C
 	jsr	(WaitFrame,pc)	| C18940
 	move.w	#0x2700,sr	| C18944
 	move.b	#0x3,(REG_SOUND).l	| C18948
@@ -119,7 +119,7 @@ loc_C18A94:
 loc_C18AA4:
 	clr.l	(0x400002).l	| C18AA4
 	jsr	(ClearFixLayer,pc)	| C18AAA
-	jsr	(sub_C11FB2,pc)	| C18AAE
+	jsr	(SoundSlotSwitch,pc)	| C18AAE
 	jsr	(WaitFrame,pc)	| C18AB2
 	move.b	#0x3,(REG_SOUND).l	| C18AB6
 	clr.b	(ram_10FEBD-A5_BASE,a5)	| C18ABE

@@ -108,28 +108,29 @@ loc_C171E0:
 	dbra	d7,loc_C171CE	| C171EA
 	move.w	#0x7000,-0x2(a2)	| C171EE
 	move.w	#0x5F,d7	| C171F4
-	jsr	(sub_C17238,pc)	| C171F8
+	jsr	(FixSetPalette1,pc)	| C171F8
 	move.w	#0x74A0,-0x2(a2)	| C171FC
 	move.w	#0x5F,d7	| C17202
-	jsr	(sub_C17238,pc)	| C17206
+	jsr	(FixSetPalette1,pc)	| C17206
 	move.w	#0x7002,-0x2(a2)	| C1720A
 	move.w	#0x27,d7	| C17210
 	move.w	#0x20,0x2(a2)	| C17214
-	jsr	(sub_C17238,pc)	| C1721A
+	jsr	(FixSetPalette1,pc)	| C1721A
 	move.w	#0x701D,-0x2(a2)	| C1721E
 	move.w	#0x27,d7	| C17224
-	jsr	(sub_C17238,pc)	| C17228
+	jsr	(FixSetPalette1,pc)	| C17228
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1722C
 	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17230
 	rts	| C17236
-sub_C17238:
+| FixSetPalette1 [C] sets palette 1 ($1000) on d7+1 fix-layer words from the current VRAM address (crosshatch border)
+FixSetPalette1:
 	nop	| C17238
 	nop	| C1723A
 	nop	| C1723C
 	move.w	(a2),d0	| C1723E
 	ori.w	#0x1000,d0	| C17240
 	move.w	d0,(a2)	| C17244
-	dbra	d7,sub_C17238	| C17246
+	dbra	d7,FixSetPalette1	| C17246
 	rts	| C1724A
 | HwTestCrosshatchFrame [C] per frame: START (bit 0 of BIOS_STATCHANGE_RAW
 HwTestCrosshatchFrame:
@@ -198,9 +199,9 @@ loc_C173C2:
 	move.b	(REG_DIPSW).l,d0	| C173D4
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C173DA
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C173DE
-	jsr	(sub_C17556,pc)	| C173E2
-	jsr	(sub_C17590,pc)	| C173E6
-	jsr	(sub_C175A0,pc)	| C173EA
+	jsr	(IoCheckShowSlot,pc)	| C173E2
+	jsr	(IoCheckShowLed1,pc)	| C173E6
+	jsr	(IoCheckShowLed2,pc)	| C173EA
 	move.w	#0x5,(WorkIndex-A5_BASE,a5)	| C173EE
 	rts	| C173F4
 | HwTestIoCheckFrame [C] per frame routine of the I/O check (inputs, DIPs, LED counters)
@@ -217,23 +218,24 @@ loc_C1740A:
 	move.b	(ram_10FEDC-A5_BASE,a5),d0	| C17414
 	move.b	(BIOS_P1CURRENT).l,d1	| C17418
 	move.w	#0x71A9,d2	| C1741E
-	jsr	(sub_C1752A,pc)	| C17422
+	jsr	(IoCheckPutPlayerBits,pc)	| C17422
 	move.b	(ram_10FEDC-A5_BASE,a5),d0	| C17426
 	lsr.b	#0x2,d0	| C1742A
 	move.b	(BIOS_P2CURRENT).l,d1	| C1742C
 	move.w	#0x7209,d2	| C17432
-	jsr	(sub_C1752A,pc)	| C17436
+	jsr	(IoCheckPutPlayerBits,pc)	| C17436
 	move.b	(REG_DIPSW).l,d0	| C1743A
 	move.w	#0x7328,d1	| C17440
-	jsr	(sub_C17500,pc)	| C17444
-	jsr	(sub_C174A8,pc)	| C17448
+	jsr	(IoCheckPutDips,pc)	| C17444
+	jsr	(IoCheckPutSystemBits,pc)	| C17448
 	clr.w	(a0)+	| C1744C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1744E
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17452
-	jsr	(sub_C17460,pc)	| C17456
-	jsr	(sub_C17482,pc)	| C1745A
+	jsr	(IoCheckNextSlotLed,pc)	| C17456
+	jsr	(IoCheckNextLedCount,pc)	| C1745A
 	rts	| C1745E
-sub_C17460:
+| IoCheckNextSlotLed [C] I/O check: every 64 frames shows the next slot number (1 to the slot count) on the slot LED (IoCheckShowSlot)
+IoCheckNextSlotLed:
 	move.b	(ram_10FE8B-A5_BASE,a5),d0	| C17460
 	andi.b	#0x3F,d0	| C17464
 	bne.b	loc_C17480	| C17468
@@ -244,10 +246,11 @@ sub_C17460:
 	moveq	#0x0,d0	| C17476
 loc_C17478:
 	move.b	d0,(WorkIndexNew-A5_BASE,a5)	| C17478
-	jsr	(sub_C17556,pc)	| C1747C
+	jsr	(IoCheckShowSlot,pc)	| C1747C
 loc_C17480:
 	rts	| C17480
-sub_C17482:
+| IoCheckNextLedCount [C] I/O check: every 64 frames adds 11 (BCD) to the LED test count (00, 11 .. 99) and shows it on both LED counters
+IoCheckNextLedCount:
 	move.b	(ram_10FE8B-A5_BASE,a5),d0	| C17482
 	andi.b	#0x3F,d0	| C17486
 	bne.b	loc_C174A6	| C1748A
@@ -259,11 +262,12 @@ sub_C17482:
 	moveq	#0x0,d0	| C17498
 loc_C1749A:
 	move.b	d0,(ram_10FCDE-A5_BASE,a5)	| C1749A
-	jsr	(sub_C17590,pc)	| C1749E
-	jsr	(sub_C175A0,pc)	| C174A2
+	jsr	(IoCheckShowLed1,pc)	| C1749E
+	jsr	(IoCheckShowLed2,pc)	| C174A2
 loc_C174A6:
 	rts	| C174A6
-sub_C174A8:
+| IoCheckPutSystemBits [C] I/O check: REG_SYSTYPE bit 7 and bits 0-2 of bram_D00021 as 0/1
+IoCheckPutSystemBits:
 	move.l	#0x1010004,(a0)+	| C174A8
 	move.w	#0x102,(a0)+	| C174AE
 	move.l	#0x373AB,(a0)+	| C174B2
@@ -287,7 +291,8 @@ PutBitChar:
 loc_C174FA:
 	move.b	#0x31,(a0)+	| C174FA
 	rts	| C174FE
-sub_C17500:
+| IoCheckPutDips [C] I/O check: the 8 hard DIP switches as 0/1
+IoCheckPutDips:
 	not.b	d0	| C17500
 	move.l	#0x1010008,(a0)+	| C17502
 	move.w	#0x2002,(a0)+	| C17508
@@ -304,7 +309,8 @@ loc_C17522:
 	move.b	d1,(a0)+	| C17522
 	dbra	d7,loc_C17518	| C17524
 	rts	| C17528
-sub_C1752A:
+| IoCheckPutPlayerBits [C] I/O check: 10 bits of one player (joystick byte and two bits of ram_10FEDC) as 0/1
+IoCheckPutPlayerBits:
 	lsl.w	#0x8,d0	| C1752A
 	move.b	d1,d0	| C1752C
 	move.l	#0x101000A,(a0)+	| C1752E
@@ -322,7 +328,8 @@ loc_C1754E:
 	move.b	d1,(a0)+	| C1754E
 	dbra	d7,loc_C17544	| C17550
 	rts	| C17554
-sub_C17556:
+| IoCheckShowSlot [C] writes WorkIndexNew to the slot LED (WriteLedData) and prints the slot digit
+IoCheckShowSlot:
 	move.b	(WorkIndexNew-A5_BASE,a5),d5	| C17556
 	jsr	(WriteLedData,pc)	| C1755A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1755E
@@ -339,12 +346,14 @@ sub_C17556:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17586
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1758A
 	rts	| C1758E
-sub_C17590:
+| IoCheckShowLed1 [C] the LED test count on the first LED counter (latch $EF) and on screen
+IoCheckShowLed1:
 	move.b	(ram_10FCDE-A5_BASE,a5),d0	| C17590
 	move.b	#0xEF,d1	| C17594
 	move.w	#0x7314,d2	| C17598
 	bra.w	loc_C175B8	| C1759C
-sub_C175A0:
+| IoCheckShowLed2 [C] the LED test count on the second LED counter (latch $DF, digit order reversed) and on screen
+IoCheckShowLed2:
 	move.b	(ram_10FCDE-A5_BASE,a5),d0	| C175A0
 	nbcd.b	d0	| C175A4
 	move.b	d0,d1	| C175A6
@@ -425,8 +434,8 @@ HwTestSound:
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17740
 	clr.w	(ram_10FCDE-A5_BASE,a5)	| C17744
 	clr.b	(ram_10FCE2-A5_BASE,a5)	| C17748
-	jsr	(sub_C1780A,pc)	| C1774C
-	jsr	(sub_C177C0,pc)	| C17750
+	jsr	(SoundTestDrawItems,pc)	| C1774C
+	jsr	(SoundTestMoveCursor,pc)	| C17750
 	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17754
 	rts	| C17758
 | HwTestSoundFrame [C] per frame routine of the sound test
@@ -441,13 +450,14 @@ loc_C17770:
 	btst.b	#0x4,d0	| C17774
 	beq.w	loc_C177A0	| C17778
 	move.b	(ram_10FCDE-A5_BASE,a5),(ram_10FCE2-A5_BASE,a5)	| C1777C
-	jsr	(sub_C1780A,pc)	| C17782
+	jsr	(SoundTestDrawItems,pc)	| C17782
 	move.b	(ram_10FCE2-A5_BASE,a5),d0	| C17786
 	beq.w	loc_C178CE	| C1778A
 	andi.w	#0xF,d0	| C1778E
-	move.b	(tbl_C1779C,pc,d0.w),(REG_SOUND).l	| C17792
+	move.b	(SoundTestCommands,pc,d0.w),(REG_SOUND).l	| C17792
 	rts	| C1779A
-tbl_C1779C:
+| SoundTestCommands [C] sound commands of the 4 sound test items ($03, $5D, $5C, $5E)
+SoundTestCommands:
 	dc.b	0x03,0x5D,0x5C,0x5E
 loc_C177A0:
 	andi.b	#0x3,d0	| C177A0
@@ -464,20 +474,22 @@ loc_C177B2:
 	cmpi.b	#0x4,d1	| C177B6
 	bcc.b	loc_C177A6	| C177BA
 	move.b	d1,(ram_10FCDF-A5_BASE,a5)	| C177BC
-sub_C177C0:
+| SoundTestMoveCursor [C] sound test: erases the cursor at the old item and draws it at ram_10FCDF
+SoundTestMoveCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C177C0
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C177C4
 	clr.l	(a0)+	| C177C8
 	move.w	#0x20FF,d1	| C177CA
-	jsr	(sub_C177EC,pc)	| C177CE
+	jsr	(SoundTestPutCursor,pc)	| C177CE
 	move.b	(ram_10FCDF-A5_BASE,a5),(ram_10FCDE-A5_BASE,a5)	| C177D2
 	move.w	#0x11FF,d1	| C177D8
-	jsr	(sub_C177EC,pc)	| C177DC
+	jsr	(SoundTestPutCursor,pc)	| C177DC
 	clr.w	(a0)+	| C177E0
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C177E2
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C177E6
 	rts	| C177EA
-sub_C177EC:
+| SoundTestPutCursor [C] MESS_OUT entry for the sound test cursor
+SoundTestPutCursor:
 	move.w	#0x3,(a0)+	| C177EC
 	moveq	#0x0,d0	| C177F0
 	move.b	(ram_10FCDE-A5_BASE,a5),d0	| C177F2
@@ -489,7 +501,8 @@ sub_C177EC:
 	move.w	#0x1108,(a0)+	| C17802
 	move.w	d1,(a0)+	| C17806
 	rts	| C17808
-sub_C1780A:
+| SoundTestDrawItems [C] sound test: draws the item lines, the playing one (ram_10FCE2) in another text
+SoundTestDrawItems:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1780A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1780E
 	clr.l	(a0)+	| C17812
@@ -755,13 +768,13 @@ HwTestCalendar:
 	clr.w	(a0)+	| C17BE0
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17BE2
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17BE6
-	jsr	(sub_C17CD4,pc)	| C17BEA
+	jsr	(HwCalendarShowDate,pc)	| C17BEA
 	clr.w	(WorkIndexNew-A5_BASE,a5)	| C17BEE
 	move.w	#0xD,(WorkIndex-A5_BASE,a5)	| C17BF2
 	rts	| C17BF8
-	dc.b	0x71,0x57,0x71,0xD7
-	.ascii	"rWqZq"
-	dc.b	0xDA,0x72,0x5A
+| HwCalendarFixAddresses [I] 6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover)
+HwCalendarFixAddresses:
+	dc.b	0x71,0x57,0x71,0xD7,0x72,0x57,0x71,0x5A,0x71,0xDA,0x72,0x5A
 | HwTestCalendarFrame [C] per frame routine of the hardware-test calendar
 HwTestCalendarFrame:
 	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17C06
@@ -771,7 +784,7 @@ HwTestCalendarFrame:
 loc_C17C16:
 	btst.b	#0x7,(BIOS_P1CHANGE-A5_BASE,a5)	| C17C16
 	bne.w	loc_C17CA4	| C17C1C
-	jsr	(sub_C17CD4,pc)	| C17C20
+	jsr	(HwCalendarShowDate,pc)	| C17C20
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C17C24
 	andi.b	#0xC,d0	| C17C28
 	beq.w	loc_C17C52	| C17C2C
@@ -834,7 +847,8 @@ loc_C17CC8:
 	tst.b	d7	| C17CCC
 	beq.w	HwTestCalendar	| C17CCE
 	rts	| C17CD2
-sub_C17CD4:
+| HwCalendarShowDate [C] hardware-test calendar: prints month, day, year, hour, minute, second (PutMenuValueLine)
+HwCalendarShowDate:
 	moveq	#0x0,d6	| C17CD4
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17CD6
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17CDA

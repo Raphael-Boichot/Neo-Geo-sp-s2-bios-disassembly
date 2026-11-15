@@ -76,3 +76,21 @@ D09BA0,BookCoinDays,C,"CABINET/COIN: 36 daily records of 16 bytes (COIN1, COIN2,
 D09DE0,BookPlayDays,C,CABINET/PLAY: 36 daily records of 16 bytes
 D0A020,BookCoinMonths,C,CABINET/COIN: 12 monthly records of 16 bytes
 D0A0E0,BookPlayMonths,C,CABINET/PLAY: 12 monthly records of 16 bytes
+D00047,SlotCount,C,"number of slots (2, 4 or 6) set by PowerOnSetup from REG_SYSTYPE bit 6 and REG_STATUS_A bit 5"
+D00058,EyecatchSlot,I,"first slot whose cartridge leaves the eyecatcher to the system ROM (CART_EYECATCH_FLAG 0), $FF = none (ScanSlots)"
+D0005A,ClockHour4,C,"hour of the software clock x 4 (HourClockTick), index of the hourly start counters"
+D0005B,ClockMinute,C,minute of the software clock (HourClockTick)
+D0005C,ClockSecond,C,second of the software clock (HourClockTick)
+D0005D,ClockFrames,C,VBlank countdown (60) of the software clock
+D00048,PlayTimeSeconds,I,"play time counted by PlayTimeCount while a game runs, added to the records by BookAddPlayTime"
+D00109,BookSlot,I,slot whose game the book keeping pointers and the per-game helpers use (GetGameDaysPtr..)
+D0010A,BookGameTodayPtr,C,"pointer to today's record of the current game in BookGameDays (NextSlot)"
+D0010E,BookGameTotalPtr,I,pointer to the current game's record at $D09B20 + index x 16
+D00112,BookTodayPtr,C,pointer to today's record in BookCoinDays (PowerOnSetup); +$240 is today's CABINET/PLAY record
+D00116,BookMonthPtr,C,pointer to this month's record in BookCoinMonths; +$C0 is this month's CABINET/PLAY record
+D0011A,BookGameDayIndex,C,"8 bytes: today's day index (0-35) for each game index (BookNewDayPerGame)"
+D00164,RemovedGames,I,"8 entries of 8 bytes: games of the old SlotTable no longer in a slot (SlotListRemoved)"
+D001A4,BookGameMonthPtr,C,pointer to this month's record of the current game in BookGameMonths
+D001A8,BookGameHoursPtr,I,pointer to the current game's 24 hourly start counters (GetGameHourCountsPtr)
+D00200,BookGameDayCount,I,"one long per game index, +1 on each new day while the game is in a slot"
+D00320,GameBackupData,C,"$1000 bytes per game index: copy of the game's backup area (SaveGameBackupData, NextSlot)"

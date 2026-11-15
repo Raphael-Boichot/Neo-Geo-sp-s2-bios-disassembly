@@ -349,7 +349,7 @@ C134E6,PushAnyButtonText,C,PUSH ANY BUTTON.
 C1353E,CardErrorNotFormatted,C,"CardError for an unformatted card: an AES (BIOS_MVS_FLAG 0) asks DO YOU WISH TO FORMAT? (A yes, B no); an MVS formats at once, then repeats the CARD call; THIS MEMORY CARD CANNOT BE FORMATTED. if the format fails"
 C1359C,CardFormatQuestionText,C,"MEMORY CARD NOT FORMATTED, DO YOU WISH TO FORMAT? A BUTTON = YES B BUTTON = NO (AES only)"
 C13608,CardCannotFormatText,C,THIS MEMORY CARD CANNOT BE FORMATTED.
-C1363E,CardErrorFull,C,"CardError for a full card: MEMORY CARD FULL, lists the data on the card page by page so that one can be deleted, or the save is skipped"
+C1363E,CardErrorFull,C,"CardError for a full card: MEMORY CARD FULL, lists the data on the card page by page (6 lines, PREVIOUS PAGE / NEXT PAGE); A deletes the selected data and repeats the save (CardRestoreRequest), B skips it. Ran in MAME with CardFillTest (card_full_delete, card_full_exit)"
 C13876,CardFullText,C,"MEMORY CARD FULL,SELECT GAME DATA TO BE DELETED WITH JOYSTICK OR DO NOT SAVE CURRENT GAME."
 C1390C,PreviousPageText,C,PREVIOUS PAGE
 C1392A,NextPageText,C,NEXT PAGE
@@ -372,3 +372,140 @@ C16120,CardUtilNoDataText,C,THERE IS NO DATA.
 C1613A,CardUtilErrorText,C,ERROR ON MEMORY CARD.
 C16158,CardUtilFullText,C,MEMORY CARD FULL.
 C16172,CardUtilWriteProtectedText,C,MEMORY CARD WRITE PROTECTED. (MAME: card_util_write_protected)
+C13804,CardRestoreRequest,C,"CardErrorFull: puts the game's CARD request back (BIOS_CRDF from ram_10FDC5, BIOS_CRDPTR, CRDSIZE, CRDNGH, CRDFILE from ram_10FE92-ram_10FE9A) before the save is tried again or given up"
+C13824,DataListMoveCursor,C,"erases the list cursor (char $20) at the old line and draws it (char $11) at the new line ram_10FEB8; the card-full list and the card utility COPY/DELETE lists"
+C13854,DataListPutCursor,C,"MESS_OUT entry for the list cursor: line = ram_10FEB6 mod 6 (ram_10FEB4), character d1"
+C13944,WaitFrameGetP1P2,C,"WaitFrame, then d0 = P1|P2 change bits (P1|P2 repeat bits in the high word); same special case as WaitFrameGetP1 when BIOS_P1STATUS = 3"
+C13986,CardErrorSaveScreen,C,"once per message (ram_10FEBA): copies the $500 fix-layer words to $10F300 (the BIOS work RAM below its variables), saves the colours $400002 and $400022, sets them to message colours and clears the fix layer"
+C139EC,CardErrorRestoreScreen,C,"undoes CardErrorSaveScreen: writes the saved fix layer back, restores the two colours, clears ram_10FEBA (end of CardError)"
+C13B5C,CardSumByte,C,"adds the low bytes of d6+1 words at a0 into d0 (CardFormat, 8-bit card: one byte per word)"
+C13B66,CardFormatFatByte,C,"8-bit card: clears one FAT copy (ram_10FD0E bytes at a0) and marks the first d6+1 blocks (header, directory, FATs) as used (2)"
+C13BF4,CardSumWord,I,"adds both bytes of d6+1 words at a0 into d0 (CardFormat, 16-bit card)"
+C13C02,CardFormatFatWord,I,"16-bit card: like CardFormatFatByte with two FAT entries per word"
+C13CEE,CardSumSparse,I,"adds both bytes of d6+1 words, every other word (CardFormat, card type $80)"
+C13CFE,CardFormatFatSparse,I,"card type $80 (16-bit card answering on every other word, CardDetect): like CardFormatFatWord with a 4-byte step"
+C144F8,CardFreeChainByte,C,"8-bit card: frees a file's blocks: follows the FAT chain from block d3, writing 0 (free), until an entry below 3 (end); CARD delete and save over old data"
+C14512,CardFreeChainWord,I,16-bit card form of CardFreeChainByte (two FAT entries per word)
+C1454C,CardFreeChainSparse,I,card type $80 form of CardFreeChainByte
+C14588,CardFindFreeBlockByte,C,"8-bit card: d3 = offset of the first free FAT entry (0), at most ram_10FD08+1 entries"
+C145A8,CardFindFreeBlockWord,I,16-bit card form of CardFindFreeBlockByte
+C145D8,CardFindFreeBlockSparse,I,card type $80 form of CardFindFreeBlockByte
+C1460C,CardFindFreeEntryByte,C,"8-bit card: a0 = first free directory entry (first byte $FF), 8-byte entries"
+C1461A,CardFindFreeEntryWord,I,"16-bit card form of CardFindFreeEntryByte (4-byte entries, high byte)"
+C1462A,CardFindFreeEntrySparse,I,card type $80 form of CardFindFreeEntryByte
+C1463A,CardNextBlockByte,C,8-bit card: d3 = FAT entry of block d3 (next block of the chain) then CardBlockAddressByte
+C14644,CardBlockAddressByte,C,"8-bit card: a3 = card base (a6) + block d3 x 128 (a 64-byte block takes 128 addresses)"
+C14654,CardNextBlockWord,I,16-bit card form of CardNextBlockByte
+C1466A,CardBlockAddressWord,I,16-bit card: a3 = a6 + block d3 x 64
+C1467A,CardNextBlockSparse,I,card type $80 form of CardNextBlockByte
+C14692,CardBlockAddressSparse,I,card type $80: a3 = a6 + block d3 x 128
+C146A2,CardFindEntry,C,"searches the directory for the entry of BIOS_CRDNGH (two bytes) and BIOS_CRDFILE: d3 = 0 and a0 = entry when found, else d3 = -1; 8-bit card (8-byte entries) or 16-bit card (4-byte entries)"
+C1471C,CardFindEntrySparse,I,card type $80 form of CardFindEntry
+C14754,CardCheckFat,C,"checks the checksums of both FAT copies (card header +$1A, +$1C): a bad copy is rewritten from the good one, both bad = result $83; one routine per card type (8-bit here, 16-bit at loc_C14814, type $80 at loc_C148D0)"
+C147FA,CardFatSumByte,C,"8-bit card: d0 = sum of the low bytes of one FAT copy (ram_10FD0E bytes at a0)"
+C148B2,CardFatSumWord,I,16-bit card form of CardFatSumByte
+C14986,CardFatSumSparse,I,card type $80 form of CardFatSumByte
+C14A3A,CardDetect,C,"finds the card type and size: an SNK ROM card from its header; else writes $AAAA/$5555 patterns: 8-bit card (ram_10FD15 = 0, size in $1000 steps up to $8000), 16-bit card (1, $800 steps up to $4000) or a 16-bit card on every other word ($80); then tests the whole card with $55/$AA and address patterns; d6 = size (0 = none or failed). Called by CardFormat"
+C14D30,CardLayoutByte,C,"sets the card layout from its size (CardLayoutTableByte): directory address ram_10FD04 and entry count ram_10FD08, FAT address ram_10FD0A and size ram_10FD0E, data start ram_10FD10"
+C14D58,CardLayoutTableByte,C,"16-byte rows per $1000 bytes of card: directory offset, entries-1, FAT offset, FAT size, data offset (8-bit card and type $80)"
+C14DE8,CardLayoutWord,I,16-bit card form of CardLayoutByte (CardLayoutTableWord)
+C14DF6,CardLayoutTableWord,I,"rows per $800 bytes of a 16-bit card, as CardLayoutTableByte"
+C156FE,CardUtilNameCursor,C,"FILE USER'S NAME: recolours the key under the old cursor (palette 0) and the new one (palette 1) on the fix layer (CardUtilKeyPositions)"
+C1571C,CardUtilColourKey,C,"sets the palette bits d3 of the fix-layer characters of one key, from its position to the next space"
+C15776,CardUtilDrawName,C,FILE USER'S NAME: MESS_OUT entry showing the 16 name characters kept at WorkRamStart
+C157A8,CardUtilMoveNameCursor,C,"FILE USER'S NAME: erases the character cursor at ram_10FEB0, then draws it (char $12) at ram_10FEB2"
+C157D0,CardUtilPutNameCursor,C,MESS_OUT entry for the name cursor under column ram_10FEB0
+C157EC,CardUtilDrawDataName,C,MESS_OUT entry showing the 20-character data name at a1 (COPY and DELETE)
+C1583E,CardUtilMessageWait,C,"clears the fix layer, shows the text a2 and PUSH ANY BUTTON., waits for A-D; entered at loc_C1582C with a CARD result, which picks the text from CardUtilErrorTexts"
+C15818,CardUtilErrorTexts,C,"texts for CARD results $81-$85: not formatted, no data, error, full, write protected"
+C15866,CardUtilReadTitles,C,"reads every data title on the card (CARD 5 until result $82) into a table at $10C000 (20-byte title, NGH, file number per entry); ram_10FEB0 = last index; with no data, shows the result's message"
+C158BA,CardUtilDrawTitlePage,C,"draws up to 6 titles of the $10C000 table from index ram_10FEB2, with PREVIOUS PAGE / NEXT PAGE"
+C159A0,CardUtilMoveMenuCursor,C,"card utility menu: erases the cursor at the old line and draws it at the new one (WorkIndex)"
+C159D0,CardUtilPutMenuCursor,C,MESS_OUT entry for the menu cursor at line WorkIndex (3 fix rows per line)
+C159EE,CardUtilKeyPositions,C,fix-layer address of each key of the FILE USER'S NAME keyboard
+C15A98,CardUtilKeyMoves,C,"FILE USER'S NAME: for each key, the key reached with each of the four directions (4 bytes per key)"
+C15BEC,CardUtilKeyChars,C,"the character of each letter key: A-Z, a-z, 0-9 and symbols, space"
+C156C8,CardUtilDirectionIndex,C,joystick bits (up/down/left/right) to the column of CardUtilKeyMoves
+C15642,CardUtilNameKeyHandlers,I,"FILE USER'S NAME: handlers of the 5 keys before the letters: one saves the name with CARD 6 (END), two move the character cursor left and right (the arrows), two set ram_10FEB8 (to 1 or 0, to 2 or 1) and redraw the screen (meaning of ram_10FEB8 not found)"
+C16590,MonitorPutVramWord,C,debug monitor DISPLAY V-RAM: reads the VRAM word at d3 and appends it as 4 hex digits
+C165A8,MonitorPutHexByte,C,appends the byte d0 as 2 hex digits (ByteToHex)
+C11DB0,PowerOnSetup,C,"after the power-on tests: clears the slot-mode fields, reads the calendar (start of the hour clock), on a new date advances the book keeping day (and month) rings, sets the slot count (bram_D00047: 2, 4 or 6 from REG_SYSTYPE and REG_STATUS_A), checks the Z80, scans the slots and merges the result into SlotTable; on a new day BookNewDayPerGame"
+C11F5A,ScanSlots,C,"for each slot: selects it, CheckCartridgeId, stores CART_NGH in the table at $10FD00 (4 bytes per slot) and keeps in bram_D00058 the first slot whose CART_EYECATCH_FLAG is 0"
+C11FB2,SoundSlotSwitch,I,"unless the Z80 already replies 1: sends sound command 1 (prepare for a slot switch, NeoGeoDev wiki) and waits up to 8 x 4 VBlanks for the reply 1; called by SwitchSlot and the slot code"
+C12044,SlotClearDuplicates,C,"unless SlotNumberMode: clears the later slots holding the same NGH as an earlier one (NoGoIdText keeps duplicates, scenario nogo_cartridge)"
+C12074,SlotListRemoved,I,"lists in bram_D00164 (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot"
+C120B4,SlotKeepOuterEntries,I,"for the stored SlotTable entries past the slot count: their settings go to the same game if it is now in a slot, else to the removed list"
+C120EC,SlotCopyMovedSettings,I,"a game found in another slot than before keeps its settings index (+2) and date (+$20) from the stored SlotTable"
+C12118,SlotTableStore,I,"writes the scanned slots to SlotTable, then the removed games after them"
+C12142,SlotDateNewGames,I,a game with no settings index yet ($FFFF) gets LastBootDate as its date
+C12160,BookNewDayPerGame,C,"on a new day: for each slot with a game, advances the game's day index (bram_D0011A, 36-day ring), clears and dates that day's record in BookGameDays and adds 1 to its long at $D00200"
+C122D8,SaveGameSoftDips,C,"copies BIOS_GAME_DIP (16 bytes) back to GameSoftDips for the game in CurrentSlot"
+C12322,SaveGameBackupData,C,"copies the game's backup area (CART_BACKUP_PTR, CART_BACKUP_SIZE bytes) to backup RAM $D00320 + game index x $1000"
+C12372,PreviousSlot,I,"selects the previous slot holding a game and loads it (loc_C123F6, as NextSlot); never ran"
+C123A8,LoadCurrentSlot,C,"loads the backup data and soft DIPs of the game in CurrentSlot without switching (loc_C1241E)"
+C123C4,NextSlot,C,"selects the next slot holding a game: slot number on the LEDs, SwitchSlot, sound command 3; then copies the game's backup data from $D00320 + index x $1000, its soft DIPs to BIOS_GAME_DIP and sets the book keeping pointers (bram_D0010A, D001A4, D001A8, D0010E)"
+C124E6,BookGameMonthsTable,C,"BookGameMonths + game index x $C0, 8 entries"
+C12506,GetGameDaysPtr,C,a0 = the BookGameDays area of the game in slot bram_D00109 (BookGameDaysTable)
+C1251E,BookGameDaysTable,C,"BookGameDays + game index x $240, 8 entries"
+C1253E,GetGameDayCountPtr,I,a0 = $D00200 + game index x 4 (a long incremented by BookNewDayPerGame)
+C1255A,GetGameHourCountsPtr,I,"a0 = $D0A1A0 + game index x $60 (tbl_C12572): 24 longs, one per hour, incremented by DeductPlayerCredit at index bram_D0005A (the hour clock)"
+C12592,BookClearDatedRecord,C,clears the 16-byte record d0 of the ring at a0 and stores LastBootDate in it
+C125A4,BookClearRecord,C,clears the 16-byte record at a0 + d0
+C12860,HourClockTick,C,"software clock started from the calendar at power-on: every 60 VBlanks (bram_D0005D) adds a second (D0005C), minute (D0005B) and hour x 4 (D0005A, 0-$5C)"
+C128A6,CountCoin,C,"a coin on input d3: counts it (bram_D00024 + d4), adds it to today's and this month's CABINET/COIN records (offset d5), and when enough coins are in (Coin1Coins/Coin2Coins) gives the credits (Coin1Credits/Coin2Credits) to Credits in BCD, at most 99"
+C128E6,CountService,C,"the service switch: adds to the SERVICE counters of today's and this month's records and 1 credit"
+C1299A,CreditDownCount,C,"CREDIT_DOWN: for P1 and P2 with BIOS_CREDIT_DEC1/2 set, takes the credit and counts the play like DeductPlayerCredit (CreditDownPlayer)"
+C129BC,CreditDownPlayer,C,one player of CreditDownCount (enters DeductPlayerCredit at loc_C1293C)
+C129D4,PlayCoinSound,C,"once per counted coin (ram_10FEE2), in system mode 2 or more: calls CART_COIN_SOUND, or sends sound command $7F"
+C12B8E,Card1MSaveWords,C,"copies d7 words from a1 to the 1M card at a0, writing (a3) each word (Card1MSaveCabinet; Card1MCopyWords is the recover side)"
+C12C24,BookAddPlayTime,C,"adds the counted play time (bram_D00048) to the PLAY TIME field (+$C) of today's, this month's and the game's records, then clears it"
+C17238,FixSetPalette1,C,"sets palette 1 ($1000) on d7+1 fix-layer words from the current VRAM address (crosshatch border)"
+C17460,IoCheckNextSlotLed,C,"I/O check: every 64 frames shows the next slot number (1 to the slot count) on the slot LED (IoCheckShowSlot)"
+C17482,IoCheckNextLedCount,C,"I/O check: every 64 frames adds 11 (BCD) to the LED test count (00, 11 .. 99) and shows it on both LED counters"
+C174A8,IoCheckPutSystemBits,C,"I/O check: REG_SYSTYPE bit 7 and bits 0-2 of bram_D00021 as 0/1"
+C17500,IoCheckPutDips,C,I/O check: the 8 hard DIP switches as 0/1
+C1752A,IoCheckPutPlayerBits,C,"I/O check: 10 bits of one player (joystick byte and two bits of ram_10FEDC) as 0/1"
+C17556,IoCheckShowSlot,C,"writes WorkIndexNew to the slot LED (WriteLedData) and prints the slot digit"
+C17590,IoCheckShowLed1,C,"the LED test count on the first LED counter (latch $EF) and on screen"
+C175A0,IoCheckShowLed2,C,"the LED test count on the second LED counter (latch $DF, digit order reversed) and on screen"
+C1779C,SoundTestCommands,C,"sound commands of the 4 sound test items ($03, $5D, $5C, $5E)"
+C177C0,SoundTestMoveCursor,C,"sound test: erases the cursor at the old item and draws it at ram_10FCDF"
+C177EC,SoundTestPutCursor,C,MESS_OUT entry for the sound test cursor
+C1780A,SoundTestDrawItems,C,"sound test: draws the item lines, the playing one (ram_10FCE2) in another text"
+C17CD4,HwCalendarShowDate,C,"hardware-test calendar: prints month, day, year, hour, minute, second (PutMenuValueLine)"
+C182F0,EyecatchFadeStep,C,"next step of the eyecatcher colour fade: colour set from EyecatchFadeIndex[WorkIndexNew] (EyecatchSetColours)"
+C1830A,EyecatchSetSprites,C,"writes 18 sprite columns from VRAM address d0 (step $40): 4 tiles from a0 with attribute d1, then 28 empty tiles"
+C18346,EyecatchSetColours,C,"queues colour set d0 (12 bytes at EyecatchColourSets) for the next VBlank: 5 colours to $4001E2 and the backdrop $401FFE"
+C1F00E,EyecatchFadeIndex,C,colour set number for each step of the eyecatcher fade
+C1F03E,EyecatchColourSets,C,"12-byte colour sets (5 colours and the backdrop) of the eyecatcher fade"
+C184EC,DelayLonger,I,"nested BSR chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): the depth sets the delay; used around Z80 and LED writes"
+C184F4,DelayShort,I,see DelayLonger
+C184F8,DelayShorter,I,see DelayLonger
+C18500,DelayReturn,I,the rts that ends the delay chain
+C185DE,CopyControllerState,C,"copies a player's status block (BIOS_P1STATUS..) to ram_10FEE8/ram_10FEEE; a mahjong controller (status 3, wiki) is converted to joystick bits first"
+C1861C,MahjongKeysToJoystick,I,"maps a mahjong controller key byte to joystick bits (bit 7 from bit 0 of d1, nibbles swapped)"
+C1862E,MahjongStartFilter,I,"mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held"
+C18656,UpdatePlayerInputs,C,"updates a player's input block (and the expanded block at +$C), or the mahjong rows"
+C1866C,UpdateInputBlock,C,"previous, current, change and repeat bytes of one input block; repeat after 16 frames, then every 8"
+C186C8,UpdateMahjongRow,I,current and change bytes of one mahjong key row
+C186DA,ReadMahjongRows,I,reads two more key rows through REG_POUTPUT ($24 and $09) into d6
+C1877E,MessOutCommands,C,"MESS_OUT command handlers 0-13: end, format, auto-increment, VRAM address, data at a pointer, add to address, resume data, inline data, 8x16 tiles, 8x16 text, call a list, return, repeat a word, write increasing words"
+C187B6,MessOutEnd,C,MESS_OUT command 0: end of the list (next list pointer)
+C187C4,MessOutFormat,C,"MESS_OUT command 1: data format in d5 (bytes or words, end code or count)"
+C187CC,MessOutIncrement,C,MESS_OUT command 2: VRAM auto-increment
+C187D4,MessOutAddress,C,MESS_OUT command 3: VRAM address
+C1881A,MessOutDataPointer,C,MESS_OUT command 4: writes the data at a pointer (MessOutData)
+C18832,MessOutAddAddress,C,MESS_OUT command 5: adds to the VRAM address
+C18838,MessOutData,C,"MESS_OUT command 6 and the data writer: bytes or words from a2 to VRAM, until the end code or for a count (format bits 16-17 of d5)"
+C18814,MessOutDataInline,C,"MESS_OUT command 7: data that follows the command, then aligns the list pointer"
+C188DC,MessOutTiles8x16,C,"MESS_OUT command 8: a row of 8x16 characters given as tile numbers, upper then lower half"
+C18876,MessOutText8x16,C,"MESS_OUT command 9: a row of 8x16 ASCII text, upper then lower half (MessOutText8x16Row)"
+C188A0,MessOutText8x16Row,C,"one half-row of MessOutText8x16: maps each character to its tile until $FF"
+C18906,MessOutTiles8x16Row,C,one half-row of MessOutTiles8x16: writes the bytes as tile numbers until $FF
+C187DA,MessOutCall,C,MESS_OUT command 10: runs another list (pointer pushed at ram_10FEC6)
+C187EE,MessOutReturn,C,MESS_OUT command 11: back from MessOutCall
+C187FE,MessOutRepeat,C,MESS_OUT command 12: writes one word d1 times
+C18808,MessOutSequence,C,"MESS_OUT command 13: writes d1 words, adding 1 each time"
+C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover)"
+C132B4,CardFillTest,C,"unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears"
+C13338,CardFillTestTitle,C,"20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save"

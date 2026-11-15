@@ -95,11 +95,11 @@ loc_C17F4A:
 	move.b	(CART_EYECATCH_BANK).w,d2	| C17F7E
 	lsl.w	#0x8,d2	| C17F82
 	move.w	#0xF01,d1	| C17F84
-	jsr	(sub_C1830A,pc)	| C17F88
+	jsr	(EyecatchSetSprites,pc)	| C17F88
 	lea.l	(dat_C1F2C6).l,a0	| C17F8C
 	move.w	#0x4C0,d0	| C17F92
 	move.w	#0xF00,d1	| C17F96
-	jsr	(sub_C1830A,pc)	| C17F9A
+	jsr	(EyecatchSetSprites,pc)	| C17F9A
 	move.w	#0x0,-0x2(a1)	| C17F9E
 	move.w	#0x2,0x2(a1)	| C17FA4
 	moveq	#0x1F,d6	| C17FAA
@@ -130,7 +130,7 @@ loc_C17FF2:
 	move.w	d0,(a0)+	| C17FF2
 	dbra	d7,loc_C17FF2	| C17FF4
 	move.w	#0x0,d0	| C17FF8
-	bsr.w	sub_C18346	| C17FFC
+	bsr.w	EyecatchSetColours	| C17FFC
 	move.w	#0x0,(ram_10FCDC-A5_BASE,a5)	| C18000
 	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C18006
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1800C
@@ -177,7 +177,7 @@ loc_C18082:
 	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C18086
 	andi.w	#0x1,d0	| C1808A
 	bne.b	loc_C180DA	| C1808E
-	jsr	(sub_C182F0,pc)	| C18090
+	jsr	(EyecatchFadeStep,pc)	| C18090
 	subi.w	#0x100,(ram_10FC48-A5_BASE,a5)	| C18094
 	subi.b	#0x10,(ram_10FC91-A5_BASE,a5)	| C1809A
 	bcc.b	loc_C180DA	| C180A0
@@ -197,7 +197,7 @@ loc_C180DC:
 	move.w	(ram_10FCDC-A5_BASE,a5),d0	| C180E0
 	andi.w	#0x1,d0	| C180E4
 	bne.b	loc_C18118	| C180E8
-	jsr	(sub_C182F0,pc)	| C180EA
+	jsr	(EyecatchFadeStep,pc)	| C180EA
 	addi.w	#0x100,(ram_10FC6C-A5_BASE,a5)	| C180EE
 	move.b	(ram_10FCB5-A5_BASE,a5),d0	| C180F4
 	bne.b	loc_C180FE	| C180F8
@@ -261,7 +261,7 @@ loc_C181AE:
 	lea.l	(dat_C1F02E).l,a0	| C181C2
 	moveq	#0x0,d0	| C181C8
 	move.b	(a0,d1.w),d0	| C181CA
-	bsr.w	sub_C18346	| C181CE
+	bsr.w	EyecatchSetColours	| C181CE
 	addq.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C181D2
 	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C181D6
 	cmpi.w	#0x10,d0	| C181DA
@@ -288,7 +288,7 @@ loc_C1821C:
 loc_C1822A:
 	rts	| C1822A
 loc_C1822C:
-	jsr	(sub_C11FB2,pc)	| C1822C
+	jsr	(SoundSlotSwitch,pc)	| C1822C
 	jsr	(WaitFrame,pc)	| C18230
 	move.b	#0xFF,(ram_10FE8D-A5_BASE,a5)	| C18234
 	move.b	d0,(REG_SWPBIOS).l	| C1823A
@@ -328,7 +328,7 @@ loc_C182AE:
 	beq.w	loc_C182EA	| C182BC
 	clr.l	(0x400002).l	| C182C0
 	jsr	(ClearFixLayer,pc)	| C182C6
-	jsr	(sub_C11FB2,pc)	| C182CA
+	jsr	(SoundSlotSwitch,pc)	| C182CA
 	jsr	(WaitFrame,pc)	| C182CE
 	move.b	#0x3,(REG_SOUND).l	| C182D2
 	move.b	d0,(REG_CRTFIX).l	| C182DA
@@ -336,15 +336,17 @@ loc_C182AE:
 	clr.b	(ram_10FE8D-A5_BASE,a5)	| C182E6
 loc_C182EA:
 	jmp	(SystemReturn).l	| C182EA
-sub_C182F0:
+| EyecatchFadeStep [C] next step of the eyecatcher colour fade: colour set from EyecatchFadeIndex[WorkIndexNew] (EyecatchSetColours)
+EyecatchFadeStep:
 	move.w	(WorkIndexNew-A5_BASE,a5),d1	| C182F0
-	lea.l	(dat_C1F00E).l,a0	| C182F4
+	lea.l	(EyecatchFadeIndex).l,a0	| C182F4
 	moveq	#0x0,d0	| C182FA
 	move.b	(a0,d1.w),d0	| C182FC
-	jsr	(sub_C18346,pc)	| C18300
+	jsr	(EyecatchSetColours,pc)	| C18300
 	addq.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C18304
 	rts	| C18308
-sub_C1830A:
+| EyecatchSetSprites [C] writes 18 sprite columns from VRAM address d0 (step $40): 4 tiles from a0 with attribute d1, then 28 empty tiles
+EyecatchSetSprites:
 	lea.l	(REG_VRAMRW).l,a1	| C1830A
 	move.w	#0x1,0x2(a1)	| C18310
 	moveq	#0x11,d7	| C18316
@@ -367,10 +369,11 @@ loc_C18330:
 	addi.w	#0x40,d0	| C1833C
 	dbra	d7,loc_C18318	| C18340
 	rts	| C18344
-sub_C18346:
+| EyecatchSetColours [C] queues colour set d0 (12 bytes at EyecatchColourSets) for the next VBlank: 5 colours to $4001E2 and the backdrop $401FFE
+EyecatchSetColours:
 	move.w	#0xC,d1	| C18346
 	mulu.w	d1,d0	| C1834A
-	addi.l	#dat_C1F03E,d0	| C1834C
+	addi.l	#EyecatchColourSets,d0	| C1834C
 	move.l	d0,(ram_10FCE8-A5_BASE,a5)	| C18352
 	move.w	#0x1,(ram_10FCE6-A5_BASE,a5)	| C18356
 	rts	| C1835C

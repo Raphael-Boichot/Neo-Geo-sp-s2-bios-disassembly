@@ -2,6 +2,7 @@
 ;   entry ADDR       extra code entry point (with a reason in the comment)
 ;   noreturn ADDR    routine that never returns
 ;   longtable ADDR   table of 32-bit code pointers
+;   number ADDR      a long in data that only looks like a ROM pointer
 ; Unreferenced controller test + memory card utility ($C14EA2-$C16AA9): nothing in the
 ; ROM points into this block (checked: no reference, no long pointer). Traced so it reads as code.
 longtable $C15642   ; 5 code pointers inside the card utility
@@ -18,3 +19,6 @@ entry     $C16218   ; code $10 TRACE
 entry     $C16222   ; code $14 UNASSIGNED
 entry     $C1622C   ; code $18 UNINITIALIZED INTERRUPT
 entry     $C16236   ; code $1C SPURIOUS INTERRUPT
+number    $C14E50   ; tbl_C14DF6 (16-bit card layouts): size word $00C0 + offset high word $0000, not a pointer to $C00000
+number    $C14E60   ; same, next row
+entry     $C132B4   ; unreferenced card save loop before Card (lea BiosWorkRam,a5; CARD 3 with NGH $1234, file numbers 0-15 then the next NGH): found as code bytes inside data

@@ -114,16 +114,16 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reach
 
 ## 5. Written reference (L6)
 
-One page per subsystem in `docs/`, from the code and the MAME runs, with addresses and tags:
+One page per subsystem in `docs/`, from the code and the MAME runs, with addresses and tags: index in [`docs/README.md`](docs/README.md).
 
-- [ ] Boot: reset, hardware tests, eyecatcher, slot scan, hand-off to the game
-- [ ] System modes and the game contract: BIOS calls, BIOS RAM read and written by games, vector switching
-- [ ] Coins, credits and start buttons (CREDIT_CHECK, CREDIT_DOWN, P2 join, continue)
-- [ ] Soft DIPs and the cartridge header fields the BIOS reads
-- [ ] Calendar chip protocol
-- [ ] Memory card: CARD functions, card format, the card utility
-- [ ] Test mode: menu structure and how each item stores its settings
-- [ ] Interrupts: VBlank (SystemInt1), timer (SystemInt2), when each vector table is mapped
+- [x] Boot: reset, hardware tests, eyecatcher, slot scan, hand-off to the game
+- [x] System modes and the game contract: BIOS calls, BIOS RAM read and written by games, vector switching
+- [x] Coins, credits and start buttons (CREDIT_CHECK, CREDIT_DOWN, P2 join, continue)
+- [x] Soft DIPs and the cartridge header fields the BIOS reads
+- [x] Calendar chip protocol
+- [x] Memory card: CARD functions, card format, the card utility
+- [x] Test mode: menu structure and how each item stores its settings
+- [x] Interrupts: VBlank (SystemInt1), timer (SystemInt2), when each vector table is mapped
 - [ ] Sound commands sent to the Z80 (with step 7, `sm1.sm1`)
 
 ## 6. Other SNK system ROMs (L3, L6)

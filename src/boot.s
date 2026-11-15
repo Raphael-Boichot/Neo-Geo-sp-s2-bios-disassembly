@@ -426,7 +426,7 @@ CardStillInsertedText:
 	dc.b	0x00,0x03,0x70,0xEC,0x01,0x08
 	.ascii	"YOUR CARD IS STILL INSERTED."
 	dc.b	0xFF,0xFF,0x00,0x00
-| LoadGameSoftDips [C] copies the current game soft DIP block from backup RAM into BIOS_GAME_DIP (6 bytes, then 12 nibbles)
+| LoadGameSoftDips [C] SystemMode0 (first init of a game): copies the cartridge's default soft DIPs (GetSoftDipPointer + $10) to BIOS_GAME_DIP: the 6 bytes of times and counts, then the high nibble (default) of 12 option bytes; with the wiki's 10 option bytes the last two writes land on BIOS_P1STATUS/BIOS_P1PREVIOUS
 LoadGameSoftDips:
 	jsr	(GetSoftDipPointer,pc)	| C11612
 	lea.l	0x10(a0),a0	| C11616

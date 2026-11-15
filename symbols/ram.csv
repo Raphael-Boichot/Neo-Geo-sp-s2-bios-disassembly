@@ -140,7 +140,7 @@ D00320,GameBackupData,C,"$1000 bytes per game index: copy of the game's backup a
 10FF00,MessBuffer,C,start of the MESS_OUT command buffer: BIOS_MESS_POINT is reset to it; the system screens also build their lists here
 10FCD9,WorkIndexLo,C,low byte of WorkIndex
 10FCF4,CardRomType,I,"$FF after Card starts; for an SNK ROM card, the type byte of its header (+$10, IsSnkRomCard); CodeNumberWrite refuses a card whose high nibble is not 0"
-10FD8A,BIOS_GAME_DIP_06,I,byte 6 of BIOS_GAME_DIP (the first option of the soft DIPs): NextSlot sets it to 1 when the cabinet's DEMO SOUND is off and the word BIOS_GAME_DIP held 5 before the copy (meaning not found)
+10FD8A,BIOS_GAME_DIP_06,I,"byte 6 of BIOS_GAME_DIP (the first soft DIP option): NextSlot sets it to 1 when the game's SlotTable NGH is $0005 (Magician Lord, whose first option is DEMO SOUND, 1 = OFF) and the cabinet's DEMO SOUND is WITHOUT (DemoSoundOff)"
 100013,CardFillTitleLast,C,last byte of the title CardFillTest copies to WorkRamStart; +1 on each save
 108000,CardFillFile,C,file number counter of CardFillTest (0-15)
 10C000,CardUtilTitles,C,"card utility: the titles read from the card (24 bytes each: 20-byte title, NGH, file number; CardUtilReadTitles)"

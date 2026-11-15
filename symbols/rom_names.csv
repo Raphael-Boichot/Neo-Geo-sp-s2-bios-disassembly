@@ -97,7 +97,7 @@ C126B4,SystemIoMvs,C,"MVS part of SystemIo: slot LED, I/O check LEDs, 1M card sa
 C12BE6,PlayTimeCount,C,while P1 or P2 was playing on the previous frame (PlayerModPrevious = 1): every 60 frames (PlayTimeFrames) adds 1 to PlayTimeSeconds; then copies BIOS_PLAYER_MOD1-4 to PlayerModPrevious
 C11286,CallUser,C,"hands over to the game: BIOS_USER_REQUEST = d0, BIOS_SYSTEM_MODE = d1 | $80, cartridge vectors (REG_SWPROM), backup RAM locked, jmp CART_USER"
 C111DC,SlotText,C,"MESS_OUT text ""SLOT "" used by SystemMode2"
-C11612,LoadGameSoftDips,C,"copies the current game soft DIP block from backup RAM into BIOS_GAME_DIP (6 bytes, then 12 nibbles)"
+C11612,LoadGameSoftDips,C,"SystemMode0 (first init of a game): copies the cartridge's default soft DIPs (GetSoftDipPointer + $10) to BIOS_GAME_DIP: the 6 bytes of times and counts, then the high nibble (default) of 12 option bytes; with the wiki's 10 option bytes the last two writes land on BIOS_P1STATUS/BIOS_P1PREVIOUS"
 C121D6,RegisterNewGame,C,"from BookSlot: the next slot whose game has no game index yet ($FFFF) gets the lowest free index (0-7), all its book keeping cleared (days, months, totals, hourly counts, day count) and its name copied from the cartridge soft DIP block (header $116 + region x 4) to GameNames; an entry marked $80 inside the slot count is cleared; called again by the boot for each slot. Ran with slots_lbowling"
 C116C8,CheckPlayerStart,C,"SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3"
 C1177A,StartCreditCheck,C,MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START

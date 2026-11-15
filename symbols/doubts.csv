@@ -26,7 +26,6 @@ D00035,Credits2,ram,I,shown on the second LED counter; nothing in the system ROM
 10FEE0,CompulsionStart,ram,I,set when the start compulsion starts the game; read by DemoEndCheck,let the start compulsion time run out in MAME
 10FEE6,Card1MRecoverFlag,ram,I,set by Card1MRecover; nothing reads it,compare with the other SNK system ROMs (step 6)
 10FCF4,CardRomType,ram,I,type byte of an SNK ROM card header; no ROM card was run,a ROM card image
-10FD8A,BIOS_GAME_DIP_06,ram,I,NextSlot sets it when DEMO SOUND is off and the old first word of BIOS_GAME_DIP was 5: the meaning of 5 is not found,games whose soft DIP first entry is 5
 10FD4A,MonitorFrameWord,ram_scoped,I,cleared when the monitor starts; nothing reads it,compare with the other SNK system ROMs (step 6)
 10FCE8,CabinetDrawFlags,ram_scoped,I,the blinking bit is inferred from the code,watch the cabinet page in MAME frame by frame
 10FCE8,CabinetOldDrawFlags,ram_scoped,I,same as CabinetDrawFlags for the unreachable old page,none (unreachable)

@@ -211,9 +211,16 @@ a value (held: repeat), Left/Right pick a column or digit, C goes back, D sets (
   (`book_days_*` then `test_book_keeping_days`): the date set back a month in test mode and a credit
   played, then back a day, then today. At power-on the BIOS opens a new day record (and a month
   record) whenever the date differs from the last boot, backwards too: the boots made before each
-  date change left empty NOV/15 records between the played days. NOV/15, a Sunday, is drawn in red
-  on every page; the two other dates are not (that the colour marks Sundays is not checked in the
-  code).
+  date change left empty NOV/15 records between the played days. Sundays are drawn in red
+  (`BookPutDate`: weekday byte 0 selects palette 1), here every NOV/15 row.
+
+  The weekday comes from the calendar chip, which counts it by itself; the system ROM only computes
+  it when the date is set in test mode (`CheckCalendarDate`): days of the months before + day - 1 +
+  the weekday of January 1st from `YearWeekdayTable`, mod 7, with a 29-day February when the
+  two-digit year is a multiple of 4. The table covers 1990-2089 (years 90-99 are 1990-1999, 00-89
+  are 2000-2089), and `tools/check_weekday.py` finds the result right for all 36,525 dates of that
+  window. After 2089 the weekdays set from test mode would be wrong; 2100 would also get a 29th of
+  February that does not exist.
 
   ![Book keeping with plays on 10/15, 11/14 and 11/15 (MAME)](docs/book_keeping_days.png)
 - **SETTING UP THE CODE NUMBER** stores a 4-digit code (`CodeNumber`); D with a memory card inserted
@@ -443,6 +450,7 @@ scenario `nogo_cartridge`:
 | [`tools/mame_bot_sengoku2.lua`](tools/mame_bot_sengoku2.lua) | MAME play bot for Sengoku 2 (reaches level 2, card save/load) |
 | [`tools/fault_scenarios.py`](tools/fault_scenarios.py) | Boot errors faked with debugger breakpoints, the all-DIPs RAM test loop, card errors and the card utility COPY (coverage scenarios) |
 | [`tools/monitor_test.py`](tools/monitor_test.py) | Test BIOS whose exception slots jump to the debug monitor, with an exception raised from the test menu (MAME only) |
+| [`tools/check_weekday.py`](tools/check_weekday.py) | Checks the weekday computed by `CheckCalendarDate` against the real calendar (1990-2089) |
 | [`tools/sfix.py`](tools/sfix.py) | Board fix ROM: tile sheets in `gfx/sfix/` to `sfix.sfix` and back, SHA-1 check |
 | [`tools/neo_cln_test.py`](tools/neo_cln_test.py) | Copies a game set with its header ID set to NEO-CLN, or `N 0 O 0 G 0 O 0` with `--nogo` (MAME only) |
 | [`tools/hidden_programs_test.py`](tools/hidden_programs_test.py) | Builds a test BIOS whose test menu opens the unreferenced controller test and card utility |

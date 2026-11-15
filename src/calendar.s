@@ -227,7 +227,7 @@ RtcClockPulseAlt:
 WriteRtcCtrlAlt:
 	move.b	d1,(0x280051).l	| C12EF0
 	rts	| C12EF6
-| CheckCalendarDate [I] converts BIOS_YEAR/BIOS_MONTH.. from BCD and checks them against limits (dat_C12FEC); d7 non-zero when invalid; runs before SetupCalendar in MAME
+| CheckCalendarDate [C] checks the date set in test mode (day against MonthDaysTable, February 29 days when year mod 4 = 0; d7 non-zero when invalid) and computes its weekday for the calendar chip: (days of the months before + day - 1 + YearWeekdayTable[year]) mod 7, 0 = Sunday; right for every date 1990-2089 (tools/check_weekday.py); runs before SetupCalendar
 CheckCalendarDate:
 	lea.l	(MonthDaysTable,pc),a1	| C12EF8
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12EFC
@@ -285,7 +285,7 @@ loc_C12F68:
 loc_C12F84:
 	moveq	#0x1,d7	| C12F84
 	rts	| C12F86
-| YearWeekdayTable [C] 100 bytes: weekday offset of each year 00-99 (CheckCalendarDate computes the weekday from it)
+| YearWeekdayTable [C] weekday of January 1st (0 = Sunday) for each two-digit year: 90-99 are 1990-1999, 00-89 are 2000-2089 (checked against the real calendar, tools/check_weekday.py)
 YearWeekdayTable:
 	dc.b	0x06,0x01,0x02,0x03,0x04,0x06,0x00,0x01,0x02,0x04,0x05,0x06,0x00,0x02,0x03,0x04
 	dc.b	0x05,0x00,0x01,0x02,0x03,0x05,0x06,0x00,0x01,0x03,0x04,0x05,0x06,0x01,0x02,0x03

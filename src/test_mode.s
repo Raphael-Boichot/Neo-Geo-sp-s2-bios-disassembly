@@ -2217,7 +2217,7 @@ loc_C1AC4C:
 loc_C1AC60:
 	move.w	d0,(BookPage-A5_BASE,a5)	| C1AC60
 	bra.w	loc_C1ABD2	| C1AC64
-| BookPutDate [C] MMM/DD date label of a daily row
+| BookPutDate [C] MMM/DD date label of a daily row; a record whose weekday byte (+3) is 0, Sunday, is drawn with palette 1 (red): format word $1108 instead of $0108
 BookPutDate:
 	move.w	#0x3,(a0)+	| C1AC68
 	move.w	#0x80,d0	| C1AC6C

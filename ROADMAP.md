@@ -10,7 +10,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
-| L2 traced and run | 9,252 instructions traced; 7,354 ran in MAME (79.5 %) over 77 scenarios, 6,541 without the forced ones; nothing ran outside the trace |
+| L2 traced and run | 9,252 instructions traced; 7,368 ran in MAME (79.6 %) over 81 scenarios, 6,558 without the forced ones; nothing ran outside the trace |
 | L3 names | 574 names (C 476, I 67, W 31); 1,039 automatic labels left, all `loc_` |
 | L4 RAM and registers | 225 RAM addresses used, 95 named; 30 backup RAM accesses through a4 left raw |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
@@ -44,7 +44,8 @@ Coverage and automatic routines by module:
 - [x] Code number: every digit, no card, blank card, game card, 1M card (emulated)
 - [x] EXIT with the Setting Mode DIP on, then off
 - [x] The 1M card cabinet backup: format, save from two boards, recover (`card1m_*`)
-- [ ] Book keeping with data on more than one day and month (needs the calendar moved between plays)
+- [x] Book keeping with data on more than one day and month: the date moved back in test mode between
+      plays (`book_days_*`, `test_book_keeping_days`); a new day record opens on any date change
 
 Not reachable: `CabinetSettingsOld` (`$C19CF6-$C1A105`), an older cabinet page after a `jmp`.
 

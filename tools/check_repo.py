@@ -6,7 +6,8 @@
 3. sources: every label of symbols/rom_names.csv is in src/, every sm1 name in sm1/src/sm1.asm
 4. documents: relative links and images exist; `Name` (`$addr`) pairs agree with the symbol files;
    backticked CamelCase names exist in a symbol file
-5. counts stated in README.md, ROADMAP.md and docs/ against the symbol files
+5. counts stated in README.md, ROADMAP.md and docs/ against the symbol files, src/ram.inc, the
+   scenario lists and coverage/; regions.csv tags against rom_names.csv; stale module descriptions
 6. tools: every Python file compiles, every shell script parses
 7. forbidden words in tracked files and commit messages
 
@@ -176,8 +177,51 @@ for pattern, where in checks:
     for doc in where:
         if not re.search(pattern, open(doc).read()):
             bad(f'{doc}: count not found or stale: expected /{pattern}/')
+inc = open('src/ram.inc').read()
+inc_names = re.findall(r'^\s*\.equ\s+([A-Za-z_][A-Za-z0-9_]*)', inc, re.M)
+if len(inc_names) != len({r['name'] for r in ram} | {r['name'] for r in scoped}):
+    bad(f'src/ram.inc: {len(inc_names)} names, the RAM symbol files have a different number')
+n_addr = len({r['addr'] for r in ram} | {r['addr'] for r in scoped})
+for doc in ('README.md', 'ROADMAP.md'):
+    t = open(doc).read()
+    for m in re.finditer(r'(\d+) RAM (?:names|addresses)', t):
+        if int(m.group(1)) not in (len(inc_names), n_addr):
+            bad(f'{doc}: "{m.group(0)}" ({len(inc_names)} names, {n_addr} addresses)')
+    for m in re.finditer(r'(\d+) named, 0 automatic', t):
+        if int(m.group(1)) != len(inc_names):
+            bad(f'{doc}: "{m.group(0)}" ({len(inc_names)} RAM names)')
+sys.path.insert(0, 'tools')
+try:
+    import fault_scenarios
+    import test_mode_scenarios
+    n_test, n_fault = len(test_mode_scenarios.scenarios()), len(fault_scenarios.SCENARIOS)
+    road = open('ROADMAP.md').read()
+    m = re.search(r'test_mode_scenarios.py` drives every screen \((\d+) scenarios', road)
+    if not m or int(m.group(1)) != n_test:
+        bad(f'ROADMAP.md: test-mode scenario count should be {n_test}')
+    m = re.search(r'fault_scenarios.py` \((\d+) scenarios\)', road)
+    if not m or int(m.group(1)) != n_fault:
+        bad(f'ROADMAP.md: fault scenario count should be {n_fault}')
+except Exception as e:  # noqa: BLE001
+    bad(f'scenario modules: {e}')
+n_cov = len(glob.glob('coverage/*.txt'))
+for doc in ('README.md', 'ROADMAP.md'):
+    for m in re.finditer(r'(\d+) scenarios', open(doc).read()):
+        if int(m.group(1)) > 40 and int(m.group(1)) != n_cov:
+            bad(f'{doc}: "{m.group(0)}" but coverage/ has {n_cov} runs')
+regions = rows('symbols/regions.csv')
+rom_by_addr = {r['addr']: r for r in rom}
+for g in regions:
+    r = rom_by_addr.get(g['start'])
+    if r and r['name'] == g['name'] and r['tag'] != g['tag']:
+        bad(f'regions.csv: {g["name"]} tagged {g["tag"]}, rom_names.csv says {r["tag"]}')
+for r in rows('symbols/modules.csv'):
+    if re.search(r'not (all )?read yet|to do|unknown yet', r['description'], re.I):
+        bad(f'modules.csv: {r["file"]}: "{r["description"]}" looks stale')
 ri = sum(1 for r in rom if r['tag'] == 'I')
 ram_i = sum(1 for r in ram + scoped if r['tag'] == 'I')
+if not re.search(rf'one line per I name \({ri} ROM, {ram_i} RAM\)', open('ROADMAP.md').read()):
+    bad(f'ROADMAP.md: doubts list line should read "({ri} ROM, {ram_i} RAM)"')
 if not re.search(rf'the {ri} I and {ram_i} RAM I in `symbols/doubts.csv`', open('ROADMAP.md').read()):
     bad(f'ROADMAP.md: doubt counts should read "the {ri} I and {ram_i} RAM I"')
 if len(doubts) != ri + ram_i + sum(1 for r in rom + ram + scoped if r['tag'] == '?'):

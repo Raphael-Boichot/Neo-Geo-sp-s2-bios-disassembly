@@ -70,8 +70,9 @@ A NEO-CLN cartridge starts it at the calendar screen (step `$0C`).
 
 ## Unreachable in SP-S2
 
-`$C14EA2-$C16AA9` holds a CONTROLLER TEST (`ControllerTest`) and the MEMORY CARD UTILITY
-(`CardUtility`, docs/memory_card.md). No call, jump or pointer reaches them;
+`$C14EA2-$C16197` holds a CONTROLLER TEST (`ControllerTest`) and the MEMORY CARD UTILITY
+(`CardUtility`, docs/memory_card.md), the AES boot menus (docs/versions.md); the debug monitor follows
+at `$C16198-$C16AA9`. No call, jump or pointer reaches them;
 `tools/hidden_programs_test.py` builds a test BIOS whose menu opens them, and both work in MAME (C:
 test build).
 

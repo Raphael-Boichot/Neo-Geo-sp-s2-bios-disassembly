@@ -12,9 +12,9 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
 | L2 traced and run | 9,252 instructions traced; 8,088 ran in MAME (87.4 %) over 88 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
 | L3 names | 574 names (C 530, I 13, W 31), the 13 I and 15 RAM I in `symbols/doubts.csv`; 1,039 automatic labels left, all `loc_` |
-| L4 RAM and registers | done: 274 RAM addresses used, all named (160 global names, 128 scoped names on 67 addresses), no raw operand left, every a4 access proven |
+| L4 RAM and registers | done: 274 RAM names over 227 addresses, nothing automatic (160 global names on 160 addresses, 128 scoped rows on 67 addresses; 14 rows reuse a name), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
-| L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
+| L6 understanding | written reference done: 10 pages in [`docs/`](docs/README.md) (boot, game contract, credits, calendar, memory card, test mode, interrupts, sound, board ROMs, other versions); 28 doubts left |
 
 Coverage and automatic routines by module:
 
@@ -34,7 +34,7 @@ Coverage and automatic routines by module:
 
 ## 1. Test mode coverage (L2): done
 
-`tools/test_mode_scenarios.py` drives every screen (18 scenarios, 7 games and no cartridge).
+`tools/test_mode_scenarios.py` drives every screen (25 scenarios, 5 games and no cartridge).
 
 - [x] Hard DIP (switches changed while shown) and soft DIP: every row type (times, counts, lists),
       both pages, wraps, save; Sengoku 2, Riding Hero, Top Player's Golf, Alpha Mission II
@@ -52,7 +52,7 @@ Not reachable: `CabinetSettingsOld` (`$C19CF6-$C1A105`), an older cabinet page a
 ## 2. Error and rare paths (L2): done
 
 Paths that need a fault, reached with `DEBUG_CMDS` breakpoints that fake the condition or with test
-builds; `tools/fault_scenarios.py` (30 scenarios) says which runs are forced.
+builds; `tools/fault_scenarios.py` (34 scenarios) says which runs are forced.
 
 - [x] Boot error screens (`BootError`, `$C16ADA`): work RAM, backup RAM, both palette banks, video RAM,
       calendar, system ROM, memory card, Z80, and the AES colour form (forced, `boot_error_*`)
@@ -94,14 +94,14 @@ builds; `tools/fault_scenarios.py` (30 scenarios) says which runs are forced.
       `card_word_*` and `card_sparse_*`; the slot table merge run over three boots, `slots_*`; the rest by
       a full code read and their runs); `SelectSlot` renamed `RegisterNewGame`, `MvsLedUpdate` renamed
       `SystemIoMvs` (both did much more than their name)
-- [x] Doubts list: `symbols/doubts.csv`, one line per I name (16 ROM, 17 RAM) with the doubt and how to
+- [x] Doubts list: `symbols/doubts.csv`, one line per I name (13 ROM, 15 RAM) with the doubt and how to
       settle it; most wait for step 6 (another system ROM) or for hardware MAME does not have
 
 Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reached 2026-11-15) and every I name has a line in the doubts list (done).
 
 ## 4. RAM, backup RAM and leftovers (L4): done
 
-- [x] Name every work RAM variable used: 273 named, 0 automatic (2026-11-15); NeoGeoDev wiki names where
+- [x] Name every work RAM variable used: 274 names over 227 addresses, 0 automatic (2026-11-15); NeoGeoDev wiki names where
       the wiki has one (BIOS RAM locations), screen-scoped names where the BIOS reuses an area
 - [x] Backup RAM map at `$D00000`: every area named (README, Backup RAM map); `$D0A4A0-$D0FFFF` unused
 - [x] The 30 backup RAM accesses through a4 that could not be proven: all in the cabinet row handlers

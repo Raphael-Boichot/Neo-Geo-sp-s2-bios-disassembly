@@ -1,7 +1,7 @@
 start,end,name,tag,note
 C00000,C000FF,Vectors and header,W,68000 vectors; checksum at $C00080; ID text from $C00082
 C00400,C004DB,BIOS call table,W,6-byte slots called by games (NeoGeoDev wiki BIOS calls)
-C02000,C02FFF,ScaleTableA,I,64 x 64 decreasing rows
-C03000,C03FFF,ScaleTableB,I,64 x 64 ramps
-C04000,C042FF,AbsSineTable,I,384 words |sin|
+C02000,C02FFF,ScaleTableA,C,64 x 64 decreasing rows (read by games)
+C03000,C03FFF,ScaleTableB,C,64 x 64 ramps (read by games)
+C04000,C042FF,AbsSineTable,C,384 words |sin| (read by games)
 C17BFA,C17C05,HwCalendarFixAddressTable,I,6 fix-layer addresses (words) after HwTestCalendar; not text

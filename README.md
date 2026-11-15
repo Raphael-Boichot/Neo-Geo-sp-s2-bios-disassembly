@@ -337,6 +337,30 @@ page: A deletes the selected data and the save is repeated, B gives it up.
 
 ![Full memory card list (CardFillTest, test build)](docs/card_full.png)
 
+### Board fix ROM (sfix.sfix)
+
+The system ROM draws its own screens with the fix-layer graphics ROM of the motherboard,
+`sfix.sfix` (selected with REG_BRDFIX; REG_CRTFIX selects the cartridge's S ROM again). It is part of
+the BIOS set (`neogeo.zip` in MAME), not of the game sets, so it is kept here as 16 tile sheets,
+`gfx/sfix/bank_0.png` to `bank_F.png`: one bank of 256 tiles each, 16 x 16 tiles, indexed PNG whose
+pixel values are the 4-bit colour numbers (grey palette; the real colours come from palette RAM).
+`tools/sfix.py build` turns them back into the ROM and `make check` compares its SHA-1 (`make
+sfix-source` regenerates the sheets from `roms/sfix.sfix`). What the tiles are, by range
+(`symbols/sfix.csv`):
+
+| Tiles | Content | Tag |
+|---|---|---|
+| `$000-$01F` | drawn by the eyecatcher (`EyecatchFixTiles`) | I |
+| `$020-$0FF` | 8x8 ASCII font, kana and symbols | I |
+| `$100-$2FF` | 8x16 font: upper halves at `$100`+c, lower halves at `$200`+c (MESS_OUT command 8, page 1: most BIOS texts); SNK logo pieces | C |
+| `$300-$6FF` | a second 8x16 font with kana, kanji | I |
+| `$700-$8FF` | colour pictures, kana and kanji, not matched to a screen yet | ? |
+| `$900-$AFF` | another 8x16 font with kana | I |
+| `$B00-$B68` | the FBI screen: seal and caption letters | C |
+| `$B69-$FFF` | unused (every byte `$FF`) | C |
+
+![Board fix ROM, banks 0-B (grey levels = colour numbers)](docs/sfix_banks.png)
+
 ### NEO-CLN cartridges (cartridge calendar)
 
 The slot scan (`CheckCartridgeId`, `$C12FFA`) accepts a game when its header ID reads `NEO-GEO`
@@ -369,8 +393,9 @@ scenario `nogo_cartridge`:
 | File | What it is |
 |---|---|
 | [`src/`](src/) | Generated 68000 source (GNU as, Motorola syntax), ROM addresses in comments: `sp-s2.s` includes 14 modules (`header.s`, `tables.s`, `boot.s`, `system.s`, `power_on.s`, `calendar.s`, `card.s`, `boot_error.s`, `hardware_test.s`, `eyecatcher.s`, `video_io.s`, `how_to_play.s`, `test_mode.s`, `data_end.s`) |
+| [`gfx/sfix/`](gfx/sfix/) | The board fix ROM `sfix.sfix` as 16 indexed tile sheets (`make` rebuilds it) |
 | [`src/neogeo.inc`](src/neogeo.inc), [`src/ram.inc`](src/ram.inc) | Registers, cartridge header, `A5_BASE`/`A4_BASE`; every RAM address used |
-| [`Makefile`](Makefile) | `make`, `make check`, `make fixsum`, `make source` |
+| [`Makefile`](Makefile) | `make`, `make check`, `make fixsum`, `make source`, `make sfix-source` |
 | [`HOWTO.md`](HOWTO.md) | Requirements, build, regeneration, trace hints, how to modify and test the BIOS |
 | [`ROADMAP.md`](ROADMAP.md) | What is left for the disassembly, in order: coverage, names, RAM, written reference, other SNK ROMs |
 | [`SKILL.md`](SKILL.md) | Working playbook: ROM facts, levels L0-L6, pipeline, pitfalls, rules |
@@ -384,7 +409,7 @@ scenario `nogo_cartridge`:
 | [`tools/mame_inputs.lua`](tools/mame_inputs.lua) | Inputs shared by the MAME scripts: key taps and holds, DIP switch changes, memory card insertion, the MVS SELECT buttons and an emulated 1M RAM card |
 | [`tools/test_mode_scenarios.py`](tools/test_mode_scenarios.py) | Key sequences for every test-mode screen and the 1M card chain, run as coverage scenarios |
 | [`docs/`](docs/) | ROM byte maps and screenshots of the BIOS running in MAME |
-| [`symbols/`](symbols/) | Names (`rom_names`, `ram`, `registers`, `cart_header`), named regions and module boundaries (`modules.csv`), tagged W / C / I / ? |
+| [`symbols/`](symbols/) | Names (`rom_names`, `ram`, `registers`, `cart_header`), the fix ROM tile ranges (`sfix.csv`), named regions and module boundaries (`modules.csv`), tagged W / C / I / ? |
 | [`coverage/`](coverage/) | Executed system ROM addresses of each MAME scenario (`tools/mame_coverage.sh`) |
 | [`tools/coverage.py`](tools/coverage.py) | Compares MAME coverage with the static trace |
 | [`tools/rom_map.py`](tools/rom_map.py) | Draws the ROM byte maps |
@@ -393,6 +418,7 @@ scenario `nogo_cartridge`:
 | [`tools/mame_bot_sengoku2.lua`](tools/mame_bot_sengoku2.lua) | MAME play bot for Sengoku 2 (reaches level 2, card save/load) |
 | [`tools/fault_scenarios.py`](tools/fault_scenarios.py) | Boot errors faked with debugger breakpoints, the all-DIPs RAM test loop, card errors and the card utility COPY (coverage scenarios) |
 | [`tools/monitor_test.py`](tools/monitor_test.py) | Test BIOS whose exception slots jump to the debug monitor, with an exception raised from the test menu (MAME only) |
+| [`tools/sfix.py`](tools/sfix.py) | Board fix ROM: tile sheets in `gfx/sfix/` to `sfix.sfix` and back, SHA-1 check |
 | [`tools/neo_cln_test.py`](tools/neo_cln_test.py) | Copies a game set with its header ID set to NEO-CLN, or `N 0 O 0 G 0 O 0` with `--nogo` (MAME only) |
 | [`tools/hidden_programs_test.py`](tools/hidden_programs_test.py) | Builds a test BIOS whose test menu opens the unreferenced controller test and card utility |
 | [`tools/mame_trace.lua`](tools/mame_trace.lua), [`tools/mame_coverage.sh`](tools/mame_coverage.sh) | Traced MAME runs (debugger trace through a FIFO; extra debugger commands with `DEBUG_CMDS`) |
@@ -404,6 +430,7 @@ The ROM is **not** in the repository (SNK copyright). Put your own dump in `roms
 
 ```
 make check    # build/sp-s2.sp1, SHA-1 must be 4f5ed7105b7128794654ce82b51723e16e389543
+              # build/sfix.sfix, SHA-1 must be fd4a618cdcdbf849374f0a50dd8efe9dbab706c3
 ```
 
 Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-gnu`). Details in

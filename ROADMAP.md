@@ -13,7 +13,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L2 traced and run | 9,252 instructions traced; 7,354 ran in MAME (79.5 %) over 77 scenarios, 6,541 without the forced ones; nothing ran outside the trace |
 | L3 names | 574 names (C 476, I 67, W 31); 1,039 automatic labels left, all `loc_` |
 | L4 RAM and registers | 225 RAM addresses used, 95 named; 30 backup RAM accesses through a4 left raw |
-| L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME |
+| L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
 
 Coverage and automatic routines by module:
@@ -118,6 +118,7 @@ One page per subsystem in `docs/`, from the code and the MAME runs, with address
 - [ ] Test mode: menu structure and how each item stores its settings
 - [ ] Interrupts: VBlank (SystemInt1), timer (SystemInt2), when each vector table is mapped
 - [ ] Sound commands sent to the Z80
+- [ ] Board fix ROM: confirm every tile range of `symbols/sfix.csv` from the screens that use it (`$700-$8FF` not matched yet)
 
 ## 6. Other SNK system ROMs (L3, L6)
 

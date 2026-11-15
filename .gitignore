@@ -2,6 +2,7 @@
 *.bin
 *.sp1
 *.rom
+*.sfix
 *.zip
 build/
 __pycache__/

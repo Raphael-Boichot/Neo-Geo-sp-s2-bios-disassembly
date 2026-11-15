@@ -16,7 +16,9 @@ make check
 
 This assembles `src/sp-s2.s`, links it at `$C00000`, swaps the bytes into MAME order
 (`build/sp-s2.sp1`) and prints `OK sha1 4f5ed7105b7128794654ce82b51723e16e389543`, then the
-boot checksum (`stored $4D $4D, computed $4D`).
+boot checksum (`stored $4D $4D, computed $4D`). It also builds the board fix ROM from its tile sheets
+(`tools/sfix.py build gfx/sfix build/sfix.sfix`) and prints
+`OK sha1 fd4a618cdcdbf849374f0a50dd8efe9dbab706c3`.
 
 By hand:
 
@@ -41,6 +43,10 @@ python3 tools/stats.py roms/sp-s2.sp1
 `gen_source.py` traces the code, writes the source and loops (assemble, compare) until the image is
 identical; it prints the instructions it had to keep as raw words. `stats.py` prints the counts used in
 the README level table.
+
+The board fix ROM: put `sfix.sfix` (from MAME's `neogeo.zip`) in `roms/`, then `make sfix-source`
+rewrites `gfx/sfix/bank_0.png` .. `bank_F.png`. The sheets can be edited with any editor that keeps
+indexed colour (16 colours, values 0-15); `make` turns them back into `build/sfix.sfix`.
 
 `src/` is always regenerated: names, notes and module boundaries come from `symbols/*.csv`, so never
 edit `src/` by hand for these (a hand edit is lost at the next `make source`). Code changes for a

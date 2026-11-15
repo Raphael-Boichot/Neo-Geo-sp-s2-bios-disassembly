@@ -1,0 +1,12 @@
+first,last,name,tag,note
+000,01F,EyecatchFixGraphics,I,"tiles 00-1F drawn by EyecatchFixMess (EyecatchFixTiles) during the eyecatcher"
+020,07F,Font8x8,I,"8x8 ASCII font, tile = character code (seen in the sheet)"
+080,0FF,Font8x8Kana,I,8x8 kana and symbols (seen in the sheet)
+100,1FF,Font8x16Upper,C,"upper halves of the 8x16 font: MESS_OUT command 8 with page 1 (the 01 08 before most BIOS texts) writes character c as tile $100+c, then $200+c below"
+200,2FF,Font8x16Lower,C,"lower halves of the 8x16 font (tile $200+c); the unused first rows hold SNK logo pieces"
+300,4FF,Font8x16Alt,I,a second 8x16 font with kana (seen in the sheet)
+500,6FF,Kanji,I,"kanji glyphs, 8x16 (Japanese test-mode texts, seen in the sheet)"
+700,8FF,ColourGraphics,?,"colour pictures in the upper rows, more kana and kanji below; not matched to a screen yet"
+900,AFF,Font8x16Thin,I,"another 8x16 font with kana (seen in the sheet)"
+B00,B68,FbiScreenTiles,C,"seal and caption letters of the FBI screen (FbiScreen in the system ROM; run forced, eyecatcher_us)"
+B69,FFF,Unused,C,"not used: every byte $FF"

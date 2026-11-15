@@ -23,6 +23,9 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
 - Boot checksum: low byte of sum(`$C00000-$C0007F`) + sum(`$C00082-$C1FFFF`) = byte at `$C00080`.
 - Free space (`$FF` fill, 76,723 B): `$C000BF-$C003FF` (833 B, in the header), `$C004DC-$C01FFF` (6,948 B), `$C04300-$C10FFF` (52,480 B),
   `$C1B86E-$C1EFFF` (14,226 B), `$C1F744-$C1FFFF` (2,236 B).
+- `sfix.sfix` (board fix ROM, 128 KB, SHA-1 `fd4a618cdcdbf849374f0a50dd8efe9dbab706c3`) is part of the BIOS
+  set: the system ROM selects it with REG_BRDFIX for its own screens. Kept as tile sheets in
+  `gfx/sfix/` (indexed PNG, pixel = colour number); never commit the `.sfix` itself.
 - BIOS work RAM is reached through `a5 = $10F300` (`lea $10F300,a5` at reset): `0xA82(a5)` is `$10FD82`.
 
 ## Levels (say which one a claim is about)

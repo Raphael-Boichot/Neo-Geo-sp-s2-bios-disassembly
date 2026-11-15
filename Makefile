@@ -3,10 +3,12 @@ PY      ?= python3
 AS      := m68k-linux-gnu-as -m68000 --register-prefix-optional
 LD      := m68k-linux-gnu-ld -Ttext=0xC00000 -e 0xC00402 --oformat binary
 ROM_SHA1 := 4f5ed7105b7128794654ce82b51723e16e389543
+SFIX_SHA1 := fd4a618cdcdbf849374f0a50dd8efe9dbab706c3
 # original dump, MAME order; only needed for `make source`
 ROM     ?= roms/sp-s2.sp1
+SFIX    ?= roms/sfix.sfix
 
-all: build/sp-s2.sp1
+all: build/sp-s2.sp1 build/sfix.sfix
 
 build/sp-s2.o: $(wildcard src/*.s src/*.inc)
 	@mkdir -p build
@@ -19,10 +21,15 @@ build/sp-s2.bin: build/sp-s2.o
 build/sp-s2.sp1: build/sp-s2.bin
 	$(PY) tools/romtool.py swap $< $@
 
-# compare with the original ROM (no ROM needed: SHA-1 only)
-check: build/sp-s2.sp1
-	$(PY) tools/romtool.py check $< $(ROM_SHA1)
-	$(PY) tools/romtool.py checksum $<
+# board fix ROM (sfix.sfix) from its tile sheets
+build/sfix.sfix: $(wildcard gfx/sfix/*.png) tools/sfix.py
+	$(PY) tools/sfix.py build gfx/sfix $@
+
+# compare with the original ROMs (no ROM needed: SHA-1 only)
+check: build/sp-s2.sp1 build/sfix.sfix
+	$(PY) tools/romtool.py check build/sp-s2.sp1 $(ROM_SHA1)
+	$(PY) tools/romtool.py checksum build/sp-s2.sp1
+	$(PY) tools/sfix.py check build/sfix.sfix $(SFIX_SHA1)
 
 # rewrite the boot checksum of a modified build
 fixsum: build/sp-s2.sp1
@@ -32,7 +39,11 @@ fixsum: build/sp-s2.sp1
 source:
 	$(PY) tools/gen_source.py $(ROM) src tools/hints.txt
 
+# regenerate gfx/sfix/ from the board fix ROM - OVERWRITES edited sheets
+sfix-source:
+	$(PY) tools/sfix.py extract $(SFIX) gfx/sfix
+
 clean:
 	rm -rf build
 
-.PHONY: all check fixsum source clean
+.PHONY: all check fixsum source sfix-source clean

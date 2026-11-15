@@ -1,11 +1,12 @@
 first,last,name,tag,note
 000,01F,EyecatchTextFont,C,"pieces of the eyecatcher lettering MAX 330 MEGA / PRO-GEAR SPEC (EyecatchTextTiles uses $005-$00F and $014-$01F here; its other pieces sit in free cells: $040, $05E-$060, $07C-$07F, $099-$09F, $0BA-$0BF, $0D9-$0DF, $0FA-$0FD, $100-$107)"
-020,0FF,Font8x8,I,"8x8 ASCII font ($020-$07F, tile = character code), kana and symbols (seen in the sheet); some free cells hold eyecatcher lettering"
+020,07F,Font8x8,C,"8x8 ASCII font, tile = character code: the boot error texts, the debug monitor, the I/O check and the controller test write bytes with page 0 (tools/mess_render.py over every named list); some free cells hold eyecatcher lettering"
+080,0FF,KanaHalves,C,"8x16 kana: upper halves $080-$0BF, lower halves $0C0-$0FF. MESS_OUT command 9 maps characters below $20 and $60-$7F here whatever the page (MessOutText8x16Row); used by the Japanese texts (CardStillInsertedTextJp, CodeNumberTextJp ...)"
 100,1FF,Font8x16Upper,C,"upper halves of the 8x16 font: MESS_OUT command 8 with page 1 (the 01 08 before most BIOS texts) writes character c as tile $100+c, then $200+c below; $100-$107 are eyecatcher lettering"
 200,21F,SnkLogo,C,"the blue SNK logo of the eyecatcher: EyecatchFixMess draws $200-$20F, $214-$21F, $240 and $25E as 3 rows of 10 tiles, palette F, at fix address $71F6"
 220,2FF,Font8x16Lower,C,lower halves of the 8x16 font (tile $200+c)
-300,4FF,Font8x16Alt,I,a second 8x16 font with kana (seen in the sheet)
-500,6FF,Kanji,I,"kanji glyphs, 8x16 (Japanese test-mode texts, seen in the sheet)"
+300,4FF,Font8x16Alt,C,"a second 8x16 font with kana and kanji, upper halves $3xx, lower $4xx (command 8 page 3); CodeNumberTextJp draws the kanji pair $316-$319 / $416-$419; the rest seen in the sheet"
+500,6FF,Kanji,C,"kanji glyphs, 8x16 (seen in the sheet), and line-drawing characters $54E-$558, $580 used by BookGridText (the book keeping table frame); no SP-S2 list found using the kanji"
 700,77F,HowToPlayUpper,C,"HOW_TO_PLAY panel, joystick and buttons, upper halves ($700-$77E; $77F blank): HowToPlayScreen/Stick/Button lists with MESS_OUT command 8 page 7, palettes A-D; replayed by tools/mess_render.py and matching MAME (nam1975_how_to_play)"
 780,7FF,KanaKanjiUpper,I,"8x16 kana and kanji, upper halves (seen in the sheet); no SP-S2 MESS_OUT list found using them; $7FF blank, written by HowToPlayScreen (command 12) to clear rows"
 800,87F,HowToPlayLower,C,"HOW_TO_PLAY picture, lower halves of $700-$77F (command 8 writes tile + $100 on the second row)"

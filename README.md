@@ -434,10 +434,12 @@ sfix-source` regenerates the sheets from `roms/sfix.sfix`). What the tiles are, 
 | Tiles | Content | Tag |
 |---|---|---|
 | `$000-$01F` | pieces of the eyecatcher lettering MAX 330 MEGA / PRO-GEAR SPEC (more in free cells up to `$107`) | C |
-| `$020-$0FF` | 8x8 ASCII font, kana and symbols | I |
+| `$020-$07F` | 8x8 ASCII font (boot errors, debug monitor, I/O check, controller test) | C |
+| `$080-$0FF` | 8x16 kana, upper halves `$080-$0BF`, lower `$0C0-$0FF`: the Japanese texts | C |
 | `$100-$1FF`, `$220-$2FF` | 8x16 font: upper halves at `$100`+c, lower halves at `$200`+c (MESS_OUT command 8, page 1: most BIOS texts) | C |
 | `$200-$21F` | the blue SNK logo of the eyecatcher | C |
-| `$300-$6FF` | a second 8x16 font with kana, kanji | I |
+| `$300-$4FF` | a second 8x16 font with kana and kanji (`$316-$319`: the Japanese CODE NUMBER screen) | C |
+| `$500-$6FF` | kanji (no SP-S2 list found using them) and the book keeping frame characters `$54E-$558`, `$580` | C |
 | `$700-$77F`, `$800-$87F` | the HOW_TO_PLAY picture (panel, joystick, buttons A-D): upper halves at `$700`+n, lower halves at `$800`+n | C |
 | `$780-$7FF`, `$880-$8FF` | 8x16 kana and kanji (upper and lower halves); no SP-S2 list found using them | I |
 | `$900-$AFF` | 8x16 font of the HOW_TO_PLAY texts, written by the games (page 9) | C |

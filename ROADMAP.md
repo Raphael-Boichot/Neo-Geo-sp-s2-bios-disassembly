@@ -143,8 +143,8 @@ board, whatever the cartridge, so they belong to the BIOS.
 - [x] `sfix.sfix`, board fix ROM (128 KB): 16 tile sheets in `gfx/sfix/`, rebuilt and checked by
       `make check`; tile ranges in `symbols/sfix.csv`
 - [x] `sfix.sfix`: `$700-$77F` / `$800-$87F` are the HOW_TO_PLAY picture, `$900-$AFF` the HOW_TO_PLAY
-      text font (matched by `tools/mess_render.py`); the kana/kanji halves `$780-$7FF`, `$880-$8FF` and
-      the fonts `$020-$0FF`, `$300-$6FF` are still I (seen in the sheets)
+      text font (matched by `tools/mess_render.py`); every font range matched to the lists that use it;
+      only the kana/kanji halves `$780-$7FF`, `$880-$8FF` and most kanji of `$500-$6FF` have no user in SP-S2 (I)
 - [ ] `sm1.sm1`, the Z80 sound program on the board (128 KB): what the system ROM's sound commands do
       (1 slot switch, 3 reset, $5C-$5E sound test, $7F coin), whether it plays the eyecatcher music;
       Z80 disassembly that rebuilds it byte for byte

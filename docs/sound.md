@@ -44,7 +44,7 @@ never asks it for (C for the order of the code, I that no other path does).
 | Command | Sent by | `sm1.sm1` | Tag |
 |---|---|---|---|
 | 1 | `Z80Check` (power-on), `SoundSlotSwitch` | `PrepareSwitch`: silence, reply 1, wait in RAM | C |
-| 2 | `Eyecatcher` (`$C1802E`); not on an MVS whose DEMO SOUND is WITHOUT | `Command2Eyecatcher`: plays sound `$5F`, the eyecatcher jingle | C (MAME) |
+| 2 | in `Eyecatcher` at `$C1802E`; not on an MVS whose DEMO SOUND is WITHOUT | `Command2Eyecatcher`: plays sound `$5F`, the eyecatcher jingle | C (MAME) |
 | 3 | `CallUser`, `CheckSettingMode`, `NextSlot`, `CardStillInserted`, `Eyecatcher`, `HowToPlay`, the hardware test | `SoftReset` | C |
 | 7 | the sound test (after 3) | `Command7Enable`: clears the queue, silences, unlocks `PlaySound` | C (MAME) |
 | `$5C`, `$5D`, `$5E` | the sound test: LEFT, RIGHT, CENTER | a test sound on the left channel only, the right only, both | C (MAME, no cartridge) |

@@ -54,6 +54,10 @@ fixsum: build/sp-s2.sp1
 source:
 	$(PY) tools/gen_source.py $(ROM) src tools/hints.txt
 
+# consistency of symbols, doubts, sources, documents, stated counts, tools
+consistency:
+	$(PY) tools/check_repo.py
+
 # regenerate sm1/src/sm1.asm from the sound ROM, sm1/names.csv and sm1/hints.txt
 sm1-source:
 	$(PY) tools/sm1.py source $(SM1)
@@ -65,4 +69,4 @@ sfix-source:
 clean:
 	rm -rf build
 
-.PHONY: all check fixsum source sfix-source sm1-source clean
+.PHONY: all check fixsum source sfix-source sm1-source consistency clean

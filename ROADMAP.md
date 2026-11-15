@@ -12,7 +12,7 @@ full coverage, names and a written reference. Levels L0-L6 are defined in
 | L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
 | L2 traced and run | 9,252 instructions traced; 8,088 ran in MAME (87.4 %) over 88 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
 | L3 names | 574 names (C 530, I 13, W 31), the 13 I and 15 RAM I in `symbols/doubts.csv`; 1,039 automatic labels left, all `loc_` |
-| L4 RAM and registers | done: 273 RAM addresses used, all named (160 global names, 114 scoped), no raw operand left, every a4 access proven |
+| L4 RAM and registers | done: 274 RAM addresses used, all named (160 global names, 128 scoped names on 67 addresses), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
 | L6 understanding | started: screens, settings and BIOS calls seen in MAME; no written reference yet |
 

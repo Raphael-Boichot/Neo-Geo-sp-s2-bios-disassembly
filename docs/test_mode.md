@@ -10,8 +10,8 @@ The MVS operator screens. Tags: **C** read in the code and run in MAME, **W** pu
 | How | Where | Tag |
 |---|---|---|
 | hard DIP 1 (Setting Mode) on, after the first init pass of the games | `CheckSettingMode` (`$C113DE`) | C |
-| the board's test button (`REG_SYSTYPE` bit 7, newly pressed), once the init pass is over (`BIOS_SYSRET_STATUS` not 0) | `SystemIoMvs` (`$C12762`) | C |
-| no game in any slot at power-on (straight to the hardware test) | `PowerOnTest` (`$C11D84`), docs/boot.md | C |
+| the board's test button (`REG_SYSTYPE` bit 7, newly pressed), once the init pass is over (`BIOS_SYSRET_STATUS` not 0) | in `SystemIoMvs` at `$C12762` | C |
+| no game in any slot at power-on (straight to the hardware test) | in `PowerOnTest` at `$C11D84`, docs/boot.md | C |
 | a NEO-CLN cartridge (the hardware test's calendar screen) | `CheckCartridgeId` | C (patched header) |
 
 `TestModeEntry` (`$C18F74`) clears `BIOS_SYSTEM_MODE`, maps the system ROM vectors and board fix,

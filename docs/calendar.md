@@ -79,7 +79,7 @@ window the weekday set from test mode is wrong, and 2100 would get a February 29
 
 The book keeping draws the Sunday records in red (`BookPutDate`: weekday byte 0 selects palette 1).
 
-## Power-on test (`PowerOnTest`, `$C11BD6`)
+## Power-on test (in `PowerOnTest` at `$C11BD6`)
 
 1. Command 8: TP becomes a 1-second pulse.
 2. Wait for a rising edge of TP (`WaitRtcPulse`: bit 6 of `REG_STATUS_A`).

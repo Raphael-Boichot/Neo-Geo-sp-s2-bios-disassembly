@@ -29,8 +29,8 @@ test of an unformatted card fails on the doubled words (C, emulated).
 ## Layout
 
 The card is cut into 64-byte blocks. A layout table gives, per card size, where the directory and
-the File Allocation Table (FAT) start, counted from the card base (`CardLayoutByte` /
-`CardLayoutWord`, `$C14D30` / `$C14DE8`; offsets are CPU addresses, so on an 8-bit card two
+the File Allocation Table (FAT) start, counted from the card base (`CardLayoutByte` at
+`$C14D30`, `CardLayoutWord` at `$C14DE8`; offsets are CPU addresses, so on an 8-bit card two
 addresses per byte):
 
 | | 8-bit card, 2 KB (`$1000` addresses) | 16-bit card, 16 KB (`$4000`) |
@@ -44,7 +44,7 @@ addresses per byte):
 A 2 KB card is therefore full after 27 one-block saves, as seen in MAME (`card_full_*`) (C).
 
 **Header** (`CardFormat`, 8-bit card, byte offsets): 0-9 zero; 10-11 the card size; 12 the word
-`CardFormatVersion` (`$0000`, at `$C11000` in the system ROM, the name is a guess); 13 and 14 the
+`CardFormatVersion` at `$C11000` in the system ROM (the word `$0000`; the name is a guess); 13 and 14 the
 checksums of the two FAT copies; 16-31 the user name (16 characters, spaces when formatted; CARD
 functions 6/7); then the text NEO-GEO and the system ROM's region byte (C for what is written, I for
 the meaning of the version word).
@@ -97,7 +97,7 @@ A game calls it after a failed CARD. The result and the function pick a handler 
 | `$85` write-protected | PROTECTED | NO DATA | PROTECTED | PROTECTED | PROTECTED | NO DATA |
 
 The messages take over the screen: the game's fix layer is saved and put back
-(`CardErrorSaveScreen`/`RestoreScreen`), the game's system mode is kept and restored. On an MVS a
+(`CardErrorSaveScreen`, `CardErrorRestoreScreen`), the game's system mode is kept and restored. On an MVS a
 message ends after 15 seconds by itself. Not formatted: an MVS formats at once, an AES asks DO YOU
 WISH TO FORMAT?. Full: MEMORY CARD FULL with the saves listed 6 to a page; A deletes the selected
 save and the game's save is tried again, B gives it up (C: `lbowling_card_*`, `card_full_*`).

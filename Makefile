@@ -4,11 +4,12 @@ AS      := m68k-linux-gnu-as -m68000 --register-prefix-optional
 LD      := m68k-linux-gnu-ld -Ttext=0xC00000 -e 0xC00402 --oformat binary
 ROM_SHA1 := 4f5ed7105b7128794654ce82b51723e16e389543
 SFIX_SHA1 := fd4a618cdcdbf849374f0a50dd8efe9dbab706c3
+LO_SHA1   := 5992277debadeb64d1c1c64b0a92d9293eaf7e4a
 # original dump, MAME order; only needed for `make source`
 ROM     ?= roms/sp-s2.sp1
 SFIX    ?= roms/sfix.sfix
 
-all: build/sp-s2.sp1 build/sfix.sfix
+all: build/sp-s2.sp1 build/sfix.sfix build/000-lo.lo
 
 build/sp-s2.o: $(wildcard src/*.s src/*.inc)
 	@mkdir -p build
@@ -25,11 +26,17 @@ build/sp-s2.sp1: build/sp-s2.bin
 build/sfix.sfix: $(wildcard gfx/sfix/*.png) tools/sfix.py
 	$(PY) tools/sfix.py build gfx/sfix $@
 
+# sprite shrink table (000-lo.lo, L0 ROM) from its rule
+build/000-lo.lo: tools/lo_rom.py
+	@mkdir -p build
+	$(PY) tools/lo_rom.py build $@
+
 # compare with the original ROMs (no ROM needed: SHA-1 only)
-check: build/sp-s2.sp1 build/sfix.sfix
+check: build/sp-s2.sp1 build/sfix.sfix build/000-lo.lo
 	$(PY) tools/romtool.py check build/sp-s2.sp1 $(ROM_SHA1)
 	$(PY) tools/romtool.py checksum build/sp-s2.sp1
 	$(PY) tools/sfix.py check build/sfix.sfix $(SFIX_SHA1)
+	$(PY) tools/lo_rom.py check build/000-lo.lo $(LO_SHA1)
 
 # rewrite the boot checksum of a modified build
 fixsum: build/sp-s2.sp1

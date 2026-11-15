@@ -3,6 +3,8 @@
 *.sp1
 *.rom
 *.sfix
+*.lo
+*.sm1
 *.zip
 build/
 __pycache__/

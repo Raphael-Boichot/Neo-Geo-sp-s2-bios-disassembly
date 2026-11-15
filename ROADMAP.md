@@ -146,8 +146,9 @@ board, whatever the cartridge, so they belong to the BIOS.
 - [ ] `sm1.sm1`, the Z80 sound program on the board (128 KB): what the system ROM's sound commands do
       (1 slot switch, 3 reset, $5C-$5E sound test, $7F coin), whether it plays the eyecatcher music;
       Z80 disassembly that rebuilds it byte for byte
-- [ ] `000-lo.lo`, the sprite zoom table read by the video hardware (128 KB): rebuilt from a
-      generator or kept as data, with a byte-identical check
+- [x] `000-lo.lo`, the sprite zoom table read by the video hardware (128 KB): rebuilt from its rule
+      by `tools/lo_rom.py` (row z adds line bitreverse(z XOR $11)), SHA-1 checked by `make check`;
+      the four board ROMs described in [`docs/bios_set.md`](docs/bios_set.md)
 
 ## Not now: custom system ROM
 

@@ -18,7 +18,8 @@ This assembles `src/sp-s2.s`, links it at `$C00000`, swaps the bytes into MAME o
 (`build/sp-s2.sp1`) and prints `OK sha1 4f5ed7105b7128794654ce82b51723e16e389543`, then the
 boot checksum (`stored $4D $4D, computed $4D`). It also builds the board fix ROM from its tile sheets
 (`tools/sfix.py build gfx/sfix build/sfix.sfix`) and prints
-`OK sha1 fd4a618cdcdbf849374f0a50dd8efe9dbab706c3`.
+`OK sha1 fd4a618cdcdbf849374f0a50dd8efe9dbab706c3`, and the sprite shrink table from its rule
+(`tools/lo_rom.py build build/000-lo.lo`): `OK sha1 5992277debadeb64d1c1c64b0a92d9293eaf7e4a`.
 
 By hand:
 

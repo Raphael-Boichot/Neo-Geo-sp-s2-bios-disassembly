@@ -411,6 +411,15 @@ forced). The 16-bit card is found as `$4000` bytes. A blank type `$80` card in t
 stops the boot with MEMORY CARD ERROR: the power-on test of an unformatted card fails on the aliased
 words, so that card goes in after the boot.
 
+### The ROMs of the MVS board
+
+Besides the system ROM, three ROM chips sit on the MVS motherboard whatever the cartridge: the fix
+tiles `sfix.sfix`, the Z80 sound program `sm1.sm1` and the sprite shrink table `000-lo.lo`, read by
+the video hardware only. What each holds and which part of the board reads it:
+[`docs/bios_set.md`](docs/bios_set.md). `make` rebuilds `sfix.sfix` from tile sheets and `000-lo.lo`
+from its rule (row z of the table adds the source line bitreverse(z XOR `$11`)); `sm1.sm1` is not done
+yet.
+
 ### Board fix ROM (sfix.sfix)
 
 The system ROM draws its own screens with the fix-layer graphics ROM of the motherboard,
@@ -469,6 +478,7 @@ scenario `nogo_cartridge`:
 |---|---|
 | [`src/`](src/) | Generated 68000 source (GNU as, Motorola syntax), ROM addresses in comments: `sp-s2.s` includes 14 modules (`header.s`, `tables.s`, `boot.s`, `system.s`, `power_on.s`, `calendar.s`, `card.s`, `boot_error.s`, `hardware_test.s`, `eyecatcher.s`, `video_io.s`, `how_to_play.s`, `test_mode.s`, `data_end.s`) |
 | [`gfx/sfix/`](gfx/sfix/) | The board fix ROM `sfix.sfix` as 16 indexed tile sheets (`make` rebuilds it) |
+| [`tools/lo_rom.py`](tools/lo_rom.py) | The sprite shrink table `000-lo.lo` rebuilt from its rule (`make` builds it, `make check` compares it) |
 | [`src/neogeo.inc`](src/neogeo.inc), [`src/ram.inc`](src/ram.inc) | Registers, cartridge header, `A5_BASE`/`A4_BASE`; every RAM address used |
 | [`Makefile`](Makefile) | `make`, `make check`, `make fixsum`, `make source`, `make sfix-source` |
 | [`HOWTO.md`](HOWTO.md) | Requirements, build, regeneration, trace hints, how to modify and test the BIOS |
@@ -507,6 +517,7 @@ The ROM is **not** in the repository (SNK copyright). Put your own dump in `roms
 ```
 make check    # build/sp-s2.sp1, SHA-1 must be 4f5ed7105b7128794654ce82b51723e16e389543
               # build/sfix.sfix, SHA-1 must be fd4a618cdcdbf849374f0a50dd8efe9dbab706c3
+              # build/000-lo.lo, SHA-1 must be 5992277debadeb64d1c1c64b0a92d9293eaf7e4a
 ```
 
 Needs Python 3 with `capstone` and GNU binutils for m68k (`binutils-m68k-linux-gnu`). Details in

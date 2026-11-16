@@ -1,7 +1,7 @@
 # Roadmap
 
-Where the SP-S2 disassembly stands and what comes next, in order. The priority is the disassembly itself:
-full coverage, names and a written reference. Levels L0-L6 are defined in
+Where the SP-S2 disassembly stands and what comes next, in order. The disassembly itself (full coverage,
+names and a written reference, steps 1-7) is done; step 8, a custom system ROM, is open. Levels L0-L6 are defined in
 `SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-15).
 
 ## Where we are
@@ -95,7 +95,9 @@ builds; `tools/fault_scenarios.py` (34 scenarios) says which runs are forced.
       a full code read and their runs); `SelectSlot` renamed `RegisterNewGame`, `MvsLedUpdate` renamed
       `SystemIoMvs` (both did much more than their name)
 - [x] Doubts list: `symbols/doubts.csv`, one line per I name (13 ROM, 15 RAM) with the doubt and how to
-      settle it; most wait for step 6 (another system ROM) or for hardware MAME does not have
+      settle it; step 6 settled what the other system ROMs could. Most of the rest need more MAME runs
+      (multi-block saves on the emulated 16-bit cards, a board with two cartridges, a mahjong
+      controller, timed runs) or a ROM card image; a few are leftovers that nothing reads
 
 Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reached 2026-11-15) and every I name has a line in the doubts list (done).
 
@@ -112,7 +114,7 @@ Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reach
 - [x] Card utility dispatch `$C150A6`: the tracer now finds the table load 2 instructions before the
       `jmp` (a `pea` in between), so `tools/stats.py` reports 1 indirect jump, the `jmp (a6)` return
 
-## 5. Written reference (L6)
+## 5. Written reference (L6): done
 
 One page per subsystem in `docs/`, from the code and the MAME runs, with addresses and tags: index in [`docs/README.md`](docs/README.md).
 
@@ -126,7 +128,7 @@ One page per subsystem in `docs/`, from the code and the MAME runs, with address
 - [x] Interrupts: VBlank (SystemInt1), timer (SystemInt2), when each vector table is mapped
 - [x] Sound commands sent to the Z80 (with step 7, `sm1.sm1`): [`docs/sound.md`](docs/sound.md)
 
-## 6. Other SNK system ROMs (L3, L6)
+## 6. Other SNK system ROMs (L3, L6): done
 
 Public references, allowed for comparison. The goal is to understand SP-S2, not to disassemble the
 other versions: what in SP-S2 is common, what is special, and what its unused code was for.
@@ -141,7 +143,7 @@ other versions: what in SP-S2 is common, what is special, and what its unused co
       one credit pool instead of one per player (US), slot merge, book keeping totals, 1M card list,
       I/O check system bits added since Europe Ver. 1
 
-## 7. The other ROMs of the BIOS set (L0-L3, L5)
+## 7. The other ROMs of the BIOS set (L0-L3, L5): done
 
 `neogeo.zip` holds three ROMs of the MVS motherboard besides the system ROM. They ship with every
 board, whatever the cartridge, so they belong to the BIOS.
@@ -163,11 +165,11 @@ board, whatever the cartridge, so they belong to the BIOS.
       by `tools/lo_rom.py` (row z adds line bitreverse(z XOR $11)), SHA-1 checked by `make check`;
       the four board ROMs described in [`docs/bios_set.md`](docs/bios_set.md)
 
-## Not now: custom system ROM
+## 8. Custom system ROM: open
 
-The priority is the disassembly. Work on a modified system ROM waits until steps 1-7 are done; the
-only build changes meanwhile are test builds that help the disassembly (reaching hidden code,
-relocation checks).
+Steps 1-7 are done, so work on a modified system ROM can start; its scope is not decided yet. So far
+the only build changes are test builds that help the disassembly (reaching hidden code, relocation
+checks).
 
 ## Rules
 

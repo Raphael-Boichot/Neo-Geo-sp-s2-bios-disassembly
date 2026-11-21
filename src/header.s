@@ -101,7 +101,7 @@ HOW_TO_PLAY:
 | CHECKSUM_LOOP [W] wiki: calc a checksum and loop forever
 CHECKSUM_LOOP:
 	jmp	(ChecksumLoop).l	| C0047A
-	jmp	(loc_C004DA,pc)	| C00480
+	jmp	(loc_C004DA,pc)	| C00480  11 unused call slots up to $C004BC, each jmp to an rts; the same in all 19 SNK system ROMs
 	nop	| C00484
 	jmp	(loc_C004DA,pc)	| C00486
 	nop	| C0048A

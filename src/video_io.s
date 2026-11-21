@@ -54,7 +54,7 @@ NibbleToHex:
 loc_C183FC:
 	addi.b	#0x37,d1	| C183FC
 	rts	| C18400
-| ControllerTypeTable [I] 6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) for each ID code read from the ports by ControllerSetup
+| ControllerTypeTable [I] 6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) by ID code; ControllerSetup loads it in a4 but only the unreferenced ControllerTypeScan reads it (in SP-S2 the mahjong DIP alone sets BIOS_P1STATUS)
 ControllerTypeTable:
 	dc.b	0x02,0x02,0x00,0x00,0x00,0x02,0x00,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x01,0x00,0x01,0x01,0x01,0x01,0x01
@@ -65,25 +65,52 @@ ControllerTypeTable:
 | ControllerSetup [W] target of CONTROLLER_SETUP
 ControllerSetup:
 	lea.l	(BiosWorkRam).l,a5	| C18462
-	lea.l	(ControllerTypeTable,pc),a4	| C18468
+	lea.l	(ControllerTypeTable,pc),a4	| C18468  a4: only ControllerTypeScan reads it, and nothing calls that here
 	lea.l	(REG_POUTPUT).l,a2	| C1846C
 	moveq	#0x0,d0	| C18472
 	move.b	d0,(BIOS_P1STATUS-A5_BASE,a5)	| C18474
 	move.b	d0,(BIOS_P2STATUS-A5_BASE,a5)	| C18478
 	move.b	d0,(BIOS_P3STATUS-A5_BASE,a5)	| C1847C
 	move.b	d0,(BIOS_P4STATUS-A5_BASE,a5)	| C18480
-	move.b	(REG_DIPSW).l,d0	| C18484
+	move.b	(REG_DIPSW).l,d0	| C18484  hard DIP 3 on: a mahjong panel on P1
 	andi.b	#0x4,d0	| C1848A
 	bne.b	loc_C18496	| C1848E
 	move.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C18490
 loc_C18496:
 	move.b	#0x0,(a2)	| C18496
 	rts	| C1849A
-	dc.b	0x18,0x39,0x00,0x30,0x00,0x00,0x1A,0x39,0x00,0x34,0x00,0x00,0x1C,0x39,0x00,0x38
-	dc.b	0x00,0x00,0x02,0x04,0x00,0xC0,0x02,0x05,0x00,0xC0,0x02,0x06,0x00,0x0F,0x8A,0x06
-	dc.b	0xE5,0x0E,0x88,0x06,0x70,0x00,0xC8,0x02,0x67,0x02,0x70,0x04,0xCA,0x02,0x67,0x04
-	dc.b	0x00,0x00,0x00,0x08,0x47,0xED,0x0A,0x94,0x7E,0x03,0x4A,0x13,0x66,0x04,0x16,0xB4
-	dc.b	0x00,0x00,0x52,0x40,0x5C,0x8B,0x51,0xCF,0xFF,0xF2,0x49,0xEC,0x00,0x10,0x4E,0x75
+| ControllerTypeScan [C] unreferenced in SP-S2 and in every MVS version, called 6 times by ControllerSetup in the three AES ROMs after each REG_POUTPUT pattern: reads bits 6-7 of REG_P1CNT and REG_P2CNT and the low nibble of REG_STATUS_B (starts and selects), keeps the bits selected by d2, builds an index in d0 and writes the ControllerTypeTable entry (a4) into each BIOS_P1STATUS-P4STATUS still 0, then a4 += 16. Typed as code since 2026-11-21 (it was data after ControllerSetup's rts)
+ControllerTypeScan:
+	move.b	(REG_P1CNT).l,d4	| C1849C  never reached in SP-S2; the AES ControllerSetup calls it after each REG_POUTPUT pattern
+	move.b	(REG_P2CNT).l,d5	| C184A2
+	move.b	(REG_STATUS_B).l,d6	| C184A8
+	andi.b	#0xC0,d4	| C184AE  P1 and P2 ID bits 6-7
+	andi.b	#0xC0,d5	| C184B2
+	andi.b	#0xF,d6	| C184B6  low nibble of REG_STATUS_B: start and select bits
+	or.b	d6,d5	| C184BA  d5: P2 ID bits and the nibble, d4: P1 ID bits and the nibble x 4
+	lsl.b	#0x2,d6	| C184BC
+	or.b	d6,d4	| C184BE
+	moveq	#0x0,d0	| C184C0
+	and.b	d2,d4	| C184C2  d2: the ID bit to sample this pass
+	beq.b	loc_C184C8	| C184C4
+	moveq	#0x4,d0	| C184C6
+loc_C184C8:
+	and.b	d2,d5	| C184C8
+	beq.b	loc_C184D0	| C184CA
+	ori.b	#0x8,d0	| C184CC
+loc_C184D0:
+	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a3	| C184D0  BIOS_P1STATUS, then P2-P4 every 6 bytes
+	moveq	#0x3,d7	| C184D4
+loc_C184D6:
+	tst.b	(a3)	| C184D6  a port already identified keeps its type
+	bne.b	loc_C184DE	| C184D8
+	move.b	(a4,d0.w),(a3)	| C184DA
+loc_C184DE:
+	addq.w	#0x1,d0	| C184DE
+	addq.l	#0x6,a3	| C184E0
+	dbra	d7,loc_C184D6	| C184E2
+	lea.l	0x10(a4),a4	| C184E6  next row of ControllerTypeTable for the next pass
+	rts	| C184EA
 | DelayLonger [C] nested BSR chain (DelayLonger > Delay > DelayShort > DelayShorter > DelayReturn): the depth sets the delay; used around Z80 and LED writes
 DelayLonger:
 	bsr.w	DelayShorter	| C184EC

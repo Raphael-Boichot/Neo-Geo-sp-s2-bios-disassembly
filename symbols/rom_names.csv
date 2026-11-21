@@ -289,7 +289,7 @@ C16218,MonitorTrace,C,"debug monitor, code $10 TRACE"
 C16222,MonitorUnassigned,C,"debug monitor, code $14 UNASSIGNED"
 C1622C,MonitorUninitialized,C,"debug monitor, code $18 UNINITIALIZED INTERRUPT"
 C16236,MonitorSpurious,C,"debug monitor, code $1C SPURIOUS INTERRUPT"
-C118DC,PowerOnTestOld,C,"unreferenced older copy of the power-on tests after SystemInt2's rte (work RAM, palettes, VRAM, checksum, card), with error numbers shifted by one from BootErrorMessages; it ends in BootError even when everything passes. Never ran in MAME"
+C118DC,PowerOnTestOld,C,"unreferenced in SP-S2 and every MVS version: the AES power-on test. The three AES ROMs reach it from Reset when the cartridge header check fails (no NEO-GEO at $100 or a bad security block at the pointer $182), i.e. with no game; the same bytes in all 18 other SNK ROMs. It tests work RAM, palettes, VRAM, checksum and card, with error numbers shifted by one from BootErrorMessages, and ends in BootError even when everything passes (nothing to boot). Never ran in MAME"
 C11A6E,WorkRamTestText,C,"WORK RAM TEST, shown while WorkRamTestLoop runs (every hard DIP on; MAME: work_ram_test_loop)"
 C12012,Z80Check,C,"power-on: writes 1 to REG_SOUND and waits up to $C350 reads for the Z80's reply 1; no reply: BootError 8 Z80 ERROR (MAME: boot_error_z80, reply faked away)"
 C16BB2,AesErrorColours,C,"BootError on an AES (SystemType 0): one palette colour pair per error, 0 blue, 1 red, 2 green, 3 yellow, 4 magenta, 5 cyan; only 6 entries (errors 6-8 would read the code after it). MAME: boot_error_aes_colours (forced)"
@@ -506,7 +506,7 @@ C187DA,MessOutCall,C,MESS_OUT command 10: runs another list (pointer pushed at M
 C187EE,MessOutReturn,C,MESS_OUT command 11: back from MessOutCall
 C187FE,MessOutRepeat,C,MESS_OUT command 12: writes one word d1 times
 C18808,MessOutSequence,C,"MESS_OUT command 13: writes d1 words, adding 1 each time"
-C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover) The same words in all 18 other SNK system ROMs, referenced in none"
+C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover) The same words in all 18 other SNK system ROMs, referenced in none; a second copy, CalendarFixAddresses, sits in TestCalendar"
 C132B4,CardFillTest,C,"unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears Present and unreferenced in all 18 other SNK system ROMs."
 C13338,CardFillTestTitle,C,20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save
 C00080,SystemRomChecksum,W,"checksum byte of the system ROM (NeoGeoDev wiki, SP-E: $4D here; the byte after it is the same); compared by the power-on test"
@@ -551,7 +551,7 @@ C17C9C,HwCalendarMin,C,smallest BCD value of each calendar field (month and day 
 C17D72,HwCalendarText,C,MESS_OUT data of SETTING UP THE CALENDAR (hardware test)
 C17EC8,EyecatchSteps,C,"10 step routines of the eyecatcher, by WorkIndex"
 C17EF0,EyecatchSpriteInit,C,MESS_OUT list sent first by Eyecatcher (writes sprite control data at VRAM $8400 and $8200)
-C18402,ControllerTypeTable,I,"6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) for each ID code read from the ports by ControllerSetup"
+C18402,ControllerTypeTable,I,"6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) by ID code; ControllerSetup loads it in a4 but only the unreferenced ControllerTypeScan reads it (in SP-S2 the mahjong DIP alone sets BIOS_P1STATUS)"
 C18ADA,HowToPlayButtonTable,C,"for each of the 4 buttons, the MESS_OUT data released and pressed"
 C18AFA,HowToPlayScreen,C,MESS_OUT data of the HOW_TO_PLAY frame
 C18E06,HowToPlayStick,C,the joystick picture of HOW_TO_PLAY (seen in MAME)
@@ -573,3 +573,7 @@ C1F3CA,HowToPlayPalettes,C,"HowToPlay: 14 palettes copied to $400000, followed b
 C1F58A,FbiScreenPalette,C,palette 1 of the FBI screen
 C1F5AA,FbiScreen,C,"MESS_OUT list of board fix ROM tiles ($B01-$B68 in sfix.sfix, palette 1) of the FBI seal screen (WINNERS DON'T USE DRUGS) shown for 300 frames after the eyecatcher on an MVS with country code USA (BIOS_COUNTRY_CODE 1); never with SP-S2 (forced, scenario eyecatcher_us)"
 C1F652,JapanOnlyWarningText,C,"WARNING THIS GAME IS FOR USE IN JAPAN ONLY. .. shown for 300 frames after the eyecatcher with country code 0 (Japan); never with SP-S2 (forced, scenario eyecatcher_japan)"
+C1849C,ControllerTypeScan,C,"unreferenced in SP-S2 and in every MVS version, called 6 times by ControllerSetup in the three AES ROMs after each REG_POUTPUT pattern: reads bits 6-7 of REG_P1CNT and REG_P2CNT and the low nibble of REG_STATUS_B (starts and selects), keeps the bits selected by d2, builds an index in d0 and writes the ControllerTypeTable entry (a4) into each BIOS_P1STATUS-P4STATUS still 0, then a4 += 16. Typed as code since 2026-11-21 (it was data after ControllerSetup's rts)"
+C19884,HardDipCoin2Text,C,"text 2, unreferenced in SP-S2: a value of the COIN SWITCH row (hard DIP 2) that the US versions show on the hard DIP page (Ver. 1, U4, U3 refer to it); SP-S2 has no such row"
+C1988A,HardDipCoin4Text,C,"text 4, the other COIN SWITCH value (see HardDipCoin2Text)"
+C199A8,CalendarFixAddresses,I,"the 6 words of HwCalendarFixAddresses ($7157 .. $725A) again, inside TestCalendar after a bra.w that jumps over them; nothing refers to them. Fix positions of three fields on rows $17 and $1A (I: the date and time fields of the calendar screen)"

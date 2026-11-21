@@ -991,7 +991,7 @@ SystemIoMvs:
 loc_C126BC:
 	cmpi.b	#0x1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C126BC
 	bra.b	loc_C126EA	| C126C2  always taken: the slot LED cycle below never runs
-	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C126C4
+	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C126C4  slot LED cycle (every 4 frames, next slot): skipped here and in 16 other ROMs; a bne, so live, in US U3 and Japan J3 alt
 	andi.b	#0x3,d0	| C126C8
 	bne.b	loc_C126EA	| C126CC
 	move.b	(LedSlotDisplay-A5_BASE,a5),d5	| C126CE

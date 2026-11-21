@@ -109,7 +109,8 @@ MODULES = load_modules()
 
 def load_comments(name):
     """symbols/comments.csv: addr,comment - a line comment for the instruction (or data line) that
-    starts at addr. The generator puts it after the address comment; it changes no byte."""
+    starts at addr, or for the first line of a data block. The generator puts it after the address comment;
+    it changes no byte."""
     rows = {}
     path = os.path.join(ROOT, name)
     if not os.path.exists(path):

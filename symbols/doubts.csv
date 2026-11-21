@@ -8,6 +8,7 @@ C1862E,MahjongStartFilter,rom_names,I,mahjong path not run,same as MahjongKeysTo
 C186C8,UpdateMahjongRow,rom_names,I,mahjong path not run,same as MahjongKeysToJoystick
 C186DA,ReadMahjongRows,rom_names,I,mahjong path not run (REG_POUTPUT values $24/$09 from the code),same as MahjongKeysToJoystick
 C17BFA,HwCalendarFixAddresses,rom_names,I,"6 fix addresses after HwTestCalendar, nothing refers to them: leftover","checked in the 18 other SNK system ROMs (step 6): the same words, referenced in none"
+C199A8,CalendarFixAddresses,rom_names,I,which fields the 6 fix positions were for: no code reads them,"same words in 18 of the 19 SNK ROMs (not the development ROM), referenced in none; a ROM where code reads them"
 C11000,CardFormatVersion,rom_names,I,"CardFormat writes this word ($0000) into the card header; that it is a format version is a guess","checked in the other SNK system ROMs (step 6): $0000 at the start of the code in every version; a card formatted by another version would still be needed"
 C11001,CardFormatVersionLo,rom_names,I,see CardFormatVersion,see CardFormatVersion
 C116C6,SystemIoBuildFlag,rom_names,I,"tested by SystemIo, the branch goes to the next instruction either way: a build switch is a guess","checked in the 18 other SNK system ROMs (step 6): same tst/bne in every MVS version, absent from AES; the purpose stays unknown"

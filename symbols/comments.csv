@@ -1,4 +1,5 @@
 addr,comment
+C00480,"11 unused call slots up to $C004BC, each jmp to an rts; the same in all 19 SNK system ROMs"
 C11002,"interrupts off (level 7 mask, supervisor)"
 C11006,any write to REG_DIPSW kicks the watchdog
 C1100C,acknowledge the three interrupt sources
@@ -306,6 +307,7 @@ C12696,segments are active low
 C1269E,latch $F7: the slot LED
 C126B4,AES: nothing to do
 C126C2,always taken: the slot LED cycle below never runs
+C126C4,"slot LED cycle (every 4 frames, next slot): skipped here and in 16 other ROMs; a bne, so live, in US U3 and Japan J3 alt"
 C126EA,the I/O check screen drives the LEDs itself
 C126F8,not during the init pass
 C126FE,a coin counter pulse is on: skip the card save and STOP MODE this frame
@@ -379,3 +381,14 @@ C129E6,not while the ROMs are being switched
 C129F6,on a system ROM screen: the board's coin sound
 C12A06,during the game or its demo: the game's own coin sound
 C12A0A,the game may have changed a4 and a5
+C18468,"a4: only ControllerTypeScan reads it, and nothing calls that here"
+C18484,hard DIP 3 on: a mahjong panel on P1
+C1849C,never reached in SP-S2; the AES ControllerSetup calls it after each REG_POUTPUT pattern
+C184AE,P1 and P2 ID bits 6-7
+C184B6,low nibble of REG_STATUS_B: start and select bits
+C184BA,"d5: P2 ID bits and the nibble, d4: P1 ID bits and the nibble x 4"
+C184C2,d2: the ID bit to sample this pass
+C184D0,"BIOS_P1STATUS, then P2-P4 every 6 bytes"
+C184D6,a port already identified keeps its type
+C184E6,next row of ControllerTypeTable for the next pass
+C199A8,"CalendarFixAddresses: data jumped over by the bra.w, read by nothing"

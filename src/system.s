@@ -227,7 +227,7 @@ SystemInt2:
 	move.w	#0x2,(REG_IRQACK).l	| C118CA  acknowledge the timer interrupt
 	move.w	#0x4000,(REG_LSPCMODE).l	| C118D2  and turn it off
 	rte	| C118DA
-| PowerOnTestOld [C] unreferenced older copy of the power-on tests after SystemInt2's rte (work RAM, palettes, VRAM, checksum, card), with error numbers shifted by one from BootErrorMessages; it ends in BootError even when everything passes. Never ran in MAME
+| PowerOnTestOld [C] unreferenced in SP-S2 and every MVS version: the AES power-on test. The three AES ROMs reach it from Reset when the cartridge header check fails (no NEO-GEO at $100 or a bad security block at the pointer $182), i.e. with no game; the same bytes in all 18 other SNK ROMs. It tests work RAM, palettes, VRAM, checksum and card, with error numbers shifted by one from BootErrorMessages, and ends in BootError even when everything passes (nothing to boot). Never ran in MAME
 PowerOnTestOld:
 	moveq	#0x1,d6	| C118DC
 	lea.l	(WorkRamStart).l,a0	| C118DE

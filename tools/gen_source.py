@@ -335,7 +335,12 @@ class Gen:
                 # block uses it up, and overflowing into the next block is an error
                 L.append(f'\t.org\t0x{end:05X},0xFF\t| {addr:06X}-{BASE + end - 1:06X} free ({end - off} bytes)')
             else:
-                L.extend(self.data_lines(off, end))
+                lines = self.data_lines(off, end)
+                c = S.COMMENTS.get(addr)
+                if c:                       # a comment on a data block goes on its first line
+                    lines[0] += f'\t| {addr:06X}  {c}'
+                    self.comments_used.add(addr)
+                L.extend(lines)
             off = end
         return '\n'.join(L) + '\n'
 

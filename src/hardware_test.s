@@ -788,7 +788,7 @@ HwTestCalendar:
 	clr.w	(WorkIndexNew-A5_BASE,a5)	| C17BEE
 	move.w	#0xD,(WorkIndex-A5_BASE,a5)	| C17BF2
 	rts	| C17BF8
-| HwCalendarFixAddresses [I] 6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover) The same words in all 18 other SNK system ROMs, referenced in none
+| HwCalendarFixAddresses [I] 6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover) The same words in all 18 other SNK system ROMs, referenced in none; a second copy, CalendarFixAddresses, sits in TestCalendar
 HwCalendarFixAddresses:
 	dc.b	0x71,0x57,0x71,0xD7,0x72,0x57,0x71,0x5A,0x71,0xDA,0x72,0x5A
 | HwTestCalendarFrame [C] per frame routine of the hardware-test calendar

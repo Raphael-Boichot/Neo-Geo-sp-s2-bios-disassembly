@@ -9,12 +9,12 @@ names and a written reference, steps 1-7) is done; step 8, a custom system ROM, 
 | Level | State |
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
-| L1 every byte typed | done: code 32,966 B, data 21,383 B, free 76,723 B |
-| L2 traced and run | 9,252 instructions traced; 8,088 ran in MAME (87.4 %) over 88 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
-| L3 names | 574 names (C 530, I 13, W 31), the 13 I and 15 RAM I in `symbols/doubts.csv`; 1,039 automatic labels left, all `loc_` |
+| L1 every byte typed | done: code 33,046 B, data 21,303 B, free 76,723 B |
+| L2 traced and run | 9,278 instructions traced; 8,088 ran in MAME (87.2 %) over 88 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
+| L3 names | 578 names (C 533, I 14, W 31), the 14 I and 15 RAM I in `symbols/doubts.csv`; 1,043 automatic labels left, all `loc_` |
 | L4 RAM and registers | done: 274 RAM names over 227 addresses, nothing automatic (160 global names on 160 addresses, 128 scoped rows on 67 addresses; 14 rows reuse a name), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
-| L6 understanding | written reference done: 10 pages in [`docs/`](docs/README.md) (boot, game contract, credits, calendar, memory card, test mode, interrupts, sound, board ROMs, other versions); 28 doubts left |
+| L6 understanding | written reference done: 10 pages in [`docs/`](docs/README.md) (boot, game contract, credits, calendar, memory card, test mode, interrupts, sound, board ROMs, other versions); 29 doubts left |
 
 Coverage and automatic routines by module:
 
@@ -25,7 +25,7 @@ Coverage and automatic routines by module:
 | `boot_error.s` | 86 % (76 / 88, forced) | 0 |
 | `system.s` | 61 % | 0 |
 | `calendar.s` | 98 % | 0 |
-| `video_io.s` | 83 % | 0 |
+| `video_io.s` | 77 % | 0 |
 | `power_on.s` | 93 % | 0 |
 | `eyecatcher.s` | 96 % | 0 |
 | `boot.s` | 95 % | 0 |
@@ -94,7 +94,7 @@ builds; `tools/fault_scenarios.py` (34 scenarios) says which runs are forced.
       `card_word_*` and `card_sparse_*`; the slot table merge run over three boots, `slots_*`; the rest by
       a full code read and their runs); `SelectSlot` renamed `RegisterNewGame`, `MvsLedUpdate` renamed
       `SystemIoMvs` (both did much more than their name)
-- [x] Doubts list: `symbols/doubts.csv`, one line per I name (13 ROM, 15 RAM) with the doubt and how to
+- [x] Doubts list: `symbols/doubts.csv`, one line per I name (14 ROM, 15 RAM) with the doubt and how to
       settle it; step 6 settled what the other system ROMs could. Most of the rest need more MAME runs
       (multi-block saves on the emulated 16-bit cards, a board with two cartridges, a mahjong
       controller, timed runs) or a ROM card image; a few are leftovers that nothing reads
@@ -142,6 +142,12 @@ other versions: what in SP-S2 is common, what is special, and what its unused co
 - [x] The routines SP-S2 changed against its closest relatives (US Ver. 1 and 2, Europe Ver. 1):
       one credit pool instead of one per player (US), slot merge, book keeping totals, 1M card list,
       I/O check system bits added since Europe Ver. 1
+- [x] Every unreached part of SP-S2 listed and looked up in the other versions (docs/versions.md, The unused
+      parts of SP-S2): the old power-on test is the AES no-cartridge test, the code after `ControllerSetup`
+      (now `ControllerTypeScan`) the AES controller detection, the texts 2 and 4 the US COIN SWITCH row,
+      the skipped slot LED cycle live in US U3 and Japan J3 alt
+- [x] The cartridge link (NeoGeoDev wiki, Multiplayer): the system ROM only shows the COMMUNICATION
+      switches; the link is the cartridge's HD6301, which MAME 0.264 does not emulate (docs/test_mode.md)
 
 ## 7. The other ROMs of the BIOS set (L0-L3, L5): done
 

@@ -610,7 +610,13 @@ HardDipComm3Text:
 HardDipComm4Text:
 	dc.b	0x01,0x08
 	.ascii	"ON [No 4]"
-	dc.b	0xFF,0x00,0x0B,0x01,0x08,0x32,0xFF,0x00,0x0B,0x01,0x08,0x34,0xFF,0x00,0x0B
+	dc.b	0xFF,0x00,0x0B
+| HardDipCoin2Text [C] text 2, unreferenced in SP-S2: a value of the COIN SWITCH row (hard DIP 2) that the US versions show on the hard DIP page (Ver. 1, U4, U3 refer to it); SP-S2 has no such row
+HardDipCoin2Text:
+	dc.b	0x01,0x08,0x32,0xFF,0x00,0x0B
+| HardDipCoin4Text [C] text 4, the other COIN SWITCH value (see HardDipCoin2Text)
+HardDipCoin4Text:
+	dc.b	0x01,0x08,0x34,0xFF,0x00,0x0B
 | HardDipText [C] SETTING UP THE HARD DIP screen text
 HardDipText:
 	dc.b	0x00,0x03,0x71,0x45,0x01,0x08
@@ -664,9 +670,9 @@ TestCalendar:
 	jsr	(CalendarDrawNewTime,pc)	| C1999C
 	clr.w	(WorkIndexNew-A5_BASE,a5)	| C199A0
 	bra.w	loc_C199B4	| C199A4
-	dc.b	0x71,0x57,0x71,0xD7
-	.ascii	"rWqZq"
-	dc.b	0xDA,0x72,0x5A
+| CalendarFixAddresses [I] the 6 words of HwCalendarFixAddresses ($7157 .. $725A) again, inside TestCalendar after a bra.w that jumps over them; nothing refers to them. Fix positions of three fields on rows $17 and $1A (I: the date and time fields of the calendar screen)
+CalendarFixAddresses:
+	dc.b	0x71,0x57,0x71,0xD7,0x72,0x57,0x71,0x5A,0x71,0xDA,0x72,0x5A	| C199A8  CalendarFixAddresses: data jumped over by the bra.w, read by nothing
 loc_C199B4:
 	jsr	(WaitFrame,pc)	| C199B4
 	btst.b	#0x6,(BIOS_P1CHANGE-A5_BASE,a5)	| C199B8

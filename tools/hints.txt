@@ -23,6 +23,7 @@ entry     $C16236   ; code $1C SPURIOUS INTERRUPT
 number    $C14E50   ; tbl_C14DF6 (16-bit card layouts): size word $00C0 + offset high word $0000, not a pointer to $C00000
 number    $C14E60   ; same, next row
 entry     $C132B4   ; unreferenced card save loop before Card (lea BiosWorkRam,a5; CARD 3 with NGH $1234, file numbers 0-15 then the next NGH): found as code bytes inside data
+entry     $C1849C   ; ControllerTypeScan: code bytes after the rts of ControllerSetup, unreferenced here; the AES ROMs call the same code from their ControllerSetup
 ; cabinet pages: the row handlers are reached through a table (jmp (a0)) after lea BramA4Base,a4 at $C1B0D0 /
 ; $C19D22; between it and the jmp only WaitFrame, the cursor and coin drawing run, none writes a4 (SystemInt1 saves
 ; a0-a6 around its MessOut), and every handler returns to the same loop through the pea

@@ -80,6 +80,35 @@ too: not an SP-S2 slip. The word `CardFormat` writes as the card format version 
 start of the code in every version. `HowToPlayFlag` is only ever cleared, `Card1MRecoverFlag` only
 ever written, and `Credits2` is read by the LED code and written by no SNK system ROM.
 
+## The unused parts of SP-S2
+
+What no path of SP-S2 reaches, found by following every call, jump, branch and pointer from the
+vectors and the BIOS call table (labels and fall-through), plus the code bytes after an `rts` and the
+data after a `bra`; then each piece looked up in the 18 other ROMs (C: bytes and references;
+`tools/compare_bios.py` for named routines, the same masked search for the rest).
+
+| Address | Size | What | In the other versions |
+|---|---|---|---|
+| `$C00480-$C004C1` | 66 | 11 BIOS call slots that jump to an `rts` | the same in all 19 ROMs: reserved slots |
+| `$C02000-$C042FF` | 8,960 | `ScaleTableA`, `ScaleTableB`, `AbsSineTable` | read by the games, not by any system ROM (above) |
+| `$C118DC-$C11A6D` | 402 | `PowerOnTestOld` | the AES power-on test: the three AES ROMs branch to it from `Reset` when the cartridge header check fails (no NEO-GEO at `$100`, or a bad security block at the pointer `$182`), so with no game; it ends in a boot error because there is nothing to boot. Unreferenced in every MVS ROM |
+| `$C126C4-$C126E9` | 38 | in `SystemIoMvs`: a slot LED cycle (every 4 frames, the next slot) | skipped by a `bra` in SP-S2 and 13 other MVS ROMs; a `bne` in US U3 and Japan J3 alt, where it runs while the status is 1 (eyecatcher); absent from the AES ROMs |
+| `$C132B4-$C1334B` | 152 | `CardFillTest` | a leftover common to every version (above) |
+| `$C14EA2-$C16197` | 4,854 | `ControllerTest`, `CardUtility` | the AES boot menus (above) |
+| `$C16198-$C16AA9`, `$C16DCE-$C1705F` | 2,980 | the debug monitor and its texts | the exception handler of the development and hotel ROMs (above) |
+| `$C16C42-$C16C6D` | 44 | `ChecksumCompare` | as `CardFillTest` |
+| `$C17BFA`, `$C199A8` | 2 x 12 | `HwCalendarFixAddresses` and a second copy `CalendarFixAddresses` (jumped over by a `bra.w` in `TestCalendar`): six fix positions on rows `$17` and `$1A` | both copies in every ROM but the development ROM (one copy), referenced in none |
+| `$C1849C-$C184EB` | 80 | `ControllerTypeScan`, code after the `rts` of `ControllerSetup` | called 6 times by `ControllerSetup` in the three AES ROMs, after each `REG_POUTPUT` pattern: the controller type detection; unreferenced in every MVS ROM, where `ControllerSetup` only reads the mahjong DIP |
+| `$C19884-$C1988F` | 12 | `HardDipCoin2Text`, `HardDipCoin4Text` (2, 4) | the COIN SWITCH row (hard DIP 2) of the US hard DIP page: referenced in US Ver. 1, U4 and U3; present and unreferenced in US Ver. 2?, Europe Ver. 1, Asia MV1B, Asia MV1C and AES Asia; absent from the others |
+| `$C19CF6-$C1A105` | 1,040 | `CabinetSettingsOld` | as above |
+| `SystemIoBuildFlag` | 2 | a test whose branch goes to the next instruction | every MVS version (above) |
+
+Apart from the tables for the games, about 9,700 of the 54,349 bytes of code and data of SP-S2 are
+never reached, and most pieces have a user in some other version: SP-S2 is built
+from the code shared by the AES and MVS system ROMs, with the AES-only parts (power-on test without a
+cartridge, controller detection, boot menus) left in place. The slot LED cycle and the COIN SWITCH row
+are MVS features that other MVS versions use.
+
 ## What SP-S2 changed against its closest relatives
 
 41 SP-S2 routines differ from at least one of US MVS Ver. 1 (`sp-e`), US MVS Ver. 2? (`sp-u2`) and

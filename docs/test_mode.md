@@ -37,6 +37,35 @@ Up/Down move, A selects; `TestMenuJumpTable` (`$C19290`), in menu order:
 Keys on the settings pages: A and B change a value (held: repeat), Left/Right pick a column or digit,
 C goes back (and saves on the soft DIP pages), D sets.
 
+## Hard DIPs and the cartridge link
+
+`HardDipRows` shows four rows. Outside this page and the raw bits of the I/O check screen, the system
+ROM reads only these switches:
+1 (`CheckSettingMode`), 7 (free play: `StartCreditCheck`, `CreditCheck`, `DeductPlayerCredit`) and 8
+(STOP MODE: `SystemIoMvs` holds everything with interrupts off while it is on); 3 (mahjong panel) is
+read by `ControllerSetup`; and all eight on together start `WorkRamTestLoop` (C).
+
+| Switch (`REG_DIPSW` bit, 0 = on) | On the page | Read by the system ROM |
+|---|---|---|
+| 1 (bit 0) | SETTING MODE | `CheckSettingMode` |
+| 2 (bit 1) | not shown (the US versions show it as COIN SWITCH 2 / 4; SP-S2 keeps the two texts, `HardDipCoin2Text`, `HardDipCoin4Text`, unused) | no |
+| 3 (bit 2) | not shown | `ControllerSetup`: on, `BIOS_P1STATUS` = 3 (mahjong) |
+| 4, 5, 6 (bits 3-5) | COMMUNICATION: OFF, or ON [No 1] to ON [No 4] (switch 6 on; 4 and 5 the cabinet number) | no |
+| 7 (bit 6) | FREE PLAY | credit code |
+| 8 (bit 7) | STOP MODE | `SystemIoMvs` |
+
+The link between boards (NeoGeoDev wiki, Multiplayer and HD6301) is the cartridge's business: League
+Bowling, Riding Hero and Thrash Rally carry an HD6301 microcontroller that talks to the other boards
+over a serial cable, and the game reads `REG_DIPSW` itself (League Bowling copies it to its RAM every
+frame). The system ROM's only link code is the COMMUNICATION row of this page (C: no other read of
+bits 3-5 in SP-S2). In MAME 0.264 the page shows the switches (Riding Hero, switch 6 on, cabinet 2):
+
+![SETTING UP THE HARD DIP with COMMUNICATION ON [No 2]](hard_dip_link.png)
+
+MAME 0.264 cannot run a link: its Riding Hero set loads the HD6301 dump (`rhcom.bin`) but the driver
+has no HD6301 CPU and no serial connection, so two MAME instances cannot be cabled together (C:
+`mame -listxml ridhero` lists the 68000, the Z80 and the YM2610 only).
+
 ## Cabinet settings (`CabinetSettings`)
 
 Stored in backup RAM (`symbols/ram.csv`, README Backup RAM map):
@@ -79,4 +108,5 @@ test build).
 ## Sources
 
 `src/test_mode.s`, `src/hardware_test.s`, `src/boot.s`, `src/power_on.s`; `symbols/rom_names.csv`;
-NeoGeoDev wiki: Memory mapped registers (`REG_SYSTYPE`, `REG_DIPSW`).
+NeoGeoDev wiki: Memory mapped registers (`REG_SYSTYPE`, `REG_DIPSW`), Hardware DIPs, Multiplayer,
+HD6301; MAME 0.264 (`ridhero`).

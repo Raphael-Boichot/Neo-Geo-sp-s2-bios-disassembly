@@ -19,7 +19,8 @@ kinds, _ = T.summary(rom, t)
 
 print('L1 bytes: code %d, data %d, free %d' % tuple(kinds.count(k) for k in 'CDF'))
 print(f'   instructions {len(t.insn)}, code-pointer tables {len(t.tables)}, '
-      f'speculative entries {len(t.speculative)}')
+      f'speculative entries {len(t.speculative)}, conflicts {len(t.conflicts)}')
+print('   speculative: ' + ' '.join(f'{a:06X}' for a, _ in t.speculative))
 
 unres = []
 for a, ins in sorted(t.insn.items()):

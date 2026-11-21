@@ -24,6 +24,9 @@ ABS_RE = re.compile(r'\$([0-9a-f]+)\.([lw])')
 PCREL_RE = re.compile(r'\$([0-9a-f]+)\(pc')
 
 
+VECTOR_BYTES = 0x80
+
+
 def in_rom(a):
     return BASE <= a < BASE + SIZE
 
@@ -211,8 +214,9 @@ def load_hints(path):
 
 def trace(rom, hints):
     t = Tracer(rom, hints)
-    # exception vectors
-    vec = struct.unpack('>64I', rom[:256])
+    # exception vectors: the 32 of $000-$07F; $080-$0FF of a Neo Geo system ROM holds the checksum
+    # and the ID text, not vectors (docs/interrupts.md)
+    vec = struct.unpack('>32I', rom[:VECTOR_BYTES])
     for i, v in enumerate(vec[1:], 1):
         if in_rom(v):
             t.push(v, BASE + 4 * i, 'vector')

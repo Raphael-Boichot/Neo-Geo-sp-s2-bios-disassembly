@@ -564,5 +564,7 @@ Needs Python 3 with `capstone`, GNU binutils for m68k (`binutils-m68k-linux-gnu`
 
 ## Licence
 
-The tools, labels, comments and documents are GPLv3 (`LICENSE`). The ROM contents, and so the
-instructions and data in `src/sp-s2.s`, remain SNK's: they are not covered by that licence.
+The tools, labels, comments and documents are GPLv3 (`LICENSE`). The ROM contents remain SNK's and
+are not covered by that licence: the instructions and data in `src/` and `sm1/src/`, the tile sheets
+in `gfx/sfix/` and every ROM image the Makefile rebuilds. No ROM image is in the repository
+(`.gitignore`); the build needs your own dumps.

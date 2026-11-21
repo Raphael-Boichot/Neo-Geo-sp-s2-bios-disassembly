@@ -8,7 +8,8 @@
    backticked CamelCase names exist in a symbol file
 5. counts stated in README.md, ROADMAP.md and docs/ against the symbol files, src/ram.inc, the
    scenario lists and coverage/; regions.csv tags against rom_names.csv; stale module descriptions
-6. tools: every Python file compiles, every shell script parses
+6. tools: every Python file compiles, every shell script parses; the tracer finds no overlapping
+   instructions and no speculative entry outside the known list (when roms/sp-s2.sp1 is present)
 7. forbidden words in tracked files and commit messages
 
 Prints one line per problem and a summary; exit code 1 when a problem was found.
@@ -238,6 +239,21 @@ for p in sorted(glob.glob('tools/*.py')):
 for p in sorted(glob.glob('tools/*.sh')):
     if subprocess.run(['bash', '-n', p]).returncode:
         bad(f'{p}: shell syntax error')
+
+# the tracer on the real ROM (skipped when roms/sp-s2.sp1 is not there): no overlapping instructions,
+# and the speculative entries are the known ones: the nop halves of the reserved BIOS call slots,
+# PowerOnTestOld, the skipped slot LED cycle, ControllerTest, ChecksumCompare, CabinetSettingsOld
+KNOWN_SPECULATIVE = {0xC00484 + 6 * i for i in range(11)} | {0xC118DC, 0xC126C4, 0xC14EA2, 0xC16C42, 0xC19CF6}
+if os.path.exists('roms/sp-s2.sp1'):
+    sys.path.insert(0, 'tools')
+    import trace as T
+    d = open('roms/sp-s2.sp1', 'rb').read()
+    t = T.trace(bytes(b for i in range(0, len(d), 2) for b in (d[i + 1], d[i])), T.load_hints('tools/hints.txt'))
+    for c in t.conflicts:
+        bad(f'tracer conflict: {c}')
+    for a, _ in t.speculative:
+        if a not in KNOWN_SPECULATIVE:
+            bad(f'tracer: new speculative entry ${a:06X} (type it with a hint, or add it to KNOWN_SPECULATIVE)')
 
 print('7. forbidden words')
 # the words are kept out of this file: the pattern is decoded from hex at run time

@@ -2,7 +2,7 @@
 
 Where the SP-S2 disassembly stands and what comes next, in order. The disassembly itself (full coverage,
 names and a written reference, steps 1-7) is done; step 8, a custom system ROM, is open. Levels L0-L6 are defined in
-`SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-15).
+`SKILL.md`; the measured counts come from `tools/stats.py` and `tools/coverage.py` (2026-11-21).
 
 ## Where we are
 
@@ -181,12 +181,33 @@ checks).
 
 The sources carry a header comment per routine; line comments come from `symbols/comments.csv`
 (HOWTO, Names). Done: `boot.s`, the power-on tests, the slot scan and slot switching, the Z80
-handshake, coins, credits, starts and the LEDs (`power_on.s`, `system.s`). Next, if wanted: the rest of
+handshake, coins, credits, starts and the LEDs (`power_on.s`, `system.s`), and the unused parts
+(comments may sit on a data block too). Next, if wanted: the rest of
 `power_on.s` (slot table merge, book keeping, 1M card save), `calendar.s`, `eyecatcher.s`, then the
 `sm1.sm1` engine core (would need the same file for `tools/sm1.py`).
+
+## Tool checks: done, a few open
+
+From an outside review of the tools (2026-11-21), each point checked against the code first.
+
+- [x] Coverage runs fail closed: `tools/mame_coverage.sh` keeps MAME's exit status and log; an abnormal
+      exit or fewer than 20 traced addresses fails the run and removes its coverage file
+- [x] The tracer seeds the 32 vectors of `$000-$07F` only (`$080-$0FF` is the checksum and ID text; no
+      change in any of the 19 SNK ROMs)
+- [x] Tracer conflicts and speculative entries printed by `tools/stats.py`; `make consistency` fails on a
+      conflict or on a speculative entry outside the 16 known ones
+- [x] Licence: the ROM contents (`src/`, `sm1/src/`, `gfx/sfix/`, rebuilt images) are SNK's, not GPL
+- [ ] BIOS call scan of every program ROM bank (`tools/scan_bios_calls.py` reads the first P ROM only;
+      code in a second bank is not scanned)
+- [ ] Optional: a MAME smoke run (boot, test menu, hardware test, one game) as a check target, with the
+      expected screens compared
+- [ ] Not possible here: checks on a real board (cards, calendar, backup RAM timing), and the cartridge
+      link (MAME 0.264 has no HD6301)
 
 ## Rules
 
 - Every claim tagged C / I / W / ?; forced runs are said to be forced.
-- `make source && make check` before every commit; update this file and the README level table together.
+- `make source && make check && make consistency` before every commit; update this file and the README level
+  table together.
+- A coverage run that fails is not kept: rerun it, never edit `coverage/` by hand.
 - Public references only (SNK ROMs, NeoGeoDev wiki, MAME).

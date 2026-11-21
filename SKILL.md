@@ -57,6 +57,7 @@ tags as the Game Boy Camera and Game Boy Printer disassemblies.
 6. Names live in `symbols/*.csv` (`addr,name,tag,note`): `rom_names.csv`, `ram.csv`, `registers.csv`,
    `cart_header.csv`. Never edit names in `src/`: `make source` regenerates it. `src/ram.inc` lists every
    RAM address used (named, else `ram_XXXXXX` / `bram_XXXXXX`); `x(a5)` is written `(NAME-A5_BASE,a5)`.
+   Line comments: `symbols/comments.csv` (`addr,comment`, instruction starts only, no `|`).
 7. Coverage: `tools/mame_coverage.sh NAME GAME [MODE=dip KEYS=...]` runs MAME with the debugger trace
    streamed through a pipe and keeps the unique executed addresses in `coverage/NAME.txt`;
    `tools/coverage.py` compares them with the static trace (missed code, speculative entries, BIOS calls).

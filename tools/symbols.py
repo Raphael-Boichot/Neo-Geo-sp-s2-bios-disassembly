@@ -105,3 +105,24 @@ def load_modules():
 
 
 MODULES = load_modules()
+
+
+def load_comments(name):
+    """symbols/comments.csv: addr,comment - a line comment for the instruction (or data line) that
+    starts at addr. The generator puts it after the address comment; it changes no byte."""
+    rows = {}
+    path = os.path.join(ROOT, name)
+    if not os.path.exists(path):
+        return rows
+    with open(path, newline='') as f:
+        for r in csv.DictReader(f):
+            a = int(r['addr'], 16)
+            if a in rows:
+                raise SystemExit(f'{name}: address {a:06X} commented twice')
+            if '|' in r['comment'] or '\n' in r['comment'] or not r['comment'].strip():
+                raise SystemExit(f'{name}: bad comment at {a:06X}')
+            rows[a] = r['comment'].strip()
+    return rows
+
+
+COMMENTS = load_comments('comments.csv')

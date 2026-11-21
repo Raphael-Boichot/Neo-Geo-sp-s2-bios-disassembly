@@ -34,7 +34,7 @@ labels = re.findall(r'^(\w+):', src, re.M)
 auto = [n for n in labels if re.match(r'(loc|sub|dat|tbl)_[0-9A-F]{6}$', n)]
 print(f'L3 labels {len(labels)}: named {len(labels) - len(auto)}, automatic {len(auto)}')
 
-code = [ln for ln in src.split('\n') if ln.startswith('\t') and not ln.startswith(('\tdc', '\t.'))]
+code = [ln.split('|')[0] for ln in src.split('\n') if ln.startswith('\t') and not ln.startswith(('\tdc', '\t.'))]
 raw_ram = [ln for ln in code if re.search(r'0x(10|D0)[0-9A-F]{4}\b', ln)]
 raw_a5 = [ln for ln in code if re.search(r'0x[0-9A-F]+\(a5', ln)]
 raw_a4 = [ln for ln in code if re.search(r'-0x[0-9A-F]+\(a4', ln)]

@@ -77,6 +77,7 @@ class Gen:
         self.labels = {}
         self.ptr_longs = set()     # data offsets holding a ROM pointer
         self.ram_used = {}         # RAM address -> name used in the source
+        self.comments_used = set()  # addresses of symbols/comments.csv placed on an instruction
         self.ram_scoped_used = {}  # scoped RAM name -> address (symbols/ram_scoped.csv)
         self.collect()
         self.a4_known = self.track_a4()
@@ -315,9 +316,13 @@ class Gen:
                 if addr in fallback:
                     words = ','.join(f'0x{ins.bytes[i]:02X}{ins.bytes[i + 1]:02X}'
                                      for i in range(0, ins.size, 2))
-                    L.append(f'\tdc.w\t{words}\t| {addr:06X}: {ins.mnemonic} {ins.op_str}')
+                    c = S.COMMENTS.get(addr)
+                    L.append(f'\tdc.w\t{words}\t| {addr:06X}: {ins.mnemonic} {ins.op_str}' + (f'  {c}' if c else ''))
+                    self.comments_used.add(addr)
                 else:
-                    L.append(f'\t{self.conv(ins)}\t| {addr:06X}')
+                    c = S.COMMENTS.get(addr)
+                    L.append(f'\t{self.conv(ins)}\t| {addr:06X}' + (f'  {c}' if c else ''))
+                    self.comments_used.add(addr)
                 off += ins.size
                 continue
             # data or free run until a kind change / label / code
@@ -380,7 +385,7 @@ def write_ram_inc(path, used, scoped=None):
                 f.write(f'\t.equ\t{n},0x{v:06X}\n')
 
 
-LIST_RE = re.compile(r'^\s*\d+\s+([0-9a-f]{4,5})\s.*\|\s([0-9A-F]{6})(?::|\s*$)')
+LIST_RE = re.compile(r'^\s*\d+\s+([0-9a-f]{4,5})\s.*\|\s([0-9A-F]{6})(?::|\s|$)')
 
 
 def assemble(src_dir, src_name, want_listing=False):
@@ -435,7 +440,7 @@ def main():
             lines = open(src_path).read().split('\n')
             for mm in re.finditer(r':(\d+): Error', err):
                 ln = lines[int(mm.group(1)) - 1]
-                ma = re.search(r'\| ([0-9A-F]{6})$', ln)
+                ma = re.search(r'\| ([0-9A-F]{6})(?:  .*)?$', ln)
                 if ma:
                     bad.add(int(ma.group(1), 16))
             if not bad - fallback:
@@ -456,6 +461,10 @@ def main():
         fallback.add(own)
     else:
         sys.exit('did not converge')
+    stray = sorted(set(S.COMMENTS) - g.comments_used)
+    if stray:
+        sys.exit('symbols/comments.csv: not the start of an instruction: ' +
+                 ' '.join(f'{a:06X}' for a in stray))
     write_split(out_dir, g.generate(fallback))
     img, err, _ = assemble(out_dir, 'sp-s2.s')
     if img != rom:

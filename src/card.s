@@ -342,7 +342,7 @@ loc_C137C8:
 	cmpi.b	#0x84,(BIOS_CRDRESULT-A5_BASE,a5)	| C137F8
 	beq.w	CardErrorFull	| C137FE
 	rts	| C13802
-| CardRestoreRequest [C] CardErrorFull: puts the game's CARD request back (BIOS_CRDF from ram_10FDC5, BIOS_CRDPTR, CRDSIZE, CRDNGH, CRDFILE from ram_10FE92-ram_10FE9A) before the save is tried again or given up
+| CardRestoreRequest [C] CardErrorFull: puts the game's CARD request back (BIOS_CRDF from BIOS_CARD_MODE, BIOS_CRDPTR, CRDSIZE, CRDNGH, CRDFILE from CardSavedPtr-CardSavedFile) before the save is tried again or given up
 CardRestoreRequest:
 	move.b	(BIOS_CARD_MODE-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13804
 	move.l	(CardSavedPtr-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1380A
@@ -350,7 +350,7 @@ CardRestoreRequest:
 	move.w	(CardSavedNgh-A5_BASE,a5),(BIOS_CRDNGH-A5_BASE,a5)	| C13816
 	move.w	(CardSavedFile-A5_BASE,a5),(BIOS_CRDFILE-A5_BASE,a5)	| C1381C
 	rts	| C13822
-| DataListMoveCursor [C] erases the list cursor (char $20) at the old line and draws it (char $11) at the new line ram_10FEB8; the card-full list and the card utility COPY/DELETE lists
+| DataListMoveCursor [C] erases the list cursor (char $20) at the old line and draws it (char $11) at the new line DataListCursorNew; the card-full list and the card utility COPY/DELETE lists
 DataListMoveCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13824
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C13828
@@ -366,7 +366,7 @@ DataListMoveCursor:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1384A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1384E
 	rts	| C13852
-| DataListPutCursor [C] MESS_OUT entry for the list cursor: line = ram_10FEB6 mod 6 (ram_10FEB4), character d1
+| DataListPutCursor [C] MESS_OUT entry for the list cursor: line = DataListCursor mod 6 (DataListLine), character d1
 DataListPutCursor:
 	move.w	#0x3,(a0)+	| C13854
 	move.w	(DataListCursor-A5_BASE,a5),d0	| C13858
@@ -423,7 +423,7 @@ loc_C1397C:
 	move.b	d1,d0	| C13982
 loc_C13984:
 	rts	| C13984
-| CardErrorSaveScreen [C] once per message (ram_10FEBA): copies the $500 fix-layer words to $10F300 (the BIOS work RAM below its variables), saves the colours $400002 and $400022, sets them to message colours and clears the fix layer
+| CardErrorSaveScreen [C] once per message (CardErrorScreenSaved): copies the $500 fix-layer words to $10F300 (the BIOS work RAM below its variables), saves the colours $400002 and $400022, sets them to message colours and clears the fix layer
 CardErrorSaveScreen:
 	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13986
 	bne.b	loc_C139E6	| C1398A
@@ -448,7 +448,7 @@ loc_C139AE:
 loc_C139E6:
 	jsr	(ClearFixLayer,pc)	| C139E6
 	rts	| C139EA
-| CardErrorRestoreScreen [C] undoes CardErrorSaveScreen: writes the saved fix layer back, restores the two colours, clears ram_10FEBA (end of CardError)
+| CardErrorRestoreScreen [C] undoes CardErrorSaveScreen: writes the saved fix layer back, restores the two colours, clears CardErrorScreenSaved (end of CardError)
 CardErrorRestoreScreen:
 	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C139EC
 	beq.b	loc_C13A3A	| C139F0
@@ -574,7 +574,7 @@ CardSumByte:
 	add.b	d1,d0	| C13B5E
 	dbra	d6,CardSumByte	| C13B60
 	rts	| C13B64
-| CardFormatFatByte [C] 8-bit card: clears one FAT copy (ram_10FD0E bytes at a0) and marks the first d6+1 blocks (header, directory, FATs) as used (2)
+| CardFormatFatByte [C] 8-bit card: clears one FAT copy (CardFatSize bytes at a0) and marks the first d6+1 blocks (header, directory, FATs) as used (2)
 CardFormatFatByte:
 	movem.l	a0,-(a7)	| C13B66
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C13B6A
@@ -1541,7 +1541,7 @@ loc_C14572:
 	cmpi.b	#0x3,d3	| C14580
 	bcc.b	CardFreeChainSparse	| C14584
 	rts	| C14586
-| CardFindFreeBlockByte [C] 8-bit card: d3 = offset of the first free FAT entry (0), at most ram_10FD08+1 entries
+| CardFindFreeBlockByte [C] 8-bit card: d3 = offset of the first free FAT entry (0), at most CardDirEntries+1 entries
 CardFindFreeBlockByte:
 	swap	d7	| C14588
 	moveq	#0x0,d3	| C1458A
@@ -1818,7 +1818,7 @@ loc_C147EC:
 	dbra	d7,loc_C147EC	| C147EE
 	move.w	0x1C(a6),0x1A(a6)	| C147F2
 	rts	| C147F8
-| CardFatSumByte [C] 8-bit card: d0 = sum of the low bytes of one FAT copy (ram_10FD0E bytes at a0)
+| CardFatSumByte [C] 8-bit card: d0 = sum of the low bytes of one FAT copy (CardFatSize bytes at a0)
 CardFatSumByte:
 	move.b	d0,(REG_DIPSW).l	| C147FA
 	moveq	#0x0,d0	| C14800
@@ -1993,7 +1993,7 @@ loc_C14996:
 	add.b	d1,d0	| C1499E
 	dbra	d7,loc_C14996	| C149A0
 	rts	| C149A4
-| IsSnkRomCard [C] compares the card header with "SNK ROM " (dat_C144F0): detects a read-only SNK ROM card
+| IsSnkRomCard [C] compares the card header with "SNK ROM " (SnkRomCardId): detects a read-only SNK ROM card
 IsSnkRomCard:
 	movea.l	a6,a0	| C149A6
 	moveq	#0x0,d6	| C149A8
@@ -2047,7 +2047,7 @@ loc_C14A26:
 	move.w	#0x80,d0	| C14A2E
 	move.w	d0,(CardType-A5_BASE,a5)	| C14A32
 	bra.w	CardLayoutByte	| C14A36
-| CardDetect [C] finds the card type and size: an SNK ROM card from its header; else writes $AAAA/$5555 patterns: 8-bit card (ram_10FD15 = 0, size in $1000 steps up to $8000), 16-bit card (1, $800 steps up to $4000) or a 16-bit card on every other word ($80); then tests the whole card with $55/$AA and address patterns; d6 = size (0 = none or failed). Called by CardFormat
+| CardDetect [C] finds the card type and size: an SNK ROM card from its header; else writes $AAAA/$5555 patterns: 8-bit card (CardTypeLo = 0, size in $1000 steps up to $8000), 16-bit card (1, $800 steps up to $4000) or a 16-bit card on every other word ($80); then tests the whole card with $55/$AA and address patterns; d6 = size (0 = none or failed). Called by CardFormat
 CardDetect:
 	movea.l	a6,a0	| C14A3A
 	moveq	#0x0,d6	| C14A3C
@@ -2336,7 +2336,7 @@ loc_C14D14:
 loc_C14D2C:
 	moveq	#0x0,d6	| C14D2C
 	rts	| C14D2E
-| CardLayoutByte [C] sets the card layout from its size (CardLayoutTableByte): directory address ram_10FD04 and entry count ram_10FD08, FAT address ram_10FD0A and size ram_10FD0E, data start ram_10FD10
+| CardLayoutByte [C] sets the card layout from its size (CardLayoutTableByte): directory address CardDirectory and entry count CardDirEntries, FAT address CardFat and size CardFatSize, data start CardDataStart
 CardLayoutByte:
 	lsr.w	#0x8,d6	| C14D30
 	andi.w	#0xFFF0,d6	| C14D32
@@ -2955,7 +2955,7 @@ loc_C15638:
 	add.w	d1,d1	| C1563A
 	movea.l	(CardUtilNameKeyHandlers,pc,d1.w),a0	| C1563C
 	jmp	(a0)	| C15640
-| CardUtilNameKeyHandlers [I] FILE USER'S NAME: handlers of the 5 keys before the letters: one saves the name with CARD 6 (END), two move the character cursor left and right (the arrows), two set ram_10FEB8 (to 1 or 0, to 2 or 1) and redraw the screen (meaning of ram_10FEB8 not found)
+| CardUtilNameKeyHandlers [I] FILE USER'S NAME: handlers of the 5 keys before the letters: one saves the name with CARD 6 (END), two move the character cursor left and right (the arrows), two set NameKeyMode (to 1 or 0, to 2 or 1) and redraw the screen (meaning of NameKeyMode not found)
 CardUtilNameKeyHandlers:
 	dc.l	loc_C15656
 	dc.l	loc_C15672
@@ -3074,7 +3074,7 @@ loc_C15792:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1579E
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C157A2
 	rts	| C157A6
-| CardUtilMoveNameCursor [C] FILE USER'S NAME: erases the character cursor at ram_10FEB0, then draws it (char $12) at ram_10FEB2
+| CardUtilMoveNameCursor [C] FILE USER'S NAME: erases the character cursor at NameColumn, then draws it (char $12) at NameColumnNew
 CardUtilMoveNameCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C157A8
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C157AC
@@ -3088,7 +3088,7 @@ CardUtilMoveNameCursor:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C157C6
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C157CA
 	rts	| C157CE
-| CardUtilPutNameCursor [C] MESS_OUT entry for the name cursor under column ram_10FEB0
+| CardUtilPutNameCursor [C] MESS_OUT entry for the name cursor under column NameColumn
 CardUtilPutNameCursor:
 	move.w	#0x3,(a0)+	| C157D0
 	move.w	(NameColumn-A5_BASE,a5),d0	| C157D4
@@ -3143,7 +3143,7 @@ loc_C1585A:
 	beq.b	loc_C1585A	| C15862
 loc_C15864:
 	rts	| C15864
-| CardUtilReadTitles [C] reads every data title on the card (CARD 5 until result $82) into a table at $10C000 (20-byte title, NGH, file number per entry); ram_10FEB0 = last index; with no data, shows the result's message
+| CardUtilReadTitles [C] reads every data title on the card (CARD 5 until result $82) into a table at $10C000 (20-byte title, NGH, file number per entry); DataListLast = last index; with no data, shows the result's message
 CardUtilReadTitles:
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C15866
 	move.l	#CardUtilTitles,(BIOS_CRDPTR-A5_BASE,a5)	| C1586A
@@ -3171,7 +3171,7 @@ loc_C158A4:
 	clr.w	(DataListPageFirst-A5_BASE,a5)	| C158B0
 	clr.l	(DataListCursor-A5_BASE,a5)	| C158B4
 	rts	| C158B8
-| CardUtilDrawTitlePage [C] draws up to 6 titles of the $10C000 table from index ram_10FEB2, with PREVIOUS PAGE / NEXT PAGE
+| CardUtilDrawTitlePage [C] draws up to 6 titles of the $10C000 table from index DataListPageFirst, with PREVIOUS PAGE / NEXT PAGE
 CardUtilDrawTitlePage:
 	clr.w	(DataListLine-A5_BASE,a5)	| C158BA
 	jsr	(ClearFixLayer,pc)	| C158BE
@@ -3244,7 +3244,7 @@ ReadCardDetect:
 	move.b	(REG_STATUS_B).l,d0	| C1597A
 	andi.b	#0x30,d0	| C15980
 	rts	| C15984
-| CardUtilPutText [C] queues the MESS_OUT text at a2 followed by dat_C15CE0
+| CardUtilPutText [C] queues the MESS_OUT text at a2 followed by CardUtilReturnText
 CardUtilPutText:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15986
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1598A
@@ -3474,7 +3474,7 @@ CardUtilWriteProtectedText:
 	dc.b	0x00,0x03,0x70,0xEB,0x01,0x08
 	.ascii	"MEMORY CARD WRITE PROTECTED."
 	dc.b	0xFF,0xFF,0x00,0x00
-| MonitorEntry [C] debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (tbl_C163AC); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset). The exception slots of the AES Development System ROM and the Custom Japanese Hotel ROM point into the monitor (docs/versions.md)
+| MonitorEntry [C] debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (MonitorCommandTable); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset). The exception slots of the AES Development System ROM and the Custom Japanese Hotel ROM point into the monitor (docs/versions.md)
 MonitorEntry:
 	clr.w	(MonitorCause).l	| C16198
 	bra.b	loc_C161A8	| C1619E

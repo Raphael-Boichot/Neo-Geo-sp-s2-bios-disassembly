@@ -171,6 +171,14 @@ Steps 1-7 are done, so work on a modified system ROM can start; its scope is not
 the only build changes are test builds that help the disassembly (reaching hidden code, relocation
 checks).
 
+## Line comments: started
+
+The sources carry a header comment per routine; line comments come from `symbols/comments.csv`
+(HOWTO, Names). Done: `boot.s`, the power-on tests, the slot scan and slot switching, the Z80
+handshake, coins, credits, starts and the LEDs (`power_on.s`, `system.s`). Next, if wanted: the rest of
+`power_on.s` (slot table merge, book keeping, 1M card save), `calendar.s`, `eyecatcher.s`, then the
+`sm1.sm1` engine core (would need the same file for `tools/sm1.py`).
+
 ## Rules
 
 - Every claim tagged C / I / W / ?; forced runs are said to be forced.

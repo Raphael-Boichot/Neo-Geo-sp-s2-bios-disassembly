@@ -164,7 +164,7 @@ loc_C1857C:
 	jsr	(CopyControllerState,pc)	| C185D2
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C185D6
 	lea.l	(SysP2Status-A5_BASE,a5),a1	| C185DA
-| CopyControllerState [C] copies a player's status block (BIOS_P1STATUS..) to ram_10FEE8/ram_10FEEE; a mahjong controller (status 3, wiki) is converted to joystick bits first
+| CopyControllerState [C] copies a player's status block (BIOS_P1STATUS..) to SysP1Status/SysP2Status; a mahjong controller (status 3, wiki) is converted to joystick bits first
 CopyControllerState:
 	cmpi.b	#0x3,(a0)	| C185DE
 	beq.b	loc_C185EE	| C185E2
@@ -365,7 +365,7 @@ MessOutAddress:
 	move.w	(a1)+,d6	| C187D4
 	move.w	d6,(a6)	| C187D6
 	rts	| C187D8
-| MessOutCall [C] MESS_OUT command 10: runs another list (pointer pushed at ram_10FEC6)
+| MessOutCall [C] MESS_OUT command 10: runs another list (pointer pushed at MessOutStackPtr)
 MessOutCall:
 	move.l	(a1)+,d0	| C187DA
 	movea.l	(MessOutStackPtr).l,a3	| C187DC

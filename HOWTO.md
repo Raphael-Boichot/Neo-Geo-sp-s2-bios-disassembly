@@ -78,6 +78,10 @@ Then `make source` and `make check`.
   (every RAM address used; unnamed ones as `ram_XXXXXX` / `bram_XXXXXX`) are generated.
 - Everything else keeps an automatic label: `sub_` (called), `loc_` (jumped to), `dat_` (data),
   `tbl_` (pointer table read through `x(pc,dN.w)`), followed by the address.
+- Line comments are in `symbols/comments.csv` (`addr,comment`): `make source` writes each one after the
+  address comment of the instruction at that address. It stops when an address is not the start of an
+  instruction; a comment may not contain `|`. Comments change no byte. They describe the code and use the
+  register meanings of the NeoGeoDev wiki; claims about behaviour follow the tags of the names and docs.
 - A name is added only from reading the code, from a public document or from an emulator run, tagged
   C / I / ?. Names for reused routines can be ported from the other SNK system ROMs where the bytes match.
 

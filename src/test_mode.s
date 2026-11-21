@@ -251,7 +251,7 @@ loc_C1934A:
 	add.w	d0,d1	| C1934E
 	andi.w	#0x3,d1	| C19350
 	move.w	d1,(CodeNumberDigit-A5_BASE,a5)	| C19354
-| CodeNumberDraw [C] draws the 4 code digits (ram_10FC00), the one under the cursor highlighted; was named TestCodeNumberCard until the card part was found at CodeNumberWrite
+| CodeNumberDraw [C] draws the 4 code digits (CodeNumberEdit), the one under the cursor highlighted; was named TestCodeNumberCard until the card part was found at CodeNumberWrite
 CodeNumberDraw:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19358
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1935C
@@ -882,7 +882,7 @@ SoftDipListCursor:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C19CA0
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C19CA4
 	rts	| C19CA8
-| SoftDipListCursorRow [C] cursor character (d1) at list line ram_10FCDE
+| SoftDipListCursorRow [C] cursor character (d1) at list line ListCursor
 SoftDipListCursorRow:
 	move.w	#0x3,(a0)+	| C19CAA
 	move.w	(ListCursor-A5_BASE,a5),d0	| C19CAE
@@ -1168,7 +1168,7 @@ CabinetOldEachGameText:
 	dc.b	0x00,0x03,0x72,0x31,0x01,0x08
 	.ascii	"SET UP IN EACH GAME"
 	dc.b	0xFF,0x00,0x00
-| CabinetOldDrawRow [C] CabinetSettingsOld: draws row ram_10FCE2 through CabinetOldDrawTable
+| CabinetOldDrawRow [C] CabinetSettingsOld: draws row CabinetOldRow through CabinetOldDrawTable
 CabinetOldDrawRow:
 	move.w	(CabinetOldRow-A5_BASE,a5),d0	| C1A01E
 	add.w	d0,d0	| C1A022
@@ -1220,7 +1220,7 @@ CabinetOldText:
 	dc.b	0xFF,0x00,0x03,0x70,0xB1,0x01,0x08
 	.ascii	"DEMO SOUND"
 	dc.b	0xFF,0xFF,0x00,0x00
-| SoftDipEditor [C] soft DIP of the game in the selected slot: maps that slot, builds the row list from the game's soft DIP block (times, counts, lists: type and index per row in ram_10FC00), copies its 16 bytes from GameSoftDips to BIOS_GAME_DIP; 8 rows per page; Up/Down, A/B change (held: repeat), Left/Right minutes or seconds of a time; C saves (SoftDipSave). MAME: test_soft_dip_* (Sengoku 2, Riding Hero, Alpha Mission II, Top Player's Golf)
+| SoftDipEditor [C] soft DIP of the game in the selected slot: maps that slot, builds the row list from the game's soft DIP block (times, counts, lists: type and index per row in SoftDipRows), copies its 16 bytes from GameSoftDips to BIOS_GAME_DIP; 8 rows per page; Up/Down, A/B change (held: repeat), Left/Right minutes or seconds of a time; C saves (SoftDipSave). MAME: test_soft_dip_* (Sengoku 2, Riding Hero, Alpha Mission II, Top Player's Golf)
 SoftDipEditor:
 	jsr	(SoundSlotSwitch).l	| C1A106
 	jsr	(WaitFrame,pc)	| C1A10C
@@ -1563,7 +1563,7 @@ loc_C1A4AE:
 	move.b	d0,0x5(a1)	| C1A4B6
 	jsr	(SoftDipDrawValue,pc)	| C1A4BA
 	bra.w	loc_C1A324	| C1A4BE
-| SoftDipDrawValue [C] SoftDipEditor: draws the value of row ram_10FCE2 (time mm:ss, count or INFINITE/WITHOUT, list choice)
+| SoftDipDrawValue [C] SoftDipEditor: draws the value of row SoftDipRow (time mm:ss, count or INFINITE/WITHOUT, list choice)
 SoftDipDrawValue:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A4C2
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1A4C6
@@ -1753,7 +1753,7 @@ SoftDipCursor:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1A6F4
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A6F8
 	rts	| C1A6FC
-| SoftDipCursorRow [C] cursor character (d1) at row ram_10FCE2 of the page
+| SoftDipCursorRow [C] cursor character (d1) at row SoftDipRow of the page
 SoftDipCursorRow:
 	move.w	#0x3,(a0)+	| C1A6FE
 	move.w	(SoftDipRow-A5_BASE,a5),d0	| C1A702
@@ -1887,7 +1887,7 @@ BookKeepingCursor:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1A874
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1A878
 	rts	| C1A87C
-| BookKeepingCursorRow [C] cursor character (d1) at list line ram_10FCDE
+| BookKeepingCursorRow [C] cursor character (d1) at list line BookListCursor
 BookKeepingCursorRow:
 	move.w	#0x3,(a0)+	| C1A87E
 	move.w	(BookListCursor-A5_BASE,a5),d0	| C1A882
@@ -2784,7 +2784,7 @@ CabinetEachGameText:
 	dc.b	0x00,0x03,0x72,0x34,0x01,0x08
 	.ascii	"SET UP IN EACH GAME"
 	dc.b	0xFF,0x00,0x00
-| CabinetDrawRow [C] CabinetSettings: draws row ram_10FCE2 through CabinetDrawTable
+| CabinetDrawRow [C] CabinetSettings: draws row CabinetRow through CabinetDrawTable
 CabinetDrawRow:
 	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B3E6
 	add.w	d0,d0	| C1B3EA
@@ -2812,7 +2812,7 @@ CabinetCursor:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1B42A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1B42E
 	rts	| C1B432
-| CabinetCursorRow [C] cursor character (d1) at row ram_10FCE2
+| CabinetCursorRow [C] cursor character (d1) at row CabinetRow
 CabinetCursorRow:
 	move.w	#0x3,(a0)+	| C1B434
 	move.w	(CabinetRow-A5_BASE,a5),d0	| C1B438

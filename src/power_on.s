@@ -3,62 +3,62 @@
 
 | PowerOnTest [C] boot tests: LED latches, then work RAM, backup RAM, palette banks 1/0 and VRAM (test number in d6), calendar, system ROM checksum, memory card; errors go to BootError
 PowerOnTest:
-	move.b	#0xFF,(REG_LEDLATCHES).l	| C11A84
+	move.b	#0xFF,(REG_LEDLATCHES).l	| C11A84  all latches high
 	bsr.w	Delay	| C11A8C
-	move.b	#0xFF,(REG_LEDDATA).l	| C11A90
-	move.b	#0xF7,(REG_LEDLATCHES).l	| C11A98
+	move.b	#0xFF,(REG_LEDDATA).l	| C11A90  LED data $FF: every segment off
+	move.b	#0xF7,(REG_LEDLATCHES).l	| C11A98  pulse latch $F7 (slot LED), then back to $FF
 	bsr.w	Delay	| C11AA0
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11AA4
 	bsr.w	Delay	| C11AAC
-	move.b	#0xEF,(REG_LEDLATCHES).l	| C11AB0
+	move.b	#0xEF,(REG_LEDLATCHES).l	| C11AB0  pulse latch $EF (LED counter 1)
 	bsr.w	Delay	| C11AB8
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11ABC
 	bsr.w	Delay	| C11AC4
-	move.b	#0xDF,(REG_LEDLATCHES).l	| C11AC8
+	move.b	#0xDF,(REG_LEDLATCHES).l	| C11AC8  pulse latch $DF (LED counter 2)
 	bsr.w	Delay	| C11AD0
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C11AD4
-	move.b	d0,(REG_SWPBIOS).l	| C11ADC
+	move.b	d0,(REG_SWPBIOS).l	| C11ADC  system ROM vectors and board fix ROM
 	move.b	d0,(REG_BRDFIX).l	| C11AE2
-	move.b	d0,(REG_RESETCL1).l	| C11AE8
+	move.b	d0,(REG_RESETCL1).l	| C11AE8  both coin lockouts reset
 	move.b	d0,(REG_RESETCL2).l	| C11AEE
-	moveq	#0x0,d6	| C11AF4
+	moveq	#0x0,d6	| C11AF4  d6: number of the test, shown by BootError on a failure
 	lea.l	(WorkRamStart).l,a0	| C11AF6
-	move.w	#0x7FFF,d5	| C11AFC
+	move.w	#0x7FFF,d5	| C11AFC  32K words: the 64 KB of work RAM
 	jsr	(MemTestBlock,pc)	| C11B00
-	move.b	d0,(REG_SRAMUNLOCK).l	| C11B04
+	move.b	d0,(REG_SRAMUNLOCK).l	| C11B04  test 1: backup RAM, writable for the test
 	addq.b	#0x1,d6	| C11B0A
 	lea.l	(BackupRamStart).l,a0	| C11B0C
 	jsr	(BackupRamTest,pc)	| C11B12
-	moveq	#0x2,d6	| C11B16
+	moveq	#0x2,d6	| C11B16  test 2: palette RAM with bank 1 selected
 	lea.l	(0x400000).l,a0	| C11B18
-	move.w	#0xFFF,d5	| C11B1E
+	move.w	#0xFFF,d5	| C11B1E  4K words: one 8 KB bank
 	move.b	d0,(REG_PALBANK1).l	| C11B22
 	jsr	(MemTestBlock,pc)	| C11B28
-	addq.b	#0x1,d6	| C11B2C
+	addq.b	#0x1,d6	| C11B2C  test 3: the same addresses with bank 0
 	lea.l	(0x400000).l,a0	| C11B2E
 	move.b	d0,(REG_PALBANK0).l	| C11B34
 	jsr	(MemTestBlock,pc)	| C11B3A
-	move.b	d0,(REG_PALBANK1).l	| C11B3E
-	addq.b	#0x1,d6	| C11B44
+	move.b	d0,(REG_PALBANK1).l	| C11B3E  bank 1 again
+	addq.b	#0x1,d6	| C11B44  test 4: VRAM
 	lea.l	(REG_VRAMRW).l,a1	| C11B46
-	move.w	#0x1,0x2(a1)	| C11B4C
-	moveq	#0x0,d4	| C11B52
+	move.w	#0x1,0x2(a1)	| C11B4C  VRAM auto-increment 1
+	moveq	#0x0,d4	| C11B52  low VRAM: words $0000-$7FFF
 	move.w	#0x7FFF,d5	| C11B54
 	jsr	(VramTest,pc)	| C11B58
-	move.l	#0x8000,d4	| C11B5C
+	move.l	#0x8000,d4	| C11B5C  high VRAM from $8000: $600 words
 	move.w	#0x5FF,d5	| C11B62
 	jsr	(VramTest,pc)	| C11B66
 	move.b	d0,(REG_SRAMLOCK).l	| C11B6A
-	move.b	(REG_DIPSW).l,d0	| C11B70
+	move.b	(REG_DIPSW).l,d0	| C11B70  REG_DIPSW 0: every hard DIP on
 	bne.w	loc_C11BD6	| C11B76
 	lea.l	(BiosWorkRam).l,a5	| C11B7A
 	jsr	(ClearFixLayer).l	| C11B80
-	move.l	#0xEEE0000,(0x400002).l	| C11B86
+	move.l	#0xEEE0000,(0x400002).l	| C11B86  palette 0: colour 1 = $0EEE (the text), colour 2 = 0
 	lea.l	(MessBuffer-A5_BASE,a5),a0	| C11B90
-	move.l	#WorkRamTestText,(a0)+	| C11B94
+	move.l	#WorkRamTestText,(a0)+	| C11B94  WORK RAM TEST on the fix layer
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C11B9A
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C11B9E
-	jsr	(MessOut).l	| C11BA2
+	jsr	(MessOut).l	| C11BA2  drawn at once, interrupts are off
 | WorkRamTestLoop [C] when REG_DIPSW reads 0 (all hard DIPs on): shows WORK RAM TEST and repeats the RAM tests until a DIP is turned off
 WorkRamTestLoop:
 	moveq	#0x0,d6	| C11BA8
@@ -69,60 +69,60 @@ WorkRamTestLoop:
 	addq.b	#0x1,d6	| C11BBE
 	lea.l	(BackupRamStart).l,a0	| C11BC0
 	jsr	(BackupRamTest,pc)	| C11BC6
-	move.b	(REG_DIPSW).l,d0	| C11BCA
+	move.b	(REG_DIPSW).l,d0	| C11BCA  repeat while every hard DIP is on
 	beq.b	WorkRamTestLoop	| C11BD0
-	jsr	(ClearBackupRam,pc)	| C11BD2
+	jsr	(ClearBackupRam,pc)	| C11BD2  leaving the loop clears the backup RAM
 loc_C11BD6:
-	moveq	#0x8,d0	| C11BD6
+	moveq	#0x8,d0	| C11BD6  calendar command 8: TP pulses once a second
 	jsr	(RtcCommand,pc)	| C11BD8
 	move.b	#0x40,d0	| C11BDC
-	jsr	(WaitRtcPulse,pc)	| C11BE0
-	clr.b	(BIOS_INT1_FRAME_COUNTER).l	| C11BE4
-	move.b	#0x1,(BIOS_INT1_SKIP).l	| C11BEA
-	move.w	#0x2000,sr	| C11BF2
-	jsr	(WaitRtcPulse,pc)	| C11BF6
+	jsr	(WaitRtcPulse,pc)	| C11BE0  wait for a TP rising edge
+	clr.b	(BIOS_INT1_FRAME_COUNTER).l	| C11BE4  count VBlanks from here
+	move.b	#0x1,(BIOS_INT1_SKIP).l	| C11BEA  VBlank handler only counts (BIOS_INT1_SKIP)
+	move.w	#0x2000,sr	| C11BF2  interrupts on until the next pulse
+	jsr	(WaitRtcPulse,pc)	| C11BF6  one second later
 	move.w	#0x2700,sr	| C11BFA
 	clr.b	(BIOS_INT1_SKIP).l	| C11BFE
-	moveq	#0x7,d0	| C11C04
+	moveq	#0x7,d0	| C11C04  calendar command 7: TP back to 4096 Hz
 	jsr	(RtcCommand,pc)	| C11C06
-	move.b	(BIOS_INT1_FRAME_COUNTER).l,d0	| C11C0A
-	subi.b	#0x39,d0	| C11C10
+	move.b	(BIOS_INT1_FRAME_COUNTER).l,d0	| C11C0A  VBlanks counted in one second
+	subi.b	#0x39,d0	| C11C10  below 57: calendar error
 	bcs.w	BootErrorCalendar	| C11C14
-	cmpi.b	#0x7,d0	| C11C18
+	cmpi.b	#0x7,d0	| C11C18  above 63: calendar error
 	bcc.w	BootErrorCalendar	| C11C1C
-	cmpi.l	#Reset,(loc_C00408+2).l	| C11C20
+	cmpi.l	#Reset,(loc_C00408+2).l	| C11C20  bus error slot still jmp Reset: a normal build, run the checksum test
 	bne.w	loc_C11C66	| C11C2A
-	lea.l	(CART_VECTORS).w,a0	| C11C2E
+	lea.l	(CART_VECTORS).w,a0	| C11C2E  checksum of the 128 vector bytes (system ROM vectors mapped at 0)
 	moveq	#0x0,d0	| C11C32
 	moveq	#0x7F,d7	| C11C34
 loc_C11C36:
 	move.b	d0,(REG_DIPSW).l	| C11C36
 	add.b	(a0)+,d0	| C11C3C
 	dbra	d7,loc_C11C36	| C11C3E
-	lea.l	(SystemIdText).l,a0	| C11C42
-	move.l	#0x1FF7E,d7	| C11C48
+	lea.l	(SystemIdText).l,a0	| C11C42  then SystemIdText ($C00082) to the end of the ROM: the checksum word $C00080 is left out
+	move.l	#0x1FF7E,d7	| C11C48  $1FF7E bytes: $C00082-$C1FFFF
 loc_C11C4E:
 	move.b	d0,(REG_DIPSW).l	| C11C4E
 	add.b	(a0)+,d0	| C11C54
 	subq.l	#0x1,d7	| C11C56
 	bne.b	loc_C11C4E	| C11C58
-	moveq	#0x6,d6	| C11C5A
+	moveq	#0x6,d6	| C11C5A  test 6: system ROM checksum
 	cmp.b	(SystemRomChecksum).l,d0	| C11C5C
 	bne.w	loc_C11D46	| C11C62
 loc_C11C66:
-	move.b	#0x5,(BIOS_CRDF).l	| C11C66
+	move.b	#0x5,(BIOS_CRDF).l	| C11C66  CARD function 5 (read title) to see whether a card is in
 	move.l	#BiosWorkRam,(BIOS_CRDPTR).l	| C11C6E
 	clr.w	(BIOS_CRDSIZE).l	| C11C78
 	jsr	(Card,pc)	| C11C7E
-	cmpi.b	#0x81,(BIOS_CRDRESULT).l	| C11C82
-	bne.w	loc_C11D4A	| C11C8A
-	move.b	d0,(REG_CRDUNLOCK1).l	| C11C8E
+	cmpi.b	#0x81,(BIOS_CRDRESULT).l	| C11C82  $81: a card is inserted but not formatted
+	bne.w	loc_C11D4A	| C11C8A  anything else: no card test
+	move.b	d0,(REG_CRDUNLOCK1).l	| C11C8E  card writable (two unlock registers), normal memory access
 	move.b	d0,(REG_CRDUNLOCK2).l	| C11C94
 	move.b	d0,(REG_CRDNORMAL).l	| C11C9A
-	lea.l	(0x800000).l,a0	| C11CA0
+	lea.l	(0x800000).l,a0	| C11CA0  card memory at $800000
 	movea.l	a0,a1	| C11CA6
-	move.w	#0x7FF,d7	| C11CA8
-	move.b	#0x55,d0	| C11CAC
+	move.w	#0x7FF,d7	| C11CA8  2K words
+	move.b	#0x55,d0	| C11CAC  write $55 to the whole range, then check it
 loc_C11CB0:
 	move.b	d0,(REG_DIPSW).l	| C11CB0
 	move.w	d0,(a0)+	| C11CB6
@@ -137,7 +137,7 @@ loc_C11CC2:
 	dbra	d7,loc_C11CC2	| C11CD0
 	move.w	#0x7FF,d7	| C11CD4
 	movea.l	a1,a0	| C11CD8
-	move.b	#0xAA,d0	| C11CDA
+	move.b	#0xAA,d0	| C11CDA  then $AA
 loc_C11CDE:
 	move.b	d0,(REG_DIPSW).l	| C11CDE
 	move.w	d0,(a0)+	| C11CE4
@@ -150,8 +150,8 @@ loc_C11CF0:
 	cmp.b	d1,d0	| C11CF8
 	bne.w	BootErrorMemCard	| C11CFA
 	dbra	d7,loc_C11CF0	| C11CFE
-	movea.l	a1,a0	| C11D02
-	move.w	#0x3FF,d7	| C11D04
+	movea.l	a1,a0	| C11D02  then the address test: each word gets its address high byte, then low byte
+	move.w	#0x3FF,d7	| C11D04  1K pairs of words
 loc_C11D08:
 	move.b	d0,(REG_DIPSW).l	| C11D08
 	move.w	a0,d0	| C11D0E
@@ -181,27 +181,27 @@ BootErrorMemCard:
 loc_C11D46:
 	jmp	(BootError,pc)	| C11D46
 loc_C11D4A:
-	jsr	(PowerOnSetup,pc)	| C11D4A
-	lea.l	(SlotTable).l,a0	| C11D4E
+	jsr	(PowerOnSetup,pc)	| C11D4A  after the tests: calendar, book keeping day, slot scan
+	lea.l	(SlotTable).l,a0	| C11D4E  any slot with a game?
 	moveq	#0x0,d0	| C11D54
 loc_C11D56:
 	tst.w	(a0)	| C11D56
 	bne.b	loc_C11D88	| C11D58
 	addq.l	#0x4,a0	| C11D5A
 	addq.b	#0x1,d0	| C11D5C
-	cmp.b	(SlotCount).l,d0	| C11D5E
+	cmp.b	(SlotCount).l,d0	| C11D5E  up to the board's slot count
 	bne.b	loc_C11D56	| C11D64
-	move.b	(REG_STATUS_A).l,d0	| C11D66
+	move.b	(REG_STATUS_A).l,d0	| C11D66  no game: REG_STATUS_A bit 2 0 is the service switch held
 	btst.b	#0x2,d0	| C11D6C
 	bne.b	loc_C11D84	| C11D70
-	jsr	(IsCard1M).l	| C11D72
+	jsr	(IsCard1M).l	| C11D72  service held and a 1M card with cabinet data: offer the restore
 	tst.b	d5	| C11D78
 	beq.w	loc_C11D84	| C11D7A
 	jmp	(Card1MRecover).l	| C11D7E
 loc_C11D84:
-	jmp	(HardwareTest,pc)	| C11D84
+	jmp	(HardwareTest,pc)	| C11D84  otherwise the hardware test
 loc_C11D88:
-	jmp	(loc_C11028,pc)	| C11D88
+	jmp	(loc_C11028,pc)	| C11D88  a game: on to ClearRamAndVideo and the system modes
 | BootErrorCalendar [C] d6 = 5 (CALENDAR ERROR) when BIOS_INT1_FRAME_COUNTER between two calendar pulses is outside $39-$3F (57-63 frames, about 1 s), then BootError
 BootErrorCalendar:
 	moveq	#0x5,d6	| C11D8C
@@ -209,15 +209,15 @@ BootErrorCalendar:
 | WaitRtcPulse [C] waits for a rising edge of bit 6 of REG_STATUS_A (calendar pulse, wiki register page)
 WaitRtcPulse:
 	move.b	d0,(REG_DIPSW).l	| C11D94
-	move.b	d0,d2	| C11D9A
+	move.b	d0,d2	| C11D9A  d2 = previous value of the status byte
 	move.b	(REG_STATUS_A).l,d0	| C11D9C
 	move.b	d0,d1	| C11DA2
-	eor.b	d1,d2	| C11DA4
+	eor.b	d1,d2	| C11DA4  bits that changed and are now 1: rising edges
 	and.b	d1,d2	| C11DA6
 	andi.b	#0x40,d2	| C11DA8
 	beq.b	WaitRtcPulse	| C11DAC
 	rts	| C11DAE
-| PowerOnSetup [C] after the power-on tests: clears the slot-mode fields, reads the calendar (start of the hour clock), on a new date advances the book keeping day (and month) rings, sets the slot count (bram_D00047: 2, 4 or 6 from REG_SYSTYPE and REG_STATUS_A), checks the Z80, scans the slots and merges the result into SlotTable; on a new day BookNewDayPerGame
+| PowerOnSetup [C] after the power-on tests: clears the slot-mode fields, reads the calendar (start of the hour clock), on a new date advances the book keeping day (and month) rings, sets the slot count (SlotCount: 2, 4 or 6 from REG_SYSTYPE and REG_STATUS_A), checks the Z80, scans the slots and merges the result into SlotTable; on a new day BookNewDayPerGame
 PowerOnSetup:
 	lea.l	(BramA4Base).l,a4	| C11DB0
 	lea.l	(BiosWorkRam).l,a5	| C11DB6
@@ -338,79 +338,79 @@ loc_C11F14:
 	move.b	d0,(REG_BRDFIX).l	| C11F4C
 	move.b	d0,(REG_SWPBIOS).l	| C11F52
 	rts	| C11F58
-| ScanSlots [C] for each slot: selects it, CheckCartridgeId, stores CART_NGH in the table at $10FD00 (4 bytes per slot) and keeps in bram_D00058 the first slot whose CART_EYECATCH_FLAG is 0
+| ScanSlots [C] for each slot: selects it, CheckCartridgeId, stores CART_NGH in the scan table at a3 (4 bytes per slot) and keeps in EyecatchSlot the first slot whose CART_EYECATCH_FLAG is 0
 ScanSlots:
-	move.b	#0xFF,(EyecatchSlot-A4_BASE,a4)	| C11F5A
-	moveq	#0x0,d6	| C11F60
+	move.b	#0xFF,(EyecatchSlot-A4_BASE,a4)	| C11F5A  $FF: no eyecatcher slot found yet
+	moveq	#0x0,d6	| C11F60  d6 = slot x 4, the offset in the table at a3
 loc_C11F62:
 	move.w	d6,d5	| C11F62
 	lsr.w	#0x2,d5	| C11F64
 	move.b	d5,(CurrentSlot-A4_BASE,a4)	| C11F66
-	move.b	d5,(REG_SLOT).l	| C11F6A
-	jsr	(CheckCartridgeId,pc)	| C11F70
+	move.b	d5,(REG_SLOT).l	| C11F6A  select the slot: its header appears at $000100
+	jsr	(CheckCartridgeId,pc)	| C11F70  Z flag set when the slot holds a game
 	bne.b	loc_C11F8C	| C11F74
-	move.w	(CART_NGH).w,(a3,d6.w)	| C11F76
-	tst.b	(CART_EYECATCH_FLAG).w	| C11F7C
+	move.w	(CART_NGH).w,(a3,d6.w)	| C11F76  the game's NGH number in the scan table
+	tst.b	(CART_EYECATCH_FLAG).w	| C11F7C  0: the game leaves the eyecatcher to the system ROM
 	bne.b	loc_C11F8C	| C11F80
-	tst.b	(EyecatchSlot-A4_BASE,a4)	| C11F82
+	tst.b	(EyecatchSlot-A4_BASE,a4)	| C11F82  keep only the first such slot
 	bpl.b	loc_C11F8C	| C11F86
 	move.b	d5,(EyecatchSlot-A4_BASE,a4)	| C11F88
 loc_C11F8C:
 	addq.w	#0x4,d6	| C11F8C
-	cmp.b	d6,d4	| C11F8E
+	cmp.b	d6,d4	| C11F8E  d4 = slot count x 4
 	bne.b	loc_C11F62	| C11F90
 	rts	| C11F92
-| SwitchSlot [C] after sub_C11FB2: slot d5 to CurrentSlot and REG_SLOT, then the cartridge fix layer (REG_CRTFIX) and vectors (REG_SWPROM)
+| SwitchSlot [C] after SoundSlotSwitch: slot d5 to CurrentSlot and REG_SLOT, then the cartridge fix layer (REG_CRTFIX) and vectors (REG_SWPROM)
 SwitchSlot:
-	jsr	(SoundSlotSwitch,pc)	| C11F94
+	jsr	(SoundSlotSwitch,pc)	| C11F94  park the Z80 before its ROM changes
 	move.b	d5,(CurrentSlot).l	| C11F98
 	move.b	d5,(REG_SLOT).l	| C11F9E
-	move.b	d0,(REG_CRTFIX).l	| C11FA4
-	move.b	d0,(REG_SWPROM).l	| C11FAA
+	move.b	d0,(REG_CRTFIX).l	| C11FA4  cartridge fix ROM and M1 ROM
+	move.b	d0,(REG_SWPROM).l	| C11FAA  cartridge vectors at $000000
 	rts	| C11FB0
 | SoundSlotSwitch [C] unless the Z80 already replies 1: sends sound command 1 (prepare for a slot switch, NeoGeoDev wiki) and waits up to 8 x 4 VBlanks for the reply 1; called by SwitchSlot and the slot code
 SoundSlotSwitch:
-	move.b	(REG_SOUND).l,d0	| C11FB2
+	move.b	(REG_SOUND).l,d0	| C11FB2  the Z80 already answers 1: it is parked, nothing to do
 	subq.b	#0x1,d0	| C11FB8
 	beq.w	loc_C12010	| C11FBA
 	move.w	sr,-(a7)	| C11FBE
 	move.l	d1,-(a7)	| C11FC0
-	move.b	#0x1,(SlotSwitching).l	| C11FC2
-	move.w	#0x2000,sr	| C11FCA
-	move.w	#0x7,d1	| C11FCE
+	move.b	#0x1,(SlotSwitching).l	| C11FC2  tell the VBlank handler a switch is under way
+	move.w	#0x2000,sr	| C11FCA  interrupts on: the frame counter must run
+	move.w	#0x7,d1	| C11FCE  8 tries
 loc_C11FD2:
 	swap	d1	| C11FD2
-	move.w	(BIOS_FRAME_COUNTER_LO).l,d1	| C11FD4
+	move.w	(BIOS_FRAME_COUNTER_LO).l,d1	| C11FD4  d1 low word = frame count + 4: the time-out of one try
 	addq.w	#0x4,d1	| C11FDA
-	move.b	#0x1,(REG_SOUND).l	| C11FDC
+	move.b	#0x1,(REG_SOUND).l	| C11FDC  sound command 1: prepare for a ROM switch
 loc_C11FE4:
 	move.b	d0,(REG_DIPSW).l	| C11FE4
-	move.b	(REG_SOUND).l,d0	| C11FEA
+	move.b	(REG_SOUND).l,d0	| C11FEA  reply 1: the Z80 is waiting in its RAM
 	subq.b	#0x1,d0	| C11FF0
 	beq.b	loc_C12002	| C11FF2
-	cmp.w	(BIOS_FRAME_COUNTER_LO).l,d1	| C11FF4
+	cmp.w	(BIOS_FRAME_COUNTER_LO).l,d1	| C11FF4  4 frames without reply: send again
 	bne.b	loc_C11FE4	| C11FFA
 	swap	d1	| C11FFC
 	dbra	d1,loc_C11FD2	| C11FFE
 loc_C12002:
 	move.l	(a7)+,d1	| C12002
 	move.w	(a7)+,sr	| C12004
-	bsr.w	DelayLonger	| C12006
+	bsr.w	DelayLonger	| C12006  a short delay before the caller switches
 	clr.b	(SlotSwitching).l	| C1200A
 loc_C12010:
 	rts	| C12010
 | Z80Check [C] power-on: writes 1 to REG_SOUND and waits up to $C350 reads for the Z80's reply 1; no reply: BootError 8 Z80 ERROR (MAME: boot_error_z80, reply faked away)
 Z80Check:
-	move.b	#0x1,(REG_SOUND).l	| C12012
+	move.b	#0x1,(REG_SOUND).l	| C12012  sound command 1 at power-on: the Z80 runs sm1.sm1
 	bsr.w	DelayLonger	| C1201A
-	move.w	#0xC350,d7	| C1201E
+	move.w	#0xC350,d7	| C1201E  50,000 reads at most
 loc_C12022:
 	move.b	d0,(REG_DIPSW).l	| C12022
 	move.b	(REG_SOUND).l,d0	| C12028
 	subq.b	#0x1,d0	| C1202E
 	beq.b	loc_C1203E	| C12030
 	dbra	d7,loc_C12022	| C12032
-	moveq	#0x8,d6	| C12036
+	moveq	#0x8,d6	| C12036  no reply: boot error 8, Z80 ERROR
 	jmp	(BootError).l	| C12038
 loc_C1203E:
 	bsr.w	DelayLonger	| C1203E
@@ -440,7 +440,7 @@ loc_C1206C:
 	bne.b	loc_C12052	| C12070
 loc_C12072:
 	rts	| C12072
-| SlotListRemoved [C] lists in bram_D00164 (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot; ran with the slots_* chain: League Bowling in place of Sengoku 2 lists Sengoku 2 here
+| SlotListRemoved [C] lists in RemovedGames (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot; ran with the slots_* chain: League Bowling in place of Sengoku 2 lists Sengoku 2 here
 SlotListRemoved:
 	lea.l	(RemovedGames-A4_BASE,a4),a0	| C12074
 	moveq	#0x7,d7	| C12078
@@ -544,7 +544,7 @@ loc_C12158:
 	cmp.w	d4,d6	| C1215A
 	bne.b	loc_C12144	| C1215C
 	rts	| C1215E
-| BookNewDayPerGame [C] on a new day: for each slot with a game, advances the game's day index (bram_D0011A, 36-day ring), clears and dates that day's record in BookGameDays and adds 1 to its long at $D00200
+| BookNewDayPerGame [C] on a new day: for each slot with a game, advances the game's day index (BookGameDayIndex, 36-day ring), clears and dates that day's record in BookGameDays and adds 1 to its long at $D00200
 BookNewDayPerGame:
 	moveq	#0x0,d6	| C12160
 	move.b	d6,(BookSlot-A4_BASE,a4)	| C12162
@@ -736,12 +736,12 @@ loc_C1235E:
 | PreviousSlot [I] selects the previous slot holding a game and loads it (loc_C123F6, as NextSlot); never ran
 PreviousSlot:
 	lea.l	(BramA4Base).l,a4	| C12372
-	move.b	#0xFF,(REG_LEDLATCHES).l	| C12378
+	move.b	#0xFF,(REG_LEDLATCHES).l	| C12378  LED latches idle
 	bsr.w	DelayLonger	| C12380
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C12384
 	move.b	(CurrentSlot-A4_BASE,a4),d5	| C12388
 loc_C1238C:
-	subq.b	#0x1,d5	| C1238C
+	subq.b	#0x1,d5	| C1238C  slot before, wrapping to the last one
 	bpl.b	loc_C12396	| C1238E
 	move.b	(SlotCount-A4_BASE,a4),d5	| C12390
 	subq.b	#0x1,d5	| C12394
@@ -750,26 +750,26 @@ loc_C12396:
 	move.b	d5,d0	| C12398
 	add.w	d0,d0	| C1239A
 	add.w	d0,d0	| C1239C
-	tst.w	(a2,d0.w)	| C1239E
+	tst.w	(a2,d0.w)	| C1239E  entry 0: no game in that slot
 	beq.b	loc_C1238C	| C123A2
-	bra.w	loc_C123F6	| C123A4
+	bra.w	loc_C123F6	| C123A4  then as NextSlot
 | LoadCurrentSlot [C] loads the backup data and soft DIPs of the game in CurrentSlot without switching (loc_C1241E)
 LoadCurrentSlot:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C123A8
 	lea.l	(BramA4Base).l,a4	| C123AE
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C123B4
 	move.b	(CurrentSlot-A4_BASE,a4),d5	| C123B8
-	move.b	d5,(BookSlot-A4_BASE,a4)	| C123BC
+	move.b	d5,(BookSlot-A4_BASE,a4)	| C123BC  the slot whose data is loaded
 	bra.w	loc_C1241E	| C123C0
-| NextSlot [C] selects the next slot holding a game: slot number on the LEDs, SwitchSlot, sound command 3; then copies the game's backup data from $D00320 + index x $1000, its soft DIPs to BIOS_GAME_DIP and sets the book keeping pointers (bram_D0010A, D001A4, D001A8, D0010E)
+| NextSlot [C] selects the next slot holding a game: slot number on the LEDs, SwitchSlot, sound command 3; then copies the game's backup data from $D00320 + index x $1000, its soft DIPs to BIOS_GAME_DIP and sets the book keeping pointers (BookGameTodayPtr, BookGameMonthPtr, BookGameHoursPtr, BookGameTotalPtr)
 NextSlot:
-	lea.l	(BramA4Base).l,a4	| C123C4
-	move.b	#0xFF,(REG_LEDLATCHES).l	| C123CA
+	lea.l	(BramA4Base).l,a4	| C123C4  a4 = BramA4Base: backup RAM variables a4-relative
+	move.b	#0xFF,(REG_LEDLATCHES).l	| C123CA  LED latches idle
 	bsr.w	DelayLonger	| C123D2
-	lea.l	(SlotTable-A4_BASE,a4),a2	| C123D6
+	lea.l	(SlotTable-A4_BASE,a4),a2	| C123D6  4 bytes per slot: NGH, settings index
 	move.b	(CurrentSlot-A4_BASE,a4),d5	| C123DA
 loc_C123DE:
-	addq.b	#0x1,d5	| C123DE
+	addq.b	#0x1,d5	| C123DE  slot after, wrapping to slot 0
 	cmp.b	(SlotCount-A4_BASE,a4),d5	| C123E0
 	bcs.b	loc_C123E8	| C123E4
 	moveq	#0x0,d5	| C123E6
@@ -778,56 +778,56 @@ loc_C123E8:
 	move.b	d5,d0	| C123EA
 	add.w	d0,d0	| C123EC
 	add.w	d0,d0	| C123EE
-	tst.w	(a2,d0.w)	| C123F0
+	tst.w	(a2,d0.w)	| C123F0  entry 0: no game in that slot
 	beq.b	loc_C123DE	| C123F4
 loc_C123F6:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C123F6
-	move.b	d5,d0	| C123FC
+	move.b	d5,d0	| C123FC  slot number to the LED display (inverted)
 	not.b	d0	| C123FE
 	move.b	d0,(REG_LEDDATA).l	| C12400
-	move.b	#0xF7,(REG_LEDLATCHES).l	| C12406
+	move.b	#0xF7,(REG_LEDLATCHES).l	| C12406  latch $F7: the slot LED
 	move.b	d5,(BookSlot-A4_BASE,a4)	| C1240E
-	jsr	(SwitchSlot,pc)	| C12412
-	move.b	#0x3,(REG_SOUND).l	| C12416
+	jsr	(SwitchSlot,pc)	| C12412  park the Z80, select the slot and its ROMs
+	move.b	#0x3,(REG_SOUND).l	| C12416  Z80 restarts on the new cartridge M1 ROM
 loc_C1241E:
 	moveq	#0x0,d0	| C1241E
 	move.b	(CurrentSlot-A4_BASE,a4),d0	| C12420
 	add.w	d0,d0	| C12424
 	add.w	d0,d0	| C12426
-	move.w	(a2,d0.w),(BIOS_GAME_DIP-A5_BASE,a5)	| C12428
-	move.w	0x2(a2,d0.w),d0	| C1242E
+	move.w	(a2,d0.w),(BIOS_GAME_DIP-A5_BASE,a5)	| C12428  the NGH first in BIOS_GAME_DIP
+	move.w	0x2(a2,d0.w),d0	| C1242E  low byte of the second word: the game's settings index 0-7
 	andi.w	#0xFF,d0	| C12432
 	move.w	d0,d6	| C12436
-	ror.w	#0x4,d0	| C12438
+	ror.w	#0x4,d0	| C12438  index x $1000: one 4 KB backup block per game
 	addi.l	#GameBackupData,d0	| C1243A
 	movea.l	d0,a0	| C12440
-	movea.l	(CART_BACKUP_PTR).w,a1	| C12442
+	movea.l	(CART_BACKUP_PTR).w,a1	| C12442  copy the block to the game's backup area in work RAM
 	moveq	#0x0,d0	| C12446
 	move.w	(CART_BACKUP_SIZE).w,d0	| C12448
 	movea.l	a1,a2	| C1244C
 	adda.l	d0,a2	| C1244E
 loc_C12450:
-	move.b	d0,(REG_DIPSW).l	| C12450
+	move.b	d0,(REG_DIPSW).l	| C12450  watchdog on every byte
 	move.b	(a0)+,(a1)+	| C12456
 	cmpa.l	a2,a1	| C12458
 	bcs.b	loc_C12450	| C1245A
 	move.w	d6,d0	| C1245C
-	lsl.w	#0x4,d0	| C1245E
+	lsl.w	#0x4,d0	| C1245E  16 bytes of soft DIPs per game
 	lea.l	(GameSoftDips-A4_BASE,a4),a1	| C12460
 	lea.l	(a1,d0.w),a1	| C12464
 	lea.l	(BIOS_GAME_DIP-A5_BASE,a5),a0	| C12468
-	move.w	(a0),d0	| C1246C
+	move.w	(a0),d0	| C1246C  the NGH, before the copy
 	move.l	(a1)+,(a0)+	| C1246E
 	move.l	(a1)+,(a0)+	| C12470
 	move.l	(a1)+,(a0)+	| C12472
 	move.l	(a1)+,(a0)+	| C12474
-	cmpi.w	#0x5,d0	| C12476
+	cmpi.w	#0x5,d0	| C12476  NGH 5, Magician Lord:
 	bne.b	loc_C12488	| C1247A
-	tst.b	(DemoSoundOff-A4_BASE,a4)	| C1247C
+	tst.b	(DemoSoundOff-A4_BASE,a4)	| C1247C  DEMO SOUND WITHOUT sets its soft DIP byte 6 to 1
 	beq.b	loc_C12488	| C12480
 	move.b	#0x1,(BIOS_GAME_DIP_06-A5_BASE,a5)	| C12482
 loc_C12488:
-	jsr	(GetGameDaysPtr,pc)	| C12488
+	jsr	(GetGameDaysPtr,pc)	| C12488  book keeping pointers of this game: today,
 	lea.l	(BookGameDayIndex-A4_BASE,a4),a1	| C1248C
 	moveq	#0x0,d0	| C12490
 	move.b	(a1,d6.w),d0	| C12492
@@ -837,28 +837,28 @@ loc_C12488:
 	move.w	d6,d0	| C124A0
 	add.w	d0,d0	| C124A2
 	add.w	d0,d0	| C124A4
-	movea.l	(BookGameMonthsTable,pc,d0.w),a0	| C124A6
+	movea.l	(BookGameMonthsTable,pc,d0.w),a0	| C124A6  this month,
 	move.b	(LastBootMonth-A4_BASE,a4),d0	| C124AA
 	jsr	(BcdToBinary,pc)	| C124AE
 	lsl.w	#0x4,d0	| C124B2
-	lea.l	-0x10(a0,d0.w),a0	| C124B4
+	lea.l	-0x10(a0,d0.w),a0	| C124B4  months are 1-12: record month - 1
 	move.l	a0,(BookGameMonthPtr-A4_BASE,a4)	| C124B8
 	move.w	d6,d0	| C124BC
-	jsr	(GetGameHourCountsPtr,pc)	| C124BE
+	jsr	(GetGameHourCountsPtr,pc)	| C124BE  the hour counts,
 	move.l	a0,(BookGameHoursPtr-A4_BASE,a4)	| C124C2
 	move.w	d6,d0	| C124C6
 	lsl.w	#0x4,d0	| C124C8
-	lea.l	(BookGameTotals-A4_BASE,a4),a0	| C124CA
+	lea.l	(BookGameTotals-A4_BASE,a4),a0	| C124CA  and its totals record
 	lea.l	(a0,d0.w),a0	| C124CE
 	move.l	a0,(BookGameTotalPtr-A4_BASE,a4)	| C124D2
-	move.b	#0xFF,(REG_LEDLATCHES).l	| C124D6
+	move.b	#0xFF,(REG_LEDLATCHES).l	| C124D6  LED latches idle
 	move.b	d0,(REG_SRAMLOCK).l	| C124DE
 	rts	| C124E4
 | BookGameMonthsTable [C] BookGameMonths + game index x $C0, 8 entries
 BookGameMonthsTable:
 	dc.b	0x00,0xD0,0x95,0x20,0x00,0xD0,0x95,0xE0,0x00,0xD0,0x96,0xA0,0x00,0xD0,0x97,0x60
 	dc.b	0x00,0xD0,0x98,0x20,0x00,0xD0,0x98,0xE0,0x00,0xD0,0x99,0xA0,0x00,0xD0,0x9A,0x60
-| GetGameDaysPtr [C] a0 = the BookGameDays area of the game in slot bram_D00109 (BookGameDaysTable)
+| GetGameDaysPtr [C] a0 = the BookGameDays area of the game in slot BookSlot (BookGameDaysTable)
 GetGameDaysPtr:
 	moveq	#0x0,d0	| C12506
 	move.b	(BookSlot-A4_BASE,a4),d0	| C12508
@@ -883,7 +883,7 @@ GetGameDayCountPtr:
 	lea.l	(BookGameDayCount-A4_BASE,a4),a0	| C12550
 	lea.l	(a0,d0.w),a0	| C12554
 	rts	| C12558
-| GetGameHourCountsPtr [C] a0 = $D0A1A0 + game index x $60 (tbl_C12572): 24 longs, one per hour, incremented by DeductPlayerCredit at index bram_D0005A (the hour clock)
+| GetGameHourCountsPtr [C] a0 = $D0A1A0 + game index x $60 (BookGameHoursTable): 24 longs, one per hour, incremented by DeductPlayerCredit at index ClockHour4 (the hour clock)
 GetGameHourCountsPtr:
 	moveq	#0x0,d0	| C1255A
 	move.b	(BookSlot-A4_BASE,a4),d0	| C1255C
@@ -976,21 +976,21 @@ loc_C1266A:
 | WriteLedData [C] writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay
 WriteLedData:
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C1268A
-	bsr.w	Delay	| C12692
-	not.b	d5	| C12696
+	bsr.w	Delay	| C12692  latches idle, then the data
+	not.b	d5	| C12696  segments are active low
 	move.b	d5,(REG_LEDDATA).l	| C12698
-	move.b	#0xF7,(REG_LEDLATCHES).l	| C1269E
+	move.b	#0xF7,(REG_LEDLATCHES).l	| C1269E  latch $F7: the slot LED
 	bsr.w	Delay	| C126A6
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C126AA
 	rts	| C126B2
 | SystemIoMvs [C] MVS part of SystemIo: slot LED, I/O check LEDs, 1M card save request, the test button (TestModeEntry), the coin inputs (CountCoin x 2, CountService), the start compulsion reset on a coin, the coin sound, the mechanical coin counter pulses, HourClockTick and the two credit LED counters
 SystemIoMvs:
-	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C126B4
+	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C126B4  AES: nothing to do
 	bne.b	loc_C126BC	| C126B8
 	rts	| C126BA
 loc_C126BC:
 	cmpi.b	#0x1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C126BC
-	bra.b	loc_C126EA	| C126C2
+	bra.b	loc_C126EA	| C126C2  always taken: the slot LED cycle below never runs
 	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C126C4
 	andi.b	#0x3,d0	| C126C8
 	bne.b	loc_C126EA	| C126CC
@@ -1004,20 +1004,20 @@ loc_C126BC:
 loc_C126E6:
 	move.b	d0,(LedSlotDisplay-A5_BASE,a5)	| C126E6
 loc_C126EA:
-	tst.b	(IoCheckActive-A5_BASE,a5)	| C126EA
+	tst.b	(IoCheckActive-A5_BASE,a5)	| C126EA  the I/O check screen drives the LEDs itself
 	bne.b	loc_C126F8	| C126EE
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C126F0
 loc_C126F8:
-	tst.b	(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C126F8
+	tst.b	(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C126F8  not during the init pass
 	beq.b	loc_C12732	| C126FC
-	btst.b	#0x4,(CoinCounterPulse).l	| C126FE
+	btst.b	#0x4,(CoinCounterPulse).l	| C126FE  a coin counter pulse is on: skip the card save and STOP MODE this frame
 	bne.b	loc_C12732	| C12706
-	jsr	(Card1MSaveCabinet,pc)	| C12708
-	move.b	(REG_DIPSW).l,d0	| C1270C
+	jsr	(Card1MSaveCabinet,pc)	| C12708  SELECT P1 with a 1M card: cabinet save
+	move.b	(REG_DIPSW).l,d0	| C1270C  hard DIP 8 (STOP MODE), 0 when on
 	andi.b	#0x80,d0	| C12712
 	bne.b	loc_C12732	| C12716
 	move.w	sr,d1	| C12718
-	move.w	#0x2700,sr	| C1271A
+	move.w	#0x2700,sr	| C1271A  on: everything stops, interrupts off, until it is turned off
 loc_C1271E:
 	move.b	d0,(REG_DIPSW).l	| C1271E
 	move.b	(REG_DIPSW).l,d0	| C12724
@@ -1027,100 +1027,100 @@ loc_C1271E:
 loc_C12732:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12732
 	lea.l	(BramA4Base).l,a4	| C12738
-	move.b	(REG_SYSTYPE).l,d0	| C1273E
+	move.b	(REG_SYSTYPE).l,d0	| C1273E  system inputs, inverted: 1 = pressed
 	not.b	d0	| C12744
 	move.b	(SysTypeInputs-A5_BASE,a5),d1	| C12746
 	move.b	d0,(SysTypeInputs-A5_BASE,a5)	| C1274A
-	eor.b	d0,d1	| C1274E
+	eor.b	d0,d1	| C1274E  bits newly pressed this frame
 	and.b	d0,d1	| C12750
 	move.b	d1,(SysTypeNew-A5_BASE,a5)	| C12752
-	tst.b	(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C12756
+	tst.b	(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C12756  not during the init pass
 	beq.b	loc_C12768	| C1275A
-	btst.b	#0x7,d1	| C1275C
+	btst.b	#0x7,d1	| C1275C  bit 7: the test button
 	beq.b	loc_C12768	| C12760
 	jmp	(TestModeEntry).l	| C12762
 loc_C12768:
-	move.b	(REG_STATUS_A).l,d0	| C12768
+	move.b	(REG_STATUS_A).l,d0	| C12768  coin and service inputs, inverted: 1 = active
 	not.b	d0	| C1276E
 	move.b	(CoinInputsPrevious-A4_BASE,a4),d2	| C12770
 	move.b	(CoinInputs-A4_BASE,a4),d1	| C12774
 	move.b	d1,(CoinInputsPrevious-A4_BASE,a4)	| C12778
 	move.b	d0,(CoinInputs-A4_BASE,a4)	| C1277C
-	or.b	d1,d2	| C12780
+	or.b	d1,d2	| C12780  d2 = inactive on both of the two previous frames
 	not.b	d2	| C12782
-	eor.b	d0,d1	| C12784
+	eor.b	d0,d1	| C12784  d1 = newly active this frame
 	and.b	d0,d1	| C12786
 	move.b	d1,(CoinInputsNew-A4_BASE,a4)	| C12788
-	and.b	d0,d2	| C1278C
-	moveq	#0x0,d7	| C1278E
-	moveq	#0x1,d3	| C12790
+	and.b	d0,d2	| C1278C  d2 = active now after two inactive frames: one coin
+	moveq	#0x0,d7	| C1278E  d7 set by CountCoin when a coin was counted
+	moveq	#0x1,d3	| C12790  coin 1: input bit 0, counter 0, record offset +4 (COIN1)
 	moveq	#0x0,d4	| C12792
 	move.w	#0x4,d5	| C12794
-	movea.l	(BookTodayPtr-A4_BASE,a4),a2	| C12798
+	movea.l	(BookTodayPtr-A4_BASE,a4),a2	| C12798  today's and this month's CABINET/COIN records
 	movea.l	(BookMonthPtr-A4_BASE,a4),a1	| C1279C
 	lea.l	(CoinCounts-A4_BASE,a4),a6	| C127A0
-	lea.l	(Coin1Coins-A4_BASE,a4),a3	| C127A4
+	lea.l	(Coin1Coins-A4_BASE,a4),a3	| C127A4  a3: coins and credits per play of coin slot 1
 	jsr	(CountCoin,pc)	| C127A8
-	moveq	#0x1,d4	| C127AC
+	moveq	#0x1,d4	| C127AC  coin 2: input bit 1, counter 1, record offset +8 (COIN2)
 	moveq	#0x8,d5	| C127AE
 	moveq	#0x2,d3	| C127B0
-	addq.l	#0x2,a3	| C127B2
+	addq.l	#0x2,a3	| C127B2  Coin2Coins
 	jsr	(CountCoin,pc)	| C127B4
 	jsr	(CountService,pc)	| C127B8
-	tst.b	d7	| C127BC
+	tst.b	d7	| C127BC  a coin: restart the start compulsion timer, one coin sound
 	beq.b	loc_C127CA	| C127BE
 	move.w	(StartCompulsionTime-A4_BASE,a4),(BIOS_SELECT_TIMER-A5_BASE,a5)	| C127C0
 	addq.b	#0x1,(CoinSoundCount-A5_BASE,a5)	| C127C6
 loc_C127CA:
 	jsr	(PlayCoinSound,pc)	| C127CA
-	tst.b	(TestModeActive-A5_BASE,a5)	| C127CE
+	tst.b	(TestModeActive-A5_BASE,a5)	| C127CE  no mechanical counters in test mode
 	bne.w	loc_C1282A	| C127D2
-	move.b	(CoinCounterPulse-A4_BASE,a4),d0	| C127D6
+	move.b	(CoinCounterPulse-A4_BASE,a4),d0	| C127D6  a pulse in progress: count it down
 	beq.w	loc_C12806	| C127DA
-	lea.l	(REG_RESETCC1).l,a0	| C127DE
+	lea.l	(REG_RESETCC1).l,a0	| C127DE  off phase: REG_RESETCC1/2
 	moveq	#0x0,d1	| C127E4
 	move.b	(CoinCounterIndex-A4_BASE,a4),d1	| C127E6
 	add.w	d1,d1	| C127EA
 	subq.b	#0x1,d0	| C127EC
 	move.b	d0,(CoinCounterPulse-A4_BASE,a4)	| C127EE
-	andi.b	#0x10,d0	| C127F2
+	andi.b	#0x10,d0	| C127F2  counts $1E-$10 (bit 4 set): on phase, REG_SETCC1/2
 	beq.b	loc_C127FE	| C127F6
 	lea.l	(REG_SETCC1).l,a0	| C127F8
 loc_C127FE:
-	move.b	d0,(a0,d1.w)	| C127FE
+	move.b	d0,(a0,d1.w)	| C127FE  counter 1 or 2 (registers 2 bytes apart)
 	bra.w	loc_C1282A	| C12802
 loc_C12806:
-	moveq	#0x0,d7	| C12806
+	moveq	#0x0,d7	| C12806  no pulse: start one for the first counter with coins pending
 	lea.l	(CoinCounterPending-A4_BASE,a4),a6	| C12808
 loc_C1280C:
 	tst.b	(a6,d7.w)	| C1280C
 	beq.b	loc_C12822	| C12810
 	subq.b	#0x1,(a6,d7.w)	| C12812
 	move.b	d7,(CoinCounterIndex-A4_BASE,a4)	| C12816
-	move.b	#0x1F,(CoinCounterPulse-A4_BASE,a4)	| C1281A
+	move.b	#0x1F,(CoinCounterPulse-A4_BASE,a4)	| C1281A  from $1F: 15 frames on, then 16 off
 	bra.b	loc_C1282A	| C12820
 loc_C12822:
 	addq.b	#0x1,d7	| C12822
 	cmpi.b	#0x2,d7	| C12824
 	bne.b	loc_C1280C	| C12828
 loc_C1282A:
-	jsr	(HourClockTick,pc)	| C1282A
+	jsr	(HourClockTick,pc)	| C1282A  software clock
 	tst.b	(IoCheckActive-A5_BASE,a5)	| C1282E
 	bne.b	loc_C1285E	| C12832
-	move.b	(Credits-A4_BASE,a4),d0	| C12834
+	move.b	(Credits-A4_BASE,a4),d0	| C12834  LED counter 1 shows Credits on even frames,
 	move.b	#0xEF,d1	| C12838
 	btst.b	#0x0,(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5)	| C1283C
 	beq.b	loc_C1284C	| C12842
-	move.b	(Credits2-A4_BASE,a4),d0	| C12844
+	move.b	(Credits2-A4_BASE,a4),d0	| C12844  LED counter 2 shows Credits2 on odd frames
 	move.b	#0xDF,d1	| C12848
 loc_C1284C:
-	not.b	d0	| C1284C
+	not.b	d0	| C1284C  segments active low
 	move.b	d0,(REG_LEDDATA).l	| C1284E
 	jsr	(LockBackupRamUnless,pc)	| C12854
 	move.b	d1,(REG_LEDLATCHES).l	| C12858
 loc_C1285E:
 	rts	| C1285E
-| HourClockTick [C] software clock started from the calendar at power-on: every 60 VBlanks (bram_D0005D) adds a second (D0005C), minute (D0005B) and hour x 4 (D0005A, 0-$5C)
+| HourClockTick [C] software clock started from the calendar at power-on: every 60 VBlanks (ClockFrames) adds a second (D0005C), minute (D0005B) and hour x 4 (D0005A, 0-$5C)
 HourClockTick:
 	subq.b	#0x1,(ClockFrames-A4_BASE,a4)	| C12860
 	bne.w	loc_C128A4	| C12864
@@ -1139,45 +1139,45 @@ HourClockTick:
 	clr.b	(ClockHour4-A4_BASE,a4)	| C128A0
 loc_C128A4:
 	rts	| C128A4
-| CountCoin [C] a coin on input d3: counts it (bram_D00024 + d4), adds it to today's and this month's CABINET/COIN records (offset d5), and when enough coins are in (Coin1Coins/Coin2Coins) gives the credits (Coin1Credits/Coin2Credits) to Credits in BCD, at most 99
+| CountCoin [C] a coin on input d3: counts it (CoinCounts + d4), adds it to today's and this month's CABINET/COIN records (offset d5), and when enough coins are in (Coin1Coins/Coin2Coins) gives the credits (Coin1Credits/Coin2Credits) to Credits in BCD, at most 99
 CountCoin:
-	and.b	d2,d3	| C128A6
+	and.b	d2,d3	| C128A6  d2 = coin inputs that just went active
 	beq.b	loc_C128E4	| C128A8
-	moveq	#0x1,d7	| C128AA
-	add.b	d7,(a6,d4.w)	| C128AC
-	add.b	d7,0x8(a6,d4.w)	| C128B0
-	tst.b	(TestModeActive-A5_BASE,a5)	| C128B4
+	moveq	#0x1,d7	| C128AA  a coin: d7 = 1 for the caller
+	add.b	d7,(a6,d4.w)	| C128AC  coins toward the next credit
+	add.b	d7,0x8(a6,d4.w)	| C128B0  the coin counter's pending pulses
+	tst.b	(TestModeActive-A5_BASE,a5)	| C128B4  coins in test mode are not booked
 	bne.b	loc_C128C2	| C128B8
-	add.l	d7,(a2,d5.w)	| C128BA
+	add.l	d7,(a2,d5.w)	| C128BA  COIN1 or COIN2 of today and of this month
 	add.l	d7,(a1,d5.w)	| C128BE
 loc_C128C2:
-	move.b	(a6,d4.w),d0	| C128C2
+	move.b	(a6,d4.w),d0	| C128C2  enough coins for the credits of this slot?
 	sub.b	(a3),d0	| C128C6
 	bcs.b	loc_C128E4	| C128C8
-	move.b	d0,(a6,d4.w)	| C128CA
-	sub.b	d0,d0	| C128CE
-	move.b	0x1(a3),d0	| C128D0
+	move.b	d0,(a6,d4.w)	| C128CA  keep the remainder
+	sub.b	d0,d0	| C128CE  clears X for the abcd
+	move.b	0x1(a3),d0	| C128D0  credits per play of this slot
 	move.b	(Credits-A4_BASE,a4),d1	| C128D4
-	abcd	d1,d0	| C128D8
+	abcd	d1,d0	| C128D8  add to Credits in BCD
 	bcc.b	loc_C128E0	| C128DA
-	move.b	#0x99,d0	| C128DC
+	move.b	#0x99,d0	| C128DC  over 99: stay at 99
 loc_C128E0:
 	move.b	d0,(Credits-A4_BASE,a4)	| C128E0
 loc_C128E4:
 	rts	| C128E4
 | CountService [C] the service switch: adds to the SERVICE counters of today's and this month's records and 1 credit
 CountService:
-	btst.b	#0x2,(CoinInputsNew-A4_BASE,a4)	| C128E6
+	btst.b	#0x2,(CoinInputsNew-A4_BASE,a4)	| C128E6  bit 2: the service switch
 	beq.b	loc_C12910	| C128EC
 	moveq	#0x1,d7	| C128EE
 	tst.b	(TestModeActive-A5_BASE,a5)	| C128F0
 	bne.b	loc_C128FE	| C128F4
-	add.l	d7,0xC(a2)	| C128F6
+	add.l	d7,0xC(a2)	| C128F6  SERVICE of today and of this month
 	add.l	d7,0xC(a1)	| C128FA
 loc_C128FE:
-	sub.b	d0,d0	| C128FE
+	sub.b	d0,d0	| C128FE  clears X for the abcd
 	move.b	(Credits-A4_BASE,a4),d0	| C12900
-	abcd	d7,d0	| C12904
+	abcd	d7,d0	| C12904  + 1 credit in BCD, at most 99
 	bcc.b	loc_C1290C	| C12906
 	move.b	#0x99,d0	| C12908
 loc_C1290C:
@@ -1188,55 +1188,55 @@ loc_C12910:
 DeductStartCredits:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12912
 	lea.l	(BramA4Base).l,a4	| C12918
-	lea.l	(PlayerModPrevious-A5_BASE,a5),a1	| C1291E
-	move.b	(BIOS_START_FLAG-A5_BASE,a5),d0	| C12922
+	lea.l	(PlayerModPrevious-A5_BASE,a5),a1	| C1291E  a1: P1 and P2 previous player modes (for CONT.)
+	move.b	(BIOS_START_FLAG-A5_BASE,a5),d0	| C12922  bit 0 P1, bit 1 P2
 	jsr	(DeductPlayerCredit,pc)	| C12926
 	jsr	(DeductPlayerCredit,pc)	| C1292A
 	jsr	(LockBackupRamUnless,pc)	| C1292E
 	rts	| C12932
 | DeductPlayerCredit [C] if the player's bit is set in BIOS_START_FLAG: unless free play (hard DIP 7) subtracts 1 from Credits in BCD (not below 0), then updates the book keeping counters
 DeductPlayerCredit:
-	move.b	(a1)+,d2	| C12934
-	ror.b	#0x1,d0	| C12936
+	move.b	(a1)+,d2	| C12934  d2 = previous mode of this player
+	ror.b	#0x1,d0	| C12936  this player's start bit into carry
 	bcc.b	loc_C12996	| C12938
-	moveq	#0x1,d4	| C1293A
+	moveq	#0x1,d4	| C1293A  one credit
 loc_C1293C:
-	move.b	(REG_DIPSW).l,d5	| C1293C
+	move.b	(REG_DIPSW).l,d5	| C1293C  hard DIP 7 (free play) on: no credit taken
 	andi.b	#0x40,d5	| C12942
 	beq.b	loc_C12958	| C12946
 	move.b	(Credits-A4_BASE,a4),d3	| C12948
-	sub.b	d5,d5	| C1294C
-	sbcd	d4,d3	| C1294E
+	sub.b	d5,d5	| C1294C  clears X for the sbcd
+	sbcd	d4,d3	| C1294E  Credits - d4 in BCD, not below 0
 	bcc.b	loc_C12954	| C12950
 	moveq	#0x0,d3	| C12952
 loc_C12954:
 	move.b	d3,(Credits-A4_BASE,a4)	| C12954
 loc_C12958:
-	movea.l	(BookGameTodayPtr-A4_BASE,a4),a2	| C12958
+	movea.l	(BookGameTodayPtr-A4_BASE,a4),a2	| C12958  PLAY (and CONT. when d2 is not 0) in the game's today,
 	jsr	(BookKeepingCount,pc)	| C1295C
-	movea.l	(BookGameTotalPtr-A4_BASE,a4),a2	| C12960
+	movea.l	(BookGameTotalPtr-A4_BASE,a4),a2	| C12960  total,
 	jsr	(BookKeepingCount,pc)	| C12964
-	movea.l	(BookGameMonthPtr-A4_BASE,a4),a2	| C12968
+	movea.l	(BookGameMonthPtr-A4_BASE,a4),a2	| C12968  and month records,
 	jsr	(BookKeepingCount,pc)	| C1296C
-	movea.l	(BookTodayPtr-A4_BASE,a4),a2	| C12970
+	movea.l	(BookTodayPtr-A4_BASE,a4),a2	| C12970  CABINET/PLAY today,
 	lea.l	0x240(a2),a2	| C12974
 	jsr	(BookKeepingCount,pc)	| C12978
-	movea.l	(BookMonthPtr-A4_BASE,a4),a2	| C1297C
+	movea.l	(BookMonthPtr-A4_BASE,a4),a2	| C1297C  and CABINET/PLAY this month
 	lea.l	0xC0(a2),a2	| C12980
 	jsr	(BookKeepingCount,pc)	| C12984
-	movea.l	(BookGameHoursPtr-A4_BASE,a4),a2	| C12988
+	movea.l	(BookGameHoursPtr-A4_BASE,a4),a2	| C12988  and the game's counter for this hour
 	moveq	#0x0,d4	| C1298C
 	move.b	(ClockHour4-A4_BASE,a4),d4	| C1298E
 	addq.l	#0x1,(a2,d4.w)	| C12992
 loc_C12996:
-	addq.l	#0x4,a0	| C12996
+	addq.l	#0x4,a0	| C12996  next player
 	rts	| C12998
 | CreditDownCount [C] CREDIT_DOWN: for P1 and P2 with BIOS_CREDIT_DEC1/2 set, takes the credit and counts the play like DeductPlayerCredit (CreditDownPlayer)
 CreditDownCount:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C1299A
 	lea.l	(BramA4Base).l,a4	| C129A0
-	lea.l	(PlayerModPrevious-A5_BASE,a5),a1	| C129A6
-	lea.l	(BIOS_CREDIT_DEC1-A5_BASE,a5),a3	| C129AA
+	lea.l	(PlayerModPrevious-A5_BASE,a5),a1	| C129A6  a1: previous player modes (for CONT.)
+	lea.l	(BIOS_CREDIT_DEC1-A5_BASE,a5),a3	| C129AA  a3: BIOS_CREDIT_DEC1 and DEC2, credits to take per player
 	jsr	(CreditDownPlayer,pc)	| C129AE
 	jsr	(CreditDownPlayer,pc)	| C129B2
 	jsr	(LockBackupRamUnless,pc)	| C129B6
@@ -1244,35 +1244,35 @@ CreditDownCount:
 | CreditDownPlayer [C] one player of CreditDownCount (enters DeductPlayerCredit at loc_C1293C)
 CreditDownPlayer:
 	move.b	(a1)+,d2	| C129BC
-	move.b	(a3)+,d4	| C129BE
+	move.b	(a3)+,d4	| C129BE  0: nothing for this player
 	beq.b	loc_C12996	| C129C0
 	bra.w	loc_C1293C	| C129C2
 | BookKeepingCount [C] adds 1 to the long at +4 of the 16-byte record a2, and to +8 when d2 is non-zero (DeductPlayerCredit: one call per record of today, the month, the game..)
 BookKeepingCount:
-	addq.l	#0x1,0x4(a2)	| C129C6
+	addq.l	#0x1,0x4(a2)	| C129C6  PLAY
 	tst.b	d2	| C129CA
 	beq.b	loc_C129D2	| C129CC
-	addq.l	#0x1,0x8(a2)	| C129CE
+	addq.l	#0x1,0x8(a2)	| C129CE  CONT.: the player was already in the game
 loc_C129D2:
 	rts	| C129D2
-| PlayCoinSound [C] once per counted coin (ram_10FEE2), in system mode 2 or more: calls CART_COIN_SOUND, or sends sound command $7F
+| PlayCoinSound [C] once per counted coin (CoinSoundCount), in system mode 2 or more: calls CART_COIN_SOUND, or sends sound command $7F
 PlayCoinSound:
 	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C129D4
 	bne.w	loc_C12A16	| C129D8
-	cmpi.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C129DC
+	cmpi.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C129DC  status 0 or 1 (init pass, eyecatcher): no coin sound
 	bcs.w	loc_C12A16	| C129E2
-	tst.b	(SlotSwitching-A5_BASE,a5)	| C129E6
+	tst.b	(SlotSwitching-A5_BASE,a5)	| C129E6  not while the ROMs are being switched
 	bne.b	loc_C12A16	| C129EA
 	tst.b	(CoinSoundCount-A5_BASE,a5)	| C129EC
 	beq.b	loc_C12A16	| C129F0
 	subq.b	#0x1,(CoinSoundCount-A5_BASE,a5)	| C129F2
-	tst.b	(BiosScreenActive-A5_BASE,a5)	| C129F6
+	tst.b	(BiosScreenActive-A5_BASE,a5)	| C129F6  on a system ROM screen: the board's coin sound
 	beq.b	loc_C12A06	| C129FA
 	move.b	#0x7F,(REG_SOUND).l	| C129FC
 	bra.b	loc_C12A16	| C12A04
 loc_C12A06:
-	jsr	(CART_COIN_SOUND).w	| C12A06
-	lea.l	(BramA4Base).l,a4	| C12A0A
+	jsr	(CART_COIN_SOUND).w	| C12A06  during the game or its demo: the game's own coin sound
+	lea.l	(BramA4Base).l,a4	| C12A0A  the game may have changed a4 and a5
 	lea.l	(BiosWorkRam).l,a5	| C12A10
 loc_C12A16:
 	rts	| C12A16
@@ -1419,7 +1419,7 @@ loc_C12C18:
 	move.l	(BIOS_PLAYER_MOD1-A5_BASE,a5),(PlayerModPrevious-A5_BASE,a5)	| C12C18
 	jsr	(LockBackupRamUnless,pc)	| C12C1E
 	rts	| C12C22
-| BookAddPlayTime [C] adds the counted play time (bram_D00048) to the PLAY TIME field (+$C) of today's, this month's and the game's records, then clears it
+| BookAddPlayTime [C] adds the counted play time (PlayTimeSeconds) to the PLAY TIME field (+$C) of today's, this month's and the game's records, then clears it
 BookAddPlayTime:
 	lea.l	(BramA4Base).l,a4	| C12C24
 	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C12C2A

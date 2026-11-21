@@ -1,0 +1,381 @@
+addr,comment
+C11002,"interrupts off (level 7 mask, supervisor)"
+C11006,any write to REG_DIPSW kicks the watchdog
+C1100C,acknowledge the three interrupt sources
+C11014,"timer interrupt off, auto-animation speed $40"
+C1101C,a5 points at the BIOS work RAM for the whole system ROM
+C11022,"RAM, video, ROM and Z80 tests, then the slot scan; comes back to loc_C11028"
+C1102C,the header byte $80 (MVS) or 0 (AES) becomes the system type games read
+C11038,d0-d3 = 0: four longs cleared per movem
+C11040,work RAM ends at $10FFFF: clear downwards from the top
+C11046,512 x 8 x 16 bytes = 64 KB
+C1104A,kick the watchdog every 128 bytes
+C11074,palette bank 0
+C1107A,palette RAM: $400000-$401FFF
+C11080,128 x 4 x 16 bytes = 8 KB
+C1109E,then palette bank 1
+C110C8,fix layer to blank tiles
+C110CC,"VRAM address and data registers: a1 = REG_VRAMRW, 2(a1) = REG_VRAMMOD"
+C110D2,VRAM address auto-increment 1
+C110D8,"first data word 0, at the VRAM address FixClear left"
+C110DA,d1 = $000000FF: the swaps alternate the words $00FF and $0000
+C110DE,"1,524 x 16 words"
+C1112C,clear the sprite control blocks
+C11136,empty the MESS_OUT command list
+C1113E,reset the controller state
+C11148,back to the top of the stack on every pass
+C11154,bit 7 clear: the system ROM is in control
+C1115C,the status left by the last SYSTEM_RETURN handler (0 at power-on)
+C11160,x 4: one long pointer per status
+C11174,backup RAM in use by the system ROM
+C1117A,gives the next new game a settings index and its defaults
+C11182,BookSlot 8: every slot is done
+C11192,BIOS_USER_MODE 0: init
+C11196,"USER request 0 (init), BIOS_SYSTEM_MODE low byte 0"
+C111A0,frame skip 10
+C111AE,"0 system ROM eyecatcher, 1 the game's own, 2 none"
+C111B8,USER request 1: the game draws its eyecatcher
+C111C2,status 1 for the SYSTEM_RETURN that follows the eyecatcher
+C111D2,no eyecatcher: straight to status 2
+C111EA,only for a cartridge with the slot-number ID (docs/boot.md)
+C111FC,system ROM vectors and fix while SLOT n is shown
+C11202,300 frames
+C11208,"palette 0: colour 1 = $0EEE (the text), colour 2 = 0"
+C11212,MESS_OUT list busy while it is written
+C1121C,MessBuffer entry 1: pointer to the SLOT text list
+C11222,"entry 2: pointer 0, the commands follow inline"
+C11224,command 5: add $9F to the VRAM address
+C1122C,"command 8, page 1: 8x16 tiles $1xx/$2xx"
+C11230,slot number 0-5
+C11236,+ '1': the digit shown
+C1123A,"the digit as a tile number, $FF ends the row"
+C11240,command 0: end of the list
+C1124A,interrupts on: VBlank draws the list
+C11252,SELECT P1 pressed: end early
+C11260,back to the normal frame skip
+C11266,BIOS_USER_MODE 1: demo or title
+C1126C,request 2 (demo) by default
+C11272,start compulsion off: always the demo
+C1127A,no credits: the demo
+C11282,"credits and compulsion on: request 3, the title"
+C11286,clear the player modes (and the copy kept for change detection)
+C1128E,acknowledge any pending interrupt
+C1129A,sound command 3: the Z80 restarts its program (docs/sound.md)
+C112A2,one frame for the Z80 and the last VBlank
+C112A6,interrupts off for the hand-over
+C112AA,timer interrupt off
+C112B2,request for the game
+C112B6,bit 7: the game is in control
+C112C2,cartridge vectors at $000000
+C112C8,backup RAM write-protected while the game runs
+C112CE,the game's USER entry in its header
+C112D2,no frame skip while the system ROM tidies up
+C112DA,timer interrupt off
+C112E2,bit 7 clear: the system ROM is back in control
+C112F0,"acknowledge interrupts, then enable them for one frame"
+C11300,system ROM vectors at $000000
+C11306,fresh stack
+C1130C,d0-d6 and a0 = 0: eight longs per movem
+C1131C,32 x 8 x 32 bytes = 8 KB: the palette bank in use
+C1134A,reset the controller state
+C11358,empty the MESS_OUT command list
+C11368,the handler returns into SystemModeDispatch
+C1136E,the code the game left in BIOS_SYSRET_STATUS
+C11396,"code 0, back from a game's init"
+C1139C,the slot being initialised
+C113A2,"8: no slot in progress, nothing to save"
+C113A8,store this game's soft DIPs and backup block
+C113BC,next slot
+C113CA,all 8 done: init pass over
+C113D2,status 1: eyecatcher next
+C113DE,"bit 0 of the hard DIPs, 0 when the switch is on"
+C113EC,slot-number mode skips the eyecatcher
+C113F6,negative: no slot wants the system eyecatcher
+C113FE,backup RAM writable while the slot is switched
+C11404,select the eyecatcher slot (d5)
+C11408,Z80 restarts on the cartridge M1 ROM
+C11418,status 2: demo next
+C1141E,move to the next slot with a game
+C1142C,slot number to the LED display
+C11432,"code 1, after the game's eyecatcher"
+C11438,"the slot number to the LEDs, then this game's data back"
+C11452,"code 3, game over or after a start"
+C11456,count the play time for the book keeping
+C11466,store this game's backup block
+C1146E,start compulsion on and credits left:
+C1147E,reload the compulsion timer
+C11486,REG_STATUS_B bits 4-5 both 0: a memory card is inserted
+C11494,tell the player to take the card out
+C1149A,"code 2, the demo is over"
+C114AE,back at the eyecatcher slot: show the eyecatcher again
+C114C8,"code 4, SELECT P1 or compulsion time-out"
+C114E2,"code 5, SELECT P2"
+C114F2,previous slot instead of the next
+C114FC,"code 6, first credit with compulsion on: just the title next"
+C11504,interrupts off while the Z80 is parked
+C11508,sound command 1: the Z80 waits in its RAM
+C1150C,SlotSwitching tells the VBlank handler not to touch the ROMs
+C1151A,system ROM vectors and board fix ROM (sm1.sm1 for the Z80)
+C11526,sound command 3: the Z80 restarts on sm1.sm1
+C11544,country code 0: the Japanese text
+C11558,256 frames at most
+C11562,card removed (bit 4 or 5 set): done
+C11580,"32-frame cycle: colour on for 22 frames, off for 10"
+C1158E,"palette 0 colour 1: the text colour, flashing"
+C11596,text colour back to black
+C115A2,park the Z80 again
+C115B4,"cartridge fix ROM and M1 ROM, cartridge vectors"
+C115C0,Z80 restarts on the cartridge M1 ROM
+C11616,skip the 16-byte game name
+C11620,the 6 bytes of times and counts
+C11624,12 option bytes
+C11628,high nibble: the default choice
+C11634,"0 Japan, 1 USA, 2 Europe"
+C11640,the long pointer at CART_SOFTDIP_JP + 4 x region
+C11646,acknowledge VBlank
+C11654,set: only count the frame (power-on calendar test)
+C11660,draw the queued fix layer commands
+C11668,releases WaitFrame
+C1167A,SystemIo is also called by the games: set a5 here
+C11684,"coins, service, test button, LEDs (MVS only)"
+C1168C,"always $0001, and both ways go to the next line"
+C11696,"negative: no start checks; 1-$7F: one less, no checks this frame"
+C116A4,"bit 7 clear: the system ROM is running, no starts to check"
+C116B8,BIOS_USER_MODE 2: a game is being played
+C116C8,BIOS_USER_MODE 0: the game is initialising
+C116D2,"bits 0, 2, 4, 6: the start buttons of P1-P4"
+C116D8,two shifts per player: X = its start bit
+C116DC,d0 bits 3-0: starts of P1 (bit 0) to P4 (bit 3)
+C116E6,no start pressed: only the title can force one
+C116F0,"no credits, or compulsion off: nothing"
+C11704,BCD seconds left; 0: start now
+C1170C,60 frames per second
+C1171A,clears X for the sbcd
+C1171E,"one second less, in BCD"
+C11728,time out: a forced start
+C1172E,"credits in Credits: P1, else P2"
+C1173E,keeps the starts the credits allow
+C1174A,the game may change a5
+C1174E,the game accepts or refuses the start
+C11756,bits 0-3: a player started
+C11760,one frame without start checks
+C1176E,SYSTEM_RETURN code 3 at the next return
+C11774,"take the credits, count the plays"
+C1177E,AES: every start is allowed
+C11782,P1 and P2 bits only
+C1178A,P2 start on the title or demo:
+C11798,"index 0, both players together (2 credits)"
+C1179A,free play (hard DIP 7 on): no credit check
+C117A8,credits needed for this start
+C117B6,"not enough: the second half of StartFlagResult, 0"
+C117D8,AES: no credits to check
+C117DC,P3 and P4 never pay
+C117E0,free play: every request is granted
+C117F6,"title or demo, P1 asks nothing:"
+C11802,"check DEC1, then DEC2 (fall through)"
+C1180A,clears X for the sbcd
+C1180C,what is left after this player's request
+C11810,not enough: request refused (0)
+C1181A,DEC2 doubled: what is left must cover both
+C11826,no forced start pending
+C1182A,SYSTEM_RETURN code 3 at the next return
+C11842,LED latches idle unless the I/O check screen drives them
+C11852,only on the title or demo
+C1185E,a forced start: end the demo
+C11866,"first credit with compulsion on, not yet on the title:"
+C1187C,code 6: the title next
+C11888,"SELECT needs credits, except in slot-number mode or with GAME SELECT FREE"
+C118A2,"bits 1 and 3: SELECT P1, SELECT P2"
+C118AE,code 4: next game
+C118B6,"SELECT P2: code 5, previous game"
+C118C0,the game stops its demo
+C118CA,acknowledge the timer interrupt
+C118D2,and turn it off
+C11A84,all latches high
+C11A90,LED data $FF: every segment off
+C11A98,"pulse latch $F7 (slot LED), then back to $FF"
+C11AB0,pulse latch $EF (LED counter 1)
+C11AC8,pulse latch $DF (LED counter 2)
+C11ADC,system ROM vectors and board fix ROM
+C11AE8,both coin lockouts reset
+C11AF4,"d6: number of the test, shown by BootError on a failure"
+C11AFC,32K words: the 64 KB of work RAM
+C11B04,"test 1: backup RAM, writable for the test"
+C11B16,test 2: palette RAM with bank 1 selected
+C11B1E,4K words: one 8 KB bank
+C11B2C,test 3: the same addresses with bank 0
+C11B3E,bank 1 again
+C11B44,test 4: VRAM
+C11B4C,VRAM auto-increment 1
+C11B52,low VRAM: words $0000-$7FFF
+C11B5C,high VRAM from $8000: $600 words
+C11B70,REG_DIPSW 0: every hard DIP on
+C11B86,"palette 0: colour 1 = $0EEE (the text), colour 2 = 0"
+C11B94,WORK RAM TEST on the fix layer
+C11BA2,"drawn at once, interrupts are off"
+C11BCA,repeat while every hard DIP is on
+C11BD2,leaving the loop clears the backup RAM
+C11BD6,calendar command 8: TP pulses once a second
+C11BE0,wait for a TP rising edge
+C11BE4,count VBlanks from here
+C11BEA,VBlank handler only counts (BIOS_INT1_SKIP)
+C11BF2,interrupts on until the next pulse
+C11BF6,one second later
+C11C04,calendar command 7: TP back to 4096 Hz
+C11C0A,VBlanks counted in one second
+C11C10,below 57: calendar error
+C11C18,above 63: calendar error
+C11C20,"bus error slot still jmp Reset: a normal build, run the checksum test"
+C11C2E,checksum of the 128 vector bytes (system ROM vectors mapped at 0)
+C11C42,then SystemIdText ($C00082) to the end of the ROM: the checksum word $C00080 is left out
+C11C48,$1FF7E bytes: $C00082-$C1FFFF
+C11C5A,test 6: system ROM checksum
+C11C66,CARD function 5 (read title) to see whether a card is in
+C11C82,$81: a card is inserted but not formatted
+C11C8A,anything else: no card test
+C11C8E,"card writable (two unlock registers), normal memory access"
+C11CA0,card memory at $800000
+C11CA8,2K words
+C11CAC,"write $55 to the whole range, then check it"
+C11CDA,then $AA
+C11D02,"then the address test: each word gets its address high byte, then low byte"
+C11D04,1K pairs of words
+C11D4A,"after the tests: calendar, book keeping day, slot scan"
+C11D4E,any slot with a game?
+C11D5E,up to the board's slot count
+C11D66,no game: REG_STATUS_A bit 2 0 is the service switch held
+C11D72,service held and a 1M card with cabinet data: offer the restore
+C11D84,otherwise the hardware test
+C11D88,a game: on to ClearRamAndVideo and the system modes
+C11D9A,d2 = previous value of the status byte
+C11DA4,bits that changed and are now 1: rising edges
+C11F5A,$FF: no eyecatcher slot found yet
+C11F60,"d6 = slot x 4, the offset in the table at a3"
+C11F6A,select the slot: its header appears at $000100
+C11F70,Z flag set when the slot holds a game
+C11F76,the game's NGH number in the scan table
+C11F7C,0: the game leaves the eyecatcher to the system ROM
+C11F82,keep only the first such slot
+C11F8E,d4 = slot count x 4
+C11F94,park the Z80 before its ROM changes
+C11FA4,cartridge fix ROM and M1 ROM
+C11FAA,cartridge vectors at $000000
+C11FB2,"the Z80 already answers 1: it is parked, nothing to do"
+C11FC2,tell the VBlank handler a switch is under way
+C11FCA,interrupts on: the frame counter must run
+C11FCE,8 tries
+C11FD4,d1 low word = frame count + 4: the time-out of one try
+C11FDC,sound command 1: prepare for a ROM switch
+C11FEA,reply 1: the Z80 is waiting in its RAM
+C11FF4,4 frames without reply: send again
+C12006,a short delay before the caller switches
+C12012,sound command 1 at power-on: the Z80 runs sm1.sm1
+C1201E,"50,000 reads at most"
+C12036,"no reply: boot error 8, Z80 ERROR"
+C12378,LED latches idle
+C1238C,"slot before, wrapping to the last one"
+C1239E,entry 0: no game in that slot
+C123A4,then as NextSlot
+C123BC,the slot whose data is loaded
+C123C4,a4 = BramA4Base: backup RAM variables a4-relative
+C123CA,LED latches idle
+C123D6,"4 bytes per slot: NGH, settings index"
+C123DE,"slot after, wrapping to slot 0"
+C123F0,entry 0: no game in that slot
+C123FC,slot number to the LED display (inverted)
+C12406,latch $F7: the slot LED
+C12412,"park the Z80, select the slot and its ROMs"
+C12416,Z80 restarts on the new cartridge M1 ROM
+C12428,the NGH first in BIOS_GAME_DIP
+C1242E,low byte of the second word: the game's settings index 0-7
+C12438,index x $1000: one 4 KB backup block per game
+C12442,copy the block to the game's backup area in work RAM
+C12450,watchdog on every byte
+C1245E,16 bytes of soft DIPs per game
+C1246C,"the NGH, before the copy"
+C12476,"NGH 5, Magician Lord:"
+C1247C,DEMO SOUND WITHOUT sets its soft DIP byte 6 to 1
+C12488,"book keeping pointers of this game: today,"
+C124A6,"this month,"
+C124B4,months are 1-12: record month - 1
+C124BE,"the hour counts,"
+C124CA,and its totals record
+C124D6,LED latches idle
+C12692,"latches idle, then the data"
+C12696,segments are active low
+C1269E,latch $F7: the slot LED
+C126B4,AES: nothing to do
+C126C2,always taken: the slot LED cycle below never runs
+C126EA,the I/O check screen drives the LEDs itself
+C126F8,not during the init pass
+C126FE,a coin counter pulse is on: skip the card save and STOP MODE this frame
+C12708,SELECT P1 with a 1M card: cabinet save
+C1270C,"hard DIP 8 (STOP MODE), 0 when on"
+C1271A,"on: everything stops, interrupts off, until it is turned off"
+C1273E,"system inputs, inverted: 1 = pressed"
+C1274E,bits newly pressed this frame
+C12756,not during the init pass
+C1275C,bit 7: the test button
+C12768,"coin and service inputs, inverted: 1 = active"
+C12780,d2 = inactive on both of the two previous frames
+C12784,d1 = newly active this frame
+C1278C,d2 = active now after two inactive frames: one coin
+C1278E,d7 set by CountCoin when a coin was counted
+C12790,"coin 1: input bit 0, counter 0, record offset +4 (COIN1)"
+C12798,today's and this month's CABINET/COIN records
+C127A4,a3: coins and credits per play of coin slot 1
+C127AC,"coin 2: input bit 1, counter 1, record offset +8 (COIN2)"
+C127B2,Coin2Coins
+C127BC,"a coin: restart the start compulsion timer, one coin sound"
+C127CE,no mechanical counters in test mode
+C127D6,a pulse in progress: count it down
+C127DE,off phase: REG_RESETCC1/2
+C127F2,"counts $1E-$10 (bit 4 set): on phase, REG_SETCC1/2"
+C127FE,counter 1 or 2 (registers 2 bytes apart)
+C12806,no pulse: start one for the first counter with coins pending
+C1281A,"from $1F: 15 frames on, then 16 off"
+C1282A,software clock
+C12834,"LED counter 1 shows Credits on even frames,"
+C12844,LED counter 2 shows Credits2 on odd frames
+C1284C,segments active low
+C128A6,d2 = coin inputs that just went active
+C128AA,a coin: d7 = 1 for the caller
+C128AC,coins toward the next credit
+C128B0,the coin counter's pending pulses
+C128B4,coins in test mode are not booked
+C128BA,COIN1 or COIN2 of today and of this month
+C128C2,enough coins for the credits of this slot?
+C128CA,keep the remainder
+C128CE,clears X for the abcd
+C128D0,credits per play of this slot
+C128D8,add to Credits in BCD
+C128DC,over 99: stay at 99
+C128E6,bit 2: the service switch
+C128F6,SERVICE of today and of this month
+C128FE,clears X for the abcd
+C12904,"+ 1 credit in BCD, at most 99"
+C1291E,a1: P1 and P2 previous player modes (for CONT.)
+C12922,"bit 0 P1, bit 1 P2"
+C12934,d2 = previous mode of this player
+C12936,this player's start bit into carry
+C1293A,one credit
+C1293C,hard DIP 7 (free play) on: no credit taken
+C1294C,clears X for the sbcd
+C1294E,"Credits - d4 in BCD, not below 0"
+C12958,"PLAY (and CONT. when d2 is not 0) in the game's today,"
+C12960,"total,"
+C12968,"and month records,"
+C12970,"CABINET/PLAY today,"
+C1297C,and CABINET/PLAY this month
+C12988,and the game's counter for this hour
+C12996,next player
+C129A6,a1: previous player modes (for CONT.)
+C129AA,"a3: BIOS_CREDIT_DEC1 and DEC2, credits to take per player"
+C129BE,0: nothing for this player
+C129C6,PLAY
+C129CE,CONT.: the player was already in the game
+C129DC,"status 0 or 1 (init pass, eyecatcher): no coin sound"
+C129E6,not while the ROMs are being switched
+C129F6,on a system ROM screen: the board's coin sound
+C12A06,during the game or its demo: the game's own coin sound
+C12A0A,the game may have changed a4 and a5

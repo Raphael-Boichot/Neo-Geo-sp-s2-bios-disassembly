@@ -3,41 +3,41 @@
 
 | SystemInt1 [W] target of SYSTEM_INT1 (VBlank routine called by games)
 SystemInt1:
-	move.w	#0x4,(REG_IRQACK).l	| C11646
+	move.w	#0x4,(REG_IRQACK).l	| C11646  acknowledge VBlank
 	move.b	d0,(REG_DIPSW).l	| C1164E
-	tst.b	(BIOS_INT1_SKIP).l	| C11654
+	tst.b	(BIOS_INT1_SKIP).l	| C11654  set: only count the frame (power-on calendar test)
 	bne.b	loc_C11672	| C1165A
 	movem.l	d0-d7/a0-a6,-(a7)	| C1165C
-	jsr	(MessOut,pc)	| C11660
+	jsr	(MessOut,pc)	| C11660  draw the queued fix layer commands
 	jsr	(SystemIo,pc)	| C11664
-	clr.b	(FrameWaitFlag).l	| C11668
+	clr.b	(FrameWaitFlag).l	| C11668  releases WaitFrame
 	movem.l	(a7)+,d0-d7/a0-a6	| C1166E
 loc_C11672:
 	addq.b	#0x1,(BIOS_INT1_FRAME_COUNTER).l	| C11672
 	rte	| C11678
 | SystemIo [W] target of SYSTEM_IO
 SystemIo:
-	lea.l	(BiosWorkRam).l,a5	| C1167A
+	lea.l	(BiosWorkRam).l,a5	| C1167A  SystemIo is also called by the games: set a5 here
 	addq.l	#0x1,(BIOS_FRAME_COUNTER-A5_BASE,a5)	| C11680
-	jsr	(SystemIoMvs,pc)	| C11684
+	jsr	(SystemIoMvs,pc)	| C11684  coins, service, test button, LEDs (MVS only)
 	jsr	(ReadControllers,pc)	| C11688
-	tst.w	(SystemIoBuildFlag).l	| C1168C
+	tst.w	(SystemIoBuildFlag).l	| C1168C  always $0001, and both ways go to the next line
 	bne.w	loc_C11696	| C11692
 loc_C11696:
-	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11696
+	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11696  negative: no start checks; 1-$7F: one less, no checks this frame
 	bmi.b	loc_C116B2	| C1169A
 	beq.b	loc_C116A4	| C1169C
 	subq.b	#0x1,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C1169E
 	bra.b	loc_C116B2	| C116A2
 loc_C116A4:
-	tst.b	(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C116A4
+	tst.b	(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C116A4  bit 7 clear: the system ROM is running, no starts to check
 	bpl.b	loc_C116B2	| C116A8
 	jsr	(CheckPlayerStart,pc)	| C116AA
 	jsr	(DemoEndCheck,pc)	| C116AE
 loc_C116B2:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C116B2
 	beq.b	loc_C116C4	| C116B6
-	cmpi.b	#0x2,(BIOS_USER_MODE-A5_BASE,a5)	| C116B8
+	cmpi.b	#0x2,(BIOS_USER_MODE-A5_BASE,a5)	| C116B8  BIOS_USER_MODE 2: a game is being played
 	bne.b	loc_C116C4	| C116BE
 	jsr	(PlayTimeCount,pc)	| C116C0
 loc_C116C4:
@@ -47,78 +47,78 @@ SystemIoBuildFlag:
 	dc.b	0x00,0x01
 | CheckPlayerStart [C] SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3
 CheckPlayerStart:
-	tst.b	(BIOS_USER_MODE-A5_BASE,a5)	| C116C8
+	tst.b	(BIOS_USER_MODE-A5_BASE,a5)	| C116C8  BIOS_USER_MODE 0: the game is initialising
 	beq.w	loc_C11778	| C116CC
 	moveq	#0x0,d0	| C116D0
-	move.b	(BIOS_STATCHANGE-A5_BASE,a5),d1	| C116D2
+	move.b	(BIOS_STATCHANGE-A5_BASE,a5),d1	| C116D2  bits 0, 2, 4, 6: the start buttons of P1-P4
 	moveq	#0x3,d7	| C116D6
 loc_C116D8:
-	add.b	d1,d1	| C116D8
+	add.b	d1,d1	| C116D8  two shifts per player: X = its start bit
 	add.b	d1,d1	| C116DA
-	addx.b	d0,d0	| C116DC
+	addx.b	d0,d0	| C116DC  d0 bits 3-0: starts of P1 (bit 0) to P4 (bit 3)
 	dbra	d7,loc_C116D8	| C116DE
 	tst.b	d0	| C116E2
 	bne.b	loc_C1173A	| C116E4
-	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C116E6
+	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C116E6  no start pressed: only the title can force one
 	bne.w	loc_C11778	| C116EC
-	tst.w	(Credits).l	| C116F0
+	tst.w	(Credits).l	| C116F0  no credits, or compulsion off: nothing
 	beq.w	loc_C11778	| C116F6
 	tst.b	(NoStartCompulsion).l	| C116FA
 	bne.w	loc_C11778	| C11700
-	move.b	(BIOS_SELECT_TIMER-A5_BASE,a5),d1	| C11704
+	move.b	(BIOS_SELECT_TIMER-A5_BASE,a5),d1	| C11704  BCD seconds left; 0: start now
 	beq.w	loc_C11728	| C11708
-	subq.b	#0x1,(BIOS_COMPULSION_FRAME_TIMER-A5_BASE,a5)	| C1170C
+	subq.b	#0x1,(BIOS_COMPULSION_FRAME_TIMER-A5_BASE,a5)	| C1170C  60 frames per second
 	bpl.w	loc_C11778	| C11710
 	move.b	#0x3B,(BIOS_COMPULSION_FRAME_TIMER-A5_BASE,a5)	| C11714
-	sub.b	d2,d2	| C1171A
+	sub.b	d2,d2	| C1171A  clears X for the sbcd
 	moveq	#0x1,d2	| C1171C
-	sbcd	d2,d1	| C1171E
+	sbcd	d2,d1	| C1171E  one second less, in BCD
 	move.b	d1,(BIOS_SELECT_TIMER-A5_BASE,a5)	| C11720
 	bne.w	loc_C11778	| C11724
 loc_C11728:
-	move.b	#0x1,(CompulsionStart-A5_BASE,a5)	| C11728
-	moveq	#0x1,d0	| C1172E
+	move.b	#0x1,(CompulsionStart-A5_BASE,a5)	| C11728  time out: a forced start
+	moveq	#0x1,d0	| C1172E  credits in Credits: P1, else P2
 	tst.b	(Credits).l	| C11730
 	bne.b	loc_C1173A	| C11736
 	moveq	#0x2,d0	| C11738
 loc_C1173A:
 	move.b	d0,(BIOS_START_FLAG-A5_BASE,a5)	| C1173A
-	jsr	(StartCreditCheck,pc)	| C1173E
+	jsr	(StartCreditCheck,pc)	| C1173E  keeps the starts the credits allow
 	tst.b	(BIOS_START_FLAG-A5_BASE,a5)	| C11742
 	beq.w	loc_C11778	| C11746
-	movem.l	a5,-(a7)	| C1174A
-	jsr	(CART_PLAYER_START).w	| C1174E
+	movem.l	a5,-(a7)	| C1174A  the game may change a5
+	jsr	(CART_PLAYER_START).w	| C1174E  the game accepts or refuses the start
 	movem.l	(a7)+,a5	| C11752
-	move.b	(BIOS_START_FLAG-A5_BASE,a5),d0	| C11756
+	move.b	(BIOS_START_FLAG-A5_BASE,a5),d0	| C11756  bits 0-3: a player started
 	andi.b	#0xF,d0	| C1175A
 	beq.b	loc_C11778	| C1175E
-	move.b	#0x1,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11760
+	move.b	#0x1,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11760  one frame without start checks
 	clr.w	(BIOS_SELECT_TIMER-A5_BASE,a5)	| C11766
 	clr.b	(CompulsionStart-A5_BASE,a5)	| C1176A
-	move.b	#0x3,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C1176E
-	jsr	(CallDeductStartCredits,pc)	| C11774
+	move.b	#0x3,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C1176E  SYSTEM_RETURN code 3 at the next return
+	jsr	(CallDeductStartCredits,pc)	| C11774  take the credits, count the plays
 loc_C11778:
 	rts	| C11778
 | StartCreditCheck [C] MVS: checks the requested starts in BIOS_START_FLAG against the credits before CART_PLAYER_START
 StartCreditCheck:
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1177A
-	beq.w	loc_C117C0	| C1177E
-	andi.w	#0x3,d0	| C11782
+	beq.w	loc_C117C0	| C1177E  AES: every start is allowed
+	andi.w	#0x3,d0	| C11782  P1 and P2 bits only
 	beq.w	loc_C117BC	| C11786
-	btst.b	#0x1,d0	| C1178A
+	btst.b	#0x1,d0	| C1178A  P2 start on the title or demo:
 	beq.b	loc_C1179A	| C1178E
 	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C11790
 	bne.b	loc_C1179A	| C11796
-	moveq	#0x0,d0	| C11798
+	moveq	#0x0,d0	| C11798  index 0, both players together (2 credits)
 loc_C1179A:
-	move.b	(REG_DIPSW).l,d1	| C1179A
+	move.b	(REG_DIPSW).l,d1	| C1179A  free play (hard DIP 7 on): no credit check
 	andi.b	#0x40,d1	| C117A0
 	beq.w	loc_C117B8	| C117A4
-	move.b	(StartCreditsNeeded,pc,d0.w),d1	| C117A8
+	move.b	(StartCreditsNeeded,pc,d0.w),d1	| C117A8  credits needed for this start
 	move.b	(Credits).l,d2	| C117AC
 	cmp.b	d1,d2	| C117B2
 	bcc.b	loc_C117B8	| C117B4
-	addq.b	#0x4,d0	| C117B6
+	addq.b	#0x4,d0	| C117B6  not enough: the second half of StartFlagResult, 0
 loc_C117B8:
 	move.b	(StartFlagResult,pc,d0.w),d0	| C117B8
 loc_C117BC:
@@ -135,42 +135,42 @@ StartFlagResult:
 CreditCheck:
 	lea.l	(BiosWorkRam).l,a5	| C117CE
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C117D4
-	beq.w	loc_C11814	| C117D8
-	clr.w	(BIOS_CREDIT_DEC3-A5_BASE,a5)	| C117DC
-	move.b	(REG_DIPSW).l,d0	| C117E0
+	beq.w	loc_C11814	| C117D8  AES: no credits to check
+	clr.w	(BIOS_CREDIT_DEC3-A5_BASE,a5)	| C117DC  P3 and P4 never pay
+	move.b	(REG_DIPSW).l,d0	| C117E0  free play: every request is granted
 	andi.b	#0x40,d0	| C117E6
 	beq.b	loc_C11814	| C117EA
 	move.b	(Credits).l,d0	| C117EC
 	lea.l	(BIOS_CREDIT_DEC1-A5_BASE,a5),a0	| C117F2
-	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C117F6
+	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C117F6  title or demo, P1 asks nothing:
 	bne.b	loc_C11802	| C117FC
 	tst.b	(a0)	| C117FE
 	beq.b	loc_C11816	| C11800
 loc_C11802:
-	jsr	(CreditCheckPlayer,pc)	| C11802
+	jsr	(CreditCheckPlayer,pc)	| C11802  check DEC1, then DEC2 (fall through)
 	addq.l	#0x1,a0	| C11806
 | CreditCheckPlayer [C] CreditCheck, per player: BCD credits in d0 minus the credits asked in (a0) (BIOS_CREDIT_DEC1, then BIOS_CREDIT_DEC2 by falling through); clears (a0) when there are not enough. In title/demo mode with DEC1 = 0, DEC2 is checked doubled ($C11816). Ran in MAME (game start)
 CreditCheckPlayer:
 	move.b	(a0),d1	| C11808
 loc_C1180A:
-	sub.b	d2,d2	| C1180A
-	sbcd	d1,d0	| C1180C
+	sub.b	d2,d2	| C1180A  clears X for the sbcd
+	sbcd	d1,d0	| C1180C  what is left after this player's request
 	bcc.b	loc_C11814	| C1180E
-	moveq	#0x0,d0	| C11810
+	moveq	#0x0,d0	| C11810  not enough: request refused (0)
 	move.b	d0,(a0)	| C11812
 loc_C11814:
 	rts	| C11814
 loc_C11816:
 	addq.l	#0x1,a0	| C11816
 	sub.b	d1,d1	| C11818
-	move.b	(a0),d1	| C1181A
+	move.b	(a0),d1	| C1181A  DEC2 doubled: what is left must cover both
 	abcd	d1,d1	| C1181C
 	bra.b	loc_C1180A	| C1181E
 | CreditDown [C] target of CREDIT_DOWN (wiki); MAME: King of the Monsters 2 calls it after CREDIT_CHECK when one player picks PLAYER1 PLAYER2 vs COMPUTER (credits 02 -> 01, the second player's credit)
 CreditDown:
 	lea.l	(BiosWorkRam).l,a5	| C11820
-	clr.b	(CompulsionStart-A5_BASE,a5)	| C11826
-	move.b	#0x3,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C1182A
+	clr.b	(CompulsionStart-A5_BASE,a5)	| C11826  no forced start pending
+	move.b	#0x3,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C1182A  SYSTEM_RETURN code 3 at the next return
 	jsr	(CreditDownCount,pc)	| C11830
 	rts	| C11834
 | CallDeductStartCredits [C] jsr DeductStartCredits; rts (CheckPlayerStart, after a start is accepted and BIOS_SYSRET_STATUS = 3)
@@ -181,51 +181,51 @@ CallDeductStartCredits:
 DemoEndCheck:
 	tst.b	(IoCheckActive-A5_BASE,a5)	| C1183C
 	bne.b	loc_C1184A	| C11840
-	move.b	#0xFF,(REG_LEDLATCHES).l	| C11842
+	move.b	#0xFF,(REG_LEDLATCHES).l	| C11842  LED latches idle unless the I/O check screen drives them
 loc_C1184A:
 	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C1184A
 	bne.w	loc_C118C8	| C1184E
-	move.b	(BIOS_USER_MODE-A5_BASE,a5),d0	| C11852
+	move.b	(BIOS_USER_MODE-A5_BASE,a5),d0	| C11852  only on the title or demo
 	cmpi.b	#0x1,d0	| C11856
 	bne.w	loc_C118C8	| C1185A
-	tst.b	(CompulsionStart-A5_BASE,a5)	| C1185E
+	tst.b	(CompulsionStart-A5_BASE,a5)	| C1185E  a forced start: end the demo
 	bne.w	loc_C118AE	| C11862
-	tst.w	(Credits).l	| C11866
+	tst.w	(Credits).l	| C11866  first credit with compulsion on, not yet on the title:
 	beq.b	loc_C11888	| C1186C
 	tst.b	(BIOS_TITLE_MODE-A5_BASE,a5)	| C1186E
 	bne.b	loc_C11888	| C11872
 	tst.b	(NoStartCompulsion).l	| C11874
 	bne.b	loc_C11888	| C1187A
-	moveq	#0x6,d1	| C1187C
+	moveq	#0x6,d1	| C1187C  code 6: the title next
 	move.b	#0x1,(BIOS_TITLE_MODE).l	| C1187E
 	bra.b	loc_C118B8	| C11886
 loc_C11888:
-	tst.w	(SlotNumberMode).l	| C11888
+	tst.w	(SlotNumberMode).l	| C11888  SELECT needs credits, except in slot-number mode or with GAME SELECT FREE
 	bne.b	loc_C118A2	| C1188E
 	tst.b	(GameSelectFree).l	| C11890
 	bne.b	loc_C118A2	| C11896
 	tst.w	(Credits).l	| C11898
 	beq.w	loc_C118C8	| C1189E
 loc_C118A2:
-	move.b	(BIOS_STATCHANGE_RAW-A5_BASE,a5),d0	| C118A2
+	move.b	(BIOS_STATCHANGE_RAW-A5_BASE,a5),d0	| C118A2  bits 1 and 3: SELECT P1, SELECT P2
 	andi.b	#0xA,d0	| C118A6
 	beq.w	loc_C118C8	| C118AA
 loc_C118AE:
-	moveq	#0x4,d1	| C118AE
+	moveq	#0x4,d1	| C118AE  code 4: next game
 	andi.b	#0x8,d0	| C118B0
 	beq.b	loc_C118B8	| C118B4
-	moveq	#0x5,d1	| C118B6
+	moveq	#0x5,d1	| C118B6  SELECT P2: code 5, previous game
 loc_C118B8:
 	clr.b	(CompulsionStart-A5_BASE,a5)	| C118B8
 	move.b	d1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C118BC
-	jsr	(CART_DEMO_END).w	| C118C0
+	jsr	(CART_DEMO_END).w	| C118C0  the game stops its demo
 	jmp	(SystemReturn,pc)	| C118C4
 loc_C118C8:
 	rts	| C118C8
 | SystemInt2 [C] target of SYSTEM_INT2, the level 2 (timer) handler of the system ROM vector table: acknowledges the timer IRQ and turns it off (LSPCMODE $4000). Safety net for HOW_TO_PLAY, the only BIOS call that maps the system ROM vectors and lowers the mask without writing LSPCMODE. MAME: ran when the timer IRQ was forced on inside HOW_TO_PLAY in NAM-1975; no checked game runs it on its own
 SystemInt2:
-	move.w	#0x2,(REG_IRQACK).l	| C118CA
-	move.w	#0x4000,(REG_LSPCMODE).l	| C118D2
+	move.w	#0x2,(REG_IRQACK).l	| C118CA  acknowledge the timer interrupt
+	move.w	#0x4000,(REG_LSPCMODE).l	| C118D2  and turn it off
 	rte	| C118DA
 | PowerOnTestOld [C] unreferenced older copy of the power-on tests after SystemInt2's rte (work RAM, palettes, VRAM, checksum, card), with error numbers shifted by one from BootErrorMessages; it ends in BootError even when everything passes. Never ran in MAME
 PowerOnTestOld:

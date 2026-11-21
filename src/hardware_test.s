@@ -267,7 +267,7 @@ loc_C1749A:
 	jsr	(IoCheckShowLed2,pc)	| C174A2
 loc_C174A6:
 	rts	| C174A6
-| IoCheckPutSystemBits [C] I/O check: REG_SYSTYPE bit 7 and bits 0-2 of bram_D00021 as 0/1
+| IoCheckPutSystemBits [C] I/O check: REG_SYSTYPE bit 7 and bits 0-2 of CoinInputs as 0/1
 IoCheckPutSystemBits:
 	move.l	#0x1010004,(a0)+	| C174A8
 	move.w	#0x102,(a0)+	| C174AE
@@ -310,7 +310,7 @@ loc_C17522:
 	move.b	d1,(a0)+	| C17522
 	dbra	d7,loc_C17518	| C17524
 	rts	| C17528
-| IoCheckPutPlayerBits [C] I/O check: 10 bits of one player (joystick byte and two bits of ram_10FEDC) as 0/1
+| IoCheckPutPlayerBits [C] I/O check: 10 bits of one player (joystick byte and two bits of BIOS_STATCURNT_RAW) as 0/1
 IoCheckPutPlayerBits:
 	lsl.w	#0x8,d0	| C1752A
 	move.b	d1,d0	| C1752C
@@ -476,7 +476,7 @@ loc_C177B2:
 	cmpi.b	#0x4,d1	| C177B6
 	bcc.b	loc_C177A6	| C177BA
 	move.b	d1,(SoundTestCursorNew-A5_BASE,a5)	| C177BC
-| SoundTestMoveCursor [C] sound test: erases the cursor at the old item and draws it at ram_10FCDF
+| SoundTestMoveCursor [C] sound test: erases the cursor at the old item and draws it at SoundTestCursorNew
 SoundTestMoveCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C177C0
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C177C4
@@ -503,7 +503,7 @@ SoundTestPutCursor:
 	move.w	#0x1108,(a0)+	| C17802
 	move.w	d1,(a0)+	| C17806
 	rts	| C17808
-| SoundTestDrawItems [C] sound test: draws the item lines, the playing one (ram_10FCE2) in another text
+| SoundTestDrawItems [C] sound test: draws the item lines, the playing one (SoundTestPlaying) in another text
 SoundTestDrawItems:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1780A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1780E

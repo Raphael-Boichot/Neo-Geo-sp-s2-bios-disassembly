@@ -56,7 +56,7 @@ The handler leaves the status for the next `SystemModeDispatch` pass (docs/boot.
 | 5 | `DemoEndCheck` (SELECT P2) | backup block saved, `PreviousSlot` | 2 |
 | 6 | `DemoEndCheck` (first credit, compulsion on) | nothing | 2 (then request 3, the title) |
 
-C for 0-4 and 6 (MAME); 5 C for the code, not run (`PreviousSlot` needs two games, doubts.csv).
+C for every code in MAME; 5 on an MV-6 board with three cartridges (`tools/mame_prev_slot.lua`: from slot 0 to slot 2).
 
 ## BIOS calls
 

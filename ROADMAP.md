@@ -10,11 +10,11 @@ names and a written reference, steps 1-7) is done; step 8, a custom system ROM, 
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 33,046 B, data 21,303 B, free 76,723 B |
-| L2 traced and run | 9,278 instructions traced; 8,088 ran in MAME (87.2 %) over 88 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
-| L3 names | 578 names (C 533, I 14, W 31), the 14 I and 15 RAM I in `symbols/doubts.csv`; 1,043 automatic labels left, all `loc_` |
+| L2 traced and run | 9,278 instructions traced; 8,134 ran in MAME (87.7 %) over 91 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
+| L3 names | 578 names (C 545, I 2, W 31), the 2 I and 0 RAM I in `symbols/doubts.csv`; 1,043 automatic labels left, all `loc_` |
 | L4 RAM and registers | done: 274 RAM names over 227 addresses, nothing automatic (160 global names on 160 addresses, 128 scoped rows on 67 addresses; 14 rows reuse a name), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
-| L6 understanding | written reference done: 10 pages in [`docs/`](docs/README.md) (boot, game contract, credits, calendar, memory card, test mode, interrupts, sound, board ROMs, other versions); 29 doubts left |
+| L6 understanding | written reference done: 10 pages in [`docs/`](docs/README.md) (boot, game contract, credits, calendar, memory card, test mode, interrupts, sound, board ROMs, other versions); 2 doubts left |
 
 Coverage and automatic routines by module:
 
@@ -52,7 +52,7 @@ Not reachable: `CabinetSettingsOld` (`$C19CF6-$C1A105`), an older cabinet page a
 ## 2. Error and rare paths (L2): done
 
 Paths that need a fault, reached with `DEBUG_CMDS` breakpoints that fake the condition or with test
-builds; `tools/fault_scenarios.py` (34 scenarios) says which runs are forced.
+builds; `tools/fault_scenarios.py` (40 scenarios) says which runs are forced.
 
 - [x] Boot error screens (`BootError`, `$C16ADA`): work RAM, backup RAM, both palette banks, video RAM,
       calendar, system ROM, memory card, Z80, and the AES colour form (forced, `boot_error_*`)
@@ -94,10 +94,13 @@ builds; `tools/fault_scenarios.py` (34 scenarios) says which runs are forced.
       `card_word_*` and `card_sparse_*`; the slot table merge run over three boots, `slots_*`; the rest by
       a full code read and their runs); `SelectSlot` renamed `RegisterNewGame`, `MvsLedUpdate` renamed
       `SystemIoMvs` (both did much more than their name)
-- [x] Doubts list: `symbols/doubts.csv`, one line per I name (14 ROM, 15 RAM) with the doubt and how to
-      settle it; step 6 settled what the other system ROMs could. Most of the rest need more MAME runs
-      (multi-block saves on the emulated 16-bit cards, a board with two cartridges, a mahjong
-      controller, timed runs) or a ROM card image; a few are leftovers that nothing reads
+- [x] Doubts list: `symbols/doubts.csv`, one line per I name (2 ROM, 0 RAM) with the doubt and how to
+      settle it. 27 settled on 2026-11-21/22: an MV-6 board with three cartridges in MAME (`PreviousSlot`,
+      `EyecatchSlot`; `tools/mame_prev_slot.lua`), the mahjong panel (`tools/mame_mahjong.lua`: the four
+      mahjong routines), a start at a known hour (`BookGameHours`), and a full read of every writer and
+      reader (the leftovers that nothing reads are now named for what the code does, C). Left: the 16-bit
+      and type $80 forms of the next-block helper, which need a save of more than one block
+      (`card_*_multi_*` in `tools/fault_scenarios.py`)
 
 Done when: `tools/stats.py` reports 0 automatic `sub_`, `dat_` and `tbl_` (reached 2026-11-15) and every I name has a line in the doubts list (done).
 
@@ -177,14 +180,16 @@ Steps 1-7 are done, so work on a modified system ROM can start; its scope is not
 the only build changes are test builds that help the disassembly (reaching hidden code, relocation
 checks).
 
-## Line comments: started
+## Line comments: done
 
-The sources carry a header comment per routine; line comments come from `symbols/comments.csv`
-(HOWTO, Names). Done: `boot.s`, the power-on tests, the slot scan and slot switching, the Z80
-handshake, coins, credits, starts and the LEDs (`power_on.s`, `system.s`), and the unused parts
-(comments may sit on a data block too). Next, if wanted: the rest of
-`power_on.s` (slot table merge, book keeping, 1M card save), `calendar.s`, `eyecatcher.s`, then the
-`sm1.sm1` engine core (would need the same file for `tools/sm1.py`).
+The sources carry a header comment per routine and line comments from `symbols/comments.csv` (system
+ROM, 2,164 lines) and `sm1/comments.csv` (`sm1.sm1`, 580 lines), read by the generators (HOWTO, Names).
+Every routine of the system ROM has at least one comment per ten instructions (about one per four and a
+half overall): the loops, the branches and what each block does, the MESS_OUT command words, the
+registers written. In `sm1.sm1` the live engine is commented line by line: start-up, NMI and command
+queue, the system commands and the self test, PlaySound and the effect start, the timer interrupt, the
+sequence interpreter and its 48 commands, notes, instruments, levels, fades, modulation and the YM2610
+writes; the ADPCM-A and ADPCM-B paths that no command of this ROM reaches keep their header comments only.
 
 ## Tool checks: done, a few open
 

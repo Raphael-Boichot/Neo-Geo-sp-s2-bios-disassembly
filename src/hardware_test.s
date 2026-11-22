@@ -3,15 +3,15 @@
 
 | HardwareTest [C] menu item 1: clears RAM and palettes, then calls HwTestStepTable[WorkIndex] once per frame; starts at the calendar screen (step $0C) when NeoClnSlot is set (MAME: neo_cln_cartridge)
 HardwareTest:
-	move.w	#0x2700,sr	| C17062
-	move.b	d0,(REG_SWPBIOS).l	| C17066
+	move.w	#0x2700,sr	| C17062  interrupts off while the RAM is cleared
+	move.b	d0,(REG_SWPBIOS).l	| C17066  system ROM vectors and board fix ROM
 	move.b	d0,(REG_BRDFIX).l	| C1706C
-	moveq	#0x0,d0	| C17072
+	moveq	#0x0,d0	| C17072  d0-d3 = 0: four longs per movem
 	move.l	d0,d1	| C17074
 	move.l	d0,d2	| C17076
 	move.l	d0,d3	| C17078
-	lea.l	(0x110000).l,a0	| C1707A
-	move.w	#0x1FF,d7	| C17080
+	lea.l	(0x110000).l,a0	| C1707A  work RAM cleared from the top, 64 KB (as ClearRamAndVideo)
+	move.w	#0x1FF,d7	| C17080  512 x 8 x 16 bytes
 loc_C17084:
 	move.b	d0,(REG_DIPSW).l	| C17084
 	movem.l	d0-d3,-(a0)	| C1708A
@@ -23,8 +23,8 @@ loc_C17084:
 	movem.l	d0-d3,-(a0)	| C170A2
 	movem.l	d0-d3,-(a0)	| C170A6
 	dbra	d7,loc_C17084	| C170AA
-	move.b	d0,(REG_PALBANK0).l	| C170AE
-	lea.l	(0x402000).l,a0	| C170B4
+	move.b	d0,(REG_PALBANK0).l	| C170AE  then both palette banks
+	lea.l	(0x402000).l,a0	| C170B4  from the top of the bank, 8 KB
 	move.w	#0x7F,d7	| C170BA
 loc_C170BE:
 	movem.l	d0-d3,-(a0)	| C170BE
@@ -43,25 +43,25 @@ loc_C170E8:
 	movem.l	d0-d3,-(a0)	| C170F4
 	dbra	d7,loc_C170E8	| C170F8
 	lea.l	(BiosWorkRam).l,a5	| C170FC
-	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C17102
-	move.b	#0x1,(TestModeActive-A5_BASE,a5)	| C17108
-	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1710E
+	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C17102  system ROM screen: board coin sound
+	move.b	#0x1,(TestModeActive-A5_BASE,a5)	| C17108  coins count as credits but not in the book keeping
+	move.b	(SystemRegion).l,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1710E  the header's region as country code, MVS
 	move.b	#0x80,(BIOS_MVS_FLAG).l	| C17116
 	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C1711E
-	move.b	d0,(REG_NOSHADOW).l	| C17126
-	move.w	#0x7,(REG_IRQACK).l	| C1712C
+	move.b	d0,(REG_NOSHADOW).l	| C17126  shadow off
+	move.w	#0x7,(REG_IRQACK).l	| C1712C  acknowledge every interrupt, then interrupts on
 	move.w	#0x2000,sr	| C17134
-	tst.b	(NeoClnSlot).l	| C17138
+	tst.b	(NeoClnSlot).l	| C17138  a NEO-CLN cartridge: start at the calendar screen (step $C)
 	bmi.b	loc_C17146	| C1713E
 	move.w	#0xC,(WorkIndex-A5_BASE,a5)	| C17140
 loc_C17146:
-	jsr	(WaitFrame,pc)	| C17146
+	jsr	(WaitFrame,pc)	| C17146  every frame: the routine of the current step
 	lea.l	(BiosWorkRam).l,a5	| C1714A
 	move.w	(WorkIndex-A5_BASE,a5),d0	| C17150
-	add.w	d0,d0	| C17154
+	add.w	d0,d0	| C17154  x 4: one long pointer per step
 	add.w	d0,d0	| C17156
 	movea.l	(HwTestStepTable,pc,d0.w),a0	| C17158
-	jsr	(a0)	| C1715C
+	jsr	(a0)	| C1715C  even steps draw a screen, odd steps run it every frame
 	bra.b	loc_C17146	| C1715E
 | HwTestStepTable [C] 14 entries: for each of the 7 screens a draw routine and a per-frame routine
 HwTestStepTable:
@@ -81,17 +81,17 @@ HwTestStepTable:
 	dc.l	HwTestCalendarFrame
 | HwTestCrosshatch [C] draws the crosshatch (palette and VRAM); MAME screen 1
 HwTestCrosshatch:
-	move.l	#0xEEE0000,(0x400002).l	| C17198
+	move.l	#0xEEE0000,(0x400002).l	| C17198  palette 0: colour 1 $0EEE, colour 2 black; palette 1: colour 1 $000E
 	move.l	#0xE0000,(0x400022).l	| C171A2
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C171AC
-	lea.l	(REG_VRAMRW).l,a2	| C171B0
+	lea.l	(REG_VRAMRW).l,a2	| C171B0  VRAM data, auto-increment 1
 	move.w	#0x1,0x2(a2)	| C171B6
-	moveq	#0x1,d1	| C171BC
+	moveq	#0x1,d1	| C171BC  the four crosshatch tiles 1-4 of the board fix ROM
 	moveq	#0x2,d2	| C171BE
 	moveq	#0x3,d3	| C171C0
 	moveq	#0x4,d4	| C171C2
-	move.w	#0x7000,-0x2(a2)	| C171C4
-	move.w	#0x13,d7	| C171CA
+	move.w	#0x7000,-0x2(a2)	| C171C4  fix layer from $7000:
+	move.w	#0x13,d7	| C171CA  20 pairs of columns: tiles 1/3 down one column, 2/4 down the next
 loc_C171CE:
 	move.w	#0xF,d6	| C171CE
 loc_C171D2:
@@ -106,58 +106,58 @@ loc_C171E0:
 	move.w	d4,(a2)	| C171E4
 	dbra	d6,loc_C171E0	| C171E6
 	dbra	d7,loc_C171CE	| C171EA
-	move.w	#0x7000,-0x2(a2)	| C171EE
+	move.w	#0x7000,-0x2(a2)	| C171EE  first and last columns in palette 1 (the border)
 	move.w	#0x5F,d7	| C171F4
 	jsr	(FixSetPalette1,pc)	| C171F8
 	move.w	#0x74A0,-0x2(a2)	| C171FC
 	move.w	#0x5F,d7	| C17202
 	jsr	(FixSetPalette1,pc)	| C17206
-	move.w	#0x7002,-0x2(a2)	| C1720A
+	move.w	#0x7002,-0x2(a2)	| C1720A  top and bottom rows: auto-increment $20 (along a row)
 	move.w	#0x27,d7	| C17210
 	move.w	#0x20,0x2(a2)	| C17214
 	jsr	(FixSetPalette1,pc)	| C1721A
 	move.w	#0x701D,-0x2(a2)	| C1721E
 	move.w	#0x27,d7	| C17224
 	jsr	(FixSetPalette1,pc)	| C17228
-	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1722C
+	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1722C  next: the per-frame step
 	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17230
 	rts	| C17236
 | FixSetPalette1 [C] sets palette 1 ($1000) on d7+1 fix-layer words from the current VRAM address (crosshatch border)
 FixSetPalette1:
-	nop	| C17238
+	nop	| C17238  a short wait for the VRAM between accesses
 	nop	| C1723A
 	nop	| C1723C
-	move.w	(a2),d0	| C1723E
+	move.w	(a2),d0	| C1723E  fix tile at the current address: set palette 1
 	ori.w	#0x1000,d0	| C17240
 	move.w	d0,(a2)	| C17244
 	dbra	d7,FixSetPalette1	| C17246
 	rts	| C1724A
 | HwTestCrosshatchFrame [C] per frame: START (bit 0 of BIOS_STATCHANGE_RAW
 HwTestCrosshatchFrame:
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1724C
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1724C  START: next screen
 	beq.b	loc_C1725A	| C17252
 	move.w	#0x2,(WorkIndex-A5_BASE,a5)	| C17254
 loc_C1725A:
 	rts	| C1725A
 | HwTestColorBars [C] draws the RED GREEN BLUE WHITE bars; MAME screen 2
 HwTestColorBars:
-	move.w	#0xE00,(0x400024).l	| C1725C
+	move.w	#0xE00,(0x400024).l	| C1725C  palette 1, 2, 3, 4: colour 2 red, green, blue, white
 	move.w	#0xE0,(0x400044).l	| C17264
 	move.w	#0xE,(0x400064).l	| C1726C
 	move.w	#0xEEE,(0x400084).l	| C17274
 	jsr	(ClearFixLayer,pc)	| C1727C
-	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17280
+	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17280  MESS_OUT list busy while it is written
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17284
-	move.l	#ColorBarsText,(a0)+	| C17288
+	move.l	#ColorBarsText,(a0)+	| C17288  the colour bar texts
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1728E
-	move.w	#0x7484,(REG_VRAMADDR).l	| C17292
+	move.w	#0x7484,(REG_VRAMADDR).l	| C17292  the version tile at the top right
 	move.w	(ScreenVersionTile,pc),(REG_VRAMRW).l	| C1729A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C172A2
-	move.w	#0x3,(WorkIndex-A5_BASE,a5)	| C172A6
+	move.w	#0x3,(WorkIndex-A5_BASE,a5)	| C172A6  step 3: the colour bars' frame routine
 	rts	| C172AC
 | HwTestColorBarsFrame [C] per frame: START goes to step 4
 HwTestColorBarsFrame:
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C172AE
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C172AE  START (bit 0 of the raw changes): next screen
 	beq.b	loc_C172BC	| C172B4
 	move.w	#0x4,(WorkIndex-A5_BASE,a5)	| C172B6
 loc_C172BC:
@@ -180,10 +180,10 @@ ColorBarsText:
 | HwTestIoCheck [C] draws the I/O CHECK screen; MAME screen 3
 HwTestIoCheck:
 	jsr	(ClearFixLayer,pc)	| C17390
-	move.b	#0x1,(IoCheckActive).l	| C17394
+	move.b	#0x1,(IoCheckActive).l	| C17394  HwTestIoCheck drives the LEDs (SystemIoMvs leaves them alone)
 	clr.b	(IoCheckLedCount-A5_BASE,a5)	| C1739C
-	clr.b	(WorkIndexNew-A5_BASE,a5)	| C173A0
-	moveq	#0x2,d0	| C173A4
+	clr.b	(WorkIndexNew-A5_BASE,a5)	| C173A0  the slot LED starts at slot 0
+	moveq	#0x2,d0	| C173A4  slot count: 2 unless REG_SYSTYPE bit 6 (then 6, or 4 with REG_STATUS_A bit 5)
 	move.b	(REG_SYSTYPE).l,d1	| C173A6
 	btst.b	#0x6,d1	| C173AC
 	beq.b	loc_C173C2	| C173B0
@@ -194,41 +194,41 @@ HwTestIoCheck:
 	moveq	#0x4,d0	| C173C0
 loc_C173C2:
 	move.b	d0,(IoCheckSlotCount-A5_BASE,a5)	| C173C2
-	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C173C6
+	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C173C6  the I/O check text
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C173CA
 	move.l	#IoCheckText,(a0)+	| C173CE
 	move.b	(REG_DIPSW).l,d0	| C173D4
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C173DA
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C173DE
-	jsr	(IoCheckShowSlot,pc)	| C173E2
+	jsr	(IoCheckShowSlot,pc)	| C173E2  slot LED and both LED counters at their first values
 	jsr	(IoCheckShowLed1,pc)	| C173E6
 	jsr	(IoCheckShowLed2,pc)	| C173EA
-	move.w	#0x5,(WorkIndex-A5_BASE,a5)	| C173EE
+	move.w	#0x5,(WorkIndex-A5_BASE,a5)	| C173EE  step 5: the I/O check's frame routine
 	rts	| C173F4
 | HwTestIoCheckFrame [C] per frame routine of the I/O check (inputs, DIPs, LED counters)
 HwTestIoCheckFrame:
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C173F6
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C173F6  START: next screen, LEDs back to the game's
 	beq.b	loc_C1740A	| C173FC
 	clr.b	(IoCheckActive-A5_BASE,a5)	| C173FE
 	move.w	#0x6,(WorkIndex-A5_BASE,a5)	| C17402
 	rts	| C17408
 loc_C1740A:
-	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1740A
+	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1740A  each frame an inline MESS_OUT list:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1740E
 	clr.l	(a0)+	| C17412
-	move.b	(BIOS_STATCURNT_RAW-A5_BASE,a5),d0	| C17414
+	move.b	(BIOS_STATCURNT_RAW-A5_BASE,a5),d0	| C17414  P1: joystick and buttons, START and SELECT
 	move.b	(BIOS_P1CURRENT).l,d1	| C17418
 	move.w	#0x71A9,d2	| C1741E
 	jsr	(IoCheckPutPlayerBits,pc)	| C17422
-	move.b	(BIOS_STATCURNT_RAW-A5_BASE,a5),d0	| C17426
+	move.b	(BIOS_STATCURNT_RAW-A5_BASE,a5),d0	| C17426  P2: the next two bits
 	lsr.b	#0x2,d0	| C1742A
 	move.b	(BIOS_P2CURRENT).l,d1	| C1742C
 	move.w	#0x7209,d2	| C17432
 	jsr	(IoCheckPutPlayerBits,pc)	| C17436
-	move.b	(REG_DIPSW).l,d0	| C1743A
+	move.b	(REG_DIPSW).l,d0	| C1743A  the 8 hard DIPs
 	move.w	#0x7328,d1	| C17440
 	jsr	(IoCheckPutDips,pc)	| C17444
-	jsr	(IoCheckPutSystemBits,pc)	| C17448
+	jsr	(IoCheckPutSystemBits,pc)	| C17448  test button and coin inputs
 	clr.w	(a0)+	| C1744C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1744E
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17452
@@ -237,12 +237,12 @@ loc_C1740A:
 	rts	| C1745E
 | IoCheckNextSlotLed [C] I/O check: every 64 frames shows the next slot number (1 to the slot count) on the slot LED (IoCheckShowSlot)
 IoCheckNextSlotLed:
-	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C17460
+	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C17460  every 64 frames
 	andi.b	#0x3F,d0	| C17464
 	bne.b	loc_C17480	| C17468
-	move.b	(WorkIndexNew-A5_BASE,a5),d0	| C1746A
+	move.b	(WorkIndexNew-A5_BASE,a5),d0	| C1746A  next slot
 	addq.b	#0x1,d0	| C1746E
-	cmp.b	(IoCheckSlotCount-A5_BASE,a5),d0	| C17470
+	cmp.b	(IoCheckSlotCount-A5_BASE,a5),d0	| C17470  wrap after the last slot
 	bcs.b	loc_C17478	| C17474
 	moveq	#0x0,d0	| C17476
 loc_C17478:
@@ -252,13 +252,13 @@ loc_C17480:
 	rts	| C17480
 | IoCheckNextLedCount [C] I/O check: every 64 frames adds 11 (BCD) to the LED test count (00, 11 .. 99) and shows it on both LED counters
 IoCheckNextLedCount:
-	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C17482
+	move.b	(BIOS_FRAME_COUNTER_LSB-A5_BASE,a5),d0	| C17482  every 64 frames
 	andi.b	#0x3F,d0	| C17486
 	bne.b	loc_C174A6	| C1748A
-	sub.b	d0,d0	| C1748C
+	sub.b	d0,d0	| C1748C  clears X for the abcd
 	moveq	#0x11,d1	| C1748E
 	move.b	(IoCheckLedCount-A5_BASE,a5),d0	| C17490
-	abcd	d1,d0	| C17494
+	abcd	d1,d0	| C17494  00, 11, 22 .. 99, then 00
 	bcc.b	loc_C1749A	| C17496
 	moveq	#0x0,d0	| C17498
 loc_C1749A:
@@ -269,15 +269,15 @@ loc_C174A6:
 	rts	| C174A6
 | IoCheckPutSystemBits [C] I/O check: REG_SYSTYPE bit 7 and bits 0-2 of CoinInputs as 0/1
 IoCheckPutSystemBits:
-	move.l	#0x1010004,(a0)+	| C174A8
+	move.l	#0x1010004,(a0)+	| C174A8  format 1 byte, end code 4 ... (list words)
 	move.w	#0x102,(a0)+	| C174AE
-	move.l	#0x373AB,(a0)+	| C174B2
+	move.l	#0x373AB,(a0)+	| C174B2  command 3: VRAM address $73AB, command 7: inline text
 	move.w	#0x7,(a0)+	| C174B8
 	move.b	(REG_SYSTYPE).l,d0	| C174BC
-	not.b	d0	| C174C2
-	btst.b	#0x7,d0	| C174C4
+	not.b	d0	| C174C2  1 = pressed
+	btst.b	#0x7,d0	| C174C4  test button
 	jsr	(PutBitChar,pc)	| C174C8
-	btst.b	#0x0,(CoinInputs).l	| C174CC
+	btst.b	#0x0,(CoinInputs).l	| C174CC  coin 1, coin 2, service
 	jsr	(PutBitChar,pc)	| C174D4
 	btst.b	#0x1,(CoinInputs).l	| C174D8
 	jsr	(PutBitChar,pc)	| C174E0
@@ -287,22 +287,22 @@ IoCheckPutSystemBits:
 | PutBitChar [C] appends 0 if the Z flag is set on entry, else 1 (I/O check)
 PutBitChar:
 	bne.b	loc_C174FA	| C174F2
-	move.b	#0x30,(a0)+	| C174F4
+	move.b	#0x30,(a0)+	| C174F4  '0'
 	rts	| C174F8
 loc_C174FA:
-	move.b	#0x31,(a0)+	| C174FA
+	move.b	#0x31,(a0)+	| C174FA  '1'
 	rts	| C174FE
 | IoCheckPutDips [C] I/O check: the 8 hard DIP switches as 0/1
 IoCheckPutDips:
-	not.b	d0	| C17500
-	move.l	#0x1010008,(a0)+	| C17502
+	not.b	d0	| C17500  1 = on
+	move.l	#0x1010008,(a0)+	| C17502  format: 8 bytes ...
 	move.w	#0x2002,(a0)+	| C17508
 	move.w	#0x3,(a0)+	| C1750C
-	move.w	d1,(a0)+	| C17510
+	move.w	d1,(a0)+	| C17510  VRAM address in d1
 	move.w	#0x7,(a0)+	| C17512
 	moveq	#0x7,d7	| C17516
 loc_C17518:
-	move.b	#0x30,d1	| C17518
+	move.b	#0x30,d1	| C17518  '0' or '1' per switch, switch 1 first
 	lsr.b	#0x1,d0	| C1751C
 	bcc.b	loc_C17522	| C1751E
 	addq.b	#0x1,d1	| C17520
@@ -312,80 +312,80 @@ loc_C17522:
 	rts	| C17528
 | IoCheckPutPlayerBits [C] I/O check: 10 bits of one player (joystick byte and two bits of BIOS_STATCURNT_RAW) as 0/1
 IoCheckPutPlayerBits:
-	lsl.w	#0x8,d0	| C1752A
+	lsl.w	#0x8,d0	| C1752A  d0 high byte: START/SELECT bits, low byte: joystick and buttons
 	move.b	d1,d0	| C1752C
-	move.l	#0x101000A,(a0)+	| C1752E
+	move.l	#0x101000A,(a0)+	| C1752E  MESS_OUT: format, autoincrement, address d2, then inline text
 	move.w	#0x102,(a0)+	| C17534
 	move.w	#0x3,(a0)+	| C17538
 	move.w	d2,(a0)+	| C1753C
 	move.w	#0x7,(a0)+	| C1753E
-	moveq	#0x9,d7	| C17542
+	moveq	#0x9,d7	| C17542  10 characters, bit 0 first
 loc_C17544:
-	move.b	#0x30,d1	| C17544
-	lsr.w	#0x1,d0	| C17548
+	move.b	#0x30,d1	| C17544  '0' or '1' for each bit
+	lsr.w	#0x1,d0	| C17548  next bit into carry
 	bcc.b	loc_C1754E	| C1754A
 	addq.b	#0x1,d1	| C1754C
 loc_C1754E:
-	move.b	d1,(a0)+	| C1754E
+	move.b	d1,(a0)+	| C1754E  one character per bit
 	dbra	d7,loc_C17544	| C17550
 	rts	| C17554
 | IoCheckShowSlot [C] writes WorkIndexNew to the slot LED (WriteLedData) and prints the slot digit
 IoCheckShowSlot:
-	move.b	(WorkIndexNew-A5_BASE,a5),d5	| C17556
+	move.b	(WorkIndexNew-A5_BASE,a5),d5	| C17556  the slot number to the slot LED
 	jsr	(WriteLedData,pc)	| C1755A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1755E
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17562
-	clr.l	(a0)+	| C17566
-	move.l	#0x3010001,(a0)+	| C17568
+	clr.l	(a0)+	| C17566  pointer 0: the commands follow inline
+	move.l	#0x3010001,(a0)+	| C17568  inline list: format, then VRAM address $72B4 and inline text
 	move.l	#0x372B4,(a0)+	| C1756E
 	move.w	#0x7,(a0)+	| C17574
 	moveq	#0x0,d0	| C17578
 	move.b	(WorkIndexNew-A5_BASE,a5),d0	| C1757A
-	addi.b	#0x31,d0	| C1757E
+	addi.b	#0x31,d0	| C1757E  the digit 1-6
 	move.w	d0,(a0)+	| C17582
-	clr.w	(a0)+	| C17584
+	clr.w	(a0)+	| C17584  command 0: end
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17586
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1758A
 	rts	| C1758E
 | IoCheckShowLed1 [C] the LED test count on the first LED counter (latch $EF) and on screen
 IoCheckShowLed1:
-	move.b	(IoCheckLedCount-A5_BASE,a5),d0	| C17590
+	move.b	(IoCheckLedCount-A5_BASE,a5),d0	| C17590  first counter: latch $EF, screen position $7314
 	move.b	#0xEF,d1	| C17594
 	move.w	#0x7314,d2	| C17598
 	bra.w	loc_C175B8	| C1759C
 | IoCheckShowLed2 [C] the LED test count on the second LED counter (latch $DF, digit order reversed) and on screen
 IoCheckShowLed2:
 	move.b	(IoCheckLedCount-A5_BASE,a5),d0	| C175A0
-	nbcd.b	d0	| C175A4
+	nbcd.b	d0	| C175A4  second counter: the BCD count's digits swapped,
 	move.b	d0,d1	| C175A6
 	andi.b	#0xF,d1	| C175A8
 	lsl.b	#0x4,d0	| C175AC
 	or.b	d1,d0	| C175AE
-	move.b	#0xDF,d1	| C175B0
+	move.b	#0xDF,d1	| C175B0  latch $DF, screen position $73B4
 	move.w	#0x73B4,d2	| C175B4
 loc_C175B8:
-	move.b	#0xFF,(REG_LEDLATCHES).l	| C175B8
+	move.b	#0xFF,(REG_LEDLATCHES).l	| C175B8  latches idle, then the data, then the counter's latch
 	bsr.w	Delay	| C175C0
 	move.b	d0,d5	| C175C4
-	not.b	d5	| C175C6
+	not.b	d5	| C175C6  segments active low
 	move.b	d5,(REG_LEDDATA).l	| C175C8
 	move.b	d1,(REG_LEDLATCHES).l	| C175CE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C175D4
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C175D8
 	clr.l	(a0)+	| C175DC
-	move.l	#0x1010002,(a0)+	| C175DE
+	move.l	#0x1010002,(a0)+	| C175DE  inline list: two characters at d2
 	move.w	#0x2002,(a0)+	| C175E4
 	move.w	#0x3,(a0)+	| C175E8
 	move.w	d2,(a0)+	| C175EC
 	move.w	#0x7,(a0)+	| C175EE
-	move.b	d0,d2	| C175F2
+	move.b	d0,d2	| C175F2  tens digit, blank when 0 ($F0 + $30 = $20, a space)
 	lsr.b	#0x4,d2	| C175F4
 	bne.b	loc_C175FC	| C175F6
 	move.b	#0xF0,d2	| C175F8
 loc_C175FC:
 	addi.b	#0x30,d2	| C175FC
 	move.b	d2,(a0)+	| C17600
-	andi.b	#0xF,d0	| C17602
+	andi.b	#0xF,d0	| C17602  units digit
 	addi.b	#0x30,d0	| C17606
 	move.b	d0,(a0)+	| C1760A
 	clr.w	(a0)+	| C1760C
@@ -426,81 +426,81 @@ IoCheckText:
 	dc.b	0xFF,0xFF,0x00,0x00
 | HwTestSound [C] draws the SOUND TEST screen; MAME screen 4
 HwTestSound:
-	move.l	#0xE000000,(0x400022).l	| C1771C
-	jsr	(loc_C178CE,pc)	| C17726
+	move.l	#0xE000000,(0x400022).l	| C1771C  palette 1: colour 2 $0E00 (red text of the selected line)
+	jsr	(loc_C178CE,pc)	| C17726  silence (sound commands 3 then 7)
 	jsr	(ClearFixLayer,pc)	| C1772A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1772E
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17732
 	move.l	#SoundTestText,(a0)+	| C17736
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1773C
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17740
-	clr.w	(SoundTestCursor-A5_BASE,a5)	| C17744
+	clr.w	(SoundTestCursor-A5_BASE,a5)	| C17744  cursor on the first line, nothing playing
 	clr.b	(SoundTestPlaying-A5_BASE,a5)	| C17748
 	jsr	(SoundTestDrawItems,pc)	| C1774C
 	jsr	(SoundTestMoveCursor,pc)	| C17750
-	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17754
+	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C17754  next step: the per-frame routine
 	rts	| C17758
 | HwTestSoundFrame [C] per frame routine of the sound test
 HwTestSoundFrame:
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1775A
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1775A  START: silence (command 3), next screen
 	beq.b	loc_C17770	| C17760
 	move.b	#0x3,(REG_SOUND).l	| C17762
 	addq.w	#0x1,(WorkIndex-A5_BASE,a5)	| C1776A
 	rts	| C1776E
 loc_C17770:
-	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C17770
+	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C17770  A: play the line under the cursor
 	btst.b	#0x4,d0	| C17774
 	beq.w	loc_C177A0	| C17778
 	move.b	(SoundTestCursor-A5_BASE,a5),(SoundTestPlaying-A5_BASE,a5)	| C1777C
 	jsr	(SoundTestDrawItems,pc)	| C17782
 	move.b	(SoundTestPlaying-A5_BASE,a5),d0	| C17786
-	beq.w	loc_C178CE	| C1778A
+	beq.w	loc_C178CE	| C1778A  line 0 is SOUND OFF: commands 3 and 7
 	andi.w	#0xF,d0	| C1778E
-	move.b	(SoundTestCommands,pc,d0.w),(REG_SOUND).l	| C17792
+	move.b	(SoundTestCommands,pc,d0.w),(REG_SOUND).l	| C17792  lines 1-3: commands $5D, $5C, $5E
 	rts	| C1779A
 | SoundTestCommands [C] sound commands of the 4 sound test items ($03, $5D, $5C, $5E)
 SoundTestCommands:
 	dc.b	0x03,0x5D,0x5C,0x5E
 loc_C177A0:
-	andi.b	#0x3,d0	| C177A0
+	andi.b	#0x3,d0	| C177A0  bits 0-1: up and down
 	bne.b	loc_C177A8	| C177A4
 loc_C177A6:
 	rts	| C177A6
 loc_C177A8:
-	moveq	#0x1,d1	| C177A8
+	moveq	#0x1,d1	| C177A8  down: +1
 	andi.b	#0x2,d0	| C177AA
 	bne.b	loc_C177B2	| C177AE
-	moveq	#-0x1,d1	| C177B0
+	moveq	#-0x1,d1	| C177B0  up: -1
 loc_C177B2:
 	add.b	(SoundTestCursor-A5_BASE,a5),d1	| C177B2
-	cmpi.b	#0x4,d1	| C177B6
+	cmpi.b	#0x4,d1	| C177B6  outside 0-3: no move
 	bcc.b	loc_C177A6	| C177BA
 	move.b	d1,(SoundTestCursorNew-A5_BASE,a5)	| C177BC
 | SoundTestMoveCursor [C] sound test: erases the cursor at the old item and draws it at SoundTestCursorNew
 SoundTestMoveCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C177C0
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C177C4
-	clr.l	(a0)+	| C177C8
-	move.w	#0x20FF,d1	| C177CA
+	clr.l	(a0)+	| C177C8  pointer 0: the commands follow inline
+	move.w	#0x20FF,d1	| C177CA  erase the old cursor (space, palette 2)
 	jsr	(SoundTestPutCursor,pc)	| C177CE
 	move.b	(SoundTestCursorNew-A5_BASE,a5),(SoundTestCursor-A5_BASE,a5)	| C177D2
-	move.w	#0x11FF,d1	| C177D8
+	move.w	#0x11FF,d1	| C177D8  draw the new one (tile $FF, palette 1)
 	jsr	(SoundTestPutCursor,pc)	| C177DC
-	clr.w	(a0)+	| C177E0
+	clr.w	(a0)+	| C177E0  command 0: end
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C177E2
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C177E6
 	rts	| C177EA
 | SoundTestPutCursor [C] MESS_OUT entry for the sound test cursor
 SoundTestPutCursor:
-	move.w	#0x3,(a0)+	| C177EC
+	move.w	#0x3,(a0)+	| C177EC  command 3: set the VRAM address
 	moveq	#0x0,d0	| C177F0
-	move.b	(SoundTestCursor-A5_BASE,a5),d0	| C177F2
+	move.b	(SoundTestCursor-A5_BASE,a5),d0	| C177F2  fix address $718A + 3 x line
 	move.w	d0,d2	| C177F6
 	add.w	d0,d0	| C177F8
 	add.w	d0,d2	| C177FA
 	addi.w	#0x718A,d2	| C177FC
 	move.w	d2,(a0)+	| C17800
-	move.w	#0x1108,(a0)+	| C17802
+	move.w	#0x1108,(a0)+	| C17802  command 8, page 1 (8x16 tiles)
 	move.w	d1,(a0)+	| C17806
 	rts	| C17808
 | SoundTestDrawItems [C] sound test: draws the item lines, the playing one (SoundTestPlaying) in another text
@@ -508,25 +508,25 @@ SoundTestDrawItems:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1780A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1780E
 	clr.l	(a0)+	| C17812
-	move.w	#0x3,(a0)+	| C17814
+	move.w	#0x3,(a0)+	| C17814  from fix $720A, one line per item
 	move.w	#0x720A,(a0)+	| C17818
 	lea.l	(SoundTestItemTexts,pc),a1	| C1781C
 	moveq	#0x0,d7	| C17820
 loc_C17822:
-	move.l	(a1),d1	| C17822
+	move.l	(a1),d1	| C17822  d1 = the playing text
 	cmp.b	(SoundTestPlaying-A5_BASE,a5),d7	| C17824
 	beq.b	loc_C1782E	| C17828
-	move.l	0x4(a1),d1	| C1782A
+	move.l	0x4(a1),d1	| C1782A  or the normal one
 loc_C1782E:
-	move.w	#0xA,(a0)+	| C1782E
+	move.w	#0xA,(a0)+	| C1782E  command 10: call the item's text list
 	move.l	d1,(a0)+	| C17832
-	move.w	#0x5,(a0)+	| C17834
+	move.w	#0x5,(a0)+	| C17834  command 5: + 2 to the VRAM address (next line)
 	move.w	#0x2,(a0)+	| C17838
-	addq.l	#0x8,a1	| C1783C
+	addq.l	#0x8,a1	| C1783C  next item (two pointers per item)
 	addq.b	#0x1,d7	| C1783E
 	cmpi.b	#0x4,d7	| C17840
 	bne.b	loc_C17822	| C17844
-	clr.w	(a0)+	| C17846
+	clr.w	(a0)+	| C17846  command 0: end
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17848
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1784C
 	rts	| C17850
@@ -577,12 +577,12 @@ SoundTestCenterText:
 	.ascii	"CENTER"
 	dc.b	0xFF,0xFF,0x00,0x0B
 loc_C178CE:
-	move.b	#0x3,(REG_SOUND).l	| C178CE
-	moveq	#0x4,d7	| C178D6
+	move.b	#0x3,(REG_SOUND).l	| C178CE  command 3: the Z80 resets (Init sets SoundLock)
+	moveq	#0x4,d7	| C178D6  wait 5 frames
 loc_C178D8:
 	jsr	(WaitFrame,pc)	| C178D8
 	dbra	d7,loc_C178D8	| C178DC
-	move.b	#0x7,(REG_SOUND).l	| C178E0
+	move.b	#0x7,(REG_SOUND).l	| C178E0  command 7: unlock, ready for the test sounds
 	rts	| C178E8
 | SoundTestText [C] MESS_OUT data of the SOUND TEST screen
 SoundTestText:
@@ -592,22 +592,22 @@ SoundTestText:
 | HwTestMemCard [C] draws the MEMORY CARD TEST screen; MAME screen 5
 HwTestMemCard:
 	jsr	(ClearFixLayer,pc)	| C178FE
-	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17902
+	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17902  the MEMORY CARD TEST text
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17906
 	move.l	#MemCardTestText,(a0)+	| C1790A
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17910
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17914
-	move.w	#0x9,(WorkIndex-A5_BASE,a5)	| C17918
+	move.w	#0x9,(WorkIndex-A5_BASE,a5)	| C17918  next: the per-frame routine, test not done yet
 	move.w	#0x0,(WorkIndexNew-A5_BASE,a5)	| C1791E
 	rts	| C17924
 | HwTestMemCardFrame [C] per frame routine of the memory card test (prints TEST OK / TEST ERROR)
 HwTestMemCardFrame:
-	tst.w	(WorkIndexNew-A5_BASE,a5)	| C17926
+	tst.w	(WorkIndexNew-A5_BASE,a5)	| C17926  already tested: wait for START
 	bne.w	loc_C17A36	| C1792A
-	move.b	(REG_STATUS_B).l,d0	| C1792E
+	move.b	(REG_STATUS_B).l,d0	| C1792E  REG_STATUS_B bits 4-6: no card, or write-protected:
 	andi.b	#0x70,d0	| C17934
 	beq.b	loc_C1794A	| C17938
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1793A
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C1793A  START: next screen, no test
 	beq.b	loc_C17948	| C17940
 	move.w	#0xA,(WorkIndex-A5_BASE,a5)	| C17942
 loc_C17948:
@@ -615,10 +615,10 @@ loc_C17948:
 loc_C1794A:
 	jsr	(WaitFrame,pc)	| C1794A
 	jsr	(ClearFixLayer,pc)	| C1794E
-	move.b	d0,(REG_CRDUNLOCK1).l	| C17952
+	move.b	d0,(REG_CRDUNLOCK1).l	| C17952  card writable, normal access
 	move.b	d0,(REG_CRDUNLOCK2).l	| C17958
 	move.b	d0,(REG_CRDNORMAL).l	| C1795E
-	lea.l	(0x800000).l,a0	| C17964
+	lea.l	(0x800000).l,a0	| C17964  the same tests as the power-on card test: $55, $AA, addresses
 	movea.l	a0,a1	| C1796A
 	move.w	#0x7FF,d7	| C1796C
 	move.b	#0x55,d0	| C17970
@@ -629,7 +629,7 @@ loc_C17974:
 	movea.l	a1,a0	| C17980
 	move.w	#0x7FF,d7	| C17982
 loc_C17986:
-	move.b	d0,(REG_DIPSW).l	| C17986
+	move.b	d0,(REG_DIPSW).l	| C17986  check the $55s
 	move.w	(a0)+,d1	| C1798C
 	cmp.b	d1,d0	| C1798E
 	bne.w	loc_C17A0C	| C17990
@@ -644,12 +644,12 @@ loc_C179A2:
 	movea.l	a1,a0	| C179AE
 	move.w	#0x7FF,d7	| C179B0
 loc_C179B4:
-	move.b	d0,(REG_DIPSW).l	| C179B4
+	move.b	d0,(REG_DIPSW).l	| C179B4  check the $AAs
 	move.w	(a0)+,d1	| C179BA
 	cmp.b	d1,d0	| C179BC
 	bne.w	loc_C17A0C	| C179BE
 	dbra	d7,loc_C179B4	| C179C2
-	movea.l	a1,a0	| C179C6
+	movea.l	a1,a0	| C179C6  address test: high byte, then low byte of each word's address
 	move.w	#0x3FF,d7	| C179C8
 loc_C179CC:
 	move.b	d0,(REG_DIPSW).l	| C179CC
@@ -662,7 +662,7 @@ loc_C179CC:
 	movea.l	a1,a0	| C179E0
 	move.w	#0x3FF,d7	| C179E2
 loc_C179E6:
-	move.b	d0,(REG_DIPSW).l	| C179E6
+	move.b	d0,(REG_DIPSW).l	| C179E6  check the address bytes
 	move.w	a0,d2	| C179EC
 	move.w	d2,d3	| C179EE
 	lsr.w	#0x8,d2	| C179F0
@@ -673,22 +673,22 @@ loc_C179E6:
 	cmp.b	d0,d3	| C179FC
 	bne.w	loc_C17A0C	| C179FE
 	dbra	d7,loc_C179E6	| C17A02
-	lea.l	(MemCardTestOkText,pc),a1	| C17A06
+	lea.l	(MemCardTestOkText,pc),a1	| C17A06  all passed: TEST OK
 	bra.b	loc_C17A10	| C17A0A
 loc_C17A0C:
-	lea.l	(MemCardTestErrorText,pc),a1	| C17A0C
+	lea.l	(MemCardTestErrorText,pc),a1	| C17A0C  a mismatch: TEST ERROR
 loc_C17A10:
-	move.b	d0,(REG_CRDLOCK2).l	| C17A10
+	move.b	d0,(REG_CRDLOCK2).l	| C17A10  lock the card again
 	move.b	d0,(REG_CRDLOCK1).l	| C17A16
-	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17A1C
+	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17A1C  TEST OK or TEST ERROR on the screen
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17A20
 	move.l	a1,(a0)+	| C17A24
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17A26
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17A2A
-	move.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C17A2E
+	move.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C17A2E  tested: WorkIndexNew 1
 	rts	| C17A34
 loc_C17A36:
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17A36
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17A36  START: next screen
 	beq.b	loc_C17A44	| C17A3C
 	move.w	#0xA,(WorkIndex-A5_BASE,a5)	| C17A3E
 loc_C17A44:
@@ -713,31 +713,31 @@ MemCardTestErrorText:
 | HwTestBackupClear [C] draws the BACKUP CLEAR screen; MAME screen 6
 HwTestBackupClear:
 	jsr	(ClearFixLayer,pc)	| C17AB6
-	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17ABA
+	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17ABA  the BACKUP CLEAR text
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17ABE
 	move.l	#BackupClearText,(a0)+	| C17AC2
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17AC8
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17ACC
-	move.w	#0xB,(WorkIndex-A5_BASE,a5)	| C17AD0
+	move.w	#0xB,(WorkIndex-A5_BASE,a5)	| C17AD0  step $B: the backup clear's frame routine
 	rts	| C17AD6
 | HwTestBackupClearFrame [C] per frame routine of the backup clear (A+B+C)
 HwTestBackupClearFrame:
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17AD8
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17AD8  START: next screen
 	bne.b	loc_C17B08	| C17ADE
-	move.b	(BIOS_P1CURRENT-A5_BASE,a5),d0	| C17AE0
+	move.b	(BIOS_P1CURRENT-A5_BASE,a5),d0	| C17AE0  A, B and C held together on P1:
 	andi.b	#0x70,d0	| C17AE4
 	cmpi.b	#0x70,d0	| C17AE8
 	bne.b	loc_C17B0E	| C17AEC
-	move.w	#0x2700,sr	| C17AEE
+	move.w	#0x2700,sr	| C17AEE  clear the backup RAM with interrupts off
 	jsr	(ClearBackupRam,pc)	| C17AF2
 	move.w	#0x2000,sr	| C17AF6
 loc_C17AFA:
-	jsr	(WaitFrame,pc)	| C17AFA
+	jsr	(WaitFrame,pc)	| C17AFA  then wait until they are released
 	move.b	(BIOS_P1PREVIOUS-A5_BASE,a5),d0	| C17AFE
 	andi.b	#0x70,d0	| C17B02
 	bne.b	loc_C17AFA	| C17B06
 loc_C17B08:
-	move.w	#0xC,(WorkIndex-A5_BASE,a5)	| C17B08
+	move.w	#0xC,(WorkIndex-A5_BASE,a5)	| C17B08  next screen: the calendar
 loc_C17B0E:
 	rts	| C17B0E
 | BackupClearText [C] MESS_OUT data of the BACKUP CLEAR screen
@@ -752,15 +752,15 @@ BackupClearText:
 | HwTestCalendar [C] draws SETTING UP THE CALENDAR inside the hardware test; MAME screen 7
 HwTestCalendar:
 	jsr	(ClearFixLayer,pc)	| C17B5E
-	move.l	#0xEEE0000,(0x400002).l	| C17B62
+	move.l	#0xEEE0000,(0x400002).l	| C17B62  palette 0 colour 1 $0EEE; palette 1 colour 1 $0E00 (red, the edited field)
 	move.l	#0xE000000,(0x400022).l	| C17B6C
-	jsr	(ReadCalendar,pc)	| C17B76
-	moveq	#0x7,d6	| C17B7A
+	jsr	(ReadCalendar,pc)	| C17B76  the current date and time from the chip
+	moveq	#0x7,d6	| C17B7A  d6 = 7: no field highlighted in this first block
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17B7C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17B80
 	move.l	#HwCalendarText,(a0)+	| C17B84
 	clr.l	(a0)+	| C17B8A
-	move.w	#0x720A,d2	| C17B8C
+	move.w	#0x720A,d2	| C17B8C  the time read at entry: year, month, day on one row,
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C17B90
 	jsr	(PutMenuValueLine,pc)	| C17B94
 	move.w	#0x714A,d2	| C17B98
@@ -769,7 +769,7 @@ HwTestCalendar:
 	move.w	#0x71AA,d2	| C17BA4
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C17BA8
 	jsr	(PutMenuValueLine,pc)	| C17BAC
-	move.w	#0x714D,d2	| C17BB0
+	move.w	#0x714D,d2	| C17BB0  hour, minute, second on the next
 	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C17BB4
 	jsr	(PutMenuValueLine,pc)	| C17BB8
 	move.w	#0x71AD,d2	| C17BBC
@@ -778,30 +778,30 @@ HwTestCalendar:
 	move.w	#0x720D,d2	| C17BC8
 	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C17BCC
 	jsr	(PutMenuValueLine,pc)	| C17BD0
-	move.w	#0x3,(a0)+	| C17BD4
+	move.w	#0x3,(a0)+	| C17BD4  then the weekday at $728A
 	move.w	#0x728A,(a0)+	| C17BD8
 	jsr	(PutWeekday,pc)	| C17BDC
 	clr.w	(a0)+	| C17BE0
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17BE2
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17BE6
-	jsr	(HwCalendarShowDate,pc)	| C17BEA
-	clr.w	(WorkIndexNew-A5_BASE,a5)	| C17BEE
+	jsr	(HwCalendarShowDate,pc)	| C17BEA  the editable fields
+	clr.w	(WorkIndexNew-A5_BASE,a5)	| C17BEE  field 0 (month) selected
 	move.w	#0xD,(WorkIndex-A5_BASE,a5)	| C17BF2
 	rts	| C17BF8
-| HwCalendarFixAddresses [I] 6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover) The same words in all 18 other SNK system ROMs, referenced in none; a second copy, CalendarFixAddresses, sits in TestCalendar
+| HwCalendarFixAddresses [C] 6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar, read by nothing, the same words in all 18 other SNK system ROMs, referenced in none; a second copy, CalendarFixAddresses, sits in TestCalendar. Three fields on row $17 and three on row $1A, 4 columns apart: the arrangement of the calendar screens' six fields (drawn at $714A/$71AA/$720A and $714D/$71AD/$720D, 3 columns apart) on other rows (I: an older layout)
 HwCalendarFixAddresses:
 	dc.b	0x71,0x57,0x71,0xD7,0x72,0x57,0x71,0x5A,0x71,0xDA,0x72,0x5A
 | HwTestCalendarFrame [C] per frame routine of the hardware-test calendar
 HwTestCalendarFrame:
-	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17C06
+	btst.b	#0x0,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C17C06  START: back to the first screen (crosshatch)
 	beq.b	loc_C17C16	| C17C0C
 	move.w	#0x0,(WorkIndex-A5_BASE,a5)	| C17C0E
 	rts	| C17C14
 loc_C17C16:
-	btst.b	#0x7,(BIOS_P1CHANGE-A5_BASE,a5)	| C17C16
+	btst.b	#0x7,(BIOS_P1CHANGE-A5_BASE,a5)	| C17C16  D: set the chip
 	bne.w	loc_C17CA4	| C17C1C
 	jsr	(HwCalendarShowDate,pc)	| C17C20
-	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C17C24
+	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C17C24  left or right: the previous or next field (0-5, wrapping)
 	andi.b	#0xC,d0	| C17C28
 	beq.w	loc_C17C52	| C17C2C
 	moveq	#0x1,d1	| C17C30
@@ -811,7 +811,7 @@ loc_C17C16:
 loc_C17C3A:
 	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C17C3A
 loc_C17C3E:
-	add.b	d1,d0	| C17C3E
+	add.b	d1,d0	| C17C3E  skip values past 5 (the byte wraps)
 	cmpi.b	#0x6,d0	| C17C40
 	bcc.b	loc_C17C3E	| C17C44
 	move.w	d0,(WorkIndexNew-A5_BASE,a5)	| C17C46
@@ -821,7 +821,7 @@ loc_C17C4A:
 HwCalendarFieldOrder:
 	dc.b	0x01,0x02,0x00,0x04,0x05,0x06
 loc_C17C52:
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C17C52
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C17C52  A or B (with repeat): add 1 or 99 (BCD -1) to the field
 	andi.b	#0x30,d0	| C17C56
 	beq.b	loc_C17C4A	| C17C5A
 	moveq	#0x1,d1	| C17C5C
@@ -831,15 +831,15 @@ loc_C17C52:
 loc_C17C68:
 	moveq	#0x0,d2	| C17C68
 	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C17C6A
-	lea.l	(BIOS_YEAR-A5_BASE,a5),a1	| C17C6E
+	lea.l	(BIOS_YEAR-A5_BASE,a5),a1	| C17C6E  the field's offset in BIOS_YEAR..
 	move.b	(HwCalendarFieldOrder,pc,d0.w),d2	| C17C72
 	move.b	(a1,d2.w),d3	| C17C76
 loc_C17C7A:
-	sub.b	d4,d4	| C17C7A
+	sub.b	d4,d4	| C17C7A  clears X for the abcd
 	abcd	d1,d3	| C17C7C
-	tst.b	d2	| C17C7E
+	tst.b	d2	| C17C7E  the year (offset 0) takes any value 00-99
 	beq.b	loc_C17C8E	| C17C80
-	cmp.b	(HwCalendarMax,pc,d2.w),d3	| C17C82
+	cmp.b	(HwCalendarMax,pc,d2.w),d3	| C17C82  out of range: keep stepping until it is in range
 	bhi.b	loc_C17C7A	| C17C86
 	cmp.b	(HwCalendarMin,pc,d2.w),d3	| C17C88
 	bcs.b	loc_C17C7A	| C17C8C
@@ -853,44 +853,44 @@ HwCalendarMax:
 HwCalendarMin:
 	dc.b	0x00,0x01,0x01,0x00,0x00,0x00,0x00,0x00
 loc_C17CA4:
-	move.b	(NeoClnSlot).l,d5	| C17CA4
+	move.b	(NeoClnSlot).l,d5	| C17CA4  NEO-CLN slot: set its calendar too
 	bmi.b	loc_C17CC8	| C17CAA
 	move.w	#0x2700,sr	| C17CAC
-	jsr	(SwitchSlot,pc)	| C17CB0
+	jsr	(SwitchSlot,pc)	| C17CB0  its ROMs, then the system ROM vectors back
 	move.b	d0,(REG_SWPBIOS).l	| C17CB4
 	move.w	#0x2000,sr	| C17CBA
 	jsr	(SetupCalendarAlt,pc)	| C17CBE
-	move.b	d0,(REG_BRDFIX).l	| C17CC2
+	move.b	d0,(REG_BRDFIX).l	| C17CC2  board fix ROM again
 loc_C17CC8:
-	jsr	(SetupCalendar,pc)	| C17CC8
-	tst.b	d7	| C17CCC
+	jsr	(SetupCalendar,pc)	| C17CC8  the board's calendar
+	tst.b	d7	| C17CCC  valid: redraw the screen with the new time
 	beq.w	HwTestCalendar	| C17CCE
 	rts	| C17CD2
 | HwCalendarShowDate [C] hardware-test calendar: prints month, day, year, hour, minute, second (PutMenuValueLine)
 HwCalendarShowDate:
-	moveq	#0x0,d6	| C17CD4
+	moveq	#0x0,d6	| C17CD4  d6 counts the fields for the highlight
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17CD6
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17CDA
 	clr.l	(a0)+	| C17CDE
-	move.w	#0x7119,d2	| C17CE0
-	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C17CE4
+	move.w	#0x7119,d2	| C17CE0  one line per field, in HwCalendarFieldOrder's order
+	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C17CE4  month,
 	jsr	(PutMenuValueLine,pc)	| C17CE8
 	move.w	#0x7179,d2	| C17CEC
-	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C17CF0
+	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C17CF0  day,
 	jsr	(PutMenuValueLine,pc)	| C17CF4
 	move.w	#0x71D9,d2	| C17CF8
-	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C17CFC
+	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C17CFC  year,
 	jsr	(PutMenuValueLine,pc)	| C17D00
 	move.w	#0x7239,d2	| C17D04
-	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C17D08
+	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C17D08  hour,
 	jsr	(PutMenuValueLine,pc)	| C17D0C
 	move.w	#0x7299,d2	| C17D10
-	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C17D14
+	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C17D14  minute,
 	jsr	(PutMenuValueLine,pc)	| C17D18
 	move.w	#0x72F9,d2	| C17D1C
-	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C17D20
+	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C17D20  second
 	jsr	(PutMenuValueLine,pc)	| C17D24
-	clr.w	(a0)+	| C17D28
+	clr.w	(a0)+	| C17D28  command 0: end
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17D2A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17D2E
 	rts	| C17D32
@@ -898,13 +898,13 @@ HwCalendarShowDate:
 PutMenuValueLine:
 	move.w	#0x3,(a0)+	| C17D34
 	move.w	d2,(a0)+	| C17D38
-	move.w	#0x108,d5	| C17D3A
+	move.w	#0x108,d5	| C17D3A  attribute $0108: palette 0,
 	cmp.w	(WorkIndexNew-A5_BASE,a5),d6	| C17D3E
 	bne.b	loc_C17D48	| C17D42
-	move.w	#0x1108,d5	| C17D44
+	move.w	#0x1108,d5	| C17D44  or $1108 (palette 1) for the selected field
 loc_C17D48:
 	move.w	d5,(a0)+	| C17D48
-	move.b	#0x20,(a0)+	| C17D4A
+	move.b	#0x20,(a0)+	| C17D4A  a space, then two digits; a leading 0 stays a space
 	move.b	d0,d1	| C17D4E
 	lsr.b	#0x4,d0	| C17D50
 	andi.b	#0xF,d0	| C17D52
@@ -915,7 +915,7 @@ loc_C17D60:
 	andi.b	#0xF,d1	| C17D60
 	addi.b	#0x30,d1	| C17D64
 	move.b	d1,(a0)+	| C17D68
-	move.w	#0xFF00,(a0)+	| C17D6A
+	move.w	#0xFF00,(a0)+	| C17D6A  end code, end of this line's commands
 	addq.w	#0x1,d6	| C17D6E
 	rts	| C17D70
 | HwCalendarText [C] MESS_OUT data of SETTING UP THE CALENDAR (hardware test)

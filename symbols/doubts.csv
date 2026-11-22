@@ -1,30 +1,3 @@
 addr,name,file,tag,doubt,how to settle
 C14654,CardNextBlockWord,rom_names,I,"16-bit card form of CardNextBlockByte: not run, every save in card_word_* fits in one block",a save of more than 64 bytes on the emulated 16-bit card
 C1467A,CardNextBlockSparse,rom_names,I,type $80 card form of CardNextBlockByte: not run (one-block saves),a save of more than 64 bytes on the emulated type $80 card
-C15642,CardUtilNameKeyHandlers,rom_names,I,two of the five special keys set NameKeyMode (0-2); what that mode changes is not found,run FILE USER'S NAME with those keys and compare the screens
-C12372,PreviousSlot,rom_names,I,never ran: SELECT P2 on a board with several filled slots,a MAME multi-slot board with two cartridges
-C1861C,MahjongKeysToJoystick,rom_names,I,never ran: needs a mahjong controller,MAME with a mahjong controller on P1 (AES) or the code of another system ROM
-C1862E,MahjongStartFilter,rom_names,I,mahjong path not run,same as MahjongKeysToJoystick
-C186C8,UpdateMahjongRow,rom_names,I,mahjong path not run,same as MahjongKeysToJoystick
-C186DA,ReadMahjongRows,rom_names,I,mahjong path not run (REG_POUTPUT values $24/$09 from the code),same as MahjongKeysToJoystick
-C17BFA,HwCalendarFixAddresses,rom_names,I,"6 fix addresses after HwTestCalendar, nothing refers to them: leftover","checked in the 18 other SNK system ROMs (step 6): the same words, referenced in none"
-C199A8,CalendarFixAddresses,rom_names,I,which fields the 6 fix positions were for: no code reads them,"same words in 18 of the 19 SNK ROMs (not the development ROM), referenced in none; a ROM where code reads them"
-C11000,CardFormatVersion,rom_names,I,"CardFormat writes this word ($0000) into the card header; that it is a format version is a guess","checked in the other SNK system ROMs (step 6): $0000 at the start of the code in every version; a card formatted by another version would still be needed"
-C11001,CardFormatVersionLo,rom_names,I,see CardFormatVersion,see CardFormatVersion
-C116C6,SystemIoBuildFlag,rom_names,I,"tested by SystemIo, the branch goes to the next instruction either way: a build switch is a guess","checked in the 18 other SNK system ROMs (step 6): same tst/bne in every MVS version, absent from AES; the purpose stays unknown"
-C18402,ControllerTypeTable,rom_names,I,"the status values (1 joystick .. 4 keyboard) are the wiki's; which ID code is which controller is not checked",MAME with each controller type
-D00058,EyecatchSlot,ram,I,"set by ScanSlots to the first slot whose CART_EYECATCH_FLAG is 0; who reads it was not followed",follow the eyecatcher slot choice with two cartridges
-D00109,BookSlot,ram,I,slot index used by the book keeping helpers and RegisterNewGame; also a loop counter at boot,read every writer again
-D09B20,BookGameTotals,ram,I,16-byte record per game: shown by BookGame; which fields are which not checked,a book keeping game page after several plays
-D0A1A0,BookGameHours,ram,I,"24 counters per game indexed by the software clock hour; the test mode never shows them",read in MAME after plays at different hours
-10FDCA,BIOS_CRDPTR_LO,ram,I,CardUtilCopy copies it to BIOS_CRDSIZE after a CARD call: that the CARD function leaves the size there is not checked,a breakpoint on the CARD return in card_util_copy
-10FE8D,BiosScreenActive,ram,I,set while system screens run; the only reader is PlayCoinSound,coin inserted during each system screen
-10FEDB,SlotSwitching,ram,I,set around slot switches and card checks; the only reader is PlayCoinSound,coin inserted during a slot switch
-10FEE0,CompulsionStart,ram,I,set when the start compulsion starts the game; read by DemoEndCheck,let the start compulsion time run out in MAME
-10FEE6,Card1MRecoverFlag,ram,I,set by Card1MRecover; nothing reads it,"checked in the other SNK system ROMs (step 6): only written, never read, in every version"
-10FCF4,CardRomType,ram,I,type byte of an SNK ROM card header; no ROM card was run,a ROM card image
-10FD4A,MonitorFrameWord,ram_scoped,I,cleared when the monitor starts; nothing reads it,compare with the other SNK system ROMs (step 6)
-10FCE8,CabinetDrawFlags,ram_scoped,I,the blinking bit is inferred from the code,watch the cabinet page in MAME frame by frame
-10FCE8,CabinetOldDrawFlags,ram_scoped,I,same as CabinetDrawFlags for the unreachable old page,none (unreachable)
-10FEB8,NameKeyMode,ram_scoped,I,0-2 set by two special keys; its effect is not found,see CardUtilNameKeyHandlers
-10FEBD,HowToPlayFlag,ram_scoped,I,cleared at the end of HowToPlay; nothing else uses it,"checked in the other SNK system ROMs (step 6): only cleared in every version"

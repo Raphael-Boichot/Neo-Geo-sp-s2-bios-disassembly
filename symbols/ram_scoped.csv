@@ -19,7 +19,7 @@ addr,name,tag,first,last,note
 10FD40,MonitorSavedUsp,C,C16198,C16AD9,"debug monitor: user stack pointer (move usp)"
 10FD44,MonitorSavedPc,C,C16198,C16AD9,"debug monitor: PC from the exception frame"
 10FD48,MonitorSavedSr,C,C16198,C16AD9,"debug monitor: SR from the exception frame; TRACE sets bit 15 (bit 7 of this byte)"
-10FD4A,MonitorFrameWord,I,C16198,C16AD9,"debug monitor: cleared when the monitor starts; nothing reads it"
+10FD4A,MonitorClearedWord,C,C16198,C16AD9,"debug monitor: cleared when the monitor starts; nothing reads it, here or in the two ROMs that use the monitor (development, hotel)"
 10FD4C,MonitorCause,C,C16198,C16AD9,"debug monitor: exception code 0-$1C (4 per entry), indexes MonitorCauseTexts"
 10FD4E,MonitorSavedColour,C,C16198,C16AD9,"debug monitor: colours $4001E2-$4001E5 saved while it runs"
 10FD5E,MonitorMemAddress,C,C16198,C16AD9,"DISPLAY MEMORY: address shown (long)"
@@ -65,8 +65,8 @@ addr,name,tag,first,last,note
 10FCE2,EyecatchCharPointer,C,C17E26,C1835D,"next character in EyecatchTextTiles"
 10FCE6,EyecatchColoursPending,C,C17E26,C1835D,"1 when EyecatchSetColours has queued a colour set for the next VBlank"
 10FCE8,EyecatchColoursPointer,C,C17E26,C1835D,"colour set queued by EyecatchSetColours"
-10FCEE,HowToPlayPointer,C,C18914,C18F73,"HowToPlay: position in the animation data that follows HowToPlayPalettes"
-10FCF2,HowToPlayTimer,C,C18914,C18F73,"HowToPlay: frames left before the next animation entry"
+10FCEE,HowToPlayPointer,C,C18914,C18F73,"HowToPlay: position in the script, which the game copies to $10F300 (BiosWorkRam) before the call (NAM-1975)"
+10FCF2,HowToPlayTimer,C,C18914,C18F73,"HowToPlay: frames left before the next script entry"
 10FC00,CodeNumberEdit,C,C192AC,C196F9,"SETTING UP THE CODE NUMBER: the 4 digits being edited (from CodeNumber)"
 10FC04,CodeNumberDigit,C,C192AC,C196F9,"SETTING UP THE CODE NUMBER: digit under the cursor"
 10FCDE,HardDipLast,C,C196FA,C19919,"SETTING UP THE HARD DIP: REG_DIPSW value last drawn (redraw when it changes)"
@@ -76,7 +76,7 @@ addr,name,tag,first,last,note
 10FCE7,ListLineCount,C,C19B76,C19CF5,"game list: number of lines (games + 1)"
 10FCE2,CabinetOldRow,C,C19CF6,C1A105,CabinetSettingsOld: row under the cursor
 10FCE4,CabinetOldRowNew,C,C19CF6,C1A105,CabinetSettingsOld: row the cursor moves to
-10FCE8,CabinetOldDrawFlags,I,C19CF6,C1A105,"CabinetSettingsOld: 2 while all rows are drawn; bit 0 toggled for the blinking value"
+10FCE8,CabinetOldDrawFlags,C,C19CF6,C1A105,"CabinetSettingsOld: the same code as CabinetDrawFlags (2 while all rows are drawn; bit 0 which number of a coin rate is edited)"
 10F500,SoftDipDefinition,C,C1A106,C1A749,"SoftDipEditor: copy of the game's soft DIP block (cartridge header pointer for this region): settings, then the 12-byte texts"
 10FC00,SoftDipRows,C,C1A106,C1A749,"SoftDipEditor: per screen row, the setting type and its byte in BIOS_GAME_DIP (2 words)"
 10FCDE,SoftDipGameLine,C,C1A106,C1A749,"the game list line chosen (ListCursor), read on entry"
@@ -96,7 +96,7 @@ addr,name,tag,first,last,note
 10FCE8,BookGameEntry,C,C1A74A,C1B0A3,"BookGame: the game's name in the game list"
 10FCE2,CabinetRow,C,C1B0A4,C1B4EF,SETTING UP THE CABINET: row under the cursor (5 rows)
 10FCE4,CabinetRowNew,C,C1B0A4,C1B4EF,SETTING UP THE CABINET: row the cursor moves to
-10FCE8,CabinetDrawFlags,I,C1B0A4,C1B4EF,"SETTING UP THE CABINET: 2 while all rows are drawn; bit 0 toggled for the blinking value"
+10FCE8,CabinetDrawFlags,C,C1B0A4,C1B4EF,"SETTING UP THE CABINET: 2 while all rows are drawn; on a coin row bit 0 says which number of the rate Left/Right selected (0 coins, 1 credits): A/B change it and it is drawn in palette 1 (test_cabinet)"
 10FCDE,CardUtilMenuNew,C,C14EA2,C16197,"card utility menu: line the cursor moves to (WorkIndex holds the current one)"
 10FEB0,DataListLast,C,C1363E,C13943,"data lists (CardErrorFull, card utility): index of the last title"
 10FEB2,DataListPageFirst,C,C1363E,C13943,"data lists: index of the first title on the page"
@@ -120,10 +120,10 @@ addr,name,tag,first,last,note
 10FEB4,NameKey,C,C15578,C157EB,FILE USER'S NAME: key under the keyboard cursor (drawn)
 10FEB6,NameKeyNew,C,C15578,C157EB,FILE USER'S NAME: key the keyboard cursor moves to
 10FEB7,NameKeyNewLo,C,C15578,C157EB,low byte of NameKeyNew (CardUtilDirectionIndex writes the next key)
-10FEB8,NameKeyMode,I,C15578,C157EB,"FILE USER'S NAME: 0, 1 or 2, set by two of the special keys (CardUtilNameKeyHandlers); meaning not found"
+10FEB8,NameKeyMode,C,C15578,C157EB,"FILE USER'S NAME: 0-2, set by two of the special keys and read only by those two handlers: no effect in SP-S2"
 10FEB0,DataListLast,C,C15866,C1599F,
 10FEB2,DataListPageFirst,C,C15866,C1599F,
 10FEB4,DataListLine,C,C15866,C1599F,
 10FEB6,DataListCursor,C,C15866,C1599F,
 10FD00,ScanSlotTable,C,C11DB0,C12043,"PowerOnSetup and ScanSlots: CART_NGH of each slot, 4 bytes per slot"
-10FEBD,HowToPlayFlag,I,C18930,C18B00,"cleared at the end of HowToPlay; nothing else uses it"
+10FEBD,HowToPlayFlag,C,C18930,C18B00,"cleared at the end of HowToPlay; nothing else uses it, in every SNK version"

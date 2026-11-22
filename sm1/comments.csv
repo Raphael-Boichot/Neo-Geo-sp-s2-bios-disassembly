@@ -1,0 +1,581 @@
+addr,comment
+0000,"interrupts off, then the start-up code"
+0008,rst 08h: short wait
+0010,rst 10h: longer wait
+0018,"rst 18h: YM2610 port A write, d = register, e = value"
+0020,rst 20h: YM2610 port B write
+0028,rst 28h: system command a through SystemCommandTable
+0038,"IM 1 interrupt: the YM2610 timer, which runs the sound engine"
+0066,NMI: a command byte from the 68000
+006A,read the command (port 00h)
+006D,"1: prepare for a ROM switch, handled at once"
+0072,"3: reset, handled at once"
+0077,"10h: self test, handled at once"
+007C,0: nothing
+0080,a command is being waited for (CommandWait): take it directly
+0086,otherwise queue it
+008B,8 entries of 2 bytes: a flag ($FF) and the command
+009C,"next write position, 0-7"
+00A8,the command straight into SoundCommand
+00B0,reply: a byte with bit 7 set
+00B7,acknowledge the command latch
+00BD,return from NMI
+00D0,stack at the top of RAM
+00D3,interrupt mode 1 (rst 38h)
+00D9,clear the 2 KB of work RAM from SsgPeriodA
+00E7,"no command yet, music and effects locked until command 7"
+00F2,command mode 3
+00F7,everything silent
+0100,port C0h = 1
+0104,YM2610 register 27h = 30h: timers reset
+010A,register 10h = 01h
+0110,register 1Ch = 00h
+0126,timer A from TimerATable entry 3
+0130,every channel off
+0133,enable the NMI: commands may come in
+0135,"main loop: no command awaited, not in the RAM loop"
+013C,interrupts on (the timer runs the engine)
+013D,the next queue entry
+0145,2 bytes per entry
+0151,flag set: a command is waiting
+0157,random reply on: a new random reply byte each pass
+015D,the refresh register as the random value
+0164,reply with bit 7 set
+0169,take the command out of the queue
+0171,the command byte
+0175,look up its type in CommandTypeTable
+0183,type 0: ignored
+0185,1: system command
+018A,2: sound or tune
+018F,3: ADPCM-A sound (no command of this ROM)
+0194,4: ADPCM-B sound (no command of this ROM)
+0199,5: coin sound
+019E,anything else: dropped
+01A6,sound from the start
+01AD,empty the queue: both positions 0
+01BB,16 bytes
+087B,"the coin sound (7Fh), started as an effect"
+0881,any SSG slide stops
+0884,effect 60h-7Fh: its pointer in EffectTable
+0893,ix = the effect's 14-byte header
+0895,iy = effect channel 5
+089A,the special effect plays even while effects are locked
+08AC,special effect: kind 4
+08B1,header byte 0: the priority
+08BA,an effect of higher priority plays: refused
+08BF,this one plays now
+08C8,SSG silent first
+08CB,"clear the loop and call stacks of channels 0, 5, 6, 7"
+08EE,"channel 5 (SSG A): byte 9 the flags, pointer 1-2"
+0916,"channel 6 (SSG B): byte 10, pointer 3-4"
+093E,"channel 7 (SSG C): byte 11, pointer 5-6"
+0961,"channel 0 (noise): byte 12, pointer 7-8"
+0988,byte 13: the effect parameter
+0991,"slide blocks A, B, C idle"
+09A3,"register 28h: key off FM channels 1, 2 (port A) and 5, 6 (port B: FM 3, 4)"
+09BC,special effect kind 4 keeps its SSG sound
+09C2,registers 08h-0Ah = 0: the three SSG volumes off
+09D7,"d = 00h (port B dump register), d' = 1Ch (port A flag register)"
+09DD,"dump ADPCM-A channels 1-3, reset their end flags"
+09E9,"channel 4 unless held,"
+09FB,"channel 5 unless held,"
+0A0D,channel 6 unless held
+0A1F,unless special effect 3: ADPCM-B reset and its flag
+0A38,flags cleared
+0A3E,port B register 01h = 3Fh: ADPCM-A master volume up
+0A47,an ADPCM-B sound or effect plays:
+0A5C,"register 10h: reset, then its end flag"
+0A74,no ADPCM-B sound any more
+0A84,"then the three effect voices (channels 4-6), each unless held"
+0A9C,free the voice and dump its channel
+0B0B,command number x 3: a jp per command
+0B18,0: nothing
+0B66,the queue full (write position at the read position)?
+0B71,then the oldest entry is overwritten
+0B79,"command 1 from the NMI: reply 0, acknowledge,"
+0B7F,"fresh stack, then return into PrepareSwitch"
+0B88,"command 3: reply 0, fresh stack, return into SoftReset"
+0B97,"command 10h: fresh stack, return into the self test"
+0BA2,"no random reply, sound from the start"
+0BA9,sound 5Fh: the eyecatcher jingle
+0BB1,"reply 0, a short wait, again 0"
+0BC4,registers B5h and B6h = 0 on both ports: pan and LFO of every FM channel off
+0BD6,port B register 00h = BFh
+0BDC,register 10h = 01h: ADPCM-B reset
+0BE2,"register 1Ch = BFh, then 00h: ADPCM flags reset"
+0BEE,13 registers 41h-4Dh = 7Fh on both ports: FM operators silent
+0BF9,next register
+0C01,"register 28h: key off FM channels 1, 2, 5, 6"
+0C19,registers 08h-0Ah = 0: SSG volumes off
+0C2B,"write jp RamLoop (C3h FDh FFh) at RamLoop, $FFFD"
+0C33,"InRamLoop = 1, reply 1: the 68000 may switch the ROM"
+0C3A,"wait there, in RAM, until command 3 resets"
+0C3D,wait for the next command (the NMI clears NoNewCommand)
+0C4D,below 10h: an ordinary command
+0C55,otherwise allowed by CommandBitsA?
+0C63,then an ADPCM-A sound
+0C66,"byte (command / 8) of the table at hl,"
+0C71,bit 7 - (command and 7)
+0C7A,"a = the bit, zero if not allowed"
+0C7D,"the same with CommandBitsB, then an ADPCM-B sound"
+0CA6,toggle the SSG slide mode
+0CB3,random reply bytes on
+0CB9,random reply bytes off
+0CBE,wait for the next command
+0CD7,"the 3 ADPCM-A voices, 9 bytes each, channels 3-5"
+0CEE,the voice plays this sound: clear its repeat record
+0CFD,SoftResetFlag = 1: Init knows it was a soft reset
+0D03,"reply 0, acknowledge, restart the program"
+0D2E,"both locked: only command 7, 8 or 9 unlocks"
+0D44,the music locked
+0D5F,the effects locked
+0D6A,music and effects unlocked
+0D7E,a = 0
+0D8B,wait for the next command: the ADPCM-A master parameter
+0DAA,both system flags = 2
+0DBB,clear bits 3-5 of the ADPCM-A master flags
+0DC4,pitch envelope on
+0DCA,second pitch envelope on
+0DD0,pitch envelope off
+0DD5,second pitch envelope off
+0DFB,clear the 42 bytes of the ADPCM-A repeat records
+0E09,no ADPCM-B repeat
+0E0F,special effect kind 4 keeps playing
+0E15,"otherwise the effect stops, SSG silent"
+0E36,keep InRamLoop in b'
+0E3C,"a' = 80h: the result flags (bit 0 ROM, 1 RAM values, 2 RAM addresses)"
+0E40,add every byte of $0000-$EFFF
+0E52,against the checksum byte at $0014
+0E5B,bit 0 set: ROM error
+0E64,ix = where the RAM test returns
+0E6B,every test passed (flags still 80h):
+0E6D,"reply 1,"
+0E71,else 0
+0E76,then restart the program
+0E79,"the 2 KB of RAM filled with 55h,"
+0E8D,and compared
+0E9E,then with AAh
+0EB2,bit 1 clear: RAM values good
+0EB8,bit 1 set: RAM error
+0EBB,"each word holds its own address,"
+0ED2,compared
+0EE4,bit 2 clear: addresses good
+0EE7,back through ix
+0EEA,bit 2 set: address error
+0EF4,music locked: nothing
+0EFB,no ADPCM-B effect or sound playing: reset ADPCM-B
+0F0B,register 10h = 01h then 00h: ADPCM-B reset
+0F17,a song runs
+0F20,sound 20h-5Fh: its pointer in SoundTable
+0F2F,ix = the sound's 49-byte header
+0F31,iy = channel 1 block (16 bytes per channel)
+0F38,"clear the loop stacks of FM channels 1-4,"
+0F49,and of channels 8-14
+0F57,the same for the call stacks
+0F76,header byte 23: the tempo
+0F7F,channel 1 (FM 1) belongs to this sound
+0F86,not running yet
+0F8A,"header byte 27: pan bits, with C0h (both sides)"
+0F92,shadow of register B5h: both sides
+0F97,"header words 1-2: the channel's sequence, start and current position"
+0FA9,next channel block
+0FAE,"channel 2 (FM 2), header byte 29 and pointer 3-4"
+0FDD,"channel 3 (FM 3, port B), byte 31 and pointer 5-6"
+100C,"channel 4 (FM 4, port B), byte 33 and pointer 7-8"
+103B,"channel 8 (ADPCM-A 1), byte 35 and pointer 9-10"
+1065,channel 9 (ADPCM-A 2)
+108F,channel 10 (ADPCM-A 3)
+10B9,channel 11 (ADPCM-A 4)
+10E3,channel 12 (ADPCM-A 5)
+110D,channel 13 (ADPCM-A 6)
+1137,channel 14 (ADPCM-B)
+115F,a sound started from the start: the ADPCM-A master settings
+1169,header bytes 24-26
+117B,port B register: ADPCM-A master volume
+1180,fade accumulator cleared
+1186,timer A on: the engine runs
+118A,refused: drop the sound number
+118C,effects locked: silence instead
+1195,"the three slide blocks, 11 bytes each, SSG registers 0-1, 2-3, 4-5"
+119E,block in use: one step
+11B6,"effects locked: the effect stops, unless special effect 4"
+11C1,step counter: not yet
+11C5,"period - step,"
+11D4,at least 70h
+11D7,to the channel's two tone registers
+11E8,reload the step counter
+11F3,the step changes by 3 each time
+11FD,"slide mode on: smaller steps, the slide ends at 0"
+120A,"otherwise larger steps, until clamped"
+1226,below 70h:
+1236,"clamp, and note it"
+1242,"FM 1-2 on port A (04h/05h), FM 3-4 on port B (06h/07h)"
+1265,register 28h: key on with the channel's operator mask
+1270,shadow of the key byte
+1277,no operator keyed: no frequency to write
+127D,"the note index into FmFnumTable,"
+128D,"plus the channel's fine tune (+15, signed)"
+12A2,the octave (block) into bits 3-5 of the high byte
+12A8,"register A4h + channel: block and F-number high,"
+12B3,register A0h + channel: F-number low
+12BE,kept in the FM register shadow (A0h/A4h copies)
+12CD,the channel's modulation from this note
+12D4,a slide runs on this channel: no new note
+12D9,channel 5-7 to 0-2
+12E1,"d not 0: tone on, else noise only"
+12E7,its tone bit in the mixer
+12F0,"register 07h (mixer): read, set the channel's bit, write back"
+1300,"the note index into SsgPeriodTable,"
+130F,"high bits of the pitch byte: the octave, period halved per octave"
+131F,"remember the period for a later slide (channels 5, 6, 7)"
+1351,tone registers 2 x channel and 2 x channel + 1
+1365,d = 0: the noise off
+1369,register 06h: the noise period
+136E,register 07h: the effect's noise bits into the mixer
+1385,mixer: the noise bits of the three channels cleared
+1399,the channel's slide block
+13AE,in use: carry set
+1533,channel 0: noise off
+1537,"FM 1-4 (d = operator mask, 0 = key off)"
+153E,SSG 5-7
+1545,ADPCM-B 14
+154D,"ADPCM-A 8-13: unless an effect voice uses the channel,"
+155C,"dump the channel (port B register 00h, bit 7 + channel bit)"
+1571,and reset its end flag (register 1Ch)
+1581,ADPCM-B: only when its pass owns it
+1597,register 11h = 0: ADPCM-B output off
+15A7,x 8
+15FC,register 27h = 3Fh: timers loaded and their flags reset
+15FF,register 27h
+1606,register 27h = 00h
+160D,register 27h = 3Ah
+1614,"register 27h = 35h: timer B stopped, A running"
+161B,register 27h = 1Fh: timer B flag reset
+1622,"register 27h = 2Fh: timer A flag reset, both timers on"
+162E,hl = a x 52: the instrument record
+1647,only for FM channels 1-4
+1651,the channel's column in the FM register shadow (4 bytes per register row)
+1662,rows 4 bytes apart: one byte per channel
+1665,"registers 30h+: detune (negative values to 4-7) and multiple, operators 1, 3, 2, 4"
+16A9,"registers 40h+: total level, only for the operators that are not carriers"
+16DB,registers 50h+: key scale and attack rate
+1703,registers 60h+: AM bit (byte 51) and decay rate
+173B,registers 70h+: sustain rate
+174F,registers 80h+: sustain level and release rate
+177F,registers 90h+: SSG-EG
+1792,"then 80h further: register B0h, feedback x 8 + algorithm"
+17A1,"register B4h: keep the pan bits, AMS / PMS from byte 50"
+17A9,and the vibrato settings
+17BC,"ModulationBlocks entry of the channel, 16 bytes each"
+17C7,instrument bytes 42-45: delay and depth
+17E3,depth = byte 47 x byte 46
+17F4,byte 48
+1800,b = 0: the result is 0
+1805,e negative: d = FFh
+180A,hl = de added b times
+1816,FM channels 1-4 only
+1824,"FM 1-2: the port A shadow column, register ports 04h/05h"
+1839,"FM 3-4: port B, channel - 2"
+184C,"7 register rows (30h-90h), 4 operators each"
+1851,"register number out, then the shadow byte (outi)"
+1859,"next operator: 4 bytes on in the shadow, register + 4"
+1865,then B0h + channel (feedback and algorithm)
+1879,"and B4h + channel (pan, AMS, PMS)"
+1887,the fade speed
+188D,overflow: the fade counter + 100
+189B,overflow again: one fade step
+18A0,bits 3 and 5 both set: the fade is complete
+18AA,one more step of attenuation
+18B2,past 3Ch: ADPCM-A channels stop fading in
+18BA,past 5Ah: the limit
+18C4,"ADPCM-A channels 8-13: level one lower, cleared at 0 or below"
+1916,"ADPCM-B: 5 lower, not below 0"
+1929,"the master volume 6 lower, bit 5 set at 0"
+196F,channel not in use
+1974,"fade + channel level + note level, at most 7Fh"
+1983,overflow: the channel stops at 78h
+1996,"level - note level, at least 1"
+19A8,not while an effect voice uses the channel
+19BC,with the pan bits
+19D5,master volume + channel level (signed)
+19EB,- 3 x note level
+19FA,below 0: the channel stops
+1A00,not while an ADPCM-B effect plays
+1A09,"fade complete: the flags cleared, the song ends (SeqEnd)"
+1A18,FM channels 1-4 only
+1A20,modulation switched off for this channel (command 4Fh)
+1A2A,iy = its ModulationBlocks entry
+1A2D,depth (+4/+5) 0: no modulation
+1A3A,bit 2: finished
+1A3F,bits 3-4: the delay is over
+1A4B,otherwise count the delay down
+1A55,running
+1A5D,speed counter: one step every +15 ticks
+1A67,the step result goes to FmWriteFnumOffset
+1A6B,bc = the step (+0/+1)
+1A71,negative depth: the step negated
+1A82,"hl = the current offset, +2 = the shape:"
+1A8C,"0: up to the depth, then from 0 again"
+1A8F,"1: up then down, the value only at the turns"
+1A94,2: up and down (triangle)
+1A99,3: from a pattern of bits
+1A9E,"4: to the top at once, then down once"
+1AA3,"5: up, then down once"
+1ADE,between the turns: no offset
+1AEB,beyond the depth: turn
+1B03,below 0: turn
+1B19,the next pattern byte (+9 the position)
+1B25,bit 1: no offset this step
+1B7F,"the note's F-number from the shadow,"
+1B82,plus the offset
+1B88,"FM 1-2: registers A4h+ch (high), then A0h+ch (low) on port A"
+1B98,FM 3-4: on port B
+1BBA,"+70h: the A0h row (low byte), +74h: the A4h row"
+1BD0,"+3 0: no delay, start at once"
+1BD6,"the delay counter,"
+1BDD,the speed counter
+1BE6,"no delay: bit 3, running from the start"
+1BF4,b x 16
+1E48,register 1Bh = 0: ADPCM-B volume off
+1E59,"the note nibble's semitone,"
+1E61,plus the transposition
+1E64,negative: sign-extended index
+1E6F,back to a pitch byte (octave and note)
+1EB5,save every register used by the engine
+1EC5,the stack at entry
+1EC9,port B status: ADPCM end flags
+1ECE,bit 7: ADPCM-B sample ended
+1ED3,"bits 5-0: ADPCM-A channels 6-1 ended, repeat them if asked"
+1F0F,port A status: the timer flags
+1F14,"bit 1, timer B: the music pass"
+1F19,otherwise timer A: the effect pass
+1F1D,effect pass (timer A)
+1F26,"SSG slides, parameter ticks, ADPCM-B fade"
+1F32,modulation of FM channels 1-4
+1F46,an effect plays: tick its SSG channels 5-7 and channel 0
+1F7D,ADPCM-A voices in use by effects: their channels 11-13
+1FB3,an ADPCM-B sound: its channel 14
+1FCD,music pass (timer B)
+1FD4,no song: nothing
+1FE3,a fade in progress: one step
+1FEA,"FM channels 1-4, each then faded if a fade runs"
+2036,ADPCM-A channels 8-13
+20A8,ADPCM-B channel 14
+20BE,channel not in use: nothing
+20C3,"bit 0 clear: the note is over, read the next event"
+20CB,"bit 1: gate time running, else note time"
+20D6,"keep bit 3, set the busy bits"
+20E1,next event of the sequence (hl = position)
+20EA,position after the event
+20F0,channel 0 and channels 8 and up: no pitch here
+20FC,FM or SSG pitch for the note
+2106,"level = master + channel level + note level, at most 7Fh"
+2118,FM: the total level of the carriers
+2124,key on unless the tie bit (3) is set
+212F,then the FM key-on register
+2133,"SSG: level, then the note"
+2141,channel 0: the SSG noise period
+214E,channel 14: ADPCM-B
+2153,"ADPCM-A: level = channel level - note level, not below 0,"
+2166,with the pan bits
+2170,then the sample of the note
+2174,ADPCM-B: a sample number (+8 = 1) or a pitch
+218E,"volume = master + level - 3 x note level, not below 0"
+21A5,a fade running: it starts from this volume
+21BE,"start the ADPCM-B sample, unless bit 2 (held)"
+21C6,register 11h: pan bits
+21D2,bit 3 (tie): key on with d = 5
+21E3,"note +6 transposed by +7,"
+21EC,"octave bits from +0,"
+21F2,plus fine tune +13 and +14
+21FB,gate time over:
+21FF,the note is released (bit 1 clear)
+2209,tied: no key off
+220E,key off
+2217,note time over: the next event
+2226,"then key off the channel unless tied, the next event"
+2253,end of the interrupt: restart the timer that fired
+2263,restore the registers
+226D,a' = the current channel
+2274,the next byte:
+2275,00h: a long note length follows
+2279,01h-30h: a note length
+227E,31h-5Fh: a command
+2283,80h-FFh: an instrument
+2288,60h-7Fh: not used (this would loop for ever)
+228B,instrument number = byte - 80h
+2290,its 52 bytes into the channel
+2296,the FM levels written
+2299,up to three more bytes with bit 7 set:
+229C,"level,"
+22A1,"detune,"
+22A6,and parameter 15
+22AC,FM and SSG channels:
+22B3,level = byte - 88h
+22BB,"ADPCM-A channels: byte - 80h, only when the sound started from the start"
+22CC,ADPCM-B: byte - B8h
+22D4,byte - B8h
+22DC,"low nibble: bit 0 the sign, bits 1-3 the size"
+22EB,to the high nibble
+22F6,00h: the length is in the next byte
+22FF,note and gate times from the length (and the tempo)
+2309,then the level byte:
+230A,bit 6: a rest
+230E,bit 7 clear: tie (no key off before the next note)
+231F,ADPCM-B: bit 5 starts a fade
+2330,bits 0-4: the note's attenuation
+2337,then the pitch byte:
+2341,"FM and SSG: low nibble the note, high nibble the octave"
+234F,channel 0 and ADPCM-A: the whole byte (noise period or sample)
+2364,"a rest: busy bit 2, skip the level and pitch bytes"
+2371,a command: index = byte - 30h
+2374,the handler returns into SequenceStep
+2379,x 3: one jp per command
+2384,command 30h (never reached: 30h is a note length)
+2387,command 31h
+238A,command 32h
+238D,command 33h
+2390,command 34h
+2393,command 35h
+2396,command 36h
+2399,command 37h
+239C,command 38h
+239F,command 39h
+23A2,command 3Ah
+23A5,command 3Bh
+23A8,command 3Ch
+23AB,command 3Dh
+23AE,command 3Eh
+23B1,command 3Fh
+23B4,command 40h
+23B7,command 41h
+23BA,command 42h
+23BD,command 43h
+23C0,command 44h
+23C3,command 45h
+23C6,command 46h
+23C9,command 47h
+23CC,command 48h
+23CF,command 49h
+23D2,command 4Ah
+23D5,command 4Bh
+23D8,command 4Ch
+23DB,command 4Dh
+23DE,command 4Eh
+23E1,command 4Fh
+23E4,command 50h
+23E7,command 51h
+23EA,command 52h
+23ED,command 53h
+23F0,command 54h
+23F3,command 55h
+23F6,command 56h
+23F9,command 57h
+23FC,command 58h
+23FF,command 59h
+2402,command 5Ah
+2405,command 5Bh
+2408,command 5Ch
+240B,command 5Dh
+240E,command 5Eh
+2411,command 5Fh
+2416,"command 5Fh: an SSG pitch slide on channel 5, 6 or 7"
+2429,"channel 7: its slide block, not already sliding"
+2458,start the slide from the current period
+2469,the slide's step count from the sequence
+2479,other channels: nothing
+247C,already sliding: skip the parameter
+2480,command 5Eh: ADPCM-B fade step
+2487,command 5Dh: second pitch envelope on or off
+248E,command 5Ch: second ADPCM-B envelope flag
+2495,command 5Bh: ADPCM-B envelope flag
+249F,"command 5Ah: stop the ADPCM-A voice of effect channel 11, 12 or 13"
+24B3,port B register 00h: dump (stop) that channel
+24B9,flag register 1Ch: reset that channel's end flag
+24F5,command 59h: stop the ADPCM-B sound
+24FD,"register 10h: ADPCM-B reset, end flag reset"
+2516,"command 58h: an LFO value (first set, or second while ADPCM-B plays)"
+2529,command 57h: five ADPCM-B envelope bytes
+253B,"into the current parameters,"
+255C,or the saved ones while an ADPCM-B sound plays
+2576,"command 56h: the channel level, byte - 80h"
+2580,special effect 4 ends too
+258F,"SSG silent, then out of the interrupt directly"
+2599,command 54h: start effect n
+25B6,shadow of the timer A registers
+25BB,register 25h: timer A low bits
+25C5,register 24h: timer A high bits
+25D4,register 0Dh: envelope shape
+25DB,register 0Bh: envelope period low
+25E2,register 0Ch: envelope period high
+25E9,command 51h: the effect parameter
+25F1,"register, then value"
+25F9,command 4Fh: modulation off flag of this FM channel
+260F,register 22h: LFO
+2616,command 4Ch: pitch envelope on or off
+261D,command 52h: second pitch envelope on or off
+2624,command 4Bh: nine ADPCM-B pitch envelope bytes
+2636,"into the current parameters,"
+2660,or the saved ones while an ADPCM-B sound plays
+2684,the sound number
+2688,then out of the interrupt directly
+268F,command 46h: the channel's pitch source
+269F,"below 40h: mode 1, a fixed sample"
+26A6,"40h-7Fh: mode 2, a table entry"
+26B7,"80h-BFh: mode 0, a delta from the table at 5024h"
+26C7,command 4Dh: clear the 6 ADPCM-A repeat records
+26D6,command 45h: no ADPCM-B repeat
+26DC,command 44h: pan of the channel
+26F4,FM 1-2: register B4h + channel on port A
+2706,FM 3-4: register B4h + channel - 2 on port B
+271B,"keep the low 6 bits,"
+2720,the 2 pan bits of the parameter to bits 6-7
+2734,ADPCM-A: pan bits into its level register copy
+2767,ADPCM-B: pan bits into +1
+2779,"SSG: no pan, skip the parameter"
+277D,stop the Z80
+2781,the song stops
+2788,FM keys off
+2791,ADPCM-B reset unless an ADPCM-B effect plays
+279D,port B register 00h = 87h: dump ADPCM-A channels 1-3
+27A3,port B register 01h = 3Fh: ADPCM-A master volume
+27AA,out of the interrupt directly
+27B2,the start of the sequence back as the position
+27BF,(the operand would be read from the wrong register set)
+27C4,this channel's loop stack
+27CB,the count byte from the sequence
+27D0,one more level on the stack
+27D2,3 bytes per level
+27D6,"count, then the position after the count"
+27DD,second engine pass: effect channels mapped to their own stacks
+27E6,x 16
+27EF,"channels 11, 12, 13 and 16 use stack entries 18, 17, 15 and 16"
+2814,a x 3
+2822,the current level
+2828,one count less
+282B,not yet zero: back to the stored position
+2833,"zero: drop the level, carry on after the end command"
+2838,"this channel's call stack, one level more"
+2844,the word that follows: the sub-sequence
+2849,the return position (after the word) onto the stack
+2859,no level: carry on
+285D,"drop the level, back to its stored position"
+2869,command 3Bh: start ADPCM-A sound n
+287A,command 43h: start ADPCM-B sound n
+288B,command 3Dh: the channel's owner (ChannelOwner)
+2895,command 3Fh: an ADPCM-A master parameter
+28AB,bits 3-7 of the length: the gate shift
+28B2,the channel's owner value
+28BC,7: the gate time is the whole length
+28C3,0: the gate from GateTimeTable
+28C7,otherwise gate = value x (owner + 1)
+28E9,a = note time - gate time
+28F2,ChannelOwner[a]
+2904,"register 26h: timer B, the music tempo"
+2916,TimerATable[a]: two bytes
+2920,register 25h: timer A low bits
+292A,register 24h: timer A high bits
+2937,register number to port 04h
+293A,short wait
+293B,the value to port 05h
+293E,longer wait

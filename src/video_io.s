@@ -3,16 +3,16 @@
 
 | FixClear [W] target of FIX_CLEAR
 FixClear:
-	lea.l	(REG_VRAMRW).l,a0	| C1835E
-	move.w	#0x1,0x2(a0)	| C18364
-	move.w	#0x7020,-0x2(a0)	| C1836A
-	move.w	#0xFF,d0	| C18370
-	move.w	#0x4BF,d1	| C18374
+	lea.l	(REG_VRAMRW).l,a0	| C1835E  a0 = VRAM data, -2(a0) address, 2(a0) modulo
+	move.w	#0x1,0x2(a0)	| C18364  auto-increment 1
+	move.w	#0x7020,-0x2(a0)	| C1836A  fix layer from column 1 ($7020)
+	move.w	#0xFF,d0	| C18370  tile $FF (blank), palette 0
+	move.w	#0x4BF,d1	| C18374  $4C0 words: columns 1-38
 	jsr	(FillVramWords,pc)	| C18378
-	move.w	#0x20,d0	| C1837C
+	move.w	#0x20,d0	| C1837C  then column 39: tile $20 (space)
 	move.w	#0x1F,d1	| C18380
 	jsr	(FillVramWords,pc)	| C18384
-	move.w	#0x7000,-0x2(a0)	| C18388
+	move.w	#0x7000,-0x2(a0)	| C18388  and column 0, also tile $20
 	move.w	#0x1F,d1	| C1838E
 | FillVramWords [C] writes d0 to (a0) d1+1 times (REG_VRAMRW with auto-increment)
 FillVramWords:
@@ -21,40 +21,40 @@ FillVramWords:
 	rts	| C18398
 | LspFirst [W] target of LSP_1ST (clear sprites)
 LspFirst:
-	lea.l	(REG_VRAMRW).l,a0	| C1839A
+	lea.l	(REG_VRAMRW).l,a0	| C1839A  sprite control blocks, auto-increment 1
 	move.w	#0x1,0x2(a0)	| C183A0
-	move.w	#0x8000,-0x2(a0)	| C183A6
-	move.w	#0xFFF,d0	| C183AC
+	move.w	#0x8000,-0x2(a0)	| C183A6  SCB2 at $8000: shrink of the 512 sprites
+	move.w	#0xFFF,d0	| C183AC  $0FFF: full size
 	move.w	#0x1FF,d1	| C183B0
 	jsr	(FillVramWords,pc)	| C183B4
-	moveq	#0x0,d0	| C183B8
+	moveq	#0x0,d0	| C183B8  SCB3 at $8200: Y position and height 0
 	move.w	#0x1FF,d1	| C183BA
 	jsr	(FillVramWords,pc)	| C183BE
-	move.w	#0xBE00,d0	| C183C2
-	move.w	#0x1FF,d1	| C183C6
+	move.w	#0xBE00,d0	| C183C2  SCB4 at $8400: X position
+	move.w	#0x1FF,d1	| C183C6  $BE00: X = $17C, off the screen
 	jsr	(FillVramWords,pc)	| C183CA
-	move.w	#0x0,-0x2(a0)	| C183CE
-	move.w	#0xFF,d0	| C183D4
-	move.w	#0x2,0x2(a0)	| C183D8
+	move.w	#0x0,-0x2(a0)	| C183CE  SCB1 from $0000: the first tile word of each sprite
+	move.w	#0xFF,d0	| C183D4  tile $FF
+	move.w	#0x2,0x2(a0)	| C183D8  auto-increment 2: every second word (the tile words)
 	moveq	#0x1F,d1	| C183DE
 	bra.b	FillVramWords	| C183E0
 | ByteToHex [C] d0 byte -> two ASCII hex digits (high in d0, low in d1)
 ByteToHex:
 	move.w	d0,d1	| C183E2
-	lsr.b	#0x4,d1	| C183E4
+	lsr.b	#0x4,d1	| C183E4  high nibble first
 	jsr	(NibbleToHex,pc)	| C183E6
-	exg	d0,d1	| C183EA
+	exg	d0,d1	| C183EA  d0 = high digit, d1 = low nibble
 	andi.b	#0xF,d1	| C183EC
 | NibbleToHex [C] d1 nibble -> ASCII '0'-'9' / 'A'-'F'
 NibbleToHex:
 	cmpi.b	#0xA,d1	| C183F0
 	bcc.b	loc_C183FC	| C183F4
-	addi.b	#0x30,d1	| C183F6
+	addi.b	#0x30,d1	| C183F6  '0'-'9'
 	rts	| C183FA
 loc_C183FC:
-	addi.b	#0x37,d1	| C183FC
+	addi.b	#0x37,d1	| C183FC  'A'-'F' (+$37)
 	rts	| C18400
-| ControllerTypeTable [I] 6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) by ID code; ControllerSetup loads it in a4 but only the unreferenced ControllerTypeScan reads it (in SP-S2 the mahjong DIP alone sets BIOS_P1STATUS)
+| ControllerTypeTable [C] 6 rows of 16 bytes: controller status by ID code (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values). ControllerSetup loads it in a4 but only the unreferenced ControllerTypeScan reads it (in SP-S2 the mahjong DIP alone sets BIOS_P1STATUS). The same table in the AES ROMs: MAME, AES Asia, gives BIOS_P1STATUS 1 with a joystick and 3 with the mahjong controller
 ControllerTypeTable:
 	dc.b	0x02,0x02,0x00,0x00,0x00,0x02,0x00,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x01,0x00,0x01,0x01,0x01,0x01,0x01
@@ -68,7 +68,7 @@ ControllerSetup:
 	lea.l	(ControllerTypeTable,pc),a4	| C18468  a4: only ControllerTypeScan reads it, and nothing calls that here
 	lea.l	(REG_POUTPUT).l,a2	| C1846C
 	moveq	#0x0,d0	| C18472
-	move.b	d0,(BIOS_P1STATUS-A5_BASE,a5)	| C18474
+	move.b	d0,(BIOS_P1STATUS-A5_BASE,a5)	| C18474  no controller on any port yet
 	move.b	d0,(BIOS_P2STATUS-A5_BASE,a5)	| C18478
 	move.b	d0,(BIOS_P3STATUS-A5_BASE,a5)	| C1847C
 	move.b	d0,(BIOS_P4STATUS-A5_BASE,a5)	| C18480
@@ -77,7 +77,7 @@ ControllerSetup:
 	bne.b	loc_C18496	| C1848E
 	move.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C18490
 loc_C18496:
-	move.b	#0x0,(a2)	| C18496
+	move.b	#0x0,(a2)	| C18496  REG_POUTPUT back to 0
 	rts	| C1849A
 | ControllerTypeScan [C] unreferenced in SP-S2 and in every MVS version, called 6 times by ControllerSetup in the three AES ROMs after each REG_POUTPUT pattern: reads bits 6-7 of REG_P1CNT and REG_P2CNT and the low nibble of REG_STATUS_B (starts and selects), keeps the bits selected by d2, builds an index in d0 and writes the ControllerTypeTable entry (a4) into each BIOS_P1STATUS-P4STATUS still 0, then a4 += 16. Typed as code since 2026-11-21 (it was data after ControllerSetup's rts)
 ControllerTypeScan:
@@ -126,7 +126,7 @@ DelayShorter:
 	bsr.w	DelayReturn	| C184FC
 | DelayReturn [C] the rts that ends the delay chain
 DelayReturn:
-	nop	| C18500
+	nop	| C18500  a short wait for the input lines (DelayShort lands here)
 	nop	| C18502
 	nop	| C18504
 	nop	| C18506
@@ -136,151 +136,151 @@ DelayReturn:
 | ReadControllers [C] selects the joystick ports through REG_POUTPUT, reads REG_P1CNT/REG_P2CNT/REG_STATUS_B and updates BIOS_P1STATUS and the following input bytes
 ReadControllers:
 	lea.l	(BiosWorkRam).l,a5	| C1850E
-	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C18514
+	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C18514  a0: the four player blocks, 6 bytes apart
 	lea.l	(REG_POUTPUT).l,a2	| C18518
 	moveq	#0x0,d1	| C1851E
-	move.b	#0x12,(a2)	| C18520
+	move.b	#0x12,(a2)	| C18520  output $12: select the first input set
 	bsr.b	DelayShort	| C18524
-	move.b	(REG_STATUS_B).l,d1	| C18526
-	move.b	(REG_P2CNT).l,d5	| C1852C
+	move.b	(REG_STATUS_B).l,d1	| C18526  START/SELECT bits of P1 and P2
+	move.b	(REG_P2CNT).l,d5	| C1852C  d5 = P2 (high word) and P1 (low word) of this set
 	swap	d5	| C18532
 	move.b	(REG_P1CNT).l,d5	| C18534
-	lsl.b	#0x4,d1	| C1853A
-	move.b	#0x1B,(a2)	| C1853C
+	lsl.b	#0x4,d1	| C1853A  first set into the high nibble
+	move.b	#0x1B,(a2)	| C1853C  output $1B: select the second input set
 	bsr.b	DelayShort	| C18540
-	move.b	(REG_STATUS_B).l,d2	| C18542
+	move.b	(REG_STATUS_B).l,d2	| C18542  then the second set
 	move.b	(REG_P2CNT).l,d4	| C18548
 	swap	d4	| C1854E
 	move.b	(REG_P1CNT).l,d4	| C18550
-	andi.b	#0xF,d2	| C18556
+	andi.b	#0xF,d2	| C18556  d2 = both nibbles: STATCURNT (inverted below)
 	or.b	d1,d2	| C1855A
-	not.b	d2	| C1855C
-	move.b	(BIOS_STATCURNT_RAW).l,d3	| C1855E
+	not.b	d2	| C1855C  1 = pressed
+	move.b	(BIOS_STATCURNT_RAW).l,d3	| C1855E  d3 = newly pressed
 	eor.b	d2,d3	| C18564
 	and.b	d2,d3	| C18566
-	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C18568
+	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C18568  a mahjong controller on P1 or P2: read its extra rows
 	beq.b	loc_C18578	| C1856E
 	cmpi.b	#0x3,(BIOS_P2STATUS-A5_BASE,a5)	| C18570
 	bne.b	loc_C1857C	| C18576
 loc_C18578:
 	jsr	(ReadMahjongRows,pc)	| C18578
 loc_C1857C:
-	move.b	#0xCF,d7	| C1857C
+	move.b	#0xCF,d7	| C1857C  P1: keep START/SELECT of P1 and P2 only (mask $CF)
 	jsr	(UpdatePlayerInputs,pc)	| C18580
-	swap	d4	| C18584
+	swap	d4	| C18584  then P2 from the high words
 	swap	d5	| C18586
 	swap	d6	| C18588
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C1858A
-	move.b	#0x3F,d7	| C1858E
+	move.b	#0x3F,d7	| C1858E  mask $3F for P2's pass
 	jsr	(UpdatePlayerInputs,pc)	| C18592
-	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C18596
+	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C18596  a held mahjong key cancels P1 START (bit 1), P2 (bit 3)
 	moveq	#0x1,d0	| C1859A
 	jsr	(MahjongStartFilter,pc)	| C1859C
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C185A0
 	moveq	#0x3,d0	| C185A4
 	jsr	(MahjongStartFilter,pc)	| C185A6
-	move.b	d2,(BIOS_STATCURNT_RAW-A5_BASE,a5)	| C185AA
+	move.b	d2,(BIOS_STATCURNT_RAW-A5_BASE,a5)	| C185AA  BIOS_STATCURNT_RAW / CHANGE_RAW: every bit
 	move.b	d3,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C185AE
-	andi.b	#0x55,d2	| C185B2
+	andi.b	#0x55,d2	| C185B2  STATCURNT / STATCHANGE: START bits only ($55)
 	andi.b	#0x55,d3	| C185B6
 	move.b	d2,(BIOS_STATCURNT-A5_BASE,a5)	| C185BA
 	move.b	d3,(BIOS_STATCHANGE-A5_BASE,a5)	| C185BE
-	move.b	#0x0,(REG_POUTPUT).l	| C185C2
-	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C185CA
+	move.b	#0x0,(REG_POUTPUT).l	| C185C2  outputs off
+	lea.l	(BIOS_P1STATUS-A5_BASE,a5),a0	| C185CA  the system ROM's own copies of P1 and P2 (joystick form)
 	lea.l	(SysP1Status-A5_BASE,a5),a1	| C185CE
 	jsr	(CopyControllerState,pc)	| C185D2
 	lea.l	(BIOS_P2STATUS-A5_BASE,a5),a0	| C185D6
 	lea.l	(SysP2Status-A5_BASE,a5),a1	| C185DA
 | CopyControllerState [C] copies a player's status block (BIOS_P1STATUS..) to SysP1Status/SysP2Status; a mahjong controller (status 3, wiki) is converted to joystick bits first
 CopyControllerState:
-	cmpi.b	#0x3,(a0)	| C185DE
+	cmpi.b	#0x3,(a0)	| C185DE  not mahjong: copy the 6 bytes as they are
 	beq.b	loc_C185EE	| C185E2
 	move.l	(a0),(a1)	| C185E4
 	move.w	0x4(a0),0x4(a1)	| C185E6
 	rts	| C185EC
 loc_C185EE:
-	move.b	#0x1,(a1)	| C185EE
-	move.b	0x1(a0),d0	| C185F2
+	move.b	#0x1,(a1)	| C185EE  mahjong: shown as a joystick (status 1)
+	move.b	0x1(a0),d0	| C185F2  previous/current key rows to joystick bits
 	move.b	0x2(a0),d1	| C185F6
 	jsr	(MahjongKeysToJoystick,pc)	| C185FA
 	move.b	d0,0x1(a1)	| C185FE
 	move.b	d0,0x2(a1)	| C18602
-	move.b	0xD(a0),d0	| C18606
+	move.b	0xD(a0),d0	| C18606  and the change/repeat bytes of the second block
 	move.b	0xE(a0),d1	| C1860A
 	jsr	(MahjongKeysToJoystick,pc)	| C1860E
 	move.b	d0,0x3(a1)	| C18612
 	move.b	d0,0x4(a1)	| C18616
 	rts	| C1861A
-| MahjongKeysToJoystick [I] maps a mahjong controller key byte to joystick bits (bit 7 from bit 0 of d1, nibbles swapped)
+| MahjongKeysToJoystick [C] maps a mahjong controller key byte to joystick bits (bit 7 from bit 0 of d1, nibbles swapped). MAME: ran with Mahjong Kyoretsuden, the mahjong panel on P1 and hard DIP 3 on
 MahjongKeysToJoystick:
-	bclr.b	#0x7,d0	| C1861C
+	bclr.b	#0x7,d0	| C1861C  bit 7 from bit 0 of d1,
 	btst.b	#0x0,d1	| C18620
 	beq.b	loc_C1862A	| C18624
 	bset.b	#0x7,d0	| C18626
 loc_C1862A:
-	ror.b	#0x4,d0	| C1862A
+	ror.b	#0x4,d0	| C1862A  then the two nibbles swapped
 	rts	| C1862C
-| MahjongStartFilter [I] mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held
+| MahjongStartFilter [C] mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held. MAME: ran with the mahjong panel (as MahjongKeysToJoystick)
 MahjongStartFilter:
-	cmpi.b	#0x3,(a0)	| C1862E
+	cmpi.b	#0x3,(a0)	| C1862E  only for a mahjong controller (status 3)
 	bne.b	loc_C18654	| C18632
-	btst.l	d0,d2	| C18634
+	btst.l	d0,d2	| C18634  START/SELECT bit d0 not pressed: nothing to do
 	beq.b	loc_C18654	| C18636
-	move.b	0x3(a0),d5	| C18638
+	move.b	0x3(a0),d5	| C18638  d5 = the key mask (low 5 bits of byte 3)
 	andi.b	#0x1F,d5	| C1863C
-	move.b	0x1(a0),d4	| C18640
+	move.b	0x1(a0),d4	| C18640  a key of row 1 held,
 	and.b	d5,d4	| C18644
 	bne.b	loc_C18650	| C18646
-	move.b	0x2(a0),d4	| C18648
+	move.b	0x2(a0),d4	| C18648  or of row 2:
 	and.b	d5,d4	| C1864C
 	beq.b	loc_C18654	| C1864E
 loc_C18650:
-	bclr.b	d0,d2	| C18650
+	bclr.b	d0,d2	| C18650  the START/SELECT press is dropped (current and change)
 	bclr.b	d0,d3	| C18652
 loc_C18654:
 	rts	| C18654
 | UpdatePlayerInputs [C] updates a player's input block (and the expanded block at +$C), or the mahjong rows
 UpdatePlayerInputs:
-	cmpi.b	#0x3,(a0)	| C18656
+	cmpi.b	#0x3,(a0)	| C18656  status 3: mahjong rows instead
 	beq.b	loc_C186B4	| C1865A
-	move.b	d4,d0	| C1865C
+	move.b	d4,d0	| C1865C  joystick: block at a0
 	jsr	(UpdateInputBlock,pc)	| C1865E
-	lea.l	0xC(a0),a0	| C18662
+	lea.l	0xC(a0),a0	| C18662  then the expanded block at +$C, if connected
 	tst.b	(a0)	| C18666
 	beq.b	loc_C186A6	| C18668
 	move.b	d5,d0	| C1866A
 | UpdateInputBlock [C] previous, current, change and repeat bytes of one input block; repeat after 16 frames, then every 8
 UpdateInputBlock:
-	not.b	d0	| C1866C
-	move.b	0x2(a0),d1	| C1866E
-	cmp.b	d0,d1	| C18672
+	not.b	d0	| C1866C  1 = pressed
+	move.b	0x2(a0),d1	| C1866E  the previous state
+	cmp.b	d0,d1	| C18672  unchanged: count down the repeat delay
 	bne.b	loc_C18684	| C18674
 	subq.b	#0x1,0x5(a0)	| C18676
 	bpl.b	loc_C18690	| C1867A
-	move.b	#0x8,0x5(a0)	| C1867C
+	move.b	#0x8,0x5(a0)	| C1867C  repeat every 8 frames
 	bra.b	loc_C1868A	| C18682
 loc_C18684:
-	move.b	#0x10,0x5(a0)	| C18684
+	move.b	#0x10,0x5(a0)	| C18684  changed: 16 frames before the first repeat
 loc_C1868A:
-	move.b	d0,0x4(a0)	| C1868A
+	move.b	d0,0x4(a0)	| C1868A  repeat byte = current state
 	bra.b	loc_C18694	| C1868E
 loc_C18690:
-	clr.b	0x4(a0)	| C18690
+	clr.b	0x4(a0)	| C18690  no repeat this frame
 loc_C18694:
-	move.b	d1,0x1(a0)	| C18694
+	move.b	d1,0x1(a0)	| C18694  +1 previous, +2 current
 	move.b	d0,0x2(a0)	| C18698
-	eor.b	d0,d1	| C1869C
+	eor.b	d0,d1	| C1869C  +3 newly pressed
 	and.b	d0,d1	| C1869E
 	move.b	d1,0x3(a0)	| C186A0
 	rts	| C186A4
 loc_C186A6:
-	clr.b	0x1(a0)	| C186A6
+	clr.b	0x1(a0)	| C186A6  no expanded controller: its block cleared
 	clr.l	0x2(a0)	| C186AA
 	and.b	d7,d2	| C186AE
 	and.b	d7,d3	| C186B0
 	rts	| C186B2
 loc_C186B4:
-	and.b	d7,d2	| C186B4
+	and.b	d7,d2	| C186B4  mahjong: three key rows
 	and.b	d7,d3	| C186B6
 	move.b	d6,d0	| C186B8
 	jsr	(UpdateMahjongRow,pc)	| C186BA
@@ -288,69 +288,69 @@ loc_C186B4:
 	jsr	(UpdateMahjongRow,pc)	| C186C0
 	lsr.w	#0x8,d6	| C186C4
 	move.b	d6,d0	| C186C6
-| UpdateMahjongRow [I] current and change bytes of one mahjong key row
+| UpdateMahjongRow [C] current and change bytes of one mahjong key row. MAME: ran with the mahjong panel (as MahjongKeysToJoystick)
 UpdateMahjongRow:
 	addq.l	#0x1,a0	| C186C8
-	not.b	d0	| C186CA
-	move.b	(a0),d1	| C186CC
+	not.b	d0	| C186CA  1 = pressed
+	move.b	(a0),d1	| C186CC  previous state
 	move.b	d0,(a0)	| C186CE
-	eor.b	d0,d1	| C186D0
+	eor.b	d0,d1	| C186D0  newly pressed = now and not before
 	and.b	d0,d1	| C186D2
-	move.b	d1,0xC(a0)	| C186D4
+	move.b	d1,0xC(a0)	| C186D4  change byte 12 bytes further
 	rts	| C186D8
-| ReadMahjongRows [I] reads two more key rows through REG_POUTPUT ($24 and $09) into d6
+| ReadMahjongRows [C] reads two more key rows through REG_POUTPUT ($24 and $09) into d6. MAME: ran with the mahjong panel (as MahjongKeysToJoystick)
 ReadMahjongRows:
-	move.b	#0x24,(a2)	| C186DA
+	move.b	#0x24,(a2)	| C186DA  output $24: third row
 	bsr.w	DelayShort	| C186DE
-	move.b	(REG_P2CNT).l,d6	| C186E2
+	move.b	(REG_P2CNT).l,d6	| C186E2  P2 and P1 bytes of the third row in d6
 	swap	d6	| C186E8
 	move.b	(REG_P1CNT).l,d6	| C186EA
-	lsl.l	#0x8,d6	| C186F0
-	move.b	#0x9,(a2)	| C186F2
+	lsl.l	#0x8,d6	| C186F0  moved up a byte
+	move.b	#0x9,(a2)	| C186F2  output $09: fourth row
 	bsr.w	DelayShort	| C186F6
-	move.b	(REG_P1CNT).l,d6	| C186FA
+	move.b	(REG_P1CNT).l,d6	| C186FA  then the fourth row
 	swap	d6	| C18700
 	move.b	(REG_P2CNT).l,d6	| C18702
 	swap	d6	| C18708
 	rts	| C1870A
 | WaitFrame [C] sets FrameWaitFlag and loops until SystemInt1 (VBlank) clears it
 WaitFrame:
-	move.b	#0x1,(FrameWaitFlag).l	| C1870C
+	move.b	#0x1,(FrameWaitFlag).l	| C1870C  VBlank clears it (SystemInt1)
 loc_C18714:
 	tst.b	(FrameWaitFlag).l	| C18714
 	bne.b	loc_C18714	| C1871A
 	rts	| C1871C
 | MessOut [W] target of MESS_OUT
 MessOut:
-	tst.b	(BIOS_MESS_BUSY).l	| C1871E
+	tst.b	(BIOS_MESS_BUSY).l	| C1871E  already running (a game called it from its VBlank): do nothing
 	bne.b	loc_C1875E	| C18724
 	addq.b	#0x1,(BIOS_MESS_BUSY).l	| C18726
-	move.l	#MessOutStack,(MessOutStackPtr).l	| C1872C
-	lea.l	(MessBuffer).l,a0	| C18736
-	lea.l	(REG_VRAMADDR).l,a6	| C1873C
+	move.l	#MessOutStack,(MessOutStackPtr).l	| C1872C  MESS_OUT's own stack for command 10 (call)
+	lea.l	(MessBuffer).l,a0	| C18736  a0: the list of entries queued by BIOS_MESS_POINT
+	lea.l	(REG_VRAMADDR).l,a6	| C1873C  a6 = VRAM address, a4 = VRAM data
 	lea.l	0x2(a6),a4	| C18742
 loc_C18746:
-	cmpa.l	(BIOS_MESS_POINT).l,a0	| C18746
+	cmpa.l	(BIOS_MESS_POINT).l,a0	| C18746  every entry done?
 	bcs.b	loc_C18760	| C1874C
 loc_C1874E:
-	move.l	#MessBuffer,(BIOS_MESS_POINT).l	| C1874E
+	move.l	#MessBuffer,(BIOS_MESS_POINT).l	| C1874E  empty the queue and release it
 	clr.b	(BIOS_MESS_BUSY).l	| C18758
 loc_C1875E:
 	rts	| C1875E
 loc_C18760:
-	movea.l	(a0)+,a1	| C18760
+	movea.l	(a0)+,a1	| C18760  an entry: a pointer to a command list,
 	move.l	a1,d4	| C18762
-	bne.b	loc_C18768	| C18764
+	bne.b	loc_C18768	| C18764  or 0: the commands follow inline
 	movea.l	a0,a1	| C18766
 loc_C18768:
-	move.b	(a1)+,d1	| C18768
+	move.b	(a1)+,d1	| C18768  d1 = parameter byte, d0 = command number
 	moveq	#0x0,d0	| C1876A
 	move.b	(a1)+,d0	| C1876C
-	cmpi.b	#0xE,d0	| C1876E
+	cmpi.b	#0xE,d0	| C1876E  14 commands; anything else ends the queue
 	bcc.b	loc_C1874E	| C18772
 	lsl.w	#0x2,d0	| C18774
 	movea.l	(MessOutCommands,pc,d0.w),a3	| C18776
-	jsr	(a3)	| C1877A
+	jsr	(a3)	| C1877A  each handler returns to the next command
 	bra.b	loc_C18768	| C1877C
 | MessOutCommands [C] MESS_OUT command handlers 0-13: end, format, auto-increment, VRAM address, data at a pointer, add to address, resume data, inline data, 8x16 tiles, 8x16 text, call a list, return, repeat a word, write increasing words
 MessOutCommands:
@@ -370,45 +370,45 @@ MessOutCommands:
 	dc.l	MessOutSequence
 | MessOutEnd [C] MESS_OUT command 0: end of the list (next list pointer)
 MessOutEnd:
-	or.l	d4,d4	| C187B6
+	or.l	d4,d4	| C187B6  inline list: carry on after it
 	bne.b	loc_C187BC	| C187B8
 	movea.l	a1,a0	| C187BA
 loc_C187BC:
-	move.l	#loc_C18746,(a7)	| C187BC
+	move.l	#loc_C18746,(a7)	| C187BC  back to the queue loop
 	rts	| C187C2
 | MessOutFormat [C] MESS_OUT command 1: data format in d5 (bytes or words, end code or count)
 MessOutFormat:
-	swap	d1	| C187C4
+	swap	d1	| C187C4  d5 high word = format byte, low word = the end code or count that follows
 	move.l	d1,d5	| C187C6
 	move.w	(a1)+,d5	| C187C8
 	rts	| C187CA
 | MessOutIncrement [C] MESS_OUT command 2: VRAM auto-increment
 MessOutIncrement:
-	ext.w	d1	| C187CC
+	ext.w	d1	| C187CC  parameter byte, sign extended
 	move.w	d1,0x2(a4)	| C187CE
 	rts	| C187D2
 | MessOutAddress [C] MESS_OUT command 3: VRAM address
 MessOutAddress:
-	move.w	(a1)+,d6	| C187D4
+	move.w	(a1)+,d6	| C187D4  VRAM address; d6 keeps it for commands 5, 8, 9
 	move.w	d6,(a6)	| C187D6
 	rts	| C187D8
 | MessOutCall [C] MESS_OUT command 10: runs another list (pointer pushed at MessOutStackPtr)
 MessOutCall:
 	move.l	(a1)+,d0	| C187DA
-	movea.l	(MessOutStackPtr).l,a3	| C187DC
+	movea.l	(MessOutStackPtr).l,a3	| C187DC  push the return point
 	move.l	a1,(a3)+	| C187E2
 	move.l	a3,(MessOutStackPtr).l	| C187E4
-	movea.l	d0,a1	| C187EA
+	movea.l	d0,a1	| C187EA  and run the called list
 	rts	| C187EC
 | MessOutReturn [C] MESS_OUT command 11: back from MessOutCall
 MessOutReturn:
-	movea.l	(MessOutStackPtr).l,a3	| C187EE
+	movea.l	(MessOutStackPtr).l,a3	| C187EE  pop the return point
 	movea.l	-(a3),a1	| C187F4
 	move.l	a3,(MessOutStackPtr).l	| C187F6
 	rts	| C187FC
 | MessOutRepeat [C] MESS_OUT command 12: writes one word d1 times
 MessOutRepeat:
-	move.w	(a1)+,d0	| C187FE
+	move.w	(a1)+,d0	| C187FE  the word, written d1 times
 loc_C18800:
 	move.w	d0,(a4)	| C18800
 	subq.b	#0x1,d1	| C18802
@@ -416,25 +416,25 @@ loc_C18800:
 	rts	| C18806
 | MessOutSequence [C] MESS_OUT command 13: writes d1 words, adding 1 each time
 MessOutSequence:
-	move.w	(a1)+,d0	| C18808
+	move.w	(a1)+,d0	| C18808  first word, then +1 for each of d1 words
 loc_C1880A:
-	move.w	d0,(a4)	| C1880A
+	move.w	d0,(a4)	| C1880A  write the tile word, then the next tile number
 	addq.b	#0x1,d0	| C1880C
 	subq.b	#0x1,d1	| C1880E
-	bne.b	loc_C1880A	| C18810
+	bne.b	loc_C1880A	| C18810  d1 words in all
 	rts	| C18812
 | MessOutDataInline [C] MESS_OUT command 7: data that follows the command, then aligns the list pointer
 MessOutDataInline:
-	movea.l	a1,a2	| C18814
+	movea.l	a1,a2	| C18814  the data follows the command
 	moveq	#0x0,d3	| C18816
 	bra.b	loc_C1881E	| C18818
 | MessOutDataPointer [C] MESS_OUT command 4: writes the data at a pointer (MessOutData)
 MessOutDataPointer:
-	movea.l	(a1)+,a2	| C1881A
+	movea.l	(a1)+,a2	| C1881A  the data is at a long pointer
 	moveq	#0x1,d3	| C1881C
 loc_C1881E:
 	bsr.w	MessOutData	| C1881E
-	or.b	d3,d3	| C18822
+	or.b	d3,d3	| C18822  inline data: the list continues after it, word aligned
 	bne.b	loc_C18830	| C18824
 	move.l	a2,d0	| C18826
 	addq.l	#0x1,d0	| C18828
@@ -444,59 +444,59 @@ loc_C18830:
 	rts	| C18830
 | MessOutAddAddress [C] MESS_OUT command 5: adds to the VRAM address
 MessOutAddAddress:
-	add.w	(a1)+,d6	| C18832
+	add.w	(a1)+,d6	| C18832  d6 = current VRAM address
 	move.w	d6,(a6)	| C18834
 	rts	| C18836
 | MessOutData [C] MESS_OUT command 6 and the data writer: bytes or words from a2 to VRAM, until the end code or for a count (format bits 16-17 of d5)
 MessOutData:
-	btst.b	#0x11,d5	| C18838
+	btst.b	#0x11,d5	| C18838  format bit 17 set: words
 	bne.b	loc_C1885C	| C1883C
-	move.w	d5,d2	| C1883E
+	move.w	d5,d2	| C1883E  d5 low byte: end code or count; d2 high byte keeps the format's high byte
 	move.b	d5,d7	| C18840
-	btst.b	#0x10,d5	| C18842
+	btst.b	#0x10,d5	| C18842  bit 16 set: a count
 	bne.b	loc_C18852	| C18846
 loc_C18848:
-	move.b	(a2)+,d2	| C18848
+	move.b	(a2)+,d2	| C18848  bytes until the end code, each written as one word (high byte from the format)
 	cmp.b	d2,d7	| C1884A
 	beq.b	loc_C1885A	| C1884C
 	move.w	d2,(a4)	| C1884E
 	bra.b	loc_C18848	| C18850
 loc_C18852:
-	move.b	(a2)+,d2	| C18852
+	move.b	(a2)+,d2	| C18852  bytes, d7 of them
 	move.w	d2,(a4)	| C18854
 	subq.b	#0x1,d7	| C18856
 	bne.b	loc_C18852	| C18858
 loc_C1885A:
 	rts	| C1885A
 loc_C1885C:
-	move.w	d5,d7	| C1885C
+	move.w	d5,d7	| C1885C  words: until the end code or for a count
 	btst.b	#0x10,d5	| C1885E
 	bne.b	loc_C1886E	| C18862
 loc_C18864:
-	move.w	(a2)+,d2	| C18864
+	move.w	(a2)+,d2	| C18864  words until the end code
 	cmp.w	d2,d5	| C18866
 	beq.b	loc_C18874	| C18868
 	move.w	d2,(a4)	| C1886A
 	bra.b	loc_C18864	| C1886C
 loc_C1886E:
-	move.w	(a2)+,(a4)	| C1886E
+	move.w	(a2)+,(a4)	| C1886E  d7 words
 	subq.w	#0x1,d7	| C18870
 	bne.b	loc_C1886E	| C18872
 loc_C18874:
 	rts	| C18874
 | MessOutText8x16 [C] MESS_OUT command 9: a row of 8x16 ASCII text, upper then lower half (MessOutText8x16Row)
 MessOutText8x16:
-	move.w	#0x20,0x2(a4)	| C18876
-	move.b	d1,d2	| C1887C
+	move.w	#0x20,0x2(a4)	| C18876  auto-increment $20: down the column, one fix row per character
+	move.b	d1,d2	| C1887C  d2 high byte: parameter = tile page / palette
 	lsl.w	#0x8,d2	| C1887E
 	movea.l	a1,a2	| C18880
-	jsr	(MessOutText8x16Row,pc)	| C18882
-	addq.w	#0x1,d6	| C18886
+	jsr	(MessOutText8x16Row,pc)	| C18882  upper halves
+	addq.w	#0x1,d6	| C18886  next row for the lower halves
 	move.w	d6,(a6)	| C18888
 	movea.l	a1,a2	| C1888A
-	addi.w	#0x100,d2	| C1888C
+	addi.w	#0x100,d2	| C1888C  lower halves: next tile page
 	jsr	(MessOutText8x16Row,pc)	| C18890
-	move.l	a2,d0	| C18894
+	move.l	a2,d0	| C18894  list pointer after the text, word aligned
 	addq.l	#0x1,d0	| C18896
 	andi.w	#0xFFFE,d0	| C18898
 	movea.l	d0,a1	| C1889C
@@ -506,20 +506,20 @@ MessOutText8x16Row:
 	move.b	(a2)+,d2	| C188A0
 	cmpi.b	#0xFF,d2	| C188A2
 	beq.b	loc_C188DA	| C188A6
-	cmpi.b	#0x20,d2	| C188A8
+	cmpi.b	#0x20,d2	| C188A8  below $20: a page-0 tile from $80
 	bcs.b	loc_C188BE	| C188AC
-	cmpi.b	#0x60,d2	| C188AE
+	cmpi.b	#0x60,d2	| C188AE  $20-$5F: the character's own tile number
 	bcs.b	loc_C188D6	| C188B2
-	tst.b	d2	| C188B4
+	tst.b	d2	| C188B4  $80 and above: own tile number
 	bmi.w	loc_C188D6	| C188B6
-	subi.b	#0x40,d2	| C188BA
+	subi.b	#0x40,d2	| C188BA  $60-$7F (lower case): $20-$3F, then the page-0 tiles from $A0
 loc_C188BE:
-	addi.b	#0x80,d2	| C188BE
+	addi.b	#0x80,d2	| C188BE  + $80
 	move.w	d2,d1	| C188C2
-	andi.w	#0xF0FF,d1	| C188C4
-	btst.b	#0x8,d2	| C188C8
+	andi.w	#0xF0FF,d1	| C188C4  page bits cleared: page 0, palette kept
+	btst.b	#0x8,d2	| C188C8  bit 8 set (lower halves): $80-$BF
 	bne.b	loc_C188D2	| C188CC
-	addi.b	#0x40,d1	| C188CE
+	addi.b	#0x40,d1	| C188CE  upper halves: $C0-$FF
 loc_C188D2:
 	move.w	d1,(a4)	| C188D2
 	bra.b	MessOutText8x16Row	| C188D4
@@ -530,27 +530,27 @@ loc_C188DA:
 	rts	| C188DA
 | MessOutTiles8x16 [C] MESS_OUT command 8: a row of 8x16 characters given as tile numbers, upper then lower half
 MessOutTiles8x16:
-	move.w	#0x20,0x2(a4)	| C188DC
-	move.b	d1,d2	| C188E2
+	move.w	#0x20,0x2(a4)	| C188DC  one fix row per tile
+	move.b	d1,d2	| C188E2  d2 high byte: tile page and palette
 	lsl.w	#0x8,d2	| C188E4
 	movea.l	a1,a2	| C188E6
 	jsr	(MessOutTiles8x16Row,pc)	| C188E8
-	addq.w	#0x1,d6	| C188EC
+	addq.w	#0x1,d6	| C188EC  next row: the lower halves, page + 1
 	move.w	d6,(a6)	| C188EE
 	movea.l	a1,a2	| C188F0
 	addi.w	#0x100,d2	| C188F2
 	jsr	(MessOutTiles8x16Row,pc)	| C188F6
-	move.l	a2,d0	| C188FA
+	move.l	a2,d0	| C188FA  list pointer after the row, word aligned
 	addq.l	#0x1,d0	| C188FC
 	andi.w	#0xFFFE,d0	| C188FE
 	movea.l	d0,a1	| C18902
 	rts	| C18904
 | MessOutTiles8x16Row [C] one half-row of MessOutTiles8x16: writes the bytes as tile numbers until $FF
 MessOutTiles8x16Row:
-	move.b	(a2)+,d2	| C18906
-	cmpi.b	#0xFF,d2	| C18908
+	move.b	(a2)+,d2	| C18906  next byte of the row
+	cmpi.b	#0xFF,d2	| C18908  $FF ends the row
 	beq.b	loc_C18912	| C1890C
-	move.w	d2,(a4)	| C1890E
+	move.w	d2,(a4)	| C1890E  one tile word per byte (d2 high byte: the page and palette)
 	bra.b	MessOutTiles8x16Row	| C18910
 loc_C18912:
 	rts	| C18912

@@ -56,6 +56,20 @@ def load_names():
     return names, ports
 
 
+def load_comments():
+    """sm1/comments.csv: addr,comment - a line comment after the address of the instruction at addr."""
+    rows = {}
+    path = os.path.join(SM1, 'comments.csv')
+    if os.path.exists(path):
+        for r in csv.DictReader(open(path, newline='')):
+            a = int(r['addr'], 16)
+            c = r['comment'].strip()
+            if a in rows or not c or '\n' in c:
+                raise SystemExit(f'comments.csv: bad or repeated comment at {r["addr"]}')
+            rows[a] = c
+    return rows
+
+
 def load_hints():
     hints = []
     path = os.path.join(SM1, 'hints.txt')
@@ -191,6 +205,7 @@ def gen_source(rom, out):
     names, port_names = load_names()
     t = Trace(rom)
     t.run(load_hints())
+    comments = load_comments()
     # every name in names.csv inside the ROM is a label too
     for a in names:
         if a < t.end:
@@ -246,7 +261,8 @@ def gen_source(rom, out):
                 p = rom[pc + 1]
                 if p in ports:
                     text = text.replace(f'(0{p:02x}h)', f'({ports[p]})')
-            lines.append(f'\t{text}\t; {pc:04X}')
+            c = comments.pop(pc, None)
+            lines.append(f'\t{text}\t; {pc:04X}' + (f'  {c}' if c else ''))
             counts['code'] += ins.size
             pc += ins.size
             continue
@@ -299,6 +315,9 @@ def gen_source(rom, out):
             i += len(chunk)
         counts['data'] += stop - pc
         pc = stop
+    if comments:
+        raise SystemExit('sm1/comments.csv: not the start of an instruction: ' +
+                         ' '.join(f'{a:04X}' for a in sorted(comments)))
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, 'w') as f:
         f.write('\n'.join(lines) + '\n')

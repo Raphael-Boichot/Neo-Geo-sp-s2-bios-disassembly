@@ -66,7 +66,7 @@ routines and the six `HwCalendarFixAddresses` words exist in every ROM and nothi
 outside the two monitor ROMs. `CabinetSettingsOld` is unreferenced everywhere except by one long
 pointer in the development ROM (`$C184A4` there; not followed).
 
-**`SystemIoBuildFlag` is an MVS switch that never switches (C for the code, I for the purpose).**
+**`SystemIoTestWord` is an MVS switch that never switches (C for the code; its purpose is unknown).**
 Every MVS version has the same `tst.w` of a word `$0001` followed by a `bne` to the next instruction;
 the AES and development versions have no such test. The later Japanese and MV1B/MV1C versions add a
 call before it.
@@ -101,7 +101,7 @@ data after a `bra`; then each piece looked up in the 18 other ROMs (C: bytes and
 | `$C1849C-$C184EB` | 80 | `ControllerTypeScan`, code after the `rts` of `ControllerSetup` | called 6 times by `ControllerSetup` in the three AES ROMs, after each `REG_POUTPUT` pattern: the controller type detection; unreferenced in every MVS ROM, where `ControllerSetup` only reads the mahjong DIP |
 | `$C19884-$C1988F` | 12 | `HardDipCoin2Text`, `HardDipCoin4Text` (2, 4) | the COIN SWITCH row (hard DIP 2) of the US hard DIP page: referenced in US Ver. 1, U4 and U3; present and unreferenced in US Ver. 2?, Europe Ver. 1, Asia MV1B, Asia MV1C and AES Asia; absent from the others |
 | `$C19CF6-$C1A105` | 1,040 | `CabinetSettingsOld` | as above |
-| `SystemIoBuildFlag` | 2 | a test whose branch goes to the next instruction | every MVS version (above) |
+| `SystemIoTestWord` | 2 | a test whose branch goes to the next instruction | every MVS version (above) |
 
 Apart from the tables for the games, about 9,700 of the 54,349 bytes of code and data of SP-S2 are
 never reached, and most pieces have a user in some other version: SP-S2 is built

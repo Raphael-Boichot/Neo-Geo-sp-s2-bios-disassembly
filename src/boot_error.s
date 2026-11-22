@@ -4,54 +4,54 @@
 | BootError [C] error screen: message BootErrorMessages[d6]; for d6 < 5 also prints the failing address and data
 BootError:
 	lea.l	(BiosWorkRam).l,a5	| C16ADA
-	move.w	#0x7,(REG_IRQACK).l	| C16AE0
-	tst.b	(SystemType).l	| C16AE8
+	move.w	#0x7,(REG_IRQACK).l	| C16AE0  acknowledge all interrupts (they stay masked)
+	tst.b	(SystemType).l	| C16AE8  AES: colours instead of text
 	beq.w	BootErrorAes	| C16AEE
-	move.l	a0,(ErrorAddress-A5_BASE,a5)	| C16AF2
+	move.l	a0,(ErrorAddress-A5_BASE,a5)	| C16AF2  keep the failing address, written and read values and the test number
 	move.w	d0,(ErrorWritten-A5_BASE,a5)	| C16AF6
 	move.w	d1,(ErrorRead-A5_BASE,a5)	| C16AFA
 	move.w	d6,(ErrorNumber-A5_BASE,a5)	| C16AFE
-	move.w	#0x7000,(REG_VRAMADDR).l	| C16B02
+	move.w	#0x7000,(REG_VRAMADDR).l	| C16B02  fix layer from $7000, all of it
 	move.b	d0,(REG_DIPSW).l	| C16B0A
 	move.w	#0x1,(REG_VRAMMOD).l	| C16B10
-	move.w	#0xF020,d0	| C16B18
-	move.w	#0x4FF,d7	| C16B1C
+	move.w	#0xF020,d0	| C16B18  tile $20 (space), palette $F
+	move.w	#0x4FF,d7	| C16B1C  $500 words
 loc_C16B20:
 	move.w	d0,(REG_VRAMRW).l	| C16B20
 	dbra	d7,loc_C16B20	| C16B26
-	move.l	#0xEEE0000,(0x4001E2).l	| C16B2A
-	lea.l	(MessBuffer-A5_BASE,a5),a0	| C16B34
+	move.l	#0xEEE0000,(0x4001E2).l	| C16B2A  palette $F: colour 1 $0EEE (text)
+	lea.l	(MessBuffer-A5_BASE,a5),a0	| C16B34  MESS_OUT queue: the error text first
 	move.w	(ErrorNumber-A5_BASE,a5),d0	| C16B38
 	lsl.w	#0x2,d0	| C16B3C
 	lea.l	(BootErrorMessages,pc),a1	| C16B3E
 	move.l	(a1,d0.w),(a0)+	| C16B42
-	cmpi.w	#0x14,d0	| C16B46
+	cmpi.w	#0x14,d0	| C16B46  errors 0-4 (memory tests) also show address and values:
 	bcc.w	loc_C16B96	| C16B4A
 	lea.l	(ErrorAddress-A5_BASE,a5),a1	| C16B4E
-	clr.l	(a0)+	| C16B52
-	move.l	#0x1F0FF,(a0)+	| C16B54
+	clr.l	(a0)+	| C16B52  an inline list: pointer 0,
+	move.l	#0x1F0FF,(a0)+	| C16B54  format: bytes, end code $FF ...
 	move.w	#0x2002,(a0)+	| C16B5A
-	move.l	#0x3708D,(a0)+	| C16B5E
+	move.l	#0x3708D,(a0)+	| C16B5E  VRAM address $708D, command 7: inline text
 	move.w	#0x7,(a0)+	| C16B64
-	jsr	(PutHexByte,pc)	| C16B68
+	jsr	(PutHexByte,pc)	| C16B68  the 4 address bytes in hex
 	jsr	(PutHexByte,pc)	| C16B6C
 	jsr	(PutHexByte,pc)	| C16B70
 	jsr	(PutHexByte,pc)	| C16B74
-	move.w	#0x2020,(a0)+	| C16B78
+	move.w	#0x2020,(a0)+	| C16B78  two spaces, the written word
 	jsr	(PutHexByte,pc)	| C16B7C
 	jsr	(PutHexByte,pc)	| C16B80
-	move.w	#0x2020,(a0)+	| C16B84
+	move.w	#0x2020,(a0)+	| C16B84  two spaces, the read word
 	jsr	(PutHexByte,pc)	| C16B88
 	jsr	(PutHexByte,pc)	| C16B8C
-	move.l	#0x20FF0000,(a0)+	| C16B90
+	move.l	#0x20FF0000,(a0)+	| C16B90  end code, then command 0
 loc_C16B96:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16B96
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C16B9A
-	jsr	(MessOut,pc)	| C16B9E
+	jsr	(MessOut,pc)	| C16B9E  drawn at once (interrupts are off)
 loc_C16BA2:
 	move.w	#0x7,(REG_IRQACK).l	| C16BA2
 loc_C16BAA:
-	move.b	d0,(REG_DIPSW).l	| C16BAA
+	move.b	d0,(REG_DIPSW).l	| C16BAA  forever, kicking the watchdog
 	bra.b	loc_C16BAA	| C16BB0
 | AesErrorColours [C] BootError on an AES (SystemType 0): one palette colour pair per error, 0 blue, 1 red, 2 green, 3 yellow, 4 magenta, 5 cyan; only 6 entries (errors 6-8 would read the code after it). MAME: boot_error_aes_colours (forced)
 AesErrorColours:
@@ -59,10 +59,10 @@ AesErrorColours:
 	dc.b	0x0E,0x0E,0x0E,0x0E,0x00,0xEE,0x00,0xEE
 | BootErrorAes [C] AES form of BootError: fills both palette banks with AesErrorColours[d6], colour 0 of palette 0 black, then waits forever
 BootErrorAes:
-	add.w	d6,d6	| C16BCA
+	add.w	d6,d6	| C16BCA  4 bytes per error: two colours
 	add.w	d6,d6	| C16BCC
 	move.l	(AesErrorColours,pc,d6.w),d5	| C16BCE
-	move.b	d0,(REG_PALBANK0).l	| C16BD2
+	move.b	d0,(REG_PALBANK0).l	| C16BD2  bank 0: the whole palette RAM
 	lea.l	(0x400000).l,a0	| C16BD8
 	movea.l	a0,a1	| C16BDE
 	move.w	#0x7FF,d7	| C16BE0
@@ -70,45 +70,45 @@ loc_C16BE4:
 	move.b	d0,(REG_DIPSW).l	| C16BE4
 	move.l	d5,(a0)+	| C16BEA
 	dbra	d7,loc_C16BE4	| C16BEC
-	move.b	d0,(REG_PALBANK1).l	| C16BF0
+	move.b	d0,(REG_PALBANK1).l	| C16BF0  then bank 1
 	move.w	#0x7FF,d7	| C16BF6
 loc_C16BFA:
 	move.b	d0,(REG_DIPSW).l	| C16BFA
 	move.l	d5,(a1)+	| C16C00
 	dbra	d7,loc_C16BFA	| C16C02
-	clr.w	(0x400000).l	| C16C06
+	clr.w	(0x400000).l	| C16C06  colour 0 of palette 0 (the backdrop) black
 	bra.b	loc_C16BA2	| C16C0C
 | ChecksumLoop [C] target of the checksum slot at $C0047A (CHECKSUM_LOOP): adds every byte of the cartridge P ROM (CART_PROM_SIZE bytes, kicking the watchdog), subtracts the header byte $186, writes the result to $186 and WorkRamStart, then loops until the watchdog resets the system. Nothing calls the slot; ran in MAME from a test build (scenario checksum_loop: Sengoku 2, 1 MB summed in 207 frames, sum $EF, reset 8 frames later)
 ChecksumLoop:
-	move.w	#0x2700,sr	| C16C0E
+	move.w	#0x2700,sr	| C16C0E  cartridge vectors at 0: the P ROM from address 0
 	move.b	d0,(REG_SWPROM).l	| C16C12
 	movea.l	#0x0,a0	| C16C18
-	movea.l	(CART_PROM_SIZE).w,a1	| C16C1E
+	movea.l	(CART_PROM_SIZE).w,a1	| C16C1E  up to CART_PROM_SIZE
 	moveq	#0x0,d0	| C16C22
 loc_C16C24:
-	move.b	d0,(REG_DIPSW).l	| C16C24
+	move.b	d0,(REG_DIPSW).l	| C16C24  8-bit sum
 	add.b	(a0)+,d0	| C16C2A
 	cmpa.l	a0,a1	| C16C2C
 	bne.b	loc_C16C24	| C16C2E
-	sub.b	(CART_HEADER_186).w,d0	| C16C30
-	move.b	d0,(CART_HEADER_186).w	| C16C34
+	sub.b	(CART_HEADER_186).w,d0	| C16C30  minus the byte at $186, which is in the sum
+	move.b	d0,(CART_HEADER_186).w	| C16C34  stored at $186 (a ROM: no effect), and at $100000
 	move.b	d0,(WorkRamStart).l	| C16C38
 loc_C16C3E:
-	jmp	(loc_C16C3E,pc)	| C16C3E
+	jmp	(loc_C16C3E,pc)	| C16C3E  then wait for the watchdog reset
 | ChecksumCompare [C] unreferenced variant of ChecksumLoop: sums the cartridge P ROM and compares with CART_HEADER_186 instead of storing the result; never ran; unreferenced in all 18 other SNK system ROMs too
 ChecksumCompare:
-	move.w	#0x2700,sr	| C16C42
-	move.b	d0,(REG_SWPROM).l	| C16C46
+	move.w	#0x2700,sr	| C16C42  interrupts off
+	move.b	d0,(REG_SWPROM).l	| C16C46  cartridge vectors, so the P ROM is seen from $000000
 	movea.l	#0x0,a0	| C16C4C
-	movea.l	(CART_PROM_SIZE).w,a1	| C16C52
+	movea.l	(CART_PROM_SIZE).w,a1	| C16C52  sum up to the P ROM size of the header
 	moveq	#0x0,d0	| C16C56
 loc_C16C58:
-	move.b	d0,(REG_DIPSW).l	| C16C58
+	move.b	d0,(REG_DIPSW).l	| C16C58  kick the watchdog on every byte
 	add.b	(a0)+,d0	| C16C5E
 	cmpa.l	a0,a1	| C16C60
 	bne.b	loc_C16C58	| C16C62
-	sub.b	(CART_HEADER_186).w,d0	| C16C64
-	cmp.b	(CART_HEADER_186).w,d0	| C16C68
+	sub.b	(CART_HEADER_186).w,d0	| C16C64  the header checksum byte is part of the sum: take it out
+	cmp.b	(CART_HEADER_186).w,d0	| C16C68  Z set when the sum matches
 	rts	| C16C6C
 | WorkRamErrorText [C] WORK RAM ERROR (BootError 0)
 WorkRamErrorText:

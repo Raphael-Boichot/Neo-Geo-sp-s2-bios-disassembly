@@ -21,7 +21,7 @@ SystemIo:
 	addq.l	#0x1,(BIOS_FRAME_COUNTER-A5_BASE,a5)	| C11680
 	jsr	(SystemIoMvs,pc)	| C11684  coins, service, test button, LEDs (MVS only)
 	jsr	(ReadControllers,pc)	| C11688
-	tst.w	(SystemIoBuildFlag).l	| C1168C  always $0001, and both ways go to the next line
+	tst.w	(SystemIoTestWord).l	| C1168C  always $0001, and both ways go to the next line
 	bne.w	loc_C11696	| C11692
 loc_C11696:
 	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11696  negative: no start checks; 1-$7F: one less, no checks this frame
@@ -42,8 +42,8 @@ loc_C116B2:
 	jsr	(PlayTimeCount,pc)	| C116C0
 loc_C116C4:
 	rts	| C116C4
-| SystemIoBuildFlag [I] word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch Same test in every MVS version, absent from the AES ones (docs/versions.md)
-SystemIoBuildFlag:
+| SystemIoTestWord [C] word $0001 tested by SystemIo, whose bne goes to the next instruction either way: no effect. The same test in every MVS version, absent from the AES ones (docs/versions.md)
+SystemIoTestWord:
 	dc.b	0x00,0x01
 | CheckPlayerStart [C] SystemIo while a game runs: start buttons from BIOS_STATCHANGE set BIOS_START_FLAG; on the title with credits the BCD BIOS_SELECT_TIMER counts down and forces a start; calls CART_PLAYER_START, then mode 3
 CheckPlayerStart:
@@ -229,58 +229,58 @@ SystemInt2:
 	rte	| C118DA
 | PowerOnTestOld [C] unreferenced in SP-S2 and every MVS version: the AES power-on test. The three AES ROMs reach it from Reset when the cartridge header check fails (no NEO-GEO at $100 or a bad security block at the pointer $182), i.e. with no game; the same bytes in all 18 other SNK ROMs. It tests work RAM, palettes, VRAM, checksum and card, with error numbers shifted by one from BootErrorMessages, and ends in BootError even when everything passes (nothing to boot). Never ran in MAME
 PowerOnTestOld:
-	moveq	#0x1,d6	| C118DC
-	lea.l	(WorkRamStart).l,a0	| C118DE
+	moveq	#0x1,d6	| C118DC  the AES power-on test (no cartridge): error numbers one above BootErrorMessages
+	lea.l	(WorkRamStart).l,a0	| C118DE  test 1: the 64 KB of work RAM
 	move.w	#0x7FFF,d5	| C118E4
 	jsr	(MemTestBlock,pc)	| C118E8
-	moveq	#0x2,d6	| C118EC
+	moveq	#0x2,d6	| C118EC  test 2: palette RAM, bank 1 then bank 0
 	lea.l	(0x400000).l,a0	| C118EE
 	move.w	#0xFFF,d5	| C118F4
-	move.b	d0,(REG_PALBANK1).l	| C118F8
+	move.b	d0,(REG_PALBANK1).l	| C118F8  4K words per bank
 	jsr	(MemTestBlock,pc)	| C118FE
 	lea.l	(0x400000).l,a0	| C11902
 	move.b	d0,(REG_PALBANK0).l	| C11908
 	jsr	(MemTestBlock,pc)	| C1190E
-	move.b	d0,(REG_PALBANK1).l	| C11912
-	moveq	#0x3,d6	| C11918
+	move.b	d0,(REG_PALBANK1).l	| C11912  bank 1 again
+	moveq	#0x3,d6	| C11918  test 3: VRAM
 	lea.l	(REG_VRAMRW).l,a1	| C1191A
-	move.w	#0x1,0x2(a1)	| C11920
-	moveq	#0x0,d4	| C11926
+	move.w	#0x1,0x2(a1)	| C11920  VRAM auto-increment 1
+	moveq	#0x0,d4	| C11926  low VRAM: words $0000-$7FFF
 	move.w	#0x7FFF,d5	| C11928
 	jsr	(VramTest,pc)	| C1192C
-	move.l	#0x8000,d4	| C11930
+	move.l	#0x8000,d4	| C11930  high VRAM from $8000: $600 words
 	move.w	#0x5FF,d5	| C11936
 	jsr	(VramTest,pc)	| C1193A
-	cmpi.l	#Reset,(loc_C00408+2).l	| C1193E
+	cmpi.l	#Reset,(loc_C00408+2).l	| C1193E  the checksum test, as in PowerOnTest
 	bne.w	loc_C11984	| C11948
-	lea.l	(CART_VECTORS).w,a0	| C1194C
+	lea.l	(CART_VECTORS).w,a0	| C1194C  checksum of the 128 vector bytes
 	moveq	#0x0,d0	| C11950
 	moveq	#0x7F,d7	| C11952
 loc_C11954:
 	move.b	d0,(REG_DIPSW).l	| C11954
 	add.b	(a0)+,d0	| C1195A
 	dbra	d7,loc_C11954	| C1195C
-	lea.l	(SystemIdText).l,a0	| C11960
+	lea.l	(SystemIdText).l,a0	| C11960  then $C00082-$C1FFFF
 	move.l	#0x1FF7E,d7	| C11966
 loc_C1196C:
 	move.b	d0,(REG_DIPSW).l	| C1196C
 	add.b	(a0)+,d0	| C11972
 	subq.l	#0x1,d7	| C11974
 	bne.b	loc_C1196C	| C11976
-	moveq	#0x4,d6	| C11978
+	moveq	#0x4,d6	| C11978  test 4: the system ROM checksum
 	cmp.b	(SystemRomChecksum).l,d0	| C1197A
 	bne.w	loc_C11A64	| C11980
 loc_C11984:
-	move.b	#0x5,(BIOS_CRDF).l	| C11984
+	move.b	#0x5,(BIOS_CRDF).l	| C11984  the card test, as in PowerOnTest
 	move.l	#BiosWorkRam,(BIOS_CRDPTR).l	| C1198C
 	clr.w	(BIOS_CRDSIZE).l	| C11996
 	jsr	(Card,pc)	| C1199C
-	cmpi.b	#0x81,(BIOS_CRDRESULT).l	| C119A0
+	cmpi.b	#0x81,(BIOS_CRDRESULT).l	| C119A0  $81: a card is inserted but not formatted, so it can be overwritten
 	bne.w	loc_C11A68	| C119A8
-	move.b	d0,(REG_CRDUNLOCK1).l	| C119AC
+	move.b	d0,(REG_CRDUNLOCK1).l	| C119AC  card writable, normal access
 	move.b	d0,(REG_CRDUNLOCK2).l	| C119B2
 	move.b	d0,(REG_CRDNORMAL).l	| C119B8
-	lea.l	(0x800000).l,a0	| C119BE
+	lea.l	(0x800000).l,a0	| C119BE  card memory at $800000, 2K words: $55,
 	movea.l	a0,a1	| C119C4
 	move.w	#0x7FF,d7	| C119C6
 	move.b	#0x55,d0	| C119CA
@@ -298,7 +298,7 @@ loc_C119E0:
 	dbra	d7,loc_C119E0	| C119EE
 	move.w	#0x7FF,d7	| C119F2
 	movea.l	a1,a0	| C119F6
-	move.b	#0xAA,d0	| C119F8
+	move.b	#0xAA,d0	| C119F8  then $AA,
 loc_C119FC:
 	move.b	d0,(REG_DIPSW).l	| C119FC
 	move.w	d0,(a0)+	| C11A02
@@ -311,7 +311,7 @@ loc_C11A0E:
 	cmp.b	d1,d0	| C11A16
 	bne.w	loc_C11A62	| C11A18
 	dbra	d7,loc_C11A0E	| C11A1C
-	movea.l	a1,a0	| C11A20
+	movea.l	a1,a0	| C11A20  then the address test: high byte, then low byte of each word's address
 	move.w	#0x3FF,d7	| C11A22
 loc_C11A26:
 	move.b	d0,(REG_DIPSW).l	| C11A26
@@ -335,13 +335,13 @@ loc_C11A40:
 	cmp.b	d0,d3	| C11A56
 	bne.w	loc_C11A62	| C11A58
 	dbra	d7,loc_C11A40	| C11A5C
-	bra.b	loc_C11A68	| C11A60
+	bra.b	loc_C11A68	| C11A60  every test passed
 loc_C11A62:
-	moveq	#0x5,d6	| C11A62
+	moveq	#0x5,d6	| C11A62  card error
 loc_C11A64:
 	jmp	(BootError,pc)	| C11A64
 loc_C11A68:
-	moveq	#0x0,d6	| C11A68
+	moveq	#0x0,d6	| C11A68  everything passed: BootError 0 anyway (on an AES, the colour of error 0)
 	jmp	(BootError,pc)	| C11A6A
 | WorkRamTestText [C] WORK RAM TEST, shown while WorkRamTestLoop runs (every hard DIP on; MAME: work_ram_test_loop)
 WorkRamTestText:

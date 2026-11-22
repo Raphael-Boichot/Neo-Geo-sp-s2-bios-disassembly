@@ -3,36 +3,36 @@
 
 | CardFillTest [C] unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears Present and unreferenced in all 18 other SNK system ROMs.
 CardFillTest:
-	lea.l	(BiosWorkRam).l,a5	| C132B4
-	move.b	#0x0,(CardFillFile).l	| C132BA
-	move.w	#0x1234,(BIOS_CRDNGH-A5_BASE,a5)	| C132C2
+	lea.l	(BiosWorkRam).l,a5	| C132B4  never reached: test builds only (docs/memory_card.md)
+	move.b	#0x0,(CardFillFile).l	| C132BA  file 0 first
+	move.w	#0x1234,(BIOS_CRDNGH-A5_BASE,a5)	| C132C2  NGH $1234
 	lea.l	(WorkRamStart).l,a0	| C132C8
-	lea.l	(CardFillTestTitle,pc),a1	| C132CE
+	lea.l	(CardFillTestTitle,pc),a1	| C132CE  the 20-byte title as the data
 	moveq	#0x4,d7	| C132D2
 loc_C132D4:
 	move.l	(a1)+,(a0)+	| C132D4
 	dbra	d7,loc_C132D4	| C132D6
 loc_C132DA:
-	move.w	#0x300,(BIOS_CRDF-A5_BASE,a5)	| C132DA
+	move.w	#0x300,(BIOS_CRDF-A5_BASE,a5)	| C132DA  CARD 3: save,
 	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C132E0
-	move.w	#0x40,(BIOS_CRDSIZE-A5_BASE,a5)	| C132E8
+	move.w	#0x40,(BIOS_CRDSIZE-A5_BASE,a5)	| C132E8  64 bytes (one block)
 	move.b	(CardFillFile).l,(BIOS_CRDFILE-A5_BASE,a5)	| C132EE
-	jsr	(Card,pc)	| C132F6
+	jsr	(Card,pc)	| C132F6  jsr Card, then a nop for a patch
 	nop	| C132FA
 	tst.b	(BIOS_CRDRESULT).l	| C132FC
 	beq.b	loc_C1330E	| C13302
-	jsr	(CardError,pc)	| C13304
+	jsr	(CardError,pc)	| C13304  an error (the card is full): CardError, then stop
 	nop	| C13308
 loc_C1330A:
 	jmp	(loc_C1330A,pc)	| C1330A
 loc_C1330E:
-	addq.b	#0x1,(CardFillTitleLast).l	| C1330E
+	addq.b	#0x1,(CardFillTitleLast).l	| C1330E  next title character
 	move.b	(CardFillFile).l,d0	| C13314
 	addq.b	#0x1,d0	| C1331A
-	cmpi.b	#0x10,d0	| C1331C
+	cmpi.b	#0x10,d0	| C1331C  16 files per NGH,
 	bcs.b	loc_C13330	| C13320
-	addq.b	#0x1,(BIOS_CRDNGH_LO-A5_BASE,a5)	| C13322
-	move.b	#0xC4,(WorkRamStart).l	| C13326
+	addq.b	#0x1,(BIOS_CRDNGH_LO-A5_BASE,a5)	| C13322  then the next NGH
+	move.b	#0xC4,(WorkRamStart).l	| C13326  and another first title byte
 	moveq	#0x0,d0	| C1332E
 loc_C13330:
 	move.b	d0,(CardFillFile).l	| C13330
@@ -43,22 +43,22 @@ CardFillTestTitle:
 	dc.b	0x54,0x45,0x20,0x80
 | Card [C] target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]
 Card:
-	lea.l	(BiosWorkRam).l,a5	| C1334C
+	lea.l	(BiosWorkRam).l,a5	| C1334C  every CARD function returns through CardLock
 	pea.l	(loc_C133BA,pc)	| C13352
-	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C13356
-	move.b	#0xFF,(CardRomType-A5_BASE,a5)	| C1335A
-	move.b	(REG_STATUS_B).l,d0	| C13360
+	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C13356  the stack at entry: CardExit returns from any depth
+	move.b	#0xFF,(CardHeaderType-A5_BASE,a5)	| C1335A  no card header type read yet
+	move.b	(REG_STATUS_B).l,d0	| C13360  REG_STATUS_B bits 4-5: 0 when a card is in
 	andi.b	#0x30,d0	| C13366
 	beq.b	loc_C13374	| C1336A
-	move.b	#0x80,(BIOS_CRDRESULT-A5_BASE,a5)	| C1336C
+	move.b	#0x80,(BIOS_CRDRESULT-A5_BASE,a5)	| C1336C  $80: no card
 	rts	| C13372
 loc_C13374:
-	move.b	#0x0,(BIOS_CRDRESULT-A5_BASE,a5)	| C13374
-	lea.l	(0x800000).l,a6	| C1337A
+	move.b	#0x0,(BIOS_CRDRESULT-A5_BASE,a5)	| C13374  result 0 by default
+	lea.l	(0x800000).l,a6	| C1337A  a6 = card memory
 	moveq	#0x0,d0	| C13380
-	move.b	d0,(REG_CRDNORMAL).l	| C13382
+	move.b	d0,(REG_CRDNORMAL).l	| C13382  normal access, bank 0
 	move.b	d0,(REG_CRDBANK).l	| C13388
-	move.b	(BIOS_CRDF-A5_BASE,a5),d0	| C1338E
+	move.b	(BIOS_CRDF-A5_BASE,a5),d0	| C1338E  the function number BIOS_CRDF
 	lsl.w	#0x2,d0	| C13392
 	movea.l	(CardFunctionTable,pc,d0.w),a0	| C13394
 	jmp	(a0)	| C13398
@@ -73,16 +73,16 @@ CardFunctionTable:
 	dc.l	CardSaveUserName
 	dc.l	CardLoadUserName
 loc_C133BA:
-	jsr	(CardLock,pc)	| C133BA
+	jsr	(CardLock,pc)	| C133BA  lock the card on the way out
 	rts	| C133BE
 | CardError [C] target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch
 CardError:
 	lea.l	(BiosWorkRam).l,a5	| C133C0
-	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C133C6
+	move.l	a7,(CardSavedSp-A5_BASE,a5)	| C133C6  the stack at entry, for the exits of the handlers
 	moveq	#0x0,d0	| C133CA
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C133CC
 	move.b	d0,(CardErrorResult-A5_BASE,a5)	| C133D0
-	subi.b	#0x81,d0	| C133D4
+	subi.b	#0x81,d0	| C133D4  results $81-$85 only
 	bcs.b	loc_C133E0	| C133D8
 	cmpi.b	#0x5,d0	| C133DA
 	bcs.b	loc_C1340A	| C133DE
@@ -94,19 +94,19 @@ CardErrorTable:
 	dc.b	0xFF,0xFF,0x04,0x0C,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x10,0xFF,0xFF,0xFF,0xFF
 	dc.b	0x08,0xFF,0x00,0x08,0x08,0xFF,0x08,0x00
 loc_C1340A:
-	lsl.w	#0x3,d0	| C1340A
+	lsl.w	#0x3,d0	| C1340A  table index: (result - $81) x 8 + function
 	move.b	(BIOS_CRDF-A5_BASE,a5),d1	| C1340C
 	andi.b	#0x7,d1	| C13410
 	or.b	d1,d0	| C13414
 	move.b	(CardErrorTable,pc,d0.w),d0	| C13416
-	bmi.b	loc_C133E0	| C1341A
-	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C1341C
+	bmi.b	loc_C133E0	| C1341A  $FF: nothing to show
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C1341C  a fresh MESS_OUT queue
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C13424
 	clr.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13428
-	pea.l	(loc_C1345A,pc)	| C1342C
-	move.w	(BIOS_SYSTEM_MODE-A5_BASE,a5),(CardErrorSavedMode-A5_BASE,a5)	| C13430
+	pea.l	(loc_C1345A,pc)	| C1342C  every handler returns here
+	move.w	(BIOS_SYSTEM_MODE-A5_BASE,a5),(CardErrorSavedMode-A5_BASE,a5)	| C13430  keep BIOS_SYSTEM_MODE, the system ROM in control meanwhile
 	bclr.b	#0x7,(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13436
-	move.w	#0x2000,sr	| C1343C
+	move.w	#0x2000,sr	| C1343C  interrupts on: the handlers wait for frames
 	movea.l	(CardErrorHandlers,pc,d0.w),a0	| C13440
 	jmp	(a0)	| C13444
 | CardErrorHandlers [C] CardError: NO DATA, ERROR ON MEMORY CARD, WRITE PROTECTED, not formatted, card full
@@ -117,18 +117,18 @@ CardErrorHandlers:
 	dc.l	CardErrorNotFormatted
 	dc.l	CardErrorFull
 loc_C1345A:
-	jsr	(CardLock,pc)	| C1345A
+	jsr	(CardLock,pc)	| C1345A  card locked, screen given back, mode restored
 	jsr	(CardErrorRestoreScreen,pc)	| C1345E
 	move.w	(CardErrorSavedMode-A5_BASE,a5),(BIOS_SYSTEM_MODE-A5_BASE,a5)	| C13462
 	rts	| C13468
 loc_C1346A:
-	lea.l	(CardNoDataText,pc),a4	| C1346A
+	lea.l	(CardNoDataText,pc),a4	| C1346A  result $81 on a load: NO DATA FOR THIS GAME.
 	bra.w	loc_C13500	| C1346E
 loc_C13472:
-	lea.l	(CardErrorText,pc),a4	| C13472
+	lea.l	(CardErrorText,pc),a4	| C13472  result $83: ERROR ON MEMORY CARD.
 	bra.w	loc_C13500	| C13476
 loc_C1347A:
-	lea.l	(CardWriteProtectedText,pc),a4	| C1347A
+	lea.l	(CardWriteProtectedText,pc),a4	| C1347A  result $85: MEMORY CARD WRITE PROTECTED.
 	bra.w	loc_C13500	| C1347E
 | CardNoDataText [C] NO DATA FOR THIS GAME.
 CardNoDataText:
@@ -151,19 +151,19 @@ PushAnyButtonText:
 	.ascii	"PUSH ANY BUTTON."
 	dc.b	0xFF,0xFF,0x00,0x00
 loc_C13500:
-	jsr	(CardErrorSaveScreen,pc)	| C13500
+	jsr	(CardErrorSaveScreen,pc)	| C13500  keep the game's screen, then the message and PUSH ANY BUTTON.
 	addq.b	#0x1,(BIOS_MESS_BUSY).l	| C13504
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1350A
 	move.l	a4,(a0)+	| C1350E
 	move.l	#PushAnyButtonText,(a0)+	| C13510
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C13516
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C1351A
-	move.w	#0x384,(CardErrorTimer-A5_BASE,a5)	| C13520
+	move.w	#0x384,(CardErrorTimer-A5_BASE,a5)	| C13520  900 frames (15 s) on an MVS
 loc_C13526:
-	jsr	(WaitFrameGetP1P2,pc)	| C13526
+	jsr	(WaitFrameGetP1P2,pc)	| C13526  A-D on P1 or P2 ends it
 	andi.b	#0xF0,d0	| C1352A
 	bne.b	loc_C1353C	| C1352E
-	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C13530
+	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C13530  AES: wait for a button only
 	beq.b	loc_C13526	| C13534
 	subq.w	#0x1,(CardErrorTimer-A5_BASE,a5)	| C13536
 	bne.b	loc_C13526	| C1353A
@@ -171,7 +171,7 @@ loc_C1353C:
 	rts	| C1353C
 | CardErrorNotFormatted [C] CardError for an unformatted card: an AES (BIOS_MVS_FLAG 0) asks DO YOU WISH TO FORMAT? (A yes, B no); an MVS formats at once, then repeats the CARD call; THIS MEMORY CARD CANNOT BE FORMATTED. if the format fails
 CardErrorNotFormatted:
-	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1353E
+	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1353E  MVS: format without asking
 	bne.w	loc_C13572	| C13542
 	jsr	(CardErrorSaveScreen,pc)	| C13546
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1354A
@@ -180,7 +180,7 @@ CardErrorNotFormatted:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C13558
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1355C
 loc_C13560:
-	jsr	(WaitFrameGetP1P2,pc)	| C13560
+	jsr	(WaitFrameGetP1P2,pc)	| C13560  A: yes, B: no
 	btst.b	#0x5,d0	| C13564
 	beq.b	loc_C1356C	| C13568
 	rts	| C1356A
@@ -188,15 +188,15 @@ loc_C1356C:
 	btst.b	#0x4,d0	| C1356C
 	beq.b	loc_C13560	| C13570
 loc_C13572:
-	move.b	(BIOS_CRDF-A5_BASE,a5),(BIOS_CARD_MODE-A5_BASE,a5)	| C13572
+	move.b	(BIOS_CRDF-A5_BASE,a5),(BIOS_CARD_MODE-A5_BASE,a5)	| C13572  keep the game's request, then CARD 0: format
 	move.b	#0x0,(BIOS_CRDF-A5_BASE,a5)	| C13578
 	jsr	(Card,pc)	| C1357E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13582
 	beq.b	loc_C13590	| C13586
-	lea.l	(CardCannotFormatText,pc),a4	| C13588
+	lea.l	(CardCannotFormatText,pc),a4	| C13588  failed: THIS MEMORY CARD CANNOT BE FORMATTED.
 	bra.w	loc_C13500	| C1358C
 loc_C13590:
-	move.b	(BIOS_CARD_MODE-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13590
+	move.b	(BIOS_CARD_MODE-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13590  formatted: the game's request again
 	jsr	(Card,pc)	| C13596
 	rts	| C1359A
 | CardFormatQuestionText [C] MEMORY CARD NOT FORMATTED, DO YOU WISH TO FORMAT? A BUTTON = YES B BUTTON = NO (AES only)
@@ -219,25 +219,25 @@ CardCannotFormatText:
 	dc.b	0xFF,0xFF,0x00,0x00
 | CardErrorFull [C] CardError for a full card: MEMORY CARD FULL, lists the data on the card page by page (6 lines, PREVIOUS PAGE / NEXT PAGE); A deletes the selected data and repeats the save (CardRestoreRequest), B skips it. Ran in MAME with CardFillTest (card_full_delete, card_full_exit)
 CardErrorFull:
-	move.b	(BIOS_CRDF-A5_BASE,a5),(BIOS_CARD_MODE-A5_BASE,a5)	| C1363E
+	move.b	(BIOS_CRDF-A5_BASE,a5),(BIOS_CARD_MODE-A5_BASE,a5)	| C1363E  keep the game's whole request
 	move.w	(BIOS_CRDNGH-A5_BASE,a5),(CardSavedNgh-A5_BASE,a5)	| C13644
 	move.w	(BIOS_CRDFILE-A5_BASE,a5),(CardSavedFile-A5_BASE,a5)	| C1364A
 	move.l	(BIOS_CRDPTR-A5_BASE,a5),(CardSavedPtr-A5_BASE,a5)	| C13650
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(CardSavedSize-A5_BASE,a5)	| C13656
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C1365C
 loc_C13660:
-	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C13660
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C13660  count the titles on the card: CARD 5 until it fails
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C13668
 	jsr	(Card,pc)	| C1366E
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13672
 	beq.b	loc_C13660	| C13676
-	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(DataListLast-A5_BASE,a5)	| C13678
+	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(DataListLast-A5_BASE,a5)	| C13678  the last index (BIOS_CRDSIZE ends at the count)
 	subq.w	#0x1,(DataListLast-A5_BASE,a5)	| C1367E
 	clr.w	(DataListPageFirst-A5_BASE,a5)	| C13682
 	clr.l	(DataListCursor-A5_BASE,a5)	| C13686
-	move.w	#0x384,(CardErrorTimer-A5_BASE,a5)	| C1368A
+	move.w	#0x384,(CardErrorTimer-A5_BASE,a5)	| C1368A  900 frames on an MVS
 loc_C13690:
-	clr.w	(DataListLine-A5_BASE,a5)	| C13690
+	clr.w	(DataListLine-A5_BASE,a5)	| C13690  a page: MEMORY CARD FULL (and PREVIOUS PAGE after the first)
 	jsr	(CardErrorSaveScreen,pc)	| C13694
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13698
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1369C
@@ -249,7 +249,7 @@ loc_C136B2:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C136B2
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C136B6
 loc_C136BC:
-	move.w	(DataListPageFirst-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C136BC
+	move.w	(DataListPageFirst-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C136BC  CARD 5: the title at index DataListPageFirst
 	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C136C2
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C136CA
 	jsr	(Card,pc)	| C136D0
@@ -257,14 +257,14 @@ loc_C136BC:
 	bne.w	loc_C137BC	| C136D8
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C136DC
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C136E0
-	clr.l	(a0)+	| C136E4
+	clr.l	(a0)+	| C136E4  an inline list: title at fix $716F + 2 x line, page 1 palette 1
 	move.w	#0x3,(a0)+	| C136E6
 	move.w	(DataListLine-A5_BASE,a5),d0	| C136EA
 	add.w	d0,d0	| C136EE
 	addi.w	#0x716F,d0	| C136F0
 	move.w	d0,(a0)+	| C136F4
 	move.w	#0x109,(a0)+	| C136F6
-	lea.l	(CardTitleBuffer-A5_BASE,a5),a1	| C136FA
+	lea.l	(CardTitleBuffer-A5_BASE,a5),a1	| C136FA  the 20-byte title as 10 words
 	moveq	#0x9,d7	| C136FE
 loc_C13700:
 	move.w	(a1)+,(a0)+	| C13700
@@ -273,14 +273,14 @@ loc_C13700:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1370C
 	subq.b	#0x1,(BIOS_MESS_BUSY).l	| C13710
 	jsr	(MessOut,pc)	| C13716
-	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C1371A
+	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C1371A  next index; past the last: done
 	addq.w	#0x1,d0	| C1371E
 	move.w	d0,(DataListPageFirst-A5_BASE,a5)	| C13720
 	cmp.w	(DataListLast-A5_BASE,a5),d0	| C13724
 	bhi.b	loc_C1374C	| C13728
 	addq.w	#0x1,(DataListLine-A5_BASE,a5)	| C1372A
 	move.w	(DataListLine-A5_BASE,a5),d0	| C1372E
-	subq.w	#0x6,d0	| C13732
+	subq.w	#0x6,d0	| C13732  6 lines per page, then NEXT PAGE
 	bne.b	loc_C136BC	| C13734
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13736
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1373A
@@ -288,9 +288,9 @@ loc_C13700:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C13744
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13748
 loc_C1374C:
-	jsr	(DataListMoveCursor,pc)	| C1374C
+	jsr	(DataListMoveCursor,pc)	| C1374C  the cursor
 loc_C13750:
-	jsr	(WaitFrameGetP1P2,pc)	| C13750
+	jsr	(WaitFrameGetP1P2,pc)	| C13750  each frame: MVS time-out, B gives up, A deletes
 	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C13754
 	beq.b	loc_C13762	| C13758
 	subq.w	#0x1,(CardErrorTimer-A5_BASE,a5)	| C1375A
@@ -300,7 +300,7 @@ loc_C13762:
 	bne.w	loc_C137BC	| C13766
 	btst.b	#0x4,d0	| C1376A
 	bne.w	loc_C137C8	| C1376E
-	swap	d0	| C13772
+	swap	d0	| C13772  up / down
 	andi.b	#0x3,d0	| C13774
 	beq.b	loc_C13750	| C13778
 	moveq	#0x1,d1	| C1377A
@@ -313,12 +313,12 @@ loc_C13784:
 	cmp.w	(DataListLast-A5_BASE,a5),d0	| C1378A
 	bhi.b	loc_C13750	| C1378E
 	move.w	d0,(DataListCursorNew-A5_BASE,a5)	| C13790
-	add.w	(DataListLine-A5_BASE,a5),d1	| C13794
+	add.w	(DataListLine-A5_BASE,a5),d1	| C13794  still on this page: just move the cursor
 	cmpi.w	#0x6,d1	| C13798
 	bcs.b	loc_C1374C	| C1379C
-	tst.w	d1	| C1379E
+	tst.w	d1	| C1379E  off the bottom: the next page starts at the new index
 	bpl.w	loc_C13690	| C137A0
-	andi.l	#0xFFFF,d0	| C137A4
+	andi.l	#0xFFFF,d0	| C137A4  off the top: the page holding it (index rounded down to a multiple of 6)
 	move.w	d0,d2	| C137AA
 	divu.w	#0x6,d0	| C137AC
 	swap	d0	| C137B0
@@ -326,54 +326,54 @@ loc_C13784:
 	move.w	d2,(DataListPageFirst-A5_BASE,a5)	| C137B4
 	bra.w	loc_C13690	| C137B8
 loc_C137BC:
-	jsr	(CardRestoreRequest,pc)	| C137BC
+	jsr	(CardRestoreRequest,pc)	| C137BC  give up: the game's request back, with the full result
 	move.b	(CardErrorResult-A5_BASE,a5),(BIOS_CRDRESULT-A5_BASE,a5)	| C137C0
 	rts	| C137C6
 loc_C137C8:
-	move.w	(DataListCursor-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C137C8
+	move.w	(DataListCursor-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C137C8  A: read the title of the cursor line (sets the NGH and file), delete it (CARD 4),
 	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C137CE
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C137D6
 	jsr	(Card,pc)	| C137DC
 	move.b	#0x4,(BIOS_CRDF-A5_BASE,a5)	| C137E0
 	jsr	(Card,pc)	| C137E6
-	jsr	(CardRestoreRequest,pc)	| C137EA
+	jsr	(CardRestoreRequest,pc)	| C137EA  the game's request back and run again
 	jsr	(Card,pc)	| C137EE
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(CardErrorResult-A5_BASE,a5)	| C137F2
-	cmpi.b	#0x84,(BIOS_CRDRESULT-A5_BASE,a5)	| C137F8
+	cmpi.b	#0x84,(BIOS_CRDRESULT-A5_BASE,a5)	| C137F8  still full: the list again
 	beq.w	CardErrorFull	| C137FE
 	rts	| C13802
 | CardRestoreRequest [C] CardErrorFull: puts the game's CARD request back (BIOS_CRDF from BIOS_CARD_MODE, BIOS_CRDPTR, CRDSIZE, CRDNGH, CRDFILE from CardSavedPtr-CardSavedFile) before the save is tried again or given up
 CardRestoreRequest:
-	move.b	(BIOS_CARD_MODE-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13804
-	move.l	(CardSavedPtr-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1380A
-	move.w	(CardSavedSize-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C13810
-	move.w	(CardSavedNgh-A5_BASE,a5),(BIOS_CRDNGH-A5_BASE,a5)	| C13816
-	move.w	(CardSavedFile-A5_BASE,a5),(BIOS_CRDFILE-A5_BASE,a5)	| C1381C
+	move.b	(BIOS_CARD_MODE-A5_BASE,a5),(BIOS_CRDF-A5_BASE,a5)	| C13804  the CARD request saved at entry, back in place for a retry:
+	move.l	(CardSavedPtr-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1380A  the pointer,
+	move.w	(CardSavedSize-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C13810  the size,
+	move.w	(CardSavedNgh-A5_BASE,a5),(BIOS_CRDNGH-A5_BASE,a5)	| C13816  the NGH,
+	move.w	(CardSavedFile-A5_BASE,a5),(BIOS_CRDFILE-A5_BASE,a5)	| C1381C  and the file number
 	rts	| C13822
 | DataListMoveCursor [C] erases the list cursor (char $20) at the old line and draws it (char $11) at the new line DataListCursorNew; the card-full list and the card utility COPY/DELETE lists
 DataListMoveCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13824
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C13828
-	moveq	#0x0,d0	| C1382C
+	moveq	#0x0,d0	| C1382C  pointer 0: the commands follow inline
 	move.l	d0,(a0)+	| C1382E
-	move.w	#0x20FF,d1	| C13830
+	move.w	#0x20FF,d1	| C13830  erase: a space, palette 2
 	jsr	(DataListPutCursor,pc)	| C13834
 	moveq	#0x0,d0	| C13838
 	move.w	(DataListCursorNew-A5_BASE,a5),(DataListCursor-A5_BASE,a5)	| C1383A
-	move.w	#0x11FF,d1	| C13840
+	move.w	#0x11FF,d1	| C13840  draw: tile $11 (arrow), palette 1
 	jsr	(DataListPutCursor,pc)	| C13844
-	clr.w	(a0)+	| C13848
+	clr.w	(a0)+	| C13848  command 0: end
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1384A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1384E
 	rts	| C13852
 | DataListPutCursor [C] MESS_OUT entry for the list cursor: line = DataListCursor mod 6 (DataListLine), character d1
 DataListPutCursor:
 	move.w	#0x3,(a0)+	| C13854
-	move.w	(DataListCursor-A5_BASE,a5),d0	| C13858
+	move.w	(DataListCursor-A5_BASE,a5),d0	| C13858  line on this page: index mod 6
 	divu.w	#0x6,d0	| C1385C
 	swap	d0	| C13860
 	move.w	d0,(DataListLine-A5_BASE,a5)	| C13862
-	add.w	d0,d0	| C13866
+	add.w	d0,d0	| C13866  fix $712F + 2 x line
 	addi.w	#0x712F,d0	| C13868
 	move.w	d0,(a0)+	| C1386C
 	move.w	#0x1108,(a0)+	| C1386E
@@ -404,78 +404,78 @@ NextPageText:
 WaitFrameGetP1P2:
 	jsr	(WaitFrame,pc)	| C13944
 	lea.l	(BiosWorkRam).l,a5	| C13948
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C1394E
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C1394E  d0 high word: P1 or P2 repeat bits
 	or.b	(BIOS_P2REPEAT-A5_BASE,a5),d0	| C13952
 	swap	d0	| C13956
-	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C13958
+	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C13958  low byte: P1 or P2 newly pressed
 	or.b	(BIOS_P2CHANGE-A5_BASE,a5),d0	| C1395C
-	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C13960
+	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C13960  P1 is a mahjong panel: its keys as joystick bits (as CopyControllerState)
 	bne.b	loc_C13984	| C13966
-	move.b	(BIOS_P3PREVIOUS-A5_BASE,a5),d0	| C13968
+	move.b	(BIOS_P3PREVIOUS-A5_BASE,a5),d0	| C13968  the mahjong row byte,
 	bclr.b	#0x7,d0	| C1396C
 	btst.b	#0x0,(BIOS_P3CURRENT-A5_BASE,a5)	| C13970
 	beq.b	loc_C1397C	| C13976
 	bset.b	#0x7,d0	| C13978
 loc_C1397C:
-	ror.b	#0x4,d0	| C1397C
+	ror.b	#0x4,d0	| C1397C  nibbles swapped: the keys in the joystick bits
 	move.b	d0,d1	| C1397E
-	swap	d0	| C13980
+	swap	d0	| C13980  both halves of d0 get them
 	move.b	d1,d0	| C13982
 loc_C13984:
 	rts	| C13984
 | CardErrorSaveScreen [C] once per message (CardErrorScreenSaved): copies the $500 fix-layer words to $10F300 (the BIOS work RAM below its variables), saves the colours $400002 and $400022, sets them to message colours and clears the fix layer
 CardErrorSaveScreen:
-	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13986
+	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13986  only once per message
 	bne.b	loc_C139E6	| C1398A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1398C
 	move.b	#0x1,(CardErrorScreenSaved-A5_BASE,a5)	| C13990
 	lea.l	(REG_VRAMRW).l,a1	| C13996
-	move.w	#0x1,0x2(a1)	| C1399C
+	move.w	#0x1,0x2(a1)	| C1399C  copy the fix layer to $10F300 (a5), 1,280 words
 	movea.l	a5,a0	| C139A2
 	move.w	#0x7000,-0x2(a1)	| C139A4
 	move.w	#0x4FF,d7	| C139AA
 loc_C139AE:
 	move.b	d0,(REG_DIPSW).l	| C139AE
 	move.w	(a1),d0	| C139B4
-	move.w	d0,(a1)	| C139B6
+	move.w	d0,(a1)	| C139B6  the read does not advance the address: write the word back
 	move.w	d0,(a0)+	| C139B8
 	dbra	d7,loc_C139AE	| C139BA
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C139BE
-	move.l	(0x400002).l,(CardSavedColour1-A5_BASE,a5)	| C139C2
+	move.l	(0x400002).l,(CardSavedColour1-A5_BASE,a5)	| C139C2  keep colour 1 of palettes 0 and 1, then white and red text
 	move.l	(0x400022).l,(CardSavedColour2-A5_BASE,a5)	| C139CA
 	move.l	#0xEEE0000,(0x400002).l	| C139D2
 	move.l	#0xE000000,(0x400022).l	| C139DC
 loc_C139E6:
-	jsr	(ClearFixLayer,pc)	| C139E6
+	jsr	(ClearFixLayer,pc)	| C139E6  the screen is cleared for the message
 	rts	| C139EA
 | CardErrorRestoreScreen [C] undoes CardErrorSaveScreen: writes the saved fix layer back, restores the two colours, clears CardErrorScreenSaved (end of CardError)
 CardErrorRestoreScreen:
-	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C139EC
+	tst.b	(CardErrorScreenSaved-A5_BASE,a5)	| C139EC  nothing saved: nothing to restore
 	beq.b	loc_C13A3A	| C139F0
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C139F2
-	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C139F6
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C139F6  empty the MESS_OUT list
 	lea.l	(REG_VRAMRW).l,a1	| C139FE
-	move.w	#0x1,0x2(a1)	| C13A04
-	movea.l	a5,a0	| C13A0A
-	move.w	#0x7000,-0x2(a1)	| C13A0C
+	move.w	#0x1,0x2(a1)	| C13A04  VRAM auto-increment 1
+	movea.l	a5,a0	| C13A0A  copy the saved fix layer back
+	move.w	#0x7000,-0x2(a1)	| C13A0C  from fix address $7000, $500 words
 	move.w	#0x4FF,d7	| C13A12
 loc_C13A16:
 	move.b	d0,(REG_DIPSW).l	| C13A16
 	move.w	(a0)+,(a1)	| C13A1C
 	dbra	d7,loc_C13A16	| C13A1E
-	move.l	(CardSavedColour1-A5_BASE,a5),(0x400002).l	| C13A22
+	move.l	(CardSavedColour1-A5_BASE,a5),(0x400002).l	| C13A22  and the two colours
 	move.l	(CardSavedColour2-A5_BASE,a5),(0x400022).l	| C13A2A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13A32
-	clr.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13A36
+	clr.b	(CardErrorScreenSaved-A5_BASE,a5)	| C13A36  one restore per save
 loc_C13A3A:
 	rts	| C13A3A
 | ClearFixLayer [C] resets the MESS_OUT buffer (BIOS_MESS_POINT = $10FF00) and fills the $500 fix-layer words from VRAM $7000 with $20 (space); kicks the watchdog (REG_DIPSW write) in the loop
 ClearFixLayer:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C13A3C
-	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C13A40
+	move.l	#MessBuffer,(BIOS_MESS_POINT-A5_BASE,a5)	| C13A40  empty the MESS_OUT list
 	lea.l	(REG_VRAMRW).l,a1	| C13A48
-	move.w	#0x1,0x2(a1)	| C13A4E
-	move.w	#0x20,d0	| C13A54
+	move.w	#0x1,0x2(a1)	| C13A4E  VRAM auto-increment 1
+	move.w	#0x20,d0	| C13A54  tile $20 (space) on all 1,280 fix words
 	move.w	#0x7000,-0x2(a1)	| C13A58
 	move.w	#0x4FF,d7	| C13A5E
 loc_C13A62:
@@ -486,55 +486,55 @@ loc_C13A62:
 	rts	| C13A72
 | CardFormat [C] CARD function 0: format memory card (wiki); MAME: runs when the card utility formats a card (test build)
 CardFormat:
-	move.b	(REG_STATUS_B).l,d0	| C13A74
+	move.b	(REG_STATUS_B).l,d0	| C13A74  bit 6 of REG_STATUS_B: write-protected: $85
 	andi.b	#0x40,d0	| C13A7A
 	beq.b	loc_C13A88	| C13A7E
 loc_C13A80:
 	move.b	#0x85,(BIOS_CRDRESULT-A5_BASE,a5)	| C13A80
 	rts	| C13A86
 loc_C13A88:
-	jsr	(CardDetect,pc)	| C13A88
+	jsr	(CardDetect,pc)	| C13A88  CardDetect: d6 = size, CardType
 	move.w	d6,(CardSize-A5_BASE,a5)	| C13A8C
-	beq.b	loc_C13A80	| C13A90
-	tst.b	(CardTypeLo-A5_BASE,a5)	| C13A92
+	beq.b	loc_C13A80	| C13A90  size 0: not a card that can be written
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13A92  0: 8-bit card; negative: type $80; else 16-bit
 	beq.w	loc_C13AA4	| C13A96
 	bmi.w	loc_C13C32	| C13A9A
-	jsr	(CardLayoutWord,pc)	| C13A9E
+	jsr	(CardLayoutWord,pc)	| C13A9E  the header, directory, FAT and data addresses for this type
 	bra.b	loc_C13AA8	| C13AA2
 loc_C13AA4:
 	jsr	(CardLayoutByte,pc)	| C13AA4
 loc_C13AA8:
-	movea.l	a6,a0	| C13AA8
+	movea.l	a6,a0	| C13AA8  header: 10 words 0,
 	moveq	#0x0,d0	| C13AAA
 	moveq	#0x9,d7	| C13AAC
 loc_C13AAE:
 	move.w	d0,(a0)+	| C13AAE
 	dbra	d7,loc_C13AAE	| C13AB0
-	move.w	(CardSize-A5_BASE,a5),d1	| C13AB4
+	move.w	(CardSize-A5_BASE,a5),d1	| C13AB4  the size high and low,
 	lsr.w	#0x8,d1	| C13AB8
 	move.w	d1,(a0)+	| C13ABA
 	move.w	(CardSize-A5_BASE,a5),(a0)+	| C13ABC
-	move.w	(CardFormatVersion,pc),(a0)+	| C13AC0
+	move.w	(CardFormatHeaderWord,pc),(a0)+	| C13AC0  the word CardFormatHeaderWord, three more words 0,
 	move.w	d0,(a0)+	| C13AC4
 	move.w	d0,(a0)+	| C13AC6
 	move.w	d0,(a0)+	| C13AC8
-	move.w	#0x20,d0	| C13ACA
+	move.w	#0x20,d0	| C13ACA  16 spaces: the user name,
 	moveq	#0xF,d7	| C13ACE
 loc_C13AD0:
 	move.w	d0,(a0)+	| C13AD0
 	dbra	d7,loc_C13AD0	| C13AD2
-	lea.l	(CardNeoGeoIdText,pc),a1	| C13AD6
+	lea.l	(CardNeoGeoIdText,pc),a1	| C13AD6  NEO-GEO one letter per 4 bytes,
 	moveq	#0x7,d7	| C13ADA
 loc_C13ADC:
 	move.b	(a1)+,d0	| C13ADC
 	move.w	d0,(a0)	| C13ADE
 	addq.l	#0x4,a0	| C13AE0
 	dbra	d7,loc_C13ADC	| C13AE2
-	move.b	(SystemRegion).l,d0	| C13AE6
+	move.b	(SystemRegion).l,d0	| C13AE6  and the region byte
 	move.w	d0,(a0)	| C13AEC
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C13AEE
 	bne.w	loc_C13B8A	| C13AF2
-	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13AF6
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13AF6  8-bit card: every directory entry free ($FF)
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13AFA
 	move.w	#0xFF,d0	| C13AFE
 loc_C13B02:
@@ -542,18 +542,18 @@ loc_C13B02:
 	addq.l	#0x8,a0	| C13B04
 	dbra	d7,loc_C13B02	| C13B06
 	move.b	d0,(REG_DIPSW).l	| C13B0A
-	move.l	(CardDataStart-A5_BASE,a5),d6	| C13B10
+	move.l	(CardDataStart-A5_BASE,a5),d6	| C13B10  blocks before the data area: (start - card) / 128
 	sub.l	a6,d6	| C13B14
 	lsr.w	#0x7,d6	| C13B16
 	subq.w	#0x1,d6	| C13B18
-	movea.l	(CardFat-A5_BASE,a5),a0	| C13B1A
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13B1A  first FAT copy: those blocks used, the rest free
 	jsr	(CardFormatFatByte,pc)	| C13B1E
-	moveq	#0x0,d0	| C13B22
+	moveq	#0x0,d0	| C13B22  the second copy
 	move.w	(CardFatSize-A5_BASE,a5),d0	| C13B24
 	movea.l	(CardFat-A5_BASE,a5),a0	| C13B28
 	adda.l	d0,a0	| C13B2C
 	jsr	(CardFormatFatByte,pc)	| C13B2E
-	movea.l	(CardFat-A5_BASE,a5),a0	| C13B32
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13B32  the checksum of each copy into the header (+$1A, +$1C)
 	moveq	#0x0,d0	| C13B36
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C13B38
 	lsr.w	#0x1,d7	| C13B3C
@@ -570,48 +570,48 @@ loc_C13B02:
 	rts	| C13B5A
 | CardSumByte [C] adds the low bytes of d6+1 words at a0 into d0 (CardFormat, 8-bit card: one byte per word)
 CardSumByte:
-	move.w	(a0)+,d1	| C13B5C
+	move.w	(a0)+,d1	| C13B5C  one byte of each word (8-bit card: the low byte)
 	add.b	d1,d0	| C13B5E
 	dbra	d6,CardSumByte	| C13B60
 	rts	| C13B64
 | CardFormatFatByte [C] 8-bit card: clears one FAT copy (CardFatSize bytes at a0) and marks the first d6+1 blocks (header, directory, FATs) as used (2)
 CardFormatFatByte:
-	movem.l	a0,-(a7)	| C13B66
-	move.w	(CardFatSize-A5_BASE,a5),d7	| C13B6A
+	movem.l	a0,-(a7)	| C13B66  keep the FAT address
+	move.w	(CardFatSize-A5_BASE,a5),d7	| C13B6A  FAT size in bytes / 2 - 1: the loop count over its words
 	lsr.w	#0x1,d7	| C13B6E
 	subq.w	#0x1,d7	| C13B70
 	moveq	#0x0,d0	| C13B72
 loc_C13B74:
-	move.w	d0,(a0)+	| C13B74
+	move.w	d0,(a0)+	| C13B74  clear the FAT
 	dbra	d7,loc_C13B74	| C13B76
 	movem.l	(a7)+,a0	| C13B7A
-	moveq	#0x2,d0	| C13B7E
-	move.w	d6,d5	| C13B80
+	moveq	#0x2,d0	| C13B7E  2: used block
+	move.w	d6,d5	| C13B80  the first d6+1 blocks hold the header, directory and FATs
 loc_C13B82:
 	move.w	d0,(a0)+	| C13B82
 	dbra	d5,loc_C13B82	| C13B84
 	rts	| C13B88
 loc_C13B8A:
-	move.w	#0x1,0x12(a6)	| C13B8A
-	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13B90
+	move.w	#0x1,0x12(a6)	| C13B8A  16-bit card: header word +$12 = 1
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13B90  a0 = the directory, one entry every 4 bytes
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13B94
-	move.w	#0xFF00,d0	| C13B98
+	move.w	#0xFF00,d0	| C13B98  directory entries free ($FF in the high byte)
 loc_C13B9C:
 	move.w	d0,(a0)	| C13B9C
 	addq.l	#0x4,a0	| C13B9E
 	dbra	d7,loc_C13B9C	| C13BA0
 	move.b	d0,(REG_DIPSW).l	| C13BA4
-	move.l	(CardDataStart-A5_BASE,a5),d6	| C13BAA
+	move.l	(CardDataStart-A5_BASE,a5),d6	| C13BAA  blocks before the data area: (start - card) / 64
 	sub.l	a6,d6	| C13BAE
 	lsr.w	#0x6,d6	| C13BB0
 	movea.l	(CardFat-A5_BASE,a5),a0	| C13BB2
-	jsr	(CardFormatFatWord,pc)	| C13BB6
+	jsr	(CardFormatFatWord,pc)	| C13BB6  first FAT copy,
 	moveq	#0x0,d0	| C13BBA
 	move.w	(CardFatSize-A5_BASE,a5),d0	| C13BBC
 	movea.l	(CardFat-A5_BASE,a5),a0	| C13BC0
 	adda.l	d0,a0	| C13BC4
-	jsr	(CardFormatFatWord,pc)	| C13BC6
-	movea.l	(CardFat-A5_BASE,a5),a0	| C13BCA
+	jsr	(CardFormatFatWord,pc)	| C13BC6  then the second, CardFatSize bytes further
+	movea.l	(CardFat-A5_BASE,a5),a0	| C13BCA  checksums as on the 8-bit card
 	moveq	#0x0,d0	| C13BCE
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C13BD0
 	lsr.w	#0x1,d7	| C13BD4
@@ -619,16 +619,16 @@ loc_C13B9C:
 	move.w	d7,d6	| C13BD8
 	jsr	(CardSumWord,pc)	| C13BDA
 	nop	| C13BDE
-	move.w	d0,0x1A(a6)	| C13BE0
+	move.w	d0,0x1A(a6)	| C13BE0  checksum of the first copy at header +$1A,
 	moveq	#0x0,d0	| C13BE4
 	move.w	d7,d6	| C13BE6
 	jsr	(CardSumWord,pc)	| C13BE8
 	nop	| C13BEC
-	move.w	d0,0x1C(a6)	| C13BEE
+	move.w	d0,0x1C(a6)	| C13BEE  of the second at +$1C
 	rts	| C13BF2
 | CardSumWord [C] adds both bytes of d6+1 words at a0 into d0 (CardFormat, 16-bit card); ran in MAME on an emulated 16-bit card (card_word_*)
 CardSumWord:
-	move.w	(a0)+,d1	| C13BF4
+	move.w	(a0)+,d1	| C13BF4  both bytes of each word
 	add.b	d1,d0	| C13BF6
 	lsr.w	#0x8,d1	| C13BF8
 	add.b	d1,d0	| C13BFA
@@ -636,50 +636,50 @@ CardSumWord:
 	rts	| C13C00
 | CardFormatFatWord [C] 16-bit card: like CardFormatFatByte with two FAT entries per word; ran in MAME on an emulated 16-bit card (card_word_*)
 CardFormatFatWord:
-	movem.l	a0,-(a7)	| C13C02
+	movem.l	a0,-(a7)	| C13C02  keep the FAT address
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C13C06
 	lsr.w	#0x1,d7	| C13C0A
 	subq.w	#0x1,d7	| C13C0C
 	moveq	#0x0,d0	| C13C0E
 loc_C13C10:
-	move.w	d0,(a0)+	| C13C10
+	move.w	d0,(a0)+	| C13C10  clear the FAT
 	dbra	d7,loc_C13C10	| C13C12
 	movem.l	(a7)+,a0	| C13C16
-	move.w	#0x202,d0	| C13C1A
+	move.w	#0x202,d0	| C13C1A  two entries per word, both 2 (used)
 	move.w	d6,d5	| C13C1E
-	cmpi.w	#0x1,d5	| C13C20
+	cmpi.w	#0x1,d5	| C13C20  an odd count: the last word half used
 	bne.b	loc_C13C2A	| C13C24
 	clr.b	d0	| C13C26
 	moveq	#0x2,d5	| C13C28
 loc_C13C2A:
-	move.w	d0,(a0)+	| C13C2A
+	move.w	d0,(a0)+	| C13C2A  one word: two used blocks
 	subq.w	#0x2,d5	| C13C2C
 	bne.b	loc_C13C2A	| C13C2E
 	rts	| C13C30
 loc_C13C32:
-	jsr	(CardLayoutByte,pc)	| C13C32
-	movea.l	a6,a0	| C13C36
+	jsr	(CardLayoutByte,pc)	| C13C32  type $80: the byte layout, the header on every second word
+	movea.l	a6,a0	| C13C36  header: 5 longs of zero first
 	moveq	#0x0,d0	| C13C38
 	moveq	#0x4,d7	| C13C3A
 loc_C13C3C:
 	move.l	d0,(a0)+	| C13C3C
 	dbra	d7,loc_C13C3C	| C13C3E
-	move.w	#0x1,0xC(a6)	| C13C42
+	move.w	#0x1,0xC(a6)	| C13C42  word +$C = 1, then size, CardFormatHeaderByte, 0,
 	move.w	(CardSize-A5_BASE,a5),(a0)	| C13C48
 	addq.l	#0x4,a0	| C13C4C
 	moveq	#0x0,d1	| C13C4E
-	move.b	(CardFormatVersionLo,pc),d1	| C13C50
+	move.b	(CardFormatHeaderByte,pc),d1	| C13C50
 	move.w	d1,(a0)	| C13C54
 	addq.l	#0x4,a0	| C13C56
 	move.w	d0,(a0)	| C13C58
 	addq.l	#0x4,a0	| C13C5A
-	move.w	#0x2020,d0	| C13C5C
+	move.w	#0x2020,d0	| C13C5C  8 words of two spaces: the user name,
 	moveq	#0x7,d7	| C13C60
 loc_C13C62:
 	move.w	d0,(a0)	| C13C62
 	addq.l	#0x4,a0	| C13C64
 	dbra	d7,loc_C13C62	| C13C66
-	lea.l	(CardNeoGeoIdText,pc),a1	| C13C6A
+	lea.l	(CardNeoGeoIdText,pc),a1	| C13C6A  NEO-GEO and the region, as on the other cards
 	moveq	#0x7,d7	| C13C6E
 loc_C13C70:
 	move.b	(a1)+,d0	| C13C70
@@ -688,9 +688,9 @@ loc_C13C70:
 	dbra	d7,loc_C13C70	| C13C76
 	move.b	(SystemRegion).l,d0	| C13C7A
 	move.w	d0,(a0)	| C13C80
-	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13C82
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13C82  the directory: one entry every 8 bytes
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13C86
-	move.w	#0xFF00,d0	| C13C8A
+	move.w	#0xFF00,d0	| C13C8A  directory entries free
 loc_C13C8E:
 	move.w	d0,(a0)	| C13C8E
 	addq.l	#0x8,a0	| C13C90
@@ -700,7 +700,7 @@ loc_C13C8E:
 	sub.l	a6,d6	| C13CA0
 	lsr.w	#0x6,d6	| C13CA2
 	movea.l	(CardFat-A5_BASE,a5),a0	| C13CA4
-	jsr	(CardFormatFatSparse,pc)	| C13CA8
+	jsr	(CardFormatFatSparse,pc)	| C13CA8  first FAT copy, then the second
 	moveq	#0x0,d0	| C13CAC
 	move.w	(CardFatSize-A5_BASE,a5),d0	| C13CAE
 	movea.l	(CardFat-A5_BASE,a5),a0	| C13CB2
@@ -712,7 +712,7 @@ loc_C13C8E:
 	lsr.w	#0x1,d7	| C13CC6
 	subq.w	#0x1,d7	| C13CC8
 	move.w	d7,d6	| C13CCA
-	jsr	(CardSumSparse,pc)	| C13CCC
+	jsr	(CardSumSparse,pc)	| C13CCC  checksums: the first in the high byte of +$1C, the second in its low byte
 	nop	| C13CD0
 	lsl.w	#0x8,d0	| C13CD2
 	move.w	d0,0x1C(a6)	| C13CD4
@@ -726,7 +726,7 @@ loc_C13C8E:
 	rts	| C13CEC
 | CardSumSparse [C] adds both bytes of d6+1 words, every other word (CardFormat, card type $80); ran in MAME on an emulated type $80 card (card_sparse_*)
 CardSumSparse:
-	move.w	(a0),d1	| C13CEE
+	move.w	(a0),d1	| C13CEE  every second word (4-byte step)
 	add.b	d1,d0	| C13CF0
 	lsr.w	#0x8,d1	| C13CF2
 	add.b	d1,d0	| C13CF4
@@ -741,7 +741,7 @@ CardFormatFatSparse:
 	subq.w	#0x1,d7	| C13D08
 	moveq	#0x0,d0	| C13D0A
 loc_C13D0C:
-	move.w	d0,(a0)	| C13D0C
+	move.w	d0,(a0)	| C13D0C  clear every second word
 	addq.l	#0x4,a0	| C13D0E
 	dbra	d7,loc_C13D0C	| C13D10
 	movem.l	(a7)+,a0	| C13D14
@@ -752,15 +752,15 @@ loc_C13D0C:
 	clr.b	d0	| C13D24
 	moveq	#0x2,d5	| C13D26
 loc_C13D28:
-	move.w	d0,(a0)	| C13D28
+	move.w	d0,(a0)	| C13D28  used blocks for the header area
 	addq.l	#0x4,a0	| C13D2A
 	subq.w	#0x2,d5	| C13D2C
 	bne.b	loc_C13D28	| C13D2E
 	rts	| C13D30
 | CardDataSearch [C] CARD function 1: data search (wiki); MAME with a blank card: called when the game starts
 CardDataSearch:
-	move.w	#0x0,(BIOS_CRDFILE-A5_BASE,a5)	| C13D32
-	jsr	(IsSnkRomCard,pc)	| C13D38
+	move.w	#0x0,(BIOS_CRDFILE-A5_BASE,a5)	| C13D32  BIOS_CRDFILE: a bit per file found
+	jsr	(IsSnkRomCard,pc)	| C13D38  header check: not formatted ($81) or ROM card returns
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13D3C
 	beq.b	loc_C13D44	| C13D40
 	rts	| C13D42
@@ -768,21 +768,21 @@ loc_C13D44:
 	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13D44
 	moveq	#0x0,d5	| C13D48
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13D4A
-	tst.b	(CardTypeLo-A5_BASE,a5)	| C13D4E
+	tst.b	(CardTypeLo-A5_BASE,a5)	| C13D4E  8-bit, 16-bit or type $80 directory
 	bmi.w	loc_C13DC4	| C13D52
 	bne.w	loc_C13D8E	| C13D56
 loc_C13D5A:
-	move.b	d0,(REG_DIPSW).l	| C13D5A
+	move.b	d0,(REG_DIPSW).l	| C13D5A  8-bit: entry = file, NGH high, NGH low, one per byte (8 bytes)
 	move.w	(a0),d1	| C13D60
-	cmpi.b	#0xFF,d1	| C13D62
+	cmpi.b	#0xFF,d1	| C13D62  $FF: free entry
 	beq.b	loc_C13D82	| C13D66
-	move.w	0x2(a0),d0	| C13D68
+	move.w	0x2(a0),d0	| C13D68  this game's NGH?
 	cmp.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C13D6C
 	bne.b	loc_C13D82	| C13D70
 	move.w	0x4(a0),d0	| C13D72
 	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C13D76
 	bne.b	loc_C13D82	| C13D7A
-	andi.w	#0xF,d1	| C13D7C
+	andi.w	#0xF,d1	| C13D7C  bit (file number) set in the result
 	bset.b	d1,d5	| C13D80
 loc_C13D82:
 	addq.l	#0x8,a0	| C13D82
@@ -790,7 +790,7 @@ loc_C13D82:
 	move.w	d5,(BIOS_CRDFILE-A5_BASE,a5)	| C13D88
 	rts	| C13D8C
 loc_C13D8E:
-	move.b	d0,(REG_DIPSW).l	| C13D8E
+	move.b	d0,(REG_DIPSW).l	| C13D8E  16-bit: file in the high byte, NGH in the next bytes (4 bytes per entry)
 	move.w	(a0),d1	| C13D94
 	lsr.w	#0x8,d1	| C13D96
 	cmpi.b	#0xFF,d1	| C13D98
@@ -810,7 +810,7 @@ loc_C13DB8:
 	move.w	d5,(BIOS_CRDFILE-A5_BASE,a5)	| C13DBE
 	rts	| C13DC2
 loc_C13DC4:
-	move.b	d0,(REG_DIPSW).l	| C13DC4
+	move.b	d0,(REG_DIPSW).l	| C13DC4  type $80: as 16-bit, on every second word (8 bytes per entry)
 	move.w	(a0),d1	| C13DCA
 	lsr.w	#0x8,d1	| C13DCC
 	cmpi.b	#0xFF,d1	| C13DCE
@@ -831,53 +831,53 @@ loc_C13DEE:
 	rts	| C13DF8
 | CardLoadData [C] CARD function 2: load data (wiki); MAME: Sengoku 2 LOAD prompt with a saved card, the game resumes in its second area
 CardLoadData:
-	jsr	(IsSnkRomCard,pc)	| C13DFA
+	jsr	(IsSnkRomCard,pc)	| C13DFA  header check ($81 not formatted, $85 ROM card ...)
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13DFE
 	beq.b	loc_C13E06	| C13E02
 loc_C13E04:
 	rts	| C13E04
 loc_C13E06:
-	jsr	(CardCheckFat,pc)	| C13E06
+	jsr	(CardCheckFat,pc)	| C13E06  the two FAT copies (checksums; a bad one is rebuilt)
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13E0A
 	bne.b	loc_C13E04	| C13E0E
-	andi.b	#0xF,(BIOS_CRDFILE-A5_BASE,a5)	| C13E10
+	andi.b	#0xF,(BIOS_CRDFILE-A5_BASE,a5)	| C13E10  file numbers 0-15
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C13E16
 	bmi.w	loc_C13EB0	| C13E1A
-	jsr	(CardFindEntry,pc)	| C13E1E
+	jsr	(CardFindEntry,pc)	| C13E1E  the directory entry of this NGH and file
 	tst.w	d3	| C13E22
 	beq.b	loc_C13E2E	| C13E24
-	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C13E26
+	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C13E26  $82: no such data
 	rts	| C13E2C
 loc_C13E2E:
-	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C13E2E
+	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C13E2E  load into BIOS_CRDPTR, BIOS_CRDSIZE bytes
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d7	| C13E32
 	movea.l	(CardFat-A5_BASE,a5),a1	| C13E36
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C13E3A
 	bne.w	loc_C13E74	| C13E3E
-	move.w	0x6(a0),d3	| C13E42
+	move.w	0x6(a0),d3	| C13E42  8-bit card: first block from the entry
 	jsr	(CardBlockAddressByte,pc)	| C13E46
-	moveq	#0x3F,d6	| C13E4A
+	moveq	#0x3F,d6	| C13E4A  64 bytes per block, one per word
 loc_C13E4C:
 	move.w	(a3)+,d0	| C13E4C
 	move.b	d0,(a4)+	| C13E4E
 	subq.w	#0x1,d7	| C13E50
 	beq.b	loc_C13E6E	| C13E52
 	dbra	d6,loc_C13E4C	| C13E54
-	jsr	(CardNextBlockByte,pc)	| C13E58
-	cmpi.b	#0x3,d3	| C13E5C
+	jsr	(CardNextBlockByte,pc)	| C13E58  then the next block of the chain (FAT)
+	cmpi.b	#0x3,d3	| C13E5C  0-2: end of the chain
 	bcs.w	loc_C13E6E	| C13E60
 	move.b	d0,(REG_DIPSW).l	| C13E64
 	moveq	#0x3F,d6	| C13E6A
 	bra.b	loc_C13E4C	| C13E6C
 loc_C13E6E:
-	move.l	a4,(BIOS_CRDPTR-A5_BASE,a5)	| C13E6E
+	move.l	a4,(BIOS_CRDPTR-A5_BASE,a5)	| C13E6E  BIOS_CRDPTR left at the end of the data
 	rts	| C13E72
 loc_C13E74:
-	move.w	0x2(a0),d3	| C13E74
+	move.w	0x2(a0),d3	| C13E74  16-bit card: first block, 32 words
 	jsr	(CardBlockAddressWord,pc)	| C13E78
 	moveq	#0x1F,d6	| C13E7C
 loc_C13E7E:
-	move.w	(a3)+,d0	| C13E7E
+	move.w	(a3)+,d0	| C13E7E  two bytes per word, high byte first
 	move.w	d0,d1	| C13E80
 	lsr.w	#0x8,d0	| C13E82
 	move.b	d0,(a4)+	| C13E84
@@ -887,7 +887,7 @@ loc_C13E7E:
 	subq.w	#0x1,d7	| C13E8C
 	beq.b	loc_C13EAA	| C13E8E
 	dbra	d6,loc_C13E7E	| C13E90
-	jsr	(CardNextBlockWord,pc)	| C13E94
+	jsr	(CardNextBlockWord,pc)	| C13E94  next block of the chain
 	cmpi.b	#0x3,d3	| C13E98
 	bcs.w	loc_C13EAA	| C13E9C
 	move.b	d0,(REG_DIPSW).l	| C13EA0
@@ -897,7 +897,7 @@ loc_C13EAA:
 	move.l	a4,(BIOS_CRDPTR-A5_BASE,a5)	| C13EAA
 	rts	| C13EAE
 loc_C13EB0:
-	jsr	(CardFindEntrySparse,pc)	| C13EB0
+	jsr	(CardFindEntrySparse,pc)	| C13EB0  type $80: as 16-bit, on every second word
 	tst.w	d3	| C13EB4
 	beq.b	loc_C13EC0	| C13EB6
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C13EB8
@@ -932,74 +932,74 @@ loc_C13F04:
 	rts	| C13F08
 | CardSaveData [C] CARD function 3: save data (wiki); MAME: Sengoku 2 SAVE prompt after losing in level 2, writes SENGOKU2 SAVE DATA
 CardSaveData:
-	move.b	(REG_STATUS_B).l,d0	| C13F0A
+	move.b	(REG_STATUS_B).l,d0	| C13F0A  write-protected: $85
 	andi.b	#0x40,d0	| C13F10
 	beq.b	loc_C13F1E	| C13F14
 	move.b	#0x85,(BIOS_CRDRESULT-A5_BASE,a5)	| C13F16
 	rts	| C13F1C
 loc_C13F1E:
-	jsr	(IsSnkRomCard,pc)	| C13F1E
+	jsr	(IsSnkRomCard,pc)	| C13F1E  header check: not formatted or not a data card returns
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13F22
 	beq.b	loc_C13F2A	| C13F26
 loc_C13F28:
 	rts	| C13F28
 loc_C13F2A:
-	jsr	(CardCheckFat,pc)	| C13F2A
+	jsr	(CardCheckFat,pc)	| C13F2A  both FAT copies must match their checksums
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C13F2E
 	bne.b	loc_C13F28	| C13F32
-	andi.b	#0xF,(BIOS_CRDFILE-A5_BASE,a5)	| C13F34
-	jsr	(CardUnlock,pc)	| C13F3A
+	andi.b	#0xF,(BIOS_CRDFILE-A5_BASE,a5)	| C13F34  file numbers 0-15
+	jsr	(CardUnlock,pc)	| C13F3A  card writable
 	movea.l	(CardFat-A5_BASE,a5),a1	| C13F3E
 	movea.l	(CardDirectory-A5_BASE,a5),a0	| C13F42
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C13F46
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C13F4A
 	bmi.w	loc_C14104	| C13F4E
 	bne.w	loc_C13FF8	| C13F52
-	jsr	(CardFindFreeEntryByte,pc)	| C13F56
+	jsr	(CardFindFreeEntryByte,pc)	| C13F56  8-bit card: a free directory entry
 	tst.b	d0	| C13F5A
 	beq.b	loc_C13F66	| C13F5C
 loc_C13F5E:
-	move.b	#0x84,(BIOS_CRDRESULT-A5_BASE,a5)	| C13F5E
+	move.b	#0x84,(BIOS_CRDRESULT-A5_BASE,a5)	| C13F5E  none, or no free block: $84, card full
 	rts	| C13F64
 loc_C13F66:
-	jsr	(CardFindFreeBlockByte,pc)	| C13F66
+	jsr	(CardFindFreeBlockByte,pc)	| C13F66  the first free block, marked 1 (end of chain)
 	tst.b	d0	| C13F6A
 	bne.b	loc_C13F5E	| C13F6C
 	move.w	d3,d5	| C13F6E
 	move.w	#0x1,(a1,d3.w)	| C13F70
 	lsr.w	#0x1,d3	| C13F76
-	move.w	d3,0x6(a0)	| C13F78
+	move.w	d3,0x6(a0)	| C13F78  the block number into the new entry
 	jsr	(CardBlockAddressByte,pc)	| C13F7C
-	moveq	#0x3F,d6	| C13F80
+	moveq	#0x3F,d6	| C13F80  64 data bytes per block
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C13F82
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d7	| C13F86
 loc_C13F8A:
-	move.b	(a4)+,d0	| C13F8A
+	move.b	(a4)+,d0	| C13F8A  each data byte into one card word
 	move.w	d0,(a3)+	| C13F8C
-	subq.w	#0x1,d7	| C13F8E
+	subq.w	#0x1,d7	| C13F8E  all bytes written
 	beq.b	loc_C13FC2	| C13F90
 	dbra	d6,loc_C13F8A	| C13F92
-	jsr	(CardFindFreeBlockByte,pc)	| C13F96
+	jsr	(CardFindFreeBlockByte,pc)	| C13F96  block full: the next free block
 	tst.b	d0	| C13F9A
 	beq.b	loc_C13FA4	| C13F9C
-	jsr	(loc_C147CE,pc)	| C13F9E
+	jsr	(loc_C147CE,pc)	| C13F9E  none: free what was written, $84
 	bra.b	loc_C13F5E	| C13FA2
 loc_C13FA4:
-	move.w	#0x1,(a1,d3.w)	| C13FA4
+	move.w	#0x1,(a1,d3.w)	| C13FA4  chained from the previous block
 	lsr.w	#0x1,d3	| C13FAA
 	move.w	d3,(a1,d5.w)	| C13FAC
 	move.w	d3,d5	| C13FB0
 	add.w	d5,d5	| C13FB2
 	jsr	(CardBlockAddressByte,pc)	| C13FB4
-	move.b	d0,(REG_DIPSW).l	| C13FB8
+	move.b	d0,(REG_DIPSW).l	| C13FB8  watchdog
 	moveq	#0x3F,d6	| C13FBE
 	bra.b	loc_C13F8A	| C13FC0
 loc_C13FC2:
-	movea.l	a0,a4	| C13FC2
+	movea.l	a0,a4	| C13FC2  an older save of the same NGH and file?
 	jsr	(CardFindEntry,pc)	| C13FC4
 	tst.w	d3	| C13FC8
 	beq.b	loc_C13FE6	| C13FCA
-	move.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C13FCC
+	move.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C13FCC  no: fill in the new entry (NGH, file)
 	move.w	d0,0x2(a4)	| C13FD0
 	move.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C13FD4
 	move.w	d0,0x4(a4)	| C13FD8
@@ -1007,22 +1007,22 @@ loc_C13FC2:
 	move.w	d0,(a4)	| C13FE0
 	bra.w	loc_C1479A	| C13FE2
 loc_C13FE6:
-	move.w	0x6(a0),d3	| C13FE6
+	move.w	0x6(a0),d3	| C13FE6  yes: free its chain and point it at the new data
 	jsr	(CardFreeChainByte,pc)	| C13FEA
 	move.w	0x6(a4),0x6(a0)	| C13FEE
 	bra.w	loc_C1479A	| C13FF4
 loc_C13FF8:
-	jsr	(CardFindFreeEntryWord,pc)	| C13FF8
+	jsr	(CardFindFreeEntryWord,pc)	| C13FF8  16-bit card: two FAT entries per word
 	tst.b	d0	| C13FFC
 	bne.w	loc_C13F5E	| C13FFE
 	jsr	(CardFindFreeBlockWord,pc)	| C14002
 	tst.b	d0	| C14006
 	bne.w	loc_C13F5E	| C14008
-	move.w	0x2(a0),d0	| C1400C
+	move.w	0x2(a0),d0	| C1400C  the first block into the entry
 	move.b	d3,d0	| C14010
 	move.w	d0,0x2(a0)	| C14012
 	move.w	d3,d5	| C14016
-	btst.b	#0x0,d3	| C14018
+	btst.b	#0x0,d3	| C14018  even block: the high byte of its FAT word, odd: the low byte
 	bne.b	loc_C14030	| C1401C
 	move.w	(a1,d3.w),d0	| C1401E
 	andi.w	#0xFF,d0	| C14022
@@ -1038,20 +1038,20 @@ loc_C1403C:
 	moveq	#0x1F,d6	| C14040
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14042
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d7	| C14046
-	addq.w	#0x1,d7	| C1404A
+	addq.w	#0x1,d7	| C1404A  two bytes per word
 	lsr.w	#0x1,d7	| C1404C
 loc_C1404E:
-	move.w	(a4)+,(a3)+	| C1404E
+	move.w	(a4)+,(a3)+	| C1404E  32 words per block
 	subq.w	#0x1,d7	| C14050
 	beq.b	loc_C140C0	| C14052
 	dbra	d6,loc_C1404E	| C14054
 	jsr	(CardFindFreeBlockWord,pc)	| C14058
 	tst.b	d0	| C1405C
 	beq.b	loc_C14068	| C1405E
-	jsr	(loc_C14886,pc)	| C14060
+	jsr	(loc_C14886,pc)	| C14060  no free block: free what was written, $84
 	bra.w	loc_C13F5E	| C14064
 loc_C14068:
-	btst.b	#0x0,d3	| C14068
+	btst.b	#0x0,d3	| C14068  mark the new block, chain the previous one to it
 	bne.b	loc_C14094	| C1406C
 	move.w	(a1,d3.w),d0	| C1406E
 	andi.w	#0xFF,d0	| C14072
@@ -1083,11 +1083,11 @@ loc_C140B0:
 	moveq	#0x1F,d6	| C140BC
 	bra.b	loc_C1404E	| C140BE
 loc_C140C0:
-	movea.l	a0,a4	| C140C0
+	movea.l	a0,a4	| C140C0  an older save of the same NGH and file?
 	jsr	(CardFindEntry,pc)	| C140C2
 	tst.w	d3	| C140C6
 	beq.b	loc_C140EA	| C140C8
-	move.b	(BIOS_CRDFILE-A5_BASE,a5),d0	| C140CA
+	move.b	(BIOS_CRDFILE-A5_BASE,a5),d0	| C140CA  no: fill in the new entry (file and NGH high byte, NGH low byte)
 	lsl.w	#0x8,d0	| C140CE
 	move.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C140D0
 	move.w	d0,(a4)	| C140D4
@@ -1096,9 +1096,9 @@ loc_C140C0:
 	move.w	0x2(a4),d1	| C140DC
 	move.b	d1,d0	| C140E0
 	move.w	d0,0x2(a4)	| C140E2
-	bra.w	loc_C1484E	| C140E6
+	bra.w	loc_C1484E	| C140E6  then store the FAT copies and their checksums
 loc_C140EA:
-	move.w	0x2(a0),d3	| C140EA
+	move.w	0x2(a0),d3	| C140EA  yes: free the old chain, the old entry takes the new first block
 	jsr	(CardFreeChainWord,pc)	| C140EE
 	move.w	0x2(a4),d0	| C140F2
 	move.w	0x2(a0),d1	| C140F6
@@ -1106,18 +1106,18 @@ loc_C140EA:
 	move.w	d1,0x2(a0)	| C140FC
 	bra.w	loc_C1484E	| C14100
 loc_C14104:
-	jsr	(CardFindFreeEntrySparse,pc)	| C14104
+	jsr	(CardFindFreeEntrySparse,pc)	| C14104  type $80: as 16-bit, every second word
 	tst.b	d0	| C14108
 	bne.w	loc_C13F5E	| C1410A
-	jsr	(CardFindFreeBlockSparse,pc)	| C1410E
+	jsr	(CardFindFreeBlockSparse,pc)	| C1410E  first free block
 	tst.b	d0	| C14112
 	bne.w	loc_C13F5E	| C14114
-	move.w	0x4(a0),d0	| C14118
+	move.w	0x4(a0),d0	| C14118  its number into the entry (+4, low byte)
 	move.b	d3,d0	| C1411C
 	move.w	d0,0x4(a0)	| C1411E
 	move.w	d3,d5	| C14122
-	add.w	d3,d3	| C14124
-	btst.b	#0x1,d3	| C14126
+	add.w	d3,d3	| C14124  x 2: FAT offset on every second word
+	btst.b	#0x1,d3	| C14126  high or low byte of the FAT word
 	bne.b	loc_C1413E	| C1412A
 	move.w	(a1,d3.w),d0	| C1412C
 	andi.w	#0xFF,d0	| C14130
@@ -1130,11 +1130,11 @@ loc_C1413E:
 	move.w	d0,(a1,d3.w)	| C14146
 loc_C1414A:
 	lsr.w	#0x1,d3	| C1414A
-	jsr	(CardBlockAddressSparse,pc)	| C1414C
-	moveq	#0x1F,d6	| C14150
+	jsr	(CardBlockAddressSparse,pc)	| C1414C  a3 = the block's address
+	moveq	#0x1F,d6	| C14150  32 words per block, every second card word
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14152
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d7	| C14156
-	addq.w	#0x1,d7	| C1415A
+	addq.w	#0x1,d7	| C1415A  two bytes per word
 	lsr.w	#0x1,d7	| C1415C
 loc_C1415E:
 	move.w	(a4)+,(a3)	| C1415E
@@ -1142,13 +1142,13 @@ loc_C1415E:
 	subq.w	#0x1,d7	| C14162
 	beq.b	loc_C141DC	| C14164
 	dbra	d6,loc_C1415E	| C14166
-	jsr	(CardFindFreeBlockSparse,pc)	| C1416A
+	jsr	(CardFindFreeBlockSparse,pc)	| C1416A  block full: the next free block
 	tst.b	d0	| C1416E
 	beq.b	loc_C1417A	| C14170
-	jsr	(loc_C1494E,pc)	| C14172
+	jsr	(loc_C1494E,pc)	| C14172  none: free what was written, then $84
 	bra.w	loc_C13F5E	| C14176
 loc_C1417A:
-	add.w	d3,d3	| C1417A
+	add.w	d3,d3	| C1417A  mark the new block used, chain the previous block to it
 	add.w	d5,d5	| C1417C
 	btst.b	#0x1,d3	| C1417E
 	bne.b	loc_C141AA	| C14182
@@ -1180,16 +1180,16 @@ loc_C141BC:
 loc_C141CA:
 	lsr.w	#0x1,d3	| C141CA
 	move.w	d3,d5	| C141CC
-	jsr	(CardBlockAddressSparse,pc)	| C141CE
+	jsr	(CardBlockAddressSparse,pc)	| C141CE  address of the new block
 	move.b	d0,(REG_DIPSW).l	| C141D2
 	moveq	#0x1F,d6	| C141D8
 	bra.b	loc_C1415E	| C141DA
 loc_C141DC:
-	movea.l	a0,a4	| C141DC
+	movea.l	a0,a4	| C141DC  an older save of the same NGH and file?
 	jsr	(CardFindEntrySparse,pc)	| C141DE
 	tst.w	d3	| C141E2
 	beq.b	loc_C14206	| C141E4
-	move.b	(BIOS_CRDFILE-A5_BASE,a5),d0	| C141E6
+	move.b	(BIOS_CRDFILE-A5_BASE,a5),d0	| C141E6  no: fill in the new entry
 	lsl.w	#0x8,d0	| C141EA
 	move.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C141EC
 	move.w	d0,(a4)	| C141F0
@@ -1198,9 +1198,9 @@ loc_C141DC:
 	move.w	0x4(a4),d1	| C141F8
 	move.b	d1,d0	| C141FC
 	move.w	d0,0x4(a4)	| C141FE
-	bra.w	loc_C1490C	| C14202
+	bra.w	loc_C1490C	| C14202  then store the FAT copies and their checksums
 loc_C14206:
-	move.w	0x4(a0),d3	| C14206
+	move.w	0x4(a0),d3	| C14206  an older save of the same data: free it and reuse its entry
 	jsr	(CardFreeChainSparse,pc)	| C1420A
 	move.w	0x4(a4),d0	| C1420E
 	move.w	0x4(a0),d1	| C14212
@@ -1209,7 +1209,7 @@ loc_C14206:
 	bra.w	loc_C1490C	| C1421C
 | CardDeleteData [C] CARD function 4: delete data (wiki); MAME: card utility DELETE A DATA (test build), then THERE IS NO DATA.
 CardDeleteData:
-	move.b	(REG_STATUS_B).l,d0	| C14220
+	move.b	(REG_STATUS_B).l,d0	| C14220  write-protected: $85
 	andi.b	#0x40,d0	| C14226
 	beq.b	loc_C14234	| C1422A
 	move.b	#0x85,(BIOS_CRDRESULT-A5_BASE,a5)	| C1422C
@@ -1226,27 +1226,27 @@ loc_C14240:
 	bne.b	loc_C1423E	| C14248
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C1424A
 	bmi.w	loc_C14290	| C1424E
-	jsr	(CardFindEntry,pc)	| C14252
+	jsr	(CardFindEntry,pc)	| C14252  the entry of this NGH and file, else $82
 	tst.w	d3	| C14256
 	beq.b	loc_C14262	| C14258
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C1425A
 	rts	| C14260
 loc_C14262:
-	jsr	(CardUnlock,pc)	| C14262
+	jsr	(CardUnlock,pc)	| C14262  card writable
 	movea.l	(CardFat-A5_BASE,a5),a1	| C14266
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C1426A
 	bne.b	loc_C14280	| C1426E
-	move.w	#0xFF,(a0)	| C14270
+	move.w	#0xFF,(a0)	| C14270  8-bit: entry free ($FF), its chain freed, FAT copies and checksums rewritten
 	move.w	0x6(a0),d3	| C14274
 	jsr	(CardFreeChainByte,pc)	| C14278
 	bra.w	loc_C1479A	| C1427C
 loc_C14280:
-	move.w	#0xFF00,(a0)	| C14280
+	move.w	#0xFF00,(a0)	| C14280  16-bit: the same with $FF in the high byte
 	move.w	0x2(a0),d3	| C14284
 	jsr	(CardFreeChainWord,pc)	| C14288
 	bra.w	loc_C1484E	| C1428C
 loc_C14290:
-	jsr	(CardFindEntrySparse,pc)	| C14290
+	jsr	(CardFindEntrySparse,pc)	| C14290  type $80: the same on every second word
 	tst.w	d3	| C14294
 	beq.b	loc_C142A0	| C14296
 	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C14298
@@ -1260,56 +1260,56 @@ loc_C142A0:
 	bra.w	loc_C1490C	| C142B4
 | CardReadTitle [C] CARD function 5: read data title (wiki); MAME with a card: runs at boot and in the hardware test
 CardReadTitle:
-	jsr	(IsSnkRomCard,pc)	| C142B8
+	jsr	(IsSnkRomCard,pc)	| C142B8  header check: not formatted or not a data card returns
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C142BC
 	beq.b	loc_C142C4	| C142C0
 loc_C142C2:
 	rts	| C142C2
 loc_C142C4:
-	jsr	(CardCheckFat,pc)	| C142C4
+	jsr	(CardCheckFat,pc)	| C142C4  both FAT copies checked
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C142C8
 	bne.b	loc_C142C2	| C142CC
-	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C142CE
+	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C142CE  BIOS_CRDSIZE = index of the title wanted (0 = first)
 	move.w	(BIOS_CRDSIZE-A5_BASE,a5),d6	| C142D2
 	addq.w	#0x1,d6	| C142D6
 	movea.l	(CardDirectory-A5_BASE,a5),a0	| C142D8
-	move.w	(CardDirEntries-A5_BASE,a5),d7	| C142DC
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C142DC  8-bit, 16-bit or type $80 directory
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C142E0
 	bmi.w	loc_C143AC	| C142E4
 	bne.w	loc_C14340	| C142E8
 loc_C142EC:
-	move.b	d0,(REG_DIPSW).l	| C142EC
+	move.b	d0,(REG_DIPSW).l	| C142EC  8-bit directory: count the used entries up to that index
 	move.w	(a0),d0	| C142F2
 	cmpi.b	#0xFF,d0	| C142F4
 	beq.b	loc_C142FE	| C142F8
-	subq.w	#0x1,d6	| C142FA
+	subq.w	#0x1,d6	| C142FA  a used entry: one less to skip
 	beq.b	loc_C1430C	| C142FC
 loc_C142FE:
 	addq.l	#0x8,a0	| C142FE
 	dbra	d7,loc_C142EC	| C14300
-	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C14304
+	move.b	#0x82,(BIOS_CRDRESULT-A5_BASE,a5)	| C14304  not that many: $82
 	rts	| C1430A
 loc_C1430C:
-	movea.l	(CardFat-A5_BASE,a5),a1	| C1430C
+	movea.l	(CardFat-A5_BASE,a5),a1	| C1430C  the title: the first 20 bytes of the data
 	move.w	0x6(a0),d3	| C14310
 	jsr	(CardBlockAddressByte,pc)	| C14314
-	moveq	#0x13,d7	| C14318
+	moveq	#0x13,d7	| C14318  20 bytes, one per card word
 loc_C1431A:
-	move.w	(a3)+,d0	| C1431A
+	move.w	(a3)+,d0	| C1431A  $FF read as 0
 	cmpi.b	#0xFF,d0	| C1431C
 	bne.b	loc_C14324	| C14320
 	addq.b	#0x1,d0	| C14322
 loc_C14324:
 	move.b	d0,(a4)+	| C14324
 	dbra	d7,loc_C1431A	| C14326
-	move.w	0x2(a0),d0	| C1432A
+	move.w	0x2(a0),d0	| C1432A  and the entry's NGH and file
 	move.b	d0,(BIOS_CRDNGH-A5_BASE,a5)	| C1432E
 	move.w	0x4(a0),d0	| C14332
 	move.b	d0,(BIOS_CRDNGH_LO-A5_BASE,a5)	| C14336
 	move.w	(a0),d0	| C1433A
 	bra.w	loc_C1439E	| C1433C
 loc_C14340:
-	move.b	d0,(REG_DIPSW).l	| C14340
+	move.b	d0,(REG_DIPSW).l	| C14340  16-bit directory, 4-byte entries
 	move.w	(a0),d0	| C14346
 	lsr.w	#0x8,d0	| C14348
 	cmpi.b	#0xFF,d0	| C1434A
@@ -1325,15 +1325,15 @@ loc_C14362:
 	movea.l	(CardFat-A5_BASE,a5),a1	| C14362
 	move.w	0x2(a0),d3	| C14366
 	jsr	(CardBlockAddressWord,pc)	| C1436A
-	moveq	#0x9,d7	| C1436E
+	moveq	#0x9,d7	| C1436E  10 words: 20 bytes
 loc_C14370:
-	move.w	(a3)+,d0	| C14370
-	move.w	d0,d1	| C14372
+	move.w	(a3)+,d0	| C14370  10 words of title
+	move.w	d0,d1	| C14372  low byte $FF read as 0,
 	addq.b	#0x1,d1	| C14374
 	bne.b	loc_C1437A	| C14376
 	clr.b	d0	| C14378
 loc_C1437A:
-	clr.b	d1	| C1437A
+	clr.b	d1	| C1437A  high byte $FF read as 0
 	addi.w	#0x100,d1	| C1437C
 	bne.b	loc_C14386	| C14380
 	andi.w	#0xFF,d0	| C14382
@@ -1347,12 +1347,12 @@ loc_C14386:
 	move.b	d0,(BIOS_CRDNGH-A5_BASE,a5)	| C14398
 	lsr.w	#0x8,d0	| C1439C
 loc_C1439E:
-	andi.w	#0xF,d0	| C1439E
+	andi.w	#0xF,d0	| C1439E  file number into BIOS_CRDFILE; BIOS_CRDSIZE moves to the next index
 	move.b	d0,(BIOS_CRDFILE-A5_BASE,a5)	| C143A2
 	addq.w	#0x1,(BIOS_CRDSIZE-A5_BASE,a5)	| C143A6
 	rts	| C143AA
 loc_C143AC:
-	move.b	d0,(REG_DIPSW).l	| C143AC
+	move.b	d0,(REG_DIPSW).l	| C143AC  type $80 directory, as 16-bit on every second word
 	move.w	(a0),d0	| C143B2
 	lsr.w	#0x8,d0	| C143B4
 	cmpi.b	#0xFF,d0	| C143B6
@@ -1370,7 +1370,7 @@ loc_C143CE:
 	jsr	(CardBlockAddressSparse,pc)	| C143D6
 	moveq	#0x9,d7	| C143DA
 loc_C143DC:
-	move.w	(a3),d0	| C143DC
+	move.w	(a3),d0	| C143DC  every second card word
 	addq.l	#0x4,a3	| C143DE
 	move.w	d0,d1	| C143E0
 	addq.b	#0x1,d1	| C143E2
@@ -1393,10 +1393,10 @@ loc_C143F4:
 	bra.b	loc_C1439E	| C1440C
 | CardSaveUserName [C] CARD function 6: save user name (wiki); MAME (card utility test build): writes "AAA" at card offset $11 when END is chosen
 CardSaveUserName:
-	jsr	(IsSnkRomCard,pc)	| C1440E
+	jsr	(IsSnkRomCard,pc)	| C1440E  header check first
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C14412
 	bne.b	loc_C1442A	| C14416
-	move.b	(REG_STATUS_B).l,d0	| C14418
+	move.b	(REG_STATUS_B).l,d0	| C14418  write-protected: $85
 	andi.b	#0x40,d0	| C1441E
 	beq.b	loc_C1442C	| C14422
 	move.b	#0x85,(BIOS_CRDRESULT-A5_BASE,a5)	| C14424
@@ -1406,7 +1406,7 @@ loc_C1442C:
 	jsr	(CardUnlock,pc)	| C1442C
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C14430
 	bmi.w	loc_C14450	| C14434
-	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14438
+	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14438  8-bit/16-bit: header +$1E = $FF (name present), then 16 bytes of name
 	lea.l	0x1E(a6),a3	| C1443C
 	move.w	#0xFF,(a3)+	| C14440
 	moveq	#0xF,d7	| C14444
@@ -1416,7 +1416,7 @@ loc_C14446:
 	dbra	d7,loc_C14446	| C1444A
 	rts	| C1444E
 loc_C14450:
-	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14450
+	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14450  type $80: high byte of header +$18 = $FF, then 8 words of name
 	move.w	0x18(a6),d0	| C14454
 	ori.w	#0xFF00,d0	| C14458
 	move.w	d0,0x18(a6)	| C1445C
@@ -1435,7 +1435,7 @@ CardLoadUserName:
 	bne.b	loc_C1442A	| C1447A
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C1447C
 	bmi.w	loc_C144AE	| C14480
-	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14484
+	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C14484  8-bit/16-bit: header +$1E 0: no name, $82
 	lea.l	0x1E(a6),a3	| C14488
 	move.w	(a3)+,d0	| C1448C
 	tst.b	d0	| C1448E
@@ -1445,7 +1445,7 @@ CardLoadUserName:
 loc_C1449A:
 	moveq	#0xF,d7	| C1449A
 loc_C1449C:
-	move.w	(a3)+,d0	| C1449C
+	move.w	(a3)+,d0	| C1449C  16 bytes, $FF read as 0
 	cmpi.b	#0xFF,d0	| C1449E
 	bne.b	loc_C144A6	| C144A2
 	clr.b	d0	| C144A4
@@ -1454,7 +1454,7 @@ loc_C144A6:
 	dbra	d7,loc_C1449C	| C144A8
 	rts	| C144AC
 loc_C144AE:
-	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C144AE
+	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a4	| C144AE  type $80: no flag in header +$18, $82
 	move.w	0x18(a6),d0	| C144B2
 	andi.w	#0xFF00,d0	| C144B6
 	bne.b	loc_C144C4	| C144BA
@@ -1464,7 +1464,7 @@ loc_C144C4:
 	lea.l	0x20(a6),a3	| C144C4
 	moveq	#0x7,d7	| C144C8
 loc_C144CA:
-	move.w	(a3),d0	| C144CA
+	move.w	(a3),d0	| C144CA  $FF read as 0, in both halves
 	cmpi.b	#0xFF,d0	| C144CC
 	bne.b	loc_C144D4	| C144D0
 	clr.b	d0	| C144D2
@@ -1486,18 +1486,18 @@ SnkRomCardId:
 	.ascii	"SNK ROM "
 | CardFreeChainByte [C] 8-bit card: frees a file's blocks: follows the FAT chain from block d3, writing 0 (free), until an entry below 3 (end); CARD delete and save over old data
 CardFreeChainByte:
-	andi.w	#0xFF,d3	| C144F8
+	andi.w	#0xFF,d3	| C144F8  FAT entry of the block (2 bytes per entry)
 	add.w	d3,d3	| C144FC
 	move.w	(a1,d3.w),d4	| C144FE
-	move.w	#0x0,(a1,d3.w)	| C14502
+	move.w	#0x0,(a1,d3.w)	| C14502  freed (0)
 	move.w	d4,d3	| C14508
-	cmpi.b	#0x3,d4	| C1450A
+	cmpi.b	#0x3,d4	| C1450A  0-2: end of the chain
 	bcc.b	CardFreeChainByte	| C1450E
 	rts	| C14510
 | CardFreeChainWord [C] 16-bit card form of CardFreeChainByte (two FAT entries per word); ran in MAME on an emulated 16-bit card (card_word_*)
 CardFreeChainWord:
 	andi.w	#0xFF,d3	| C14512
-	btst.b	#0x0,d3	| C14516
+	btst.b	#0x0,d3	| C14516  even block: the high byte of the FAT word
 	bne.b	loc_C14536	| C1451A
 	move.w	(a1,d3.w),d4	| C1451C
 	move.w	d4,d0	| C14520
@@ -1509,7 +1509,7 @@ CardFreeChainWord:
 	bcc.b	CardFreeChainWord	| C14532
 	rts	| C14534
 loc_C14536:
-	move.w	-0x1(a1,d3.w),d4	| C14536
+	move.w	-0x1(a1,d3.w),d4	| C14536  odd block: the low byte
 	move.w	d4,d0	| C1453A
 	clr.b	d0	| C1453C
 	move.w	d0,-0x1(a1,d3.w)	| C1453E
@@ -1519,21 +1519,21 @@ loc_C14536:
 	rts	| C1454A
 | CardFreeChainSparse [C] card type $80 form of CardFreeChainByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFreeChainSparse:
-	andi.w	#0xFF,d3	| C1454C
-	add.w	d3,d3	| C14550
-	btst.b	#0x1,d3	| C14552
+	andi.w	#0xFF,d3	| C1454C  block number d3 (low byte)
+	add.w	d3,d3	| C14550  x 2: every second word
+	btst.b	#0x1,d3	| C14552  bit 1: high or low byte of the FAT word
 	bne.b	loc_C14572	| C14556
-	move.w	(a1,d3.w),d4	| C14558
+	move.w	(a1,d3.w),d4	| C14558  high byte entry: the next block, then clear it
 	move.w	d4,d0	| C1455C
 	andi.w	#0xFF,d0	| C1455E
 	move.w	d0,(a1,d3.w)	| C14562
 	lsr.w	#0x8,d4	| C14566
 	move.w	d4,d3	| C14568
-	cmpi.b	#0x3,d3	| C1456A
+	cmpi.b	#0x3,d3	| C1456A  next block 3 or more: follow the chain; 1 ends it
 	bcc.b	CardFreeChainSparse	| C1456E
 	rts	| C14570
 loc_C14572:
-	move.w	(a1,d3.w),d4	| C14572
+	move.w	(a1,d3.w),d4	| C14572  low byte entry: clear it, the next block in d4
 	move.w	d4,d0	| C14576
 	clr.b	d0	| C14578
 	move.w	d0,(a1,d3.w)	| C1457A
@@ -1543,18 +1543,18 @@ loc_C14572:
 	rts	| C14586
 | CardFindFreeBlockByte [C] 8-bit card: d3 = offset of the first free FAT entry (0), at most CardDirEntries+1 entries
 CardFindFreeBlockByte:
-	swap	d7	| C14588
+	swap	d7	| C14588  keep d7's low word
 	moveq	#0x0,d3	| C1458A
-	move.w	(CardDirEntries-A5_BASE,a5),d7	| C1458C
+	move.w	(CardDirEntries-A5_BASE,a5),d7	| C1458C  at most CardDirEntries+1 entries
 loc_C14590:
-	move.b	d0,(REG_DIPSW).l	| C14590
+	move.b	d0,(REG_DIPSW).l	| C14590  the first FAT entry that is 0
 	move.w	(a1,d3.w),d0	| C14596
 	tst.b	d0	| C1459A
 	beq.b	loc_C145A4	| C1459C
-	addq.w	#0x2,d3	| C1459E
+	addq.w	#0x2,d3	| C1459E  next entry (one per word)
 	dbra	d7,loc_C14590	| C145A0
 loc_C145A4:
-	swap	d7	| C145A4
+	swap	d7	| C145A4  d0 = 0 when found, d3 = its offset
 	rts	| C145A6
 | CardFindFreeBlockWord [C] 16-bit card form of CardFindFreeBlockByte; ran in MAME on an emulated 16-bit card (card_word_*)
 CardFindFreeBlockWord:
@@ -1562,17 +1562,17 @@ CardFindFreeBlockWord:
 	moveq	#0x0,d3	| C145AA
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C145AC
 loc_C145B0:
-	move.b	d0,(REG_DIPSW).l	| C145B0
-	move.w	(a1,d3.w),d0	| C145B6
+	move.b	d0,(REG_DIPSW).l	| C145B0  watchdog
+	move.w	(a1,d3.w),d0	| C145B6  two entries per word: high byte, then low byte
 	move.w	d0,d1	| C145BA
-	lsr.w	#0x8,d0	| C145BC
+	lsr.w	#0x8,d0	| C145BC  high byte free?
 	beq.b	loc_C145D4	| C145BE
 	addq.w	#0x1,d3	| C145C0
 	dbra	d7,loc_C145CA	| C145C2
 	swap	d7	| C145C6
 	rts	| C145C8
 loc_C145CA:
-	move.b	d1,d0	| C145CA
+	move.b	d1,d0	| C145CA  low byte free?
 	beq.b	loc_C145D4	| C145CC
 	addq.w	#0x1,d3	| C145CE
 	dbra	d7,loc_C145B0	| C145D0
@@ -1585,8 +1585,8 @@ CardFindFreeBlockSparse:
 	moveq	#0x0,d3	| C145DA
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C145DC
 loc_C145E0:
-	move.b	d0,(REG_DIPSW).l	| C145E0
-	add.w	d3,d3	| C145E6
+	move.b	d0,(REG_DIPSW).l	| C145E0  watchdog
+	add.w	d3,d3	| C145E6  type $80: as 16-bit, every second word
 	move.w	(a1,d3.w),d0	| C145E8
 	lsr.w	#0x1,d3	| C145EC
 	move.w	d0,d1	| C145EE
@@ -1607,7 +1607,7 @@ loc_C14608:
 | CardFindFreeEntryByte [C] 8-bit card: a0 = first free directory entry (first byte $FF), 8-byte entries
 CardFindFreeEntryByte:
 	move.w	(a0),d0	| C1460C
-	addq.b	#0x1,d0	| C1460E
+	addq.b	#0x1,d0	| C1460E  the first entry whose first byte is $FF
 	beq.b	loc_C14618	| C14610
 	addq.l	#0x8,a0	| C14612
 	dbra	d7,CardFindFreeEntryByte	| C14614
@@ -1615,39 +1615,39 @@ loc_C14618:
 	rts	| C14618
 | CardFindFreeEntryWord [C] 16-bit card form of CardFindFreeEntryByte (4-byte entries, high byte); ran in MAME on an emulated 16-bit card (card_word_*)
 CardFindFreeEntryWord:
-	move.w	(a0),d0	| C1461A
+	move.w	(a0),d0	| C1461A  file byte (high byte) $FF: a free entry, d0 = 0
 	lsr.w	#0x8,d0	| C1461C
 	addq.b	#0x1,d0	| C1461E
 	beq.b	loc_C14618	| C14620
-	addq.l	#0x4,a0	| C14622
+	addq.l	#0x4,a0	| C14622  next entry, 4 bytes on
 	dbra	d7,CardFindFreeEntryWord	| C14624
 	rts	| C14628
 | CardFindFreeEntrySparse [C] card type $80 form of CardFindFreeEntryByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFindFreeEntrySparse:
-	move.w	(a0),d0	| C1462A
+	move.w	(a0),d0	| C1462A  file byte $FF: free entry
 	lsr.w	#0x8,d0	| C1462C
 	addq.b	#0x1,d0	| C1462E
 	beq.b	loc_C14618	| C14630
-	addq.l	#0x8,a0	| C14632
+	addq.l	#0x8,a0	| C14632  next entry, 8 bytes on
 	dbra	d7,CardFindFreeEntrySparse	| C14634
 	rts	| C14638
 | CardNextBlockByte [C] 8-bit card: d3 = FAT entry of block d3 (next block of the chain) then CardBlockAddressByte
 CardNextBlockByte:
 	andi.w	#0xFF,d3	| C1463A
-	add.w	d3,d3	| C1463E
+	add.w	d3,d3	| C1463E  2 bytes per FAT entry
 	move.w	(a1,d3.w),d3	| C14640
 | CardBlockAddressByte [C] 8-bit card: a3 = card base (a6) + block d3 x 128 (a 64-byte block takes 128 addresses)
 CardBlockAddressByte:
 	move.w	d3,d4	| C14644
 	andi.l	#0xFF,d4	| C14646
-	lsl.l	#0x7,d4	| C1464C
+	lsl.l	#0x7,d4	| C1464C  x 128: a 64-byte block on one byte per word
 	movea.l	a6,a3	| C1464E
 	adda.l	d4,a3	| C14650
 	rts	| C14652
 | CardNextBlockWord [I] 16-bit card form of CardNextBlockByte
 CardNextBlockWord:
 	andi.w	#0xFF,d3	| C14654
-	btst.b	#0x0,d3	| C14658
+	btst.b	#0x0,d3	| C14658  even block: FAT high byte, odd: low byte
 	bne.b	loc_C14666	| C1465C
 	move.w	(a1,d3.w),d3	| C1465E
 	lsr.w	#0x8,d3	| C14662
@@ -1658,14 +1658,14 @@ loc_C14666:
 CardBlockAddressWord:
 	move.w	d3,d4	| C1466A
 	andi.l	#0xFF,d4	| C1466C
-	lsl.l	#0x6,d4	| C14672
+	lsl.l	#0x6,d4	| C14672  x 64: 32 words of two bytes
 	movea.l	a6,a3	| C14674
 	adda.l	d4,a3	| C14676
 	rts	| C14678
 | CardNextBlockSparse [I] card type $80 form of CardNextBlockByte
 CardNextBlockSparse:
 	andi.w	#0xFF,d3	| C1467A
-	add.w	d3,d3	| C1467E
+	add.w	d3,d3	| C1467E  type $80: FAT on every second word
 	btst.b	#0x1,d3	| C14680
 	bne.b	loc_C1468E	| C14684
 	move.w	(a1,d3.w),d3	| C14686
@@ -1677,23 +1677,23 @@ loc_C1468E:
 CardBlockAddressSparse:
 	move.w	d3,d4	| C14692
 	andi.l	#0xFF,d4	| C14694
-	lsl.l	#0x7,d4	| C1469A
+	lsl.l	#0x7,d4	| C1469A  x 128: 32 words on every second word
 	movea.l	a6,a3	| C1469C
 	adda.l	d4,a3	| C1469E
 	rts	| C146A0
 | CardFindEntry [C] searches the directory for the entry of BIOS_CRDNGH (two bytes) and BIOS_CRDFILE: d3 = 0 and a0 = entry when found, else d3 = -1; 8-bit card (8-byte entries) or 16-bit card (4-byte entries)
 CardFindEntry:
 	moveq	#0x0,d3	| C146A2
-	tst.w	(CardType-A5_BASE,a5)	| C146A4
+	tst.w	(CardType-A5_BASE,a5)	| C146A4  0: 8-bit card
 	bne.w	loc_C146E6	| C146A8
 	movea.l	(CardDirectory-A5_BASE,a5),a0	| C146AC
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C146B0
 loc_C146B4:
 	move.b	d0,(REG_DIPSW).l	| C146B4
-	move.w	(a0),d1	| C146BA
+	move.w	(a0),d1	| C146BA  free entry ($FF)?
 	cmpi.b	#0xFF,d1	| C146BC
 	beq.b	loc_C146DC	| C146C0
-	move.w	0x2(a0),d0	| C146C2
+	move.w	0x2(a0),d0	| C146C2  NGH high byte, then low byte, then the file
 	cmp.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C146C6
 	bne.b	loc_C146DC	| C146CA
 	move.w	0x4(a0),d0	| C146CC
@@ -1704,11 +1704,11 @@ loc_C146B4:
 loc_C146DC:
 	addq.l	#0x8,a0	| C146DC
 	dbra	d7,loc_C146B4	| C146DE
-	move.w	d7,d3	| C146E2
+	move.w	d7,d3	| C146E2  not found: d3 = -1
 loc_C146E4:
 	rts	| C146E4
 loc_C146E6:
-	movea.l	(CardDirectory-A5_BASE,a5),a0	| C146E6
+	movea.l	(CardDirectory-A5_BASE,a5),a0	| C146E6  16-bit directory: file in the high byte of the first word
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C146EA
 loc_C146EE:
 	move.w	(a0),d1	| C146EE
@@ -1727,32 +1727,32 @@ loc_C146EE:
 loc_C14712:
 	addq.l	#0x4,a0	| C14712
 	dbra	d7,loc_C146EE	| C14714
-	move.w	d7,d3	| C14718
+	move.w	d7,d3	| C14718  not found: d3 = -1
 loc_C1471A:
 	rts	| C1471A
 | CardFindEntrySparse [C] card type $80 form of CardFindEntry; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFindEntrySparse:
-	moveq	#0x0,d3	| C1471C
+	moveq	#0x0,d3	| C1471C  type $80 directory: as 16-bit, 8-byte step
 	movea.l	(CardDirectory-A5_BASE,a5),a0	| C1471E
 	move.w	(CardDirEntries-A5_BASE,a5),d7	| C14722
 loc_C14726:
-	move.w	(a0),d1	| C14726
+	move.w	(a0),d1	| C14726  the file byte
 	lsr.w	#0x8,d1	| C14728
 	cmpi.b	#0xFF,d1	| C1472A
 	beq.b	loc_C1474A	| C1472E
-	move.w	(a0),d0	| C14730
+	move.w	(a0),d0	| C14730  NGH high byte
 	cmp.b	(BIOS_CRDNGH-A5_BASE,a5),d0	| C14732
 	bne.b	loc_C1474A	| C14736
 	move.w	0x4(a0),d0	| C14738
 	lsr.w	#0x8,d0	| C1473C
 	cmp.b	(BIOS_CRDNGH_LO-A5_BASE,a5),d0	| C1473E
 	bne.b	loc_C1474A	| C14742
-	cmp.b	(BIOS_CRDFILE-A5_BASE,a5),d1	| C14744
+	cmp.b	(BIOS_CRDFILE-A5_BASE,a5),d1	| C14744  and the file number: found, d3 = 0
 	beq.b	loc_C14752	| C14748
 loc_C1474A:
 	addq.l	#0x8,a0	| C1474A
 	dbra	d7,loc_C14726	| C1474C
-	move.w	d7,d3	| C14750
+	move.w	d7,d3	| C14750  not found: d3 = d7 ($FFFF)
 loc_C14752:
 	rts	| C14752
 | CardCheckFat [C] checks the checksums of both FAT copies (card header +$1A, +$1C): a bad copy is rewritten from the good one, both bad = result $83; one routine per card type (8-bit here, 16-bit at loc_C14814, type $80 at loc_C148D0)
@@ -1760,15 +1760,15 @@ CardCheckFat:
 	tst.b	(CardTypeLo-A5_BASE,a5)	| C14754
 	bmi.w	loc_C148D0	| C14758
 	bne.w	loc_C14814	| C1475C
-	moveq	#0x0,d5	| C14760
+	moveq	#0x0,d5	| C14760  d5 bit 0: first copy bad, bit 1: second copy bad
 	movea.l	(CardFat-A5_BASE,a5),a0	| C14762
-	jsr	(CardFatSumByte,pc)	| C14766
+	jsr	(CardFatSumByte,pc)	| C14766  first copy against header +$1A
 	move.w	0x1A(a6),d1	| C1476A
 	cmp.b	d0,d1	| C1476E
 	beq.b	loc_C14774	| C14770
 	moveq	#0x1,d5	| C14772
 loc_C14774:
-	jsr	(CardFatSumByte,pc)	| C14774
+	jsr	(CardFatSumByte,pc)	| C14774  second copy (a0 runs on) against +$1C
 	move.w	0x1C(a6),d1	| C14778
 	cmp.b	d0,d1	| C1477C
 	beq.b	loc_C14782	| C1477E
@@ -1776,14 +1776,14 @@ loc_C14774:
 loc_C14782:
 	tst.b	d5	| C14782
 	beq.w	loc_C14798	| C14784
-	cmpi.b	#0x2,d5	| C14788
+	cmpi.b	#0x2,d5	| C14788  only the second bad: rewrite it from the first
 	beq.b	loc_C1479A	| C1478C
-	bcs.w	loc_C147CE	| C1478E
-	move.b	#0x83,(BIOS_CRDRESULT-A5_BASE,a5)	| C14792
+	bcs.w	loc_C147CE	| C1478E  only the first bad: copy the second over it
+	move.b	#0x83,(BIOS_CRDRESULT-A5_BASE,a5)	| C14792  both bad: $83
 loc_C14798:
 	rts	| C14798
 loc_C1479A:
-	move.b	d0,(REG_DIPSW).l	| C1479A
+	move.b	d0,(REG_DIPSW).l	| C1479A  rewrite the second copy from the first, and both checksums
 	jsr	(CardUnlock,pc)	| C147A0
 	movea.l	(CardFat-A5_BASE,a5),a0	| C147A4
 	movea.l	a0,a1	| C147A8
@@ -1803,7 +1803,7 @@ loc_C147BA:
 	move.w	d0,0x1C(a6)	| C147C8
 	rts	| C147CC
 loc_C147CE:
-	move.b	d0,(REG_DIPSW).l	| C147CE
+	move.b	d0,(REG_DIPSW).l	| C147CE  first copy from the second, its checksum from +$1C
 	jsr	(CardUnlock,pc)	| C147D4
 	movea.l	(CardFat-A5_BASE,a5),a0	| C147D8
 	movea.l	a0,a1	| C147DC
@@ -1820,8 +1820,8 @@ loc_C147EC:
 	rts	| C147F8
 | CardFatSumByte [C] 8-bit card: d0 = sum of the low bytes of one FAT copy (CardFatSize bytes at a0)
 CardFatSumByte:
-	move.b	d0,(REG_DIPSW).l	| C147FA
-	moveq	#0x0,d0	| C14800
+	move.b	d0,(REG_DIPSW).l	| C147FA  watchdog
+	moveq	#0x0,d0	| C14800  sum of the low bytes, one per word
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C14802
 	lsr.w	#0x1,d7	| C14806
 	subq.w	#0x1,d7	| C14808
@@ -1831,30 +1831,30 @@ loc_C1480A:
 	dbra	d7,loc_C1480A	| C1480E
 	rts	| C14812
 loc_C14814:
-	moveq	#0x0,d5	| C14814
+	moveq	#0x0,d5	| C14814  16-bit card: the same with both bytes of each word
 	movea.l	(CardFat-A5_BASE,a5),a0	| C14816
-	jsr	(CardFatSumWord,pc)	| C1481A
+	jsr	(CardFatSumWord,pc)	| C1481A  first copy against header +$1A
 	move.w	0x1A(a6),d1	| C1481E
 	cmp.b	d0,d1	| C14822
 	beq.b	loc_C14828	| C14824
-	moveq	#0x1,d5	| C14826
+	moveq	#0x1,d5	| C14826  d5 bit 0: the first copy is bad
 loc_C14828:
-	jsr	(CardFatSumWord,pc)	| C14828
+	jsr	(CardFatSumWord,pc)	| C14828  a0 runs on into the second copy, against +$1C
 	move.w	0x1C(a6),d1	| C1482C
 	cmp.b	d0,d1	| C14830
 	beq.b	loc_C14836	| C14832
-	addq.b	#0x2,d5	| C14834
+	addq.b	#0x2,d5	| C14834  d5 bit 1: the second copy is bad
 loc_C14836:
 	tst.b	d5	| C14836
 	beq.w	loc_C1484C	| C14838
-	cmpi.b	#0x2,d5	| C1483C
+	cmpi.b	#0x2,d5	| C1483C  2: rewrite the second; 1: the first; 3: both bad, $83
 	beq.b	loc_C1484E	| C14840
 	bcs.w	loc_C14886	| C14842
-	move.b	#0x83,(BIOS_CRDRESULT-A5_BASE,a5)	| C14846
+	move.b	#0x83,(BIOS_CRDRESULT-A5_BASE,a5)	| C14846  both bad: $83
 loc_C1484C:
 	rts	| C1484C
 loc_C1484E:
-	move.b	d0,(REG_DIPSW).l	| C1484E
+	move.b	d0,(REG_DIPSW).l	| C1484E  second copy from the first, both checksums
 	jsr	(CardUnlock,pc)	| C14854
 	movea.l	(CardFat-A5_BASE,a5),a0	| C14858
 	movea.l	a0,a1	| C1485C
@@ -1866,17 +1866,17 @@ loc_C1484E:
 	adda.l	d0,a1	| C1486A
 	moveq	#0x0,d0	| C1486C
 loc_C1486E:
-	move.w	(a0)+,d1	| C1486E
+	move.w	(a0)+,d1	| C1486E  copy and sum both bytes
 	move.w	d1,(a1)+	| C14870
 	add.b	d1,d0	| C14872
 	lsr.w	#0x8,d1	| C14874
 	add.b	d1,d0	| C14876
 	dbra	d7,loc_C1486E	| C14878
-	move.w	d0,0x1A(a6)	| C1487C
+	move.w	d0,0x1A(a6)	| C1487C  both checksums the same
 	move.w	d0,0x1C(a6)	| C14880
 	rts	| C14884
 loc_C14886:
-	move.b	d0,(REG_DIPSW).l	| C14886
+	move.b	d0,(REG_DIPSW).l	| C14886  first copy from the second
 	jsr	(CardUnlock,pc)	| C1488C
 	movea.l	(CardFat-A5_BASE,a5),a0	| C14890
 	movea.l	a0,a1	| C14894
@@ -1887,35 +1887,35 @@ loc_C14886:
 	subq.w	#0x1,d7	| C148A0
 	adda.l	d0,a1	| C148A2
 loc_C148A4:
-	move.w	(a1)+,(a0)+	| C148A4
+	move.w	(a1)+,(a0)+	| C148A4  copy
 	dbra	d7,loc_C148A4	| C148A6
-	move.w	0x1C(a6),0x1A(a6)	| C148AA
+	move.w	0x1C(a6),0x1A(a6)	| C148AA  the good checksum in both places
 	rts	| C148B0
 | CardFatSumWord [C] 16-bit card form of CardFatSumByte; ran in MAME on an emulated 16-bit card (card_word_*)
 CardFatSumWord:
-	move.b	d0,(REG_DIPSW).l	| C148B2
+	move.b	d0,(REG_DIPSW).l	| C148B2  watchdog
 	moveq	#0x0,d0	| C148B8
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C148BA
 	lsr.w	#0x1,d7	| C148BE
 	subq.w	#0x1,d7	| C148C0
 loc_C148C2:
 	move.w	(a0)+,d1	| C148C2
-	add.b	d1,d0	| C148C4
+	add.b	d1,d0	| C148C4  both bytes of each word
 	lsr.w	#0x8,d1	| C148C6
 	add.b	d1,d0	| C148C8
 	dbra	d7,loc_C148C2	| C148CA
 	rts	| C148CE
 loc_C148D0:
-	moveq	#0x0,d5	| C148D0
+	moveq	#0x0,d5	| C148D0  type $80: the checksums in the two bytes of header +$1C
 	movea.l	(CardFat-A5_BASE,a5),a0	| C148D2
-	jsr	(CardFatSumSparse,pc)	| C148D6
+	jsr	(CardFatSumSparse,pc)	| C148D6  first copy against the high byte of +$1C
 	move.w	0x1C(a6),d1	| C148DA
 	lsr.w	#0x8,d1	| C148DE
 	cmp.b	d0,d1	| C148E0
 	beq.b	loc_C148E6	| C148E2
 	moveq	#0x1,d5	| C148E4
 loc_C148E6:
-	jsr	(CardFatSumSparse,pc)	| C148E6
+	jsr	(CardFatSumSparse,pc)	| C148E6  second copy against the low byte
 	move.w	0x1C(a6),d1	| C148EA
 	cmp.b	d0,d1	| C148EE
 	beq.b	loc_C148F4	| C148F0
@@ -1923,14 +1923,14 @@ loc_C148E6:
 loc_C148F4:
 	tst.b	d5	| C148F4
 	beq.w	loc_C1490A	| C148F6
-	cmpi.b	#0x2,d5	| C148FA
+	cmpi.b	#0x2,d5	| C148FA  2: rewrite the second; 1: the first; 3: both bad, $83
 	beq.b	loc_C1490C	| C148FE
 	bcs.w	loc_C1494E	| C14900
 	move.b	#0x83,(BIOS_CRDRESULT-A5_BASE,a5)	| C14904
 loc_C1490A:
 	rts	| C1490A
 loc_C1490C:
-	move.b	d0,(REG_DIPSW).l	| C1490C
+	move.b	d0,(REG_DIPSW).l	| C1490C  second copy from the first; the sum in both bytes of +$1A and +$1C
 	jsr	(CardUnlock,pc)	| C14912
 	movea.l	(CardFat-A5_BASE,a5),a0	| C14916
 	movea.l	a0,a1	| C1491A
@@ -1950,14 +1950,14 @@ loc_C1492C:
 	lsr.w	#0x8,d1	| C14936
 	add.b	d1,d0	| C14938
 	dbra	d7,loc_C1492C	| C1493A
-	move.b	d0,d1	| C1493E
+	move.b	d0,d1	| C1493E  the sum in both bytes
 	lsl.w	#0x8,d0	| C14940
 	move.b	d1,d0	| C14942
 	move.w	d0,0x1A(a6)	| C14944
 	move.w	d0,0x1C(a6)	| C14948
 	rts	| C1494C
 loc_C1494E:
-	move.b	d0,(REG_DIPSW).l	| C1494E
+	move.b	d0,(REG_DIPSW).l	| C1494E  first copy from the second; +$1C's low byte copied to its high byte
 	jsr	(CardUnlock,pc)	| C14954
 	movea.l	(CardFat-A5_BASE,a5),a0	| C14958
 	movea.l	a0,a1	| C1495C
@@ -1972,7 +1972,7 @@ loc_C1496C:
 	addq.l	#0x4,a0	| C1496E
 	addq.l	#0x4,a1	| C14970
 	dbra	d7,loc_C1496C	| C14972
-	move.w	0x1C(a6),d0	| C14976
+	move.w	0x1C(a6),d0	| C14976  the good (low) byte into both bytes
 	move.w	d0,d1	| C1497A
 	lsl.w	#0x8,d0	| C1497C
 	move.b	d1,d0	| C1497E
@@ -1980,13 +1980,13 @@ loc_C1496C:
 	rts	| C14984
 | CardFatSumSparse [C] card type $80 form of CardFatSumByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 CardFatSumSparse:
-	move.b	d0,(REG_DIPSW).l	| C14986
+	move.b	d0,(REG_DIPSW).l	| C14986  watchdog
 	moveq	#0x0,d0	| C1498C
 	move.w	(CardFatSize-A5_BASE,a5),d7	| C1498E
 	lsr.w	#0x1,d7	| C14992
 	subq.w	#0x1,d7	| C14994
 loc_C14996:
-	move.w	(a0),d1	| C14996
+	move.w	(a0),d1	| C14996  every second word, both bytes
 	addq.l	#0x4,a0	| C14998
 	add.b	d1,d0	| C1499A
 	lsr.w	#0x8,d1	| C1499C
@@ -1995,7 +1995,7 @@ loc_C14996:
 	rts	| C149A4
 | IsSnkRomCard [C] compares the card header with "SNK ROM " (SnkRomCardId): detects a read-only SNK ROM card
 IsSnkRomCard:
-	movea.l	a6,a0	| C149A6
+	movea.l	a6,a0	| C149A6  "SNK ROM " at the start of the card?
 	moveq	#0x0,d6	| C149A8
 	lea.l	(SnkRomCardId,pc),a1	| C149AA
 	moveq	#0x3,d7	| C149AE
@@ -2003,19 +2003,19 @@ loc_C149B0:
 	cmpm.w	(a0)+,(a1)+	| C149B0
 	bne.b	loc_C149CE	| C149B2
 	dbra	d7,loc_C149B0	| C149B4
-	tst.w	(a0)+	| C149B8
+	tst.w	(a0)+	| C149B8  followed by 0: $85 (read-only)
 	bne.b	loc_C149CC	| C149BA
 loc_C149BC:
 	move.b	#0x85,(BIOS_CRDRESULT-A5_BASE,a5)	| C149BC
 	rts	| C149C2
 loc_C149C4:
-	move.b	#0x81,(BIOS_CRDRESULT-A5_BASE,a5)	| C149C4
+	move.b	#0x81,(BIOS_CRDRESULT-A5_BASE,a5)	| C149C4  no NEO-GEO text: $81, not formatted
 	rts	| C149CA
 loc_C149CC:
-	adda.l	(a0),a6	| C149CC
+	adda.l	(a0),a6	| C149CC  "SNK ROM " with an offset: the real header is further on
 loc_C149CE:
 	move.b	d0,(REG_DIPSW).l	| C149CE
-	lea.l	0x40(a6),a0	| C149D4
+	lea.l	0x40(a6),a0	| C149D4  NEO-GEO at +$40, one letter per 4 bytes
 	lea.l	(CardNeoGeoIdText,pc),a1	| C149D8
 	moveq	#0x7,d7	| C149DC
 loc_C149DE:
@@ -2024,74 +2024,74 @@ loc_C149DE:
 	cmp.b	(a1)+,d0	| C149E2
 	bne.b	loc_C149C4	| C149E4
 	dbra	d7,loc_C149DE	| C149E6
-	move.w	0x10(a6),d0	| C149EA
-	move.b	d0,(CardRomType-A5_BASE,a5)	| C149EE
-	cmpi.b	#0x10,d0	| C149F2
+	move.w	0x10(a6),d0	| C149EA  the header type byte at +$10
+	move.b	d0,(CardHeaderType-A5_BASE,a5)	| C149EE
+	cmpi.b	#0x10,d0	| C149F2  $10 or more: $85 (a 1M cabinet card has $20)
 	bcc.b	loc_C149BC	| C149F6
-	move.w	0xC(a6),d0	| C149F8
+	move.w	0xC(a6),d0	| C149F8  word +$C: 0 for the 8-bit and 16-bit headers, 1 for type $80
 	tst.b	d0	| C149FC
 	bne.w	loc_C14A26	| C149FE
-	move.w	0x14(a6),d6	| C14A02
+	move.w	0x14(a6),d6	| C14A02  the size from the header
 	lsl.w	#0x8,d6	| C14A06
 	move.w	0x16(a6),d5	| C14A08
 	move.b	d5,d6	| C14A0C
 	move.w	d6,(CardSize-A5_BASE,a5)	| C14A0E
-	move.w	0x12(a6),d0	| C14A12
+	move.w	0x12(a6),d0	| C14A12  the type from +$12: 0 8-bit, 1 16-bit; then its layout
 	andi.w	#0xFF,d0	| C14A16
 	move.w	d0,(CardType-A5_BASE,a5)	| C14A1A
 	beq.w	CardLayoutByte	| C14A1E
 	bra.w	CardLayoutWord	| C14A22
 loc_C14A26:
-	move.w	0x14(a6),d6	| C14A26
+	move.w	0x14(a6),d6	| C14A26  type $80: size from +$14, the byte layout on every second word
 	move.w	d6,(CardSize-A5_BASE,a5)	| C14A2A
 	move.w	#0x80,d0	| C14A2E
 	move.w	d0,(CardType-A5_BASE,a5)	| C14A32
 	bra.w	CardLayoutByte	| C14A36
 | CardDetect [C] finds the card type and size: an SNK ROM card from its header; else writes $AAAA/$5555 patterns: 8-bit card (CardTypeLo = 0, size in $1000 steps up to $8000), 16-bit card (1, $800 steps up to $4000) or a 16-bit card on every other word ($80); then tests the whole card with $55/$AA and address patterns; d6 = size (0 = none or failed). Called by CardFormat
 CardDetect:
-	movea.l	a6,a0	| C14A3A
+	movea.l	a6,a0	| C14A3A  "SNK ROM " at the start?
 	moveq	#0x0,d6	| C14A3C
-	move.w	d6,(CardType-A5_BASE,a5)	| C14A3E
+	move.w	d6,(CardType-A5_BASE,a5)	| C14A3E  card type 0 until found otherwise
 	lea.l	(SnkRomCardId,pc),a1	| C14A42
 	moveq	#0x3,d7	| C14A46
 loc_C14A48:
 	cmpm.w	(a0)+,(a1)+	| C14A48
 	bne.b	loc_C14A60	| C14A4A
 	dbra	d7,loc_C14A48	| C14A4C
-	move.w	(a1)+,d6	| C14A50
+	move.w	(a1)+,d6	| C14A50  the size word after it; 0: d6 = 0
 	bne.b	loc_C14A56	| C14A52
 	rts	| C14A54
 loc_C14A56:
-	adda.l	(a1)+,a6	| C14A56
+	adda.l	(a1)+,a6	| C14A56  an offset to the real card, and its type
 	move.w	(a1)+,d6	| C14A58
 	move.w	d6,(CardType-A5_BASE,a5)	| C14A5A
 	rts	| C14A5E
 loc_C14A60:
-	jsr	(CardUnlock,pc)	| C14A60
+	jsr	(CardUnlock,pc)	| C14A60  card writable
 	movea.l	a6,a0	| C14A64
-	move.w	#0xAAAA,(a0)	| C14A66
+	move.w	#0xAAAA,(a0)	| C14A66  $AAAA at +0, $5555 at +4
 	move.w	#0x5555,0x4(a0)	| C14A6A
-	move.w	(a0),d0	| C14A70
+	move.w	(a0),d0	| C14A70  read back $AAAA: a 16-bit card
 	cmpi.w	#0xAAAA,d0	| C14A72
 	beq.w	loc_C14B6A	| C14A76
-	cmpi.b	#0xAA,d0	| C14A7A
+	cmpi.b	#0xAA,d0	| C14A7A  only the low byte: an 8-bit card, else nothing writable
 	beq.b	loc_C14A82	| C14A7E
 	rts	| C14A80
 loc_C14A82:
-	move.w	#0x55,(a0)	| C14A82
+	move.w	#0x55,(a0)	| C14A82  confirm the low byte with $55
 	move.w	(a0),d0	| C14A86
 	cmpi.b	#0x55,d0	| C14A88
 	beq.b	loc_C14A90	| C14A8C
 	rts	| C14A8E
 loc_C14A90:
-	move.l	#0x1000,d5	| C14A90
+	move.l	#0x1000,d5	| C14A90  size: try every 4 KB ($1000 addresses = 2 KB of bytes) up to 32 KB
 loc_C14A96:
 	move.b	d0,(REG_DIPSW).l	| C14A96
 	add.l	d5,d6	| C14A9C
-	cmpi.w	#0x8000,d6	| C14A9E
+	cmpi.w	#0x8000,d6	| C14A9E  32 KB of addresses: the largest size
 	beq.b	loc_C14AC2	| C14AA2
 	adda.l	d5,a0	| C14AA4
-	move.w	#0xAA,(a0)	| C14AA6
+	move.w	#0xAA,(a0)	| C14AA6  $AA at the next 4 KB, 0 at the start: a mirror would show 0
 	move.w	#0x0,(a6)	| C14AAA
 	move.w	(a0),d0	| C14AAE
 	cmpi.b	#0xAA,d0	| C14AB0
@@ -2101,9 +2101,9 @@ loc_C14A96:
 	cmpi.b	#0x55,d0	| C14ABC
 	beq.b	loc_C14A96	| C14AC0
 loc_C14AC2:
-	tst.w	d6	| C14AC2
+	tst.w	d6	| C14AC2  none: d6 = 0
 	beq.w	loc_C14B66	| C14AC4
-	move.w	d6,d5	| C14AC8
+	move.w	d6,d5	| C14AC8  then the RAM test ($55, $AA, addresses) over the size found
 	lsr.w	#0x1,d5	| C14ACA
 	subq.w	#0x1,d5	| C14ACC
 	movea.l	a6,a0	| C14ACE
@@ -2116,7 +2116,7 @@ loc_C14AD6:
 	movea.l	a6,a0	| C14AE2
 	move.w	d5,d7	| C14AE4
 loc_C14AE6:
-	move.b	d0,(REG_DIPSW).l	| C14AE6
+	move.b	d0,(REG_DIPSW).l	| C14AE6  check the $55s
 	move.w	(a0)+,d1	| C14AEC
 	cmp.b	d1,d0	| C14AEE
 	bne.w	loc_C14B66	| C14AF0
@@ -2131,7 +2131,7 @@ loc_C14B00:
 	movea.l	a6,a0	| C14B0C
 	move.w	d5,d7	| C14B0E
 loc_C14B10:
-	move.b	d0,(REG_DIPSW).l	| C14B10
+	move.b	d0,(REG_DIPSW).l	| C14B10  check the $AAs
 	move.w	(a0)+,d1	| C14B16
 	cmp.b	d1,d0	| C14B18
 	bne.w	loc_C14B66	| C14B1A
@@ -2142,7 +2142,7 @@ loc_C14B10:
 	subq.w	#0x1,d5	| C14B28
 	move.w	d5,d7	| C14B2A
 loc_C14B2C:
-	move.b	d0,(REG_DIPSW).l	| C14B2C
+	move.b	d0,(REG_DIPSW).l	| C14B2C  address test: high byte, then low byte of each word's address
 	move.w	a0,d0	| C14B32
 	move.w	a0,d1	| C14B34
 	lsr.w	#0x8,d0	| C14B36
@@ -2152,7 +2152,7 @@ loc_C14B2C:
 	movea.l	a6,a0	| C14B40
 	move.w	d5,d7	| C14B42
 loc_C14B44:
-	move.b	d0,(REG_DIPSW).l	| C14B44
+	move.b	d0,(REG_DIPSW).l	| C14B44  check the address bytes
 	move.w	a0,d2	| C14B4A
 	move.w	d2,d3	| C14B4C
 	lsr.w	#0x8,d2	| C14B4E
@@ -2163,26 +2163,26 @@ loc_C14B44:
 	cmp.b	d0,d3	| C14B5A
 	bne.w	loc_C14B66	| C14B5C
 	dbra	d7,loc_C14B44	| C14B60
-	rts	| C14B64
+	rts	| C14B64  d6 = size in addresses
 loc_C14B66:
 	moveq	#0x0,d6	| C14B66
 	rts	| C14B68
 loc_C14B6A:
-	move.w	#0x5555,0x2(a0)	| C14B6A
+	move.w	#0x5555,0x2(a0)	| C14B6A  16-bit: $5555 at +2 also changes +0: a card answering on every second word (type $80)
 	cmpi.w	#0x5555,(a0)	| C14B70
 	beq.w	loc_C14C4E	| C14B74
-	move.w	#0x5555,(a0)	| C14B78
+	move.w	#0x5555,(a0)	| C14B78  a real 16-bit card: confirm with $5555
 	move.w	(a0),d0	| C14B7C
 	cmpi.w	#0x5555,d0	| C14B7E
 	beq.b	loc_C14B86	| C14B82
 	rts	| C14B84
 loc_C14B86:
-	move.w	#0x1,(CardType-A5_BASE,a5)	| C14B86
+	move.w	#0x1,(CardType-A5_BASE,a5)	| C14B86  type 1: size in steps of 2 KB up to 16 KB of addresses
 	move.l	#0x800,d5	| C14B8C
 loc_C14B92:
 	move.b	d0,(REG_DIPSW).l	| C14B92
 	add.l	d5,d6	| C14B98
-	cmpi.w	#0x4000,d6	| C14B9A
+	cmpi.w	#0x4000,d6	| C14B9A  16 KB of addresses: the largest
 	beq.b	loc_C14BBE	| C14B9E
 	adda.l	d5,a0	| C14BA0
 	move.w	#0xAAAA,(a0)	| C14BA2
@@ -2197,20 +2197,20 @@ loc_C14B92:
 loc_C14BBE:
 	tst.w	d6	| C14BBE
 	beq.w	loc_C14C4A	| C14BC0
-	move.w	d6,d5	| C14BC4
+	move.w	d6,d5	| C14BC4  then the RAM test, all 16 bits
 	lsr.w	#0x1,d5	| C14BC6
 	subq.w	#0x1,d5	| C14BC8
 	movea.l	a6,a0	| C14BCA
 	move.w	d5,d7	| C14BCC
 	move.w	#0x5555,d0	| C14BCE
 loc_C14BD2:
-	move.b	d0,(REG_DIPSW).l	| C14BD2
+	move.b	d0,(REG_DIPSW).l	| C14BD2  $5555 in every word
 	move.w	d0,(a0)+	| C14BD8
 	dbra	d7,loc_C14BD2	| C14BDA
 	movea.l	a6,a0	| C14BDE
 	move.w	d5,d7	| C14BE0
 loc_C14BE2:
-	move.b	d0,(REG_DIPSW).l	| C14BE2
+	move.b	d0,(REG_DIPSW).l	| C14BE2  check
 	move.w	(a0)+,d1	| C14BE8
 	cmp.w	d1,d0	| C14BEA
 	bne.w	loc_C14C4A	| C14BEC
@@ -2219,13 +2219,13 @@ loc_C14BE2:
 	move.w	#0xAAAA,d0	| C14BF6
 	movea.l	a6,a0	| C14BFA
 loc_C14BFC:
-	move.b	d0,(REG_DIPSW).l	| C14BFC
+	move.b	d0,(REG_DIPSW).l	| C14BFC  $AAAA
 	move.w	d0,(a0)+	| C14C02
 	dbra	d7,loc_C14BFC	| C14C04
 	movea.l	a6,a0	| C14C08
 	move.w	d5,d7	| C14C0A
 loc_C14C0C:
-	move.b	d0,(REG_DIPSW).l	| C14C0C
+	move.b	d0,(REG_DIPSW).l	| C14C0C  check
 	move.w	(a0)+,d1	| C14C12
 	cmp.w	d1,d0	| C14C14
 	bne.w	loc_C14C4A	| C14C16
@@ -2233,14 +2233,14 @@ loc_C14C0C:
 	movea.l	a6,a0	| C14C1E
 	move.w	d5,d7	| C14C20
 loc_C14C22:
-	move.b	d0,(REG_DIPSW).l	| C14C22
+	move.b	d0,(REG_DIPSW).l	| C14C22  each word holds its address
 	move.w	a0,d0	| C14C28
 	move.w	d0,(a0)+	| C14C2A
 	dbra	d7,loc_C14C22	| C14C2C
 	movea.l	a6,a0	| C14C30
 	move.w	d5,d7	| C14C32
 loc_C14C34:
-	move.b	d0,(REG_DIPSW).l	| C14C34
+	move.b	d0,(REG_DIPSW).l	| C14C34  check
 	move.w	a0,d2	| C14C3A
 	move.w	(a0)+,d0	| C14C3C
 	cmp.w	d0,d2	| C14C3E
@@ -2248,21 +2248,21 @@ loc_C14C34:
 	dbra	d7,loc_C14C34	| C14C44
 	rts	| C14C48
 loc_C14C4A:
-	moveq	#0x0,d6	| C14C4A
+	moveq	#0x0,d6	| C14C4A  failed: d6 = 0
 	rts	| C14C4C
 loc_C14C4E:
-	move.w	#0x5555,(a0)	| C14C4E
+	move.w	#0x5555,(a0)	| C14C4E  type $80: confirm with $5555
 	move.w	(a0),d0	| C14C52
 	cmpi.w	#0x5555,d0	| C14C54
 	beq.b	loc_C14C5C	| C14C58
 	rts	| C14C5A
 loc_C14C5C:
-	move.w	#0x80,(CardType-A5_BASE,a5)	| C14C5C
+	move.w	#0x80,(CardType-A5_BASE,a5)	| C14C5C  type $80: size in steps of 4 KB of addresses up to 32 KB
 	move.l	#0x1000,d5	| C14C62
 loc_C14C68:
 	move.b	d0,(REG_DIPSW).l	| C14C68
 	add.l	d5,d6	| C14C6E
-	cmpi.w	#0x8000,d6	| C14C70
+	cmpi.w	#0x8000,d6	| C14C70  32 KB of addresses: the largest
 	beq.b	loc_C14C94	| C14C74
 	adda.l	d5,a0	| C14C76
 	move.w	#0xAAAA,(a0)	| C14C78
@@ -2277,21 +2277,21 @@ loc_C14C68:
 loc_C14C94:
 	tst.w	d6	| C14C94
 	beq.w	loc_C14D2C	| C14C96
-	move.w	d6,d5	| C14C9A
+	move.w	d6,d5	| C14C9A  then the RAM test on every second word
 	lsr.w	#0x1,d5	| C14C9C
 	subq.w	#0x1,d5	| C14C9E
 	movea.l	a6,a0	| C14CA0
 	move.w	d5,d7	| C14CA2
 	move.w	#0x5555,d0	| C14CA4
 loc_C14CA8:
-	move.b	d0,(REG_DIPSW).l	| C14CA8
+	move.b	d0,(REG_DIPSW).l	| C14CA8  $5555 in every second word
 	move.w	d0,(a0)	| C14CAE
 	addq.l	#0x4,a0	| C14CB0
 	dbra	d7,loc_C14CA8	| C14CB2
 	movea.l	a6,a0	| C14CB6
 	move.w	d5,d7	| C14CB8
 loc_C14CBA:
-	move.b	d0,(REG_DIPSW).l	| C14CBA
+	move.b	d0,(REG_DIPSW).l	| C14CBA  check
 	move.w	(a0),d1	| C14CC0
 	addq.l	#0x4,a0	| C14CC2
 	cmp.w	d1,d0	| C14CC4
@@ -2301,14 +2301,14 @@ loc_C14CBA:
 	move.w	#0xAAAA,d0	| C14CD0
 	movea.l	a6,a0	| C14CD4
 loc_C14CD6:
-	move.b	d0,(REG_DIPSW).l	| C14CD6
+	move.b	d0,(REG_DIPSW).l	| C14CD6  $AAAA
 	move.w	d0,(a0)	| C14CDC
 	addq.l	#0x4,a0	| C14CDE
 	dbra	d7,loc_C14CD6	| C14CE0
 	movea.l	a6,a0	| C14CE4
 	move.w	d5,d7	| C14CE6
 loc_C14CE8:
-	move.b	d0,(REG_DIPSW).l	| C14CE8
+	move.b	d0,(REG_DIPSW).l	| C14CE8  check
 	move.w	(a0),d1	| C14CEE
 	addq.l	#0x4,a0	| C14CF0
 	cmp.w	d1,d0	| C14CF2
@@ -2317,7 +2317,7 @@ loc_C14CE8:
 	movea.l	a6,a0	| C14CFC
 	move.w	d5,d7	| C14CFE
 loc_C14D00:
-	move.b	d0,(REG_DIPSW).l	| C14D00
+	move.b	d0,(REG_DIPSW).l	| C14D00  each word its address
 	move.w	a0,d0	| C14D06
 	move.w	d0,(a0)	| C14D08
 	addq.l	#0x4,a0	| C14D0A
@@ -2325,7 +2325,7 @@ loc_C14D00:
 	movea.l	a6,a0	| C14D10
 	move.w	d5,d7	| C14D12
 loc_C14D14:
-	move.b	d0,(REG_DIPSW).l	| C14D14
+	move.b	d0,(REG_DIPSW).l	| C14D14  check
 	move.w	a0,d2	| C14D1A
 	move.w	(a0),d0	| C14D1C
 	addq.l	#0x4,a0	| C14D1E
@@ -2338,18 +2338,18 @@ loc_C14D2C:
 	rts	| C14D2E
 | CardLayoutByte [C] sets the card layout from its size (CardLayoutTableByte): directory address CardDirectory and entry count CardDirEntries, FAT address CardFat and size CardFatSize, data start CardDataStart
 CardLayoutByte:
-	lsr.w	#0x8,d6	| C14D30
+	lsr.w	#0x8,d6	| C14D30  one 16-byte row per 4 KB of addresses
 	andi.w	#0xFFF0,d6	| C14D32
 	lea.l	(CardLayoutTableByte,pc,d6.w),a0	| C14D36
 loc_C14D3A:
-	move.l	a6,d0	| C14D3A
+	move.l	a6,d0	| C14D3A  from the card base: directory and its entry count,
 	add.l	(a0)+,d0	| C14D3C
 	move.l	d0,(CardDirectory-A5_BASE,a5)	| C14D3E
 	move.w	(a0)+,(CardDirEntries-A5_BASE,a5)	| C14D42
-	add.l	(a0)+,d0	| C14D46
+	add.l	(a0)+,d0	| C14D46  FAT and its size,
 	move.l	d0,(CardFat-A5_BASE,a5)	| C14D48
 	move.w	(a0)+,(CardFatSize-A5_BASE,a5)	| C14D4C
-	add.l	(a0),d0	| C14D50
+	add.l	(a0),d0	| C14D50  and the data area
 	move.l	d0,(CardDataStart-A5_BASE,a5)	| C14D52
 	rts	| C14D56
 | CardLayoutTableByte [C] 16-byte rows per $1000 bytes of card: directory offset, entries-1, FAT offset, FAT size, data offset (8-bit card and type $80)
@@ -2365,7 +2365,7 @@ CardLayoutTableByte:
 	dc.b	0x00,0x00,0x00,0x80,0x00,0xFF,0x00,0x00,0x08,0x00,0x02,0x00,0x00,0x00,0x04,0x00
 | CardLayoutWord [C] 16-bit card form of CardLayoutByte (CardLayoutTableWord); ran in MAME on an emulated 16-bit card (card_word_*)
 CardLayoutWord:
-	lsr.w	#0x7,d6	| C14DE8
+	lsr.w	#0x7,d6	| C14DE8  one row per 2 KB of addresses
 	andi.w	#0xFFF0,d6	| C14DEA
 	lea.l	(CardLayoutTableWord,pc,d6.w),a0	| C14DEE
 	bra.w	loc_C14D3A	| C14DF2
@@ -2392,11 +2392,11 @@ CardLock:
 	rts	| C14EA0
 | ControllerTest [C] unreferenced in SP-S2 (no call, jump or pointer to it): draws CONTROLLER TEST and shows the P1/P2 input bits as 0/1 every frame, never returns; ran in MAME from the hidden-programs build (scenario controller_test) The AES boot menu of controller 2: every AES system ROM jumps here when A-D are held on P2 at power-on (MAME, AES Japan); no MVS ROM refers to it (docs/versions.md)
 ControllerTest:
-	move.w	#0xFF00,(REG_LSPCMODE).l	| C14EA2
+	move.w	#0xFF00,(REG_LSPCMODE).l	| C14EA2  timer off, auto-animation speed $FF
 	lea.l	(BiosWorkRam).l,a5	| C14EAA
 	move.l	#0xEEE0000,(0x400002).l	| C14EB0
 	move.w	#0x2000,sr	| C14EBA
-	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C14EBE
+	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C14EBE  flush the MESS_OUT queue, then the title screen
 	jsr	(MessOut,pc)	| C14EC2
 	jsr	(ClearFixLayer,pc)	| C14EC6
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C14ECA
@@ -2405,20 +2405,20 @@ ControllerTest:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C14ED8
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C14EDC
 loc_C14EE0:
-	jsr	(WaitFrame,pc)	| C14EE0
+	jsr	(WaitFrame,pc)	| C14EE0  every frame, an inline list:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C14EE4
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C14EE8
 	clr.l	(a0)+	| C14EEC
 	move.l	#0x101000A,(a0)+	| C14EEE
 	move.w	#0x102,(a0)+	| C14EF4
 	move.w	#0x3,(a0)+	| C14EF8
-	move.w	#0x722A,(a0)+	| C14EFC
+	move.w	#0x722A,(a0)+	| C14EFC  P1: 8 input bits and the START/SELECT pair at fix $722A
 	move.b	(BIOS_STATCURNT-A5_BASE,a5),d1	| C14F00
 	lsl.w	#0x8,d1	| C14F04
 	move.b	(BIOS_P1CURRENT-A5_BASE,a5),d1	| C14F06
 	jsr	(PutInputBits,pc)	| C14F0A
 	move.w	#0x3,(a0)+	| C14F0E
-	move.w	#0x72CA,(a0)+	| C14F12
+	move.w	#0x72CA,(a0)+	| C14F12  P2 at fix $72CA
 	move.b	(BIOS_STATCURNT-A5_BASE,a5),d1	| C14F16
 	lsl.w	#0x6,d1	| C14F1A
 	move.b	(BIOS_P2CURRENT-A5_BASE,a5),d1	| C14F1C
@@ -2426,13 +2426,13 @@ loc_C14EE0:
 	clr.w	(a0)+	| C14F24
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C14F26
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C14F2A
-	jmp	(loc_C14EE0,pc)	| C14F2E
+	jmp	(loc_C14EE0,pc)	| C14F2E  forever (an AES boot menu: no way back)
 | PutInputBits [C] appends 10 characters 0/1 for the low bits of d1 (ControllerTest)
 PutInputBits:
 	move.w	#0x7,(a0)+	| C14F32
 	moveq	#0x9,d7	| C14F36
 loc_C14F38:
-	move.b	#0x30,d0	| C14F38
+	move.b	#0x30,d0	| C14F38  '0', or '1' for a set bit, low bit first
 	lsr.w	#0x1,d1	| C14F3C
 	bcc.b	loc_C14F44	| C14F3E
 	move.b	#0x31,d0	| C14F40
@@ -2466,7 +2466,7 @@ ControllerTestText:
 	dc.b	0xFF,0xFF,0x00,0x00
 | CardUtility [C] unreferenced in SP-S2: MEMORY CARD UTILITY menu, up/down over 6 lines, A jumps through CardUtilityMenuTable The AES boot menu of controller 1: every AES system ROM jumps here when A-D are held on P1 at power-on (MAME, AES Japan); no MVS ROM refers to it (docs/versions.md)
 CardUtility:
-	move.w	#0xFF00,(REG_LSPCMODE).l	| C1500A
+	move.w	#0xFF00,(REG_LSPCMODE).l	| C1500A  timer off; palette 0 colour 1 white, palette 1 colour 1 red
 	lea.l	(BiosWorkRam).l,a5	| C15012
 	move.l	#0xEEE0000,(0x400002).l	| C15018
 	move.l	#0xE000000,(0x400022).l	| C15022
@@ -2474,9 +2474,9 @@ CardUtility:
 	move.w	d0,(WorkIndex-A5_BASE,a5)	| C1502E
 	move.w	d0,(WorkIndexNew-A5_BASE,a5)	| C15032
 	move.w	d0,(CardUtilMenuNew-A5_BASE,a5)	| C15036
-	move.w	#0x2000,sr	| C1503A
+	move.w	#0x2000,sr	| C1503A  interrupts on
 loc_C1503E:
-	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C1503E
+	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C1503E  the menu screen
 	jsr	(MessOut,pc)	| C15042
 	jsr	(ClearFixLayer,pc)	| C15046
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1504A
@@ -2487,10 +2487,10 @@ loc_C1503E:
 loc_C15060:
 	jsr	(CardUtilMoveMenuCursor,pc)	| C15060
 loc_C15064:
-	jsr	(WaitFrameGetP1,pc)	| C15064
+	jsr	(WaitFrameGetP1,pc)	| C15064  A: run the item under the cursor
 	btst.b	#0x4,d0	| C15068
 	bne.b	loc_C1508E	| C1506C
-	andi.b	#0x3,d0	| C1506E
+	andi.b	#0x3,d0	| C1506E  up / down over the 6 items
 	beq.b	loc_C15064	| C15072
 	moveq	#0x1,d1	| C15074
 	andi.b	#0x2,d0	| C15076
@@ -2508,7 +2508,7 @@ loc_C1508E:
 	move.w	(WorkIndex-A5_BASE,a5),d0	| C15096
 	add.w	d0,d0	| C1509A
 	add.w	d0,d0	| C1509C
-	movea.l	(CardUtilityMenuTable,pc,d0.w),a0	| C1509E
+	movea.l	(CardUtilityMenuTable,pc,d0.w),a0	| C1509E  the items return to the menu
 	pea.l	(loc_C1503E,pc)	| C150A2
 	jmp	(a0)	| C150A6
 | CardUtilityMenuTable [C] 6 entries in menu order: format, display data name, copy, delete, file user's name, END (Reset)
@@ -2521,7 +2521,7 @@ CardUtilityMenuTable:
 	dc.l	Reset
 | CardUtilFormat [C] menu item 1. CARD FORMAT; MAME (test build): FORMAT THE CARD screen
 CardUtilFormat:
-	lea.l	(CardUtilFormatText,pc),a2	| C150C0
+	lea.l	(CardUtilFormatText,pc),a2	| C150C0  1. FORMAT: confirm with A, B gives up
 	jsr	(CardUtilPutText,pc)	| C150C4
 loc_C150C8:
 	jsr	(WaitFrameGetP1,pc)	| C150C8
@@ -2529,15 +2529,15 @@ loc_C150C8:
 	bne.w	loc_C15138	| C150D0
 	btst.b	#0x4,d0	| C150D4
 	beq.b	loc_C150C8	| C150D8
-	jsr	(ReadCardDetect,pc)	| C150DA
+	jsr	(ReadCardDetect,pc)	| C150DA  a card must be in
 	bne.b	loc_C150C8	| C150DE
-	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C150E0
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C150E0  CARD 5: is it formatted?
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C150E8
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C150EC
 	jsr	(Card,pc)	| C150F2
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C150F6
 	bne.b	loc_C1511A	| C150FA
-	jsr	(ClearFixLayer,pc)	| C150FC
+	jsr	(ClearFixLayer,pc)	| C150FC  yes: a second confirmation
 	lea.l	(CardUtilFormatConfirmText,pc),a2	| C15100
 	jsr	(CardUtilPutText,pc)	| C15104
 loc_C15108:
@@ -2547,13 +2547,13 @@ loc_C15108:
 	btst.b	#0x4,d0	| C15114
 	beq.b	loc_C15108	| C15118
 loc_C1511A:
-	move.b	#0x0,(BIOS_CRDF-A5_BASE,a5)	| C1511A
+	move.b	#0x0,(BIOS_CRDF-A5_BASE,a5)	| C1511A  CARD 0: format
 	jsr	(Card,pc)	| C15120
 	moveq	#0x0,d0	| C15124
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C15126
 	cmpi.b	#0x85,d0	| C1512A
 	bne.b	loc_C15138	| C1512E
-	lea.l	(CardUtilWriteProtectedText,pc),a2	| C15130
+	lea.l	(CardUtilWriteProtectedText,pc),a2	| C15130  write-protected: the message
 	jsr	(CardUtilMessageWait,pc)	| C15134
 loc_C15138:
 	rts	| C15138
@@ -2561,7 +2561,7 @@ loc_C1513A:
 	jsr	(ClearFixLayer,pc)	| C1513A
 | CardUtilDisplayNames [C] menu item 2. DISPLAY DATA NAME; MAME (test build, blank card): THERE IS NO DATA.
 CardUtilDisplayNames:
-	jsr	(ReadCardDetect,pc)	| C1513E
+	jsr	(ReadCardDetect,pc)	| C1513E  2. DISPLAY DATA NAME: a card must be in
 	beq.w	loc_C15162	| C15142
 	lea.l	(CardUtilPlugCardText,pc),a2	| C15146
 	jsr	(CardUtilPutText,pc)	| C1514A
@@ -2573,7 +2573,7 @@ loc_C1514E:
 	bne.b	loc_C1514E	| C1515C
 	jsr	(ClearFixLayer,pc)	| C1515E
 loc_C15162:
-	jsr	(CardUtilReadTitles,pc)	| C15162
+	jsr	(CardUtilReadTitles,pc)	| C15162  every title, then pages of 6
 loc_C15166:
 	lea.l	(CardUtilDisplayText,pc),a2	| C15166
 	jsr	(CardUtilDrawTitlePage,pc)	| C1516A
@@ -2584,12 +2584,12 @@ loc_C1516E:
 loc_C15178:
 	rts	| C15178
 loc_C1517A:
-	andi.b	#0x3,d0	| C1517A
+	andi.b	#0x3,d0	| C1517A  up / down: previous or next page
 	beq.b	loc_C1516E	| C1517E
 	move.w	(DataListPageFirst-A5_BASE,a5),d1	| C15180
 	andi.b	#0x2,d0	| C15184
 	bne.b	loc_C151A8	| C15188
-	cmpi.w	#0x7,d1	| C1518A
+	cmpi.w	#0x7,d1	| C1518A  previous: 7 back, rounded to the page start
 	bcs.b	loc_C1516E	| C1518E
 	subq.w	#0x7,d1	| C15190
 	andi.l	#0xFFFF,d1	| C15192
@@ -2605,7 +2605,7 @@ loc_C151A8:
 	bra.b	loc_C15166	| C151AE
 | CardUtilCopy [C] menu item 3. COPY A DATA: A copies the chosen data (C all of it) into RAM, CHANGE CARD AND PRESS A BUTTON, then saves it on the new card; THERE IS .. ALREADY IN THIS CARD if it holds that data, MEMORY CARD NOT FORMATTED. for a blank card. MAME (test build, cards swapped): card_util_copy, card_util_copy_same_card, card_util_copy_unformatted
 CardUtilCopy:
-	jsr	(ReadCardDetect,pc)	| C151B0
+	jsr	(ReadCardDetect,pc)	| C151B0  3. COPY: a card must be in
 	beq.w	loc_C151D4	| C151B4
 	lea.l	(CardUtilPlugCardText,pc),a2	| C151B8
 	jsr	(CardUtilPutText,pc)	| C151BC
@@ -2617,7 +2617,7 @@ loc_C151C0:
 	bne.b	loc_C151C0	| C151CE
 	jsr	(ClearFixLayer,pc)	| C151D0
 loc_C151D4:
-	jsr	(CardUtilReadTitles,pc)	| C151D4
+	jsr	(CardUtilReadTitles,pc)	| C151D4  the titles; cursor over them
 loc_C151D8:
 	lea.l	(CardUtilCopySelectText,pc),a2	| C151D8
 	jsr	(CardUtilDrawTitlePage,pc)	| C151DC
@@ -2630,11 +2630,11 @@ loc_C151E4:
 loc_C151EE:
 	rts	| C151EE
 loc_C151F0:
-	btst.b	#0x6,d0	| C151F0
+	btst.b	#0x6,d0	| C151F0  C: copy everything
 	bne.w	loc_C15344	| C151F4
-	btst.b	#0x4,d0	| C151F8
+	btst.b	#0x4,d0	| C151F8  A: copy the data under the cursor
 	bne.w	loc_C15246	| C151FC
-	swap	d0	| C15200
+	swap	d0	| C15200  up / down move the cursor (pages as in the full-card list)
 	andi.b	#0x3,d0	| C15202
 	beq.b	loc_C151E4	| C15206
 	moveq	#0x1,d1	| C15208
@@ -2660,7 +2660,7 @@ loc_C15212:
 	move.w	d2,(DataListPageFirst-A5_BASE,a5)	| C15240
 	bra.b	loc_C151D8	| C15244
 loc_C15246:
-	jsr	(ClearFixLayer,pc)	| C15246
+	jsr	(ClearFixLayer,pc)	| C15246  COPIED: the data's name
 	lea.l	(CardUtilCopiedText,pc),a2	| C1524A
 	jsr	(CardUtilPutText,pc)	| C1524E
 	moveq	#0x0,d0	| C15252
@@ -2670,7 +2670,7 @@ loc_C15246:
 	adda.l	d0,a1	| C15262
 	jsr	(CardUtilDrawDataName,pc)	| C15264
 	nop	| C15268
-	move.w	(a1)+,(BIOS_CRDNGH-A5_BASE,a5)	| C1526A
+	move.w	(a1)+,(BIOS_CRDNGH-A5_BASE,a5)	| C1526A  load it: NGH and file from its title entry, up to 16 KB at $100000
 	move.b	(a1),(BIOS_CRDFILE-A5_BASE,a5)	| C1526E
 	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C15272
 	move.w	#0x4000,(BIOS_CRDSIZE-A5_BASE,a5)	| C1527A
@@ -2678,9 +2678,9 @@ loc_C15246:
 	jsr	(Card,pc)	| C15286
 	tst.b	(BIOS_CRDRESULT-A5_BASE,a5)	| C1528A
 	bne.w	loc_C151EE	| C1528E
-	move.w	(BIOS_CRDPTR_LO-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C15292
+	move.w	(BIOS_CRDPTR_LO-A5_BASE,a5),(BIOS_CRDSIZE-A5_BASE,a5)	| C15292  BIOS_CRDPTR ends after the data: its low word is the size read
 loc_C15298:
-	jsr	(WaitFrameGetP1,pc)	| C15298
+	jsr	(WaitFrameGetP1,pc)	| C15298  A once the target card is in
 	btst.b	#0x5,d0	| C1529C
 	bne.w	loc_C151EE	| C152A0
 	btst.b	#0x4,d0	| C152A4
@@ -2688,10 +2688,10 @@ loc_C15298:
 	jsr	(ReadCardDetect,pc)	| C152AA
 	bne.b	loc_C15298	| C152AE
 	move.w	(BIOS_CRDFILE-A5_BASE,a5),(CardSavedFile-A5_BASE,a5)	| C152B0
-	move.b	#0x1,(BIOS_CRDF-A5_BASE,a5)	| C152B6
+	move.b	#0x1,(BIOS_CRDF-A5_BASE,a5)	| C152B6  CARD 1: what this game already has on the target
 	jsr	(Card,pc)	| C152BC
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C152C0
-	cmpi.b	#0x81,d0	| C152C4
+	cmpi.b	#0x81,d0	| C152C4  not formatted or write-protected: the error message
 	beq.w	loc_C1582C	| C152C8
 	cmpi.b	#0x85,d0	| C152CC
 	beq.w	loc_C1582C	| C152D0
@@ -2699,7 +2699,7 @@ loc_C15298:
 	moveq	#0x0,d1	| C152D8
 	move.b	(CardSavedFile-A5_BASE,a5),d1	| C152DA
 	move.b	d1,(BIOS_CRDFILE-A5_BASE,a5)	| C152DE
-	btst.l	d1,d0	| C152E2
+	btst.l	d1,d0	| C152E2  the file exists there: ALREADY ... (A overwrites)
 	beq.w	loc_C1531E	| C152E4
 	jsr	(ClearFixLayer,pc)	| C152E8
 	lea.l	(CardUtilAlreadyText,pc),a2	| C152EC
@@ -2718,16 +2718,16 @@ loc_C1530C:
 	btst.b	#0x4,d0	| C15318
 	beq.b	loc_C1530C	| C1531C
 loc_C1531E:
-	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C1531E
+	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C1531E  CARD 3: save it
 	move.b	#0x3,(BIOS_CRDF-A5_BASE,a5)	| C15326
 	jsr	(Card,pc)	| C1532C
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C15330
-	beq.w	loc_C1513A	| C15334
+	beq.w	loc_C1513A	| C15334  done: back to the title list
 	cmpi.b	#0x80,d0	| C15338
 	bne.w	loc_C1582C	| C1533C
 	bra.w	loc_C151EE	| C15340
 loc_C15344:
-	jsr	(ClearFixLayer,pc)	| C15344
+	jsr	(ClearFixLayer,pc)	| C15344  C: every data: each one loaded behind the previous, its size in the word before it
 	lea.l	(CardUtilAllCopiedText,pc),a2	| C15348
 	jsr	(CardUtilPutText,pc)	| C1534C
 	lea.l	(WorkRamStart).l,a0	| C15350
@@ -2752,20 +2752,20 @@ loc_C15360:
 	move.w	a4,(a0)	| C153A2
 	movea.l	a3,a0	| C153A4
 	dbra	d7,loc_C15360	| C153A6
-	move.l	a0,(CopyAllPtr-A5_BASE,a5)	| C153AA
+	move.l	a0,(CopyAllPtr-A5_BASE,a5)	| C153AA  then the user name after them
 	move.l	a0,(BIOS_CRDPTR-A5_BASE,a5)	| C153AE
 	move.b	#0x7,(BIOS_CRDF-A5_BASE,a5)	| C153B2
 	jsr	(Card,pc)	| C153B8
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),(CopyAllResult-A5_BASE,a5)	| C153BC
 loc_C153C2:
-	jsr	(WaitFrameGetP1,pc)	| C153C2
+	jsr	(WaitFrameGetP1,pc)	| C153C2  A once the target card is in
 	btst.b	#0x5,d0	| C153C6
 	bne.w	loc_C151EE	| C153CA
 	btst.b	#0x4,d0	| C153CE
 	beq.b	loc_C153C2	| C153D2
 	jsr	(ReadCardDetect,pc)	| C153D4
 	bne.b	loc_C153C2	| C153D8
-	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C153DA
+	move.l	#CardTitleBuffer,(BIOS_CRDPTR-A5_BASE,a5)	| C153DA  formatted? if so, confirm the format
 	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C153E2
 	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C153E6
 	jsr	(Card,pc)	| C153EC
@@ -2781,17 +2781,17 @@ loc_C15402:
 	btst.b	#0x4,d0	| C1540E
 	beq.b	loc_C15402	| C15412
 loc_C15414:
-	move.b	#0x0,(BIOS_CRDF-A5_BASE,a5)	| C15414
+	move.b	#0x0,(BIOS_CRDF-A5_BASE,a5)	| C15414  the target is formatted (CARD 0)
 	jsr	(Card,pc)	| C1541A
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C1541E
 	bne.w	loc_C1582C	| C15422
-	tst.b	(CopyAllResult-A5_BASE,a5)	| C15426
+	tst.b	(CopyAllResult-A5_BASE,a5)	| C15426  user name (CARD 6), if there was one
 	bne.b	loc_C1543C	| C1542A
 	move.l	(CopyAllPtr-A5_BASE,a5),(BIOS_CRDPTR-A5_BASE,a5)	| C1542C
 	move.b	#0x6,(BIOS_CRDF-A5_BASE,a5)	| C15432
 	jsr	(Card,pc)	| C15438
 loc_C1543C:
-	lea.l	(WorkRamStart).l,a0	| C1543C
+	lea.l	(WorkRamStart).l,a0	| C1543C  then every data saved again (CARD 3)
 	movea.l	#CardUtilTitles,a1	| C15442
 	move.w	(DataListLast-A5_BASE,a5),d7	| C15448
 loc_C1544C:
@@ -2813,19 +2813,19 @@ loc_C1544C:
 	jmp	(loc_C1513A,pc)	| C1548C
 | CardUtilDelete [C] menu item 4. DELETE A DATA: lists the data, asks DO YOU MIND TO DELETE DATA, deletes through CARD function 4; MAME test build
 CardUtilDelete:
-	jsr	(ReadCardDetect,pc)	| C15490
+	jsr	(ReadCardDetect,pc)	| C15490  4. DELETE: a card must be in
 	beq.w	loc_C154B4	| C15494
-	lea.l	(CardUtilPlugCardText,pc),a2	| C15498
+	lea.l	(CardUtilPlugCardText,pc),a2	| C15498  no card: PLUG IN THE MEMORY CARD
 	jsr	(CardUtilPutText,pc)	| C1549C
 loc_C154A0:
-	jsr	(WaitFrameGetP1,pc)	| C154A0
+	jsr	(WaitFrameGetP1,pc)	| C154A0  B (bit 5): back to the menu
 	btst.b	#0x5,d0	| C154A4
 	bne.b	loc_C154CE	| C154A8
-	jsr	(ReadCardDetect,pc)	| C154AA
+	jsr	(ReadCardDetect,pc)	| C154AA  wait for a card
 	bne.b	loc_C154A0	| C154AE
 	jsr	(ClearFixLayer,pc)	| C154B0
 loc_C154B4:
-	jsr	(CardUtilReadTitles,pc)	| C154B4
+	jsr	(CardUtilReadTitles,pc)	| C154B4  the titles on the card, then the first page
 loc_C154B8:
 	lea.l	(CardUtilDeleteSelectText,pc),a2	| C154B8
 	jsr	(CardUtilDrawTitlePage,pc)	| C154BC
@@ -2838,9 +2838,9 @@ loc_C154C4:
 loc_C154CE:
 	rts	| C154CE
 loc_C154D0:
-	btst.b	#0x4,d0	| C154D0
+	btst.b	#0x4,d0	| C154D0  A: delete the data under the cursor
 	bne.w	loc_C1551E	| C154D4
-	swap	d0	| C154D8
+	swap	d0	| C154D8  up or down: the next or previous title
 	andi.b	#0x3,d0	| C154DA
 	beq.b	loc_C154C4	| C154DE
 	moveq	#0x1,d1	| C154E0
@@ -2850,15 +2850,15 @@ loc_C154D0:
 loc_C154EA:
 	move.w	d1,d0	| C154EA
 	add.w	(DataListCursor-A5_BASE,a5),d0	| C154EC
-	cmp.w	(DataListLast-A5_BASE,a5),d0	| C154F0
+	cmp.w	(DataListLast-A5_BASE,a5),d0	| C154F0  past the last title: no move
 	bhi.b	loc_C154C4	| C154F4
 	move.w	d0,(DataListCursorNew-A5_BASE,a5)	| C154F6
-	add.w	(DataListLine-A5_BASE,a5),d1	| C154FA
+	add.w	(DataListLine-A5_BASE,a5),d1	| C154FA  the cursor line on the page
 	cmpi.w	#0x6,d1	| C154FE
-	bcs.b	loc_C154C0	| C15502
-	tst.w	d1	| C15504
+	bcs.b	loc_C154C0	| C15502  still on this page: just move the cursor
+	tst.w	d1	| C15504  below the page: the next page
 	bpl.b	loc_C154B8	| C15506
-	andi.l	#0xFFFF,d0	| C15508
+	andi.l	#0xFFFF,d0	| C15508  above it: the page of the new title (index - index mod 6)
 	move.w	d0,d2	| C1550E
 	divu.w	#0x6,d0	| C15510
 	swap	d0	| C15514
@@ -2866,34 +2866,34 @@ loc_C154EA:
 	move.w	d2,(DataListPageFirst-A5_BASE,a5)	| C15518
 	bra.b	loc_C154B8	| C1551C
 loc_C1551E:
-	jsr	(ClearFixLayer,pc)	| C1551E
+	jsr	(ClearFixLayer,pc)	| C1551E  confirmation screen with the data name
 	lea.l	(CardUtilDeleteConfirmText,pc),a2	| C15522
 	jsr	(CardUtilPutText,pc)	| C15526
 	moveq	#0x0,d0	| C1552A
-	move.w	(DataListCursor-A5_BASE,a5),d0	| C1552C
+	move.w	(DataListCursor-A5_BASE,a5),d0	| C1552C  the title's record: 24 bytes each
 	mulu.w	#0x18,d0	| C15530
 	movea.l	#CardUtilTitles,a1	| C15534
 	adda.l	d0,a1	| C1553A
 	jsr	(CardUtilDrawDataName,pc)	| C1553C
 	nop	| C15540
-	move.w	(a1)+,(BIOS_CRDNGH-A5_BASE,a5)	| C15542
+	move.w	(a1)+,(BIOS_CRDNGH-A5_BASE,a5)	| C15542  the NGH and file of the data
 	move.b	(a1),(BIOS_CRDFILE-A5_BASE,a5)	| C15546
 loc_C1554A:
-	jsr	(WaitFrameGetP1,pc)	| C1554A
-	btst.b	#0x5,d0	| C1554E
+	jsr	(WaitFrameGetP1,pc)	| C1554A  A again (card still in): CARD 4, delete
+	btst.b	#0x5,d0	| C1554E  B: back
 	bne.w	loc_C154CE	| C15552
 	btst.b	#0x4,d0	| C15556
 	beq.b	loc_C1554A	| C1555A
 	jsr	(ReadCardDetect,pc)	| C1555C
 	bne.b	loc_C1554A	| C15560
-	move.b	#0x4,(BIOS_CRDF-A5_BASE,a5)	| C15562
+	move.b	#0x4,(BIOS_CRDF-A5_BASE,a5)	| C15562  CARD 4: delete
 	jsr	(Card,pc)	| C15568
-	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C1556C
+	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C1556C  an error: its message
 	bne.w	loc_C1582C	| C15570
-	jmp	(loc_C1513A,pc)	| C15574
+	jmp	(loc_C1513A,pc)	| C15574  deleted: back to the menu
 | CardUtilUserName [C] menu item 5. FILE USER'S NAME: character grid, A types, END saves through CARD function 6; MAME test build
 CardUtilUserName:
-	jsr	(ReadCardDetect,pc)	| C15578
+	jsr	(ReadCardDetect,pc)	| C15578  5. FILE USER'S NAME: a card must be in
 	beq.w	loc_C1559C	| C1557C
 	lea.l	(CardUtilPlugCardText,pc),a2	| C15580
 	jsr	(CardUtilPutText,pc)	| C15584
@@ -2905,7 +2905,7 @@ loc_C15588:
 	bne.b	loc_C15588	| C15596
 	jsr	(ClearFixLayer,pc)	| C15598
 loc_C1559C:
-	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C1559C
+	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C1559C  CARD 7: the name on the card, or 16 spaces
 	move.b	#0x7,(BIOS_CRDF-A5_BASE,a5)	| C155A4
 	jsr	(Card,pc)	| C155AA
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C155AE
@@ -2916,11 +2916,11 @@ loc_C155BC:
 	move.b	#0x20,(a0)+	| C155BC
 	dbra	d7,loc_C155BC	| C155C0
 loc_C155C4:
-	clr.l	(NameColumn-A5_BASE,a5)	| C155C4
+	clr.l	(NameColumn-A5_BASE,a5)	| C155C4  cursor on the first character and on the first letter key
 	move.l	#0x50005,(NameKey-A5_BASE,a5)	| C155C8
 	clr.w	(NameKeyMode-A5_BASE,a5)	| C155D0
 loc_C155D4:
-	jsr	(ClearFixLayer,pc)	| C155D4
+	jsr	(ClearFixLayer,pc)	| C155D4  the keyboard screen
 	lea.l	(CardUtilUserNameText,pc),a2	| C155D8
 	jsr	(CardUtilPutText,pc)	| C155DC
 	jsr	(CardUtilDrawName,pc)	| C155E0
@@ -2935,12 +2935,12 @@ loc_C155F0:
 loc_C155FA:
 	rts	| C155FA
 loc_C155FC:
-	btst.b	#0x4,d0	| C155FC
+	btst.b	#0x4,d0	| C155FC  A on a key
 	beq.w	loc_C156D8	| C15600
-	move.w	(NameKey-A5_BASE,a5),d1	| C15604
+	move.w	(NameKey-A5_BASE,a5),d1	| C15604  keys 0-4: END, arrows and two mode keys
 	cmpi.w	#0x5,d1	| C15608
 	bcs.w	loc_C15638	| C1560C
-	lea.l	(WorkRamStart).l,a0	| C15610
+	lea.l	(WorkRamStart).l,a0	| C15610  a letter: into the name, cursor one right
 	move.w	(NameColumn-A5_BASE,a5),d3	| C15616
 	lea.l	(CardUtilKeyChars,pc),a1	| C1561A
 	move.b	-0x5(a1,d1.w),(a0,d3.w)	| C1561E
@@ -2951,11 +2951,11 @@ loc_C155FC:
 	jsr	(CardUtilMoveNameCursor,pc)	| C15632
 	bra.b	loc_C155F0	| C15636
 loc_C15638:
-	add.w	d1,d1	| C15638
+	add.w	d1,d1	| C15638  the special keys
 	add.w	d1,d1	| C1563A
 	movea.l	(CardUtilNameKeyHandlers,pc,d1.w),a0	| C1563C
 	jmp	(a0)	| C15640
-| CardUtilNameKeyHandlers [I] FILE USER'S NAME: handlers of the 5 keys before the letters: one saves the name with CARD 6 (END), two move the character cursor left and right (the arrows), two set NameKeyMode (to 1 or 0, to 2 or 1) and redraw the screen (meaning of NameKeyMode not found)
+| CardUtilNameKeyHandlers [C] FILE USER'S NAME: handlers of the 5 keys before the letters: END saves the name with CARD 6, the arrows move the character cursor, and two keys set NameKeyMode (1 or 0, 2 or 1) and redraw the screen. Nothing else reads NameKeyMode, so in SP-S2 those two keys change nothing (the character table is the same in every mode)
 CardUtilNameKeyHandlers:
 	dc.l	loc_C15656
 	dc.l	loc_C15672
@@ -2963,18 +2963,18 @@ CardUtilNameKeyHandlers:
 	dc.l	loc_C15690
 	dc.l	loc_C156B0
 loc_C15656:
-	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C15656
+	move.l	#WorkRamStart,(BIOS_CRDPTR-A5_BASE,a5)	| C15656  END: CARD 6, save the name
 	move.b	#0x6,(BIOS_CRDF-A5_BASE,a5)	| C1565E
 	jsr	(Card,pc)	| C15664
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C15668
 	bne.w	loc_C1582C	| C1566C
 	rts	| C15670
 loc_C15672:
-	move.w	(NameColumn-A5_BASE,a5),d0	| C15672
+	move.w	(NameColumn-A5_BASE,a5),d0	| C15672  left arrow: cursor one left (16 columns, wrapping)
 	subq.w	#0x1,d0	| C15676
 	bra.b	loc_C15680	| C15678
 loc_C1567A:
-	move.w	(NameColumn-A5_BASE,a5),d0	| C1567A
+	move.w	(NameColumn-A5_BASE,a5),d0	| C1567A  right arrow
 	addq.w	#0x1,d0	| C1567E
 loc_C15680:
 	andi.w	#0xF,d0	| C15680
@@ -2982,7 +2982,7 @@ loc_C15680:
 	jsr	(CardUtilMoveNameCursor,pc)	| C15688
 	bra.w	loc_C155F0	| C1568C
 loc_C15690:
-	move.w	#0x5,(NameKeyNew-A5_BASE,a5)	| C15690
+	move.w	#0x5,(NameKeyNew-A5_BASE,a5)	| C15690  the two mode keys (NameKeyMode has no other reader)
 	cmpi.w	#0x1,(NameKeyMode-A5_BASE,a5)	| C15696
 	bcc.b	loc_C156A8	| C1569C
 loc_C1569E:
@@ -3001,12 +3001,12 @@ loc_C156B0:
 CardUtilDirectionIndex:
 	dc.b	0x00,0x00,0x01,0x00,0x03,0x03,0x03,0x00,0x02,0x02,0x02,0x00,0x00,0x00,0x00,0x00
 loc_C156D8:
-	swap	d0	| C156D8
-	andi.w	#0xF,d0	| C156DA
+	swap	d0	| C156D8  joystick: the key reached in that direction (CardUtilKeyMoves)
+	andi.w	#0xF,d0	| C156DA  no direction pressed
 	beq.w	loc_C155F0	| C156DE
 	move.b	(CardUtilDirectionIndex,pc,d0.w),d1	| C156E2
 	lea.l	(CardUtilKeyMoves,pc),a0	| C156E6
-	move.w	(NameKey-A5_BASE,a5),d0	| C156EA
+	move.w	(NameKey-A5_BASE,a5),d0	| C156EA  4 moves per key (up, down, left, right)
 	add.w	d0,d0	| C156EE
 	add.w	d0,d0	| C156F0
 	add.b	d1,d0	| C156F2
@@ -3019,18 +3019,18 @@ CardUtilNameCursor:
 	lea.l	(REG_VRAMRW).l,a2	| C15706
 	moveq	#0x0,d3	| C1570C
 	jsr	(CardUtilColourKey,pc)	| C1570E
-	move.w	(NameKeyNew-A5_BASE,a5),(NameKey-A5_BASE,a5)	| C15712
+	move.w	(NameKeyNew-A5_BASE,a5),(NameKey-A5_BASE,a5)	| C15712  old key in palette 0, new key in palette 1
 	move.w	#0x1000,d3	| C15718
 | CardUtilColourKey [C] sets the palette bits d3 of the fix-layer characters of one key, from its position to the next space
 CardUtilColourKey:
-	move.w	(NameKey-A5_BASE,a5),d0	| C1571C
+	move.w	(NameKey-A5_BASE,a5),d0	| C1571C  the key's first character on the fix layer
 	add.w	d0,d0	| C15720
-	move.w	(a0,d0.w),-0x2(a2)	| C15722
-	nop	| C15728
+	move.w	(a0,d0.w),-0x2(a2)	| C15722  VRAM address of the key's first character
+	nop	| C15728  waits for the VRAM between accesses
 	nop	| C1572A
 	nop	| C1572C
 loc_C1572E:
-	move.w	#0x1,0x2(a2)	| C1572E
+	move.w	#0x1,0x2(a2)	| C1572E  each character of the key up to a space: palette bits d3
 	move.w	(a2),d0	| C15734
 	cmpi.b	#0x20,d0	| C15736
 	beq.w	loc_C15770	| C1573A
@@ -3041,7 +3041,7 @@ loc_C1572E:
 	nop	| C15748
 	nop	| C1574A
 	nop	| C1574C
-	move.w	(a2),d0	| C1574E
+	move.w	(a2),d0	| C1574E  and the character below it (8x16 tiles)
 	nop	| C15750
 	nop	| C15752
 	nop	| C15754
@@ -3063,9 +3063,9 @@ CardUtilDrawName:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15776
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1577A
 	clr.l	(a0)+	| C1577E
-	move.l	#0x371A6,(a0)+	| C15780
+	move.l	#0x371A6,(a0)+	| C15780  inline list: VRAM $71A6, 8x16 tiles page 1
 	move.w	#0x108,(a0)+	| C15786
-	lea.l	(WorkRamStart).l,a1	| C1578A
+	lea.l	(WorkRamStart).l,a1	| C1578A  the 16 name characters
 	moveq	#0x3,d7	| C15790
 loc_C15792:
 	move.l	(a1)+,(a0)+	| C15792
@@ -3079,10 +3079,10 @@ CardUtilMoveNameCursor:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C157A8
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C157AC
 	clr.l	(a0)+	| C157B0
-	moveq	#0x20,d3	| C157B2
+	moveq	#0x20,d3	| C157B2  erase the old cursor (space)
 	jsr	(CardUtilPutNameCursor,pc)	| C157B4
 	move.w	(NameColumnNew-A5_BASE,a5),(NameColumn-A5_BASE,a5)	| C157B8
-	moveq	#0x12,d3	| C157BE
+	moveq	#0x12,d3	| C157BE  draw the new one (tile $12)
 	jsr	(CardUtilPutNameCursor,pc)	| C157C0
 	clr.w	(a0)+	| C157C4
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C157C6
@@ -3091,7 +3091,7 @@ CardUtilMoveNameCursor:
 | CardUtilPutNameCursor [C] MESS_OUT entry for the name cursor under column NameColumn
 CardUtilPutNameCursor:
 	move.w	#0x3,(a0)+	| C157D0
-	move.w	(NameColumn-A5_BASE,a5),d0	| C157D4
+	move.w	(NameColumn-A5_BASE,a5),d0	| C157D4  fix $71A8 + 32 x column (one column per character)
 	lsl.w	#0x5,d0	| C157D8
 	addi.w	#0x71A8,d0	| C157DA
 	move.w	d0,(a0)+	| C157DE
@@ -3102,15 +3102,15 @@ CardUtilPutNameCursor:
 | CardUtilDrawDataName [C] MESS_OUT entry showing the 20-character data name at a1 (COPY and DELETE)
 CardUtilDrawDataName:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C157EC
-	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C157F0
+	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C157F0  a MESS_OUT entry: VRAM address, page, then the text
 	clr.l	(a0)+	| C157F4
-	move.l	#0x3710C,(a0)+	| C157F6
+	move.l	#0x3710C,(a0)+	| C157F6  VRAM $710C, page 1: 20 characters
 	move.w	#0x108,(a0)+	| C157FC
 	moveq	#0x4,d7	| C15800
 loc_C15802:
-	move.l	(a1)+,(a0)+	| C15802
+	move.l	(a1)+,(a0)+	| C15802  20 characters
 	dbra	d7,loc_C15802	| C15804
-	move.l	#0xFF000000,(a0)+	| C15808
+	move.l	#0xFF000000,(a0)+	| C15808  $FF ends the row, command 0 ends the list
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1580E
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15812
 	rts	| C15816
@@ -3122,7 +3122,7 @@ CardUtilErrorTexts:
 	dc.l	CardUtilFullText
 	dc.l	CardUtilWriteProtectedText
 loc_C1582C:
-	subi.b	#0x81,d0	| C1582C
+	subi.b	#0x81,d0	| C1582C  a CARD result $81-$85: its message; anything else: nothing
 	bmi.b	loc_C15864	| C15830
 	andi.w	#0xFF,d0	| C15832
 	add.w	d0,d0	| C15836
@@ -3130,42 +3130,42 @@ loc_C1582C:
 	movea.l	(CardUtilErrorTexts,pc,d0.w),a2	| C1583A
 | CardUtilMessageWait [C] clears the fix layer, shows the text a2 and PUSH ANY BUTTON., waits for A-D; entered at loc_C1582C with a CARD result, which picks the text from CardUtilErrorTexts
 CardUtilMessageWait:
-	jsr	(ClearFixLayer,pc)	| C1583E
+	jsr	(ClearFixLayer,pc)	| C1583E  the message, PUSH ANY BUTTON., wait for A-D
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15842
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C15846
-	move.l	a2,(a0)+	| C1584A
+	move.l	a2,(a0)+	| C1584A  the message, then PUSH ANY BUTTON.
 	move.l	#PushAnyButtonText,(a0)+	| C1584C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C15852
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15856
 loc_C1585A:
 	jsr	(WaitFrameGetP1,pc)	| C1585A
-	andi.b	#0xF0,d0	| C1585E
+	andi.b	#0xF0,d0	| C1585E  A, B, C or D: done
 	beq.b	loc_C1585A	| C15862
 loc_C15864:
 	rts	| C15864
 | CardUtilReadTitles [C] reads every data title on the card (CARD 5 until result $82) into a table at $10C000 (20-byte title, NGH, file number per entry); DataListLast = last index; with no data, shows the result's message
 CardUtilReadTitles:
-	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C15866
+	clr.w	(BIOS_CRDSIZE-A5_BASE,a5)	| C15866  from index 0, into the table at $10C000
 	move.l	#CardUtilTitles,(BIOS_CRDPTR-A5_BASE,a5)	| C1586A
 loc_C15872:
-	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C15872
+	move.b	#0x5,(BIOS_CRDF-A5_BASE,a5)	| C15872  CARD 5 until it fails
 	jsr	(Card,pc)	| C15878
 	move.b	(BIOS_CRDRESULT-A5_BASE,a5),d0	| C1587C
 	bne.b	loc_C1589A	| C15880
 	movea.l	(BIOS_CRDPTR-A5_BASE,a5),a0	| C15882
-	adda.l	#0x14,a0	| C15886
+	adda.l	#0x14,a0	| C15886  after the 20-byte title: NGH and file (24 bytes per entry)
 	move.w	(BIOS_CRDNGH-A5_BASE,a5),(a0)+	| C1588C
 	move.w	(BIOS_CRDFILE-A5_BASE,a5),(a0)+	| C15890
 	move.l	a0,(BIOS_CRDPTR-A5_BASE,a5)	| C15894
 	bra.b	loc_C15872	| C15898
 loc_C1589A:
-	cmpi.b	#0x82,d0	| C1589A
+	cmpi.b	#0x82,d0	| C1589A  $82: the end of the list; any other error: its message, back to the menu
 	beq.b	loc_C158A4	| C1589E
 loc_C158A0:
 	addq.l	#0x4,a7	| C158A0
 	bra.b	loc_C1582C	| C158A2
 loc_C158A4:
-	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(DataListLast-A5_BASE,a5)	| C158A4
+	move.w	(BIOS_CRDSIZE-A5_BASE,a5),(DataListLast-A5_BASE,a5)	| C158A4  none at all: the NO DATA message
 	beq.b	loc_C158A0	| C158AA
 	subq.w	#0x1,(DataListLast-A5_BASE,a5)	| C158AC
 	clr.w	(DataListPageFirst-A5_BASE,a5)	| C158B0
@@ -3183,35 +3183,35 @@ CardUtilDrawTitlePage:
 	beq.b	loc_C158DE	| C158D6
 	move.l	#PreviousPageText,(a0)+	| C158D8
 loc_C158DE:
-	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C158DE
+	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C158DE  the first title of this page
 	mulu.w	#0x18,d0	| C158E2
 	movea.l	#CardUtilTitles,a1	| C158E6
 	adda.l	d0,a1	| C158EC
 	clr.l	(a0)+	| C158EE
 loc_C158F0:
-	move.w	#0x3,(a0)+	| C158F0
+	move.w	#0x3,(a0)+	| C158F0  one line per title at fix $716F + 2 x line
 	move.w	(DataListLine-A5_BASE,a5),d0	| C158F4
 	add.w	d0,d0	| C158F8
 	addi.w	#0x716F,d0	| C158FA
 	move.w	d0,(a0)+	| C158FE
 	move.w	#0x108,(a0)+	| C15900
-	moveq	#0x9,d7	| C15904
+	moveq	#0x9,d7	| C15904  the 20-byte title
 loc_C15906:
 	move.w	(a1)+,(a0)+	| C15906
 	dbra	d7,loc_C15906	| C15908
 	move.w	#0xFF00,(a0)+	| C1590C
-	addq.l	#0x4,a1	| C15910
+	addq.l	#0x4,a1	| C15910  skip the NGH and file
 	move.w	(DataListPageFirst-A5_BASE,a5),d0	| C15912
 	addq.w	#0x1,d0	| C15916
 	move.w	d0,(DataListPageFirst-A5_BASE,a5)	| C15918
-	cmp.w	(DataListLast-A5_BASE,a5),d0	| C1591C
+	cmp.w	(DataListLast-A5_BASE,a5),d0	| C1591C  after the last title: stop
 	bls.b	loc_C15928	| C15920
 	clr.w	(a0)+	| C15922
 	bra.w	loc_C1593C	| C15924
 loc_C15928:
 	addq.w	#0x1,(DataListLine-A5_BASE,a5)	| C15928
 	move.w	(DataListLine-A5_BASE,a5),d0	| C1592C
-	subq.w	#0x6,d0	| C15930
+	subq.w	#0x6,d0	| C15930  6 lines: NEXT PAGE
 	bne.b	loc_C158F0	| C15932
 	clr.w	(a0)+	| C15934
 	move.l	#NextPageText,(a0)+	| C15936
@@ -3222,10 +3222,10 @@ loc_C1593C:
 | WaitFrameGetP1 [C] WaitFrame, then returns P1 change bits in d0 (repeat bits in the high word); special handling when BIOS_P1STATUS is 3
 WaitFrameGetP1:
 	jsr	(WaitFrame,pc)	| C15946
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C1594A
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d0	| C1594A  d0 high word: P1 repeat bits
 	swap	d0	| C1594E
 	move.b	(BIOS_P1CHANGE-A5_BASE,a5),d0	| C15950
-	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C15954
+	cmpi.b	#0x3,(BIOS_P1STATUS-A5_BASE,a5)	| C15954  a mahjong panel on P1: its keys as joystick bits
 	bne.b	loc_C15978	| C1595A
 	move.b	(BIOS_P3PREVIOUS-A5_BASE,a5),d0	| C1595C
 	bclr.b	#0x7,d0	| C15960
@@ -3248,7 +3248,7 @@ ReadCardDetect:
 CardUtilPutText:
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C15986
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1598A
-	move.l	a2,(a0)+	| C1598E
+	move.l	a2,(a0)+	| C1598E  the text, then the RETURN line
 	move.l	#CardUtilReturnText,(a0)+	| C15990
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C15996
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1599A
@@ -3259,11 +3259,11 @@ CardUtilMoveMenuCursor:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C159A4
 	moveq	#0x0,d0	| C159A8
 	move.l	d0,(a0)+	| C159AA
-	move.w	#0x20FF,d1	| C159AC
+	move.w	#0x20FF,d1	| C159AC  erase the old cursor (space)
 	jsr	(CardUtilPutMenuCursor,pc)	| C159B0
 	moveq	#0x0,d0	| C159B4
 	move.w	(CardUtilMenuNew-A5_BASE,a5),(WorkIndex-A5_BASE,a5)	| C159B6
-	move.w	#0x11FF,d1	| C159BC
+	move.w	#0x11FF,d1	| C159BC  draw the new one (tile $11)
 	jsr	(CardUtilPutMenuCursor,pc)	| C159C0
 	clr.w	(a0)+	| C159C4
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C159C6
@@ -3272,7 +3272,7 @@ CardUtilMoveMenuCursor:
 | CardUtilPutMenuCursor [C] MESS_OUT entry for the menu cursor at line WorkIndex (3 fix rows per line)
 CardUtilPutMenuCursor:
 	move.w	#0x3,(a0)+	| C159D0
-	move.w	(WorkIndex-A5_BASE,a5),d0	| C159D4
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C159D4  fix $70C9 + 3 x line
 	add.w	d0,d0	| C159D8
 	add.w	(WorkIndex).l,d0	| C159DA
 	addi.w	#0x70C9,d0	| C159E0
@@ -3476,21 +3476,21 @@ CardUtilWriteProtectedText:
 	dc.b	0xFF,0xFF,0x00,0x00
 | MonitorEntry [C] debug monitor, code 0 MONITOR ENTRY: saves d0-a6 at $10FD00, USP, SR and PC of the exception frame, shows the cause and the command menu (MonitorCommandTable); nothing in this release reaches it (exception vectors -> BIOS call slots -> jmp Reset). The exception slots of the AES Development System ROM and the Custom Japanese Hotel ROM point into the monitor (docs/versions.md)
 MonitorEntry:
-	clr.w	(MonitorCause).l	| C16198
+	clr.w	(MonitorCause).l	| C16198  cause code 0: the monitor called directly
 	bra.b	loc_C161A8	| C1619E
 | MonitorAddressError [C] debug monitor, code 4 ADDRESS ERROR: also prints the extra words of the bus/address error frame (access address, instruction)
 MonitorAddressError:
 	move.w	#0x4,(MonitorCause).l	| C161A0
 loc_C161A8:
-	ori.w	#0x700,sr	| C161A8
+	ori.w	#0x700,sr	| C161A8  interrupts off, every register saved
 	movem.l	d0-d7/a0-a6,(MonitorRegs).l	| C161AC
-	lea.l	(MessBuffer).l,a0	| C161B4
+	lea.l	(MessBuffer).l,a0	| C161B4  address/bus error: the extra frame words on the first line
 	clr.l	(a0)+	| C161BA
 	move.l	#0x1F0FF,(a0)+	| C161BC
 	move.w	#0x2002,(a0)+	| C161C2
-	move.l	#0x37085,(a0)+	| C161C6
+	move.l	#0x37085,(a0)+	| C161C6  VRAM $7085, inline text
 	move.w	#0x7,(a0)+	| C161CC
-	movea.l	a7,a1	| C161D0
+	movea.l	a7,a1	| C161D0  the access type word and the access address,
 	jsr	(PutHexByte,pc)	| C161D2
 	jsr	(PutHexByte,pc)	| C161D6
 	move.w	#0x2020,(a0)+	| C161DA
@@ -3499,10 +3499,10 @@ loc_C161A8:
 	jsr	(PutHexByte,pc)	| C161E6
 	jsr	(PutHexByte,pc)	| C161EA
 	move.w	#0x2020,(a0)+	| C161EE
-	jsr	(PutHexByte,pc)	| C161F2
+	jsr	(PutHexByte,pc)	| C161F2  then the instruction word
 	jsr	(PutHexByte,pc)	| C161F6
 	move.l	#0xFF000000,(a0)+	| C161FA
-	addq.l	#0x8,a7	| C16200
+	addq.l	#0x8,a7	| C16200  drop those 8 bytes: the stack now holds SR and PC
 	bra.b	loc_C16250	| C16202
 | MonitorIllegal [C] debug monitor, code 8 ILLEGAL INSTRUCTION
 MonitorIllegal:
@@ -3528,37 +3528,37 @@ MonitorUninitialized:
 MonitorSpurious:
 	move.w	#0x1C,(MonitorCause).l	| C16236
 loc_C1623E:
-	ori.w	#0x700,sr	| C1623E
+	ori.w	#0x700,sr	| C1623E  interrupts off, registers saved
 	movem.l	d0-d7/a0-a6,(MonitorRegs).l	| C16242
 	lea.l	(MessBuffer).l,a0	| C1624A
 loc_C16250:
 	lea.l	(BiosWorkRam).l,a5	| C16250
-	move	usp,a3	| C16256
+	move	usp,a3	| C16256  USP, SR, PC and the stack after the exception frame
 	move.l	a3,(MonitorSavedUsp-A5_BASE,a5)	| C16258
 	move.w	(a7)+,(MonitorSavedSr-A5_BASE,a5)	| C1625C
 	move.l	(a7)+,(MonitorSavedPc-A5_BASE,a5)	| C16260
 	move.l	a7,(MonitorSavedSsp-A5_BASE,a5)	| C16264
-	clr.w	(MonitorFrameWord-A5_BASE,a5)	| C16268
-	move.l	(0x4001E2).l,(MonitorSavedColour-A5_BASE,a5)	| C1626C
+	clr.w	(MonitorClearedWord-A5_BASE,a5)	| C16268
+	move.l	(0x4001E2).l,(MonitorSavedColour-A5_BASE,a5)	| C1626C  palette 15 colour 1 white (saved first)
 	move.l	#0xEEE0000,(0x4001E2).l	| C16274
 	move.b	d0,(REG_NOSHADOW).l	| C1627E
 	clr.b	(BIOS_MESS_BUSY-A5_BASE,a5)	| C16284
-	lea.l	(MonitorCauseTexts,pc),a1	| C16288
+	lea.l	(MonitorCauseTexts,pc),a1	| C16288  the cause text, then every register
 	move.w	(MonitorCause-A5_BASE,a5),d0	| C1628C
 	move.l	(a1,d0.w),(a0)+	| C16290
 	jsr	(MonitorShowRegisters,pc)	| C16294
 	move.b	d0,(REG_DIPSW).l	| C16298
-	clr.w	(MonitorCommand-A5_BASE,a5)	| C1629E
+	clr.w	(MonitorCommand-A5_BASE,a5)	| C1629E  command 0 and the default addresses ($100000, VRAM 0)
 	move.l	#WorkRamStart,(MonitorMemAddress-A5_BASE,a5)	| C162A2
 	move.l	#WorkRamStart,(MonitorEditAddress-A5_BASE,a5)	| C162AA
 	clr.l	(MonitorVramAddress-A5_BASE,a5)	| C162B2
 	clr.l	(MonitorEditVram-A5_BASE,a5)	| C162B6
 	clr.w	(MonitorRegisterIndex-A5_BASE,a5)	| C162BA
-	btst.b	#0x7,(MonitorSavedSr-A5_BASE,a5)	| C162BE
+	btst.b	#0x7,(MonitorSavedSr-A5_BASE,a5)	| C162BE  trace bit set in the saved SR: start on the TRACE command
 	beq.b	loc_C162CE	| C162C4
 	move.w	#0x5,(MonitorCommand).l	| C162C6
 loc_C162CE:
-	move.w	(MonitorCommand-A5_BASE,a5),d0	| C162CE
+	move.w	(MonitorCommand-A5_BASE,a5),d0	| C162CE  commands 2-4 (modify) read the current value first
 	cmpi.w	#0x2,d0	| C162D2
 	bcs.b	loc_C16310	| C162D6
 	cmpi.w	#0x5,d0	| C162D8
@@ -3580,10 +3580,10 @@ loc_C162F8:
 	nop	| C16306
 	move.w	(REG_VRAMRW).l,(MonitorValue-A5_BASE,a5)	| C16308
 loc_C16310:
-	clr.w	(MonitorDigit-A5_BASE,a5)	| C16310
+	clr.w	(MonitorDigit-A5_BASE,a5)	| C16310  cursor on the first digit, the digit count of this command
 	move.b	(MonitorDigitCount,pc,d0.w),(MonitorDigitLo-A5_BASE,a5)	| C16314
 	lsl.w	#0x2,d0	| C1631A
-	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1631C
+	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1631C  the command line and the command's name
 	move.l	#MonitorCommandLine,(a0)+	| C16320
 	move.l	(MonitorCommandTexts,pc,d0.w),(a0)+	| C16326
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1632A
@@ -3602,18 +3602,18 @@ MonitorCommandTexts:
 	dc.l	MonitorRunText
 | MonitorLoop [C] debug monitor main loop: waits for VBlank, MESS_OUT, reads the controllers; A selects the next of the 7 commands, other keys go to the command (MonitorCommandTable)
 MonitorLoop:
-	move.b	d0,(REG_DIPSW).l	| C16354
+	move.b	d0,(REG_DIPSW).l	| C16354  each pass: watchdog, interrupts acknowledged,
 	move.w	#0x7,(REG_IRQACK).l	| C1635A
 loc_C16362:
-	move.w	(REG_LSPCMODE).l,d0	| C16362
+	move.w	(REG_LSPCMODE).l,d0	| C16362  wait for the raster line counter (REG_LSPCMODE read) to reach the top
 	andi.w	#0x7F80,d0	| C16368
 	bne.b	loc_C16362	| C1636C
-	jsr	(MessOut,pc)	| C1636E
+	jsr	(MessOut,pc)	| C1636E  draw, then read the controllers itself
 	lea.l	(BiosWorkRam).l,a5	| C16372
 	addq.w	#0x1,(MonitorFrames-A5_BASE,a5)	| C16378
 	jsr	(ReadControllers,pc)	| C1637C
 	move.w	(MonitorCommand-A5_BASE,a5),d0	| C16380
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16384
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16384  A: the next command (7 in a loop)
 	btst.b	#0x4,d3	| C16388
 	beq.b	loc_C163A0	| C1638C
 	addq.w	#0x1,d0	| C1638E
@@ -3624,7 +3624,7 @@ loc_C16398:
 	move.w	d0,(MonitorCommand-A5_BASE,a5)	| C16398
 	bra.w	loc_C162CE	| C1639C
 loc_C163A0:
-	pea.l	(MonitorLoop,pc)	| C163A0
+	pea.l	(MonitorLoop,pc)	| C163A0  the other keys go to the current command
 	lsl.w	#0x2,d0	| C163A4
 	movea.l	(MonitorCommandTable,pc,d0.w),a0	| C163A6
 	jmp	(a0)	| C163AA
@@ -3639,41 +3639,41 @@ MonitorCommandTable:
 	dc.l	MonitorRun
 | MonitorDisplayMemory [C] command 0: Left/Right pick the digit, Up/Down change the address by MonitorAddressSteps, C dumps 8 lines of 8 bytes
 MonitorDisplayMemory:
-	lea.l	(MonitorMemAddressBytes-A5_BASE,a5),a1	| C163C8
+	lea.l	(MonitorMemAddressBytes-A5_BASE,a5),a1	| C163C8  the address as 6 hex digits
 	jsr	(MonitorPutAddress,pc)	| C163CC
-	jsr	(MonitorDrawDigitCursor,pc)	| C163D0
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C163D4
+	jsr	(MonitorDrawDigitCursor,pc)	| C163D0  the cursor under the selected digit
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C163D4  left/right: the digit (5 digits)
 	andi.b	#0xC,d3	| C163D8
 	beq.w	loc_C16400	| C163DC
-	moveq	#0x1,d2	| C163E0
+	moveq	#0x1,d2	| C163E0  right: +1
 	andi.b	#0x8,d3	| C163E2
 	bne.b	loc_C163EA	| C163E6
-	moveq	#-0x1,d2	| C163E8
+	moveq	#-0x1,d2	| C163E8  left: -1
 loc_C163EA:
 	add.w	(MonitorDigit-A5_BASE,a5),d2	| C163EA
-	bpl.b	loc_C163F2	| C163EE
+	bpl.b	loc_C163F2	| C163EE  below 0: the last digit
 	moveq	#0x4,d2	| C163F0
 loc_C163F2:
-	cmpi.w	#0x5,d2	| C163F2
+	cmpi.w	#0x5,d2	| C163F2  past the last: digit 0
 	bcs.b	loc_C163FA	| C163F6
 	moveq	#0x0,d2	| C163F8
 loc_C163FA:
 	move.w	d2,(MonitorDigit-A5_BASE,a5)	| C163FA
 	rts	| C163FE
 loc_C16400:
-	moveq	#0x3,d3	| C16400
+	moveq	#0x3,d3	| C16400  up/down: the address by that digit's step
 	and.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16402
 	beq.w	loc_C16442	| C16406
 	move.l	(MonitorMemAddress-A5_BASE,a5),d0	| C1640A
-	move.w	(MonitorDigit-A5_BASE,a5),d2	| C1640E
+	move.w	(MonitorDigit-A5_BASE,a5),d2	| C1640E  the step of the selected digit
 	lsl.w	#0x2,d2	| C16412
 	move.l	(MonitorAddressSteps,pc,d2.w),d2	| C16414
-	andi.b	#0x1,d3	| C16418
+	andi.b	#0x1,d3	| C16418  down: subtract
 	beq.b	loc_C16420	| C1641C
 	neg.l	d2	| C1641E
 loc_C16420:
 	add.l	d2,d0	| C16420
-	andi.l	#0xFFFFFF,d0	| C16422
+	andi.l	#0xFFFFFF,d0	| C16422  24-bit address
 	move.l	d0,(MonitorMemAddress-A5_BASE,a5)	| C16428
 	rts	| C1642C
 | MonitorAddressSteps [C] address steps per digit: $100000, $10000, $1000, $100, $40
@@ -3681,19 +3681,19 @@ MonitorAddressSteps:
 	dc.b	0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x40
 loc_C16442:
-	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C16442
+	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C16442  C: dump 8 lines of 8 bytes from the address
 	bne.b	loc_C1644C	| C16448
 	rts	| C1644A
 loc_C1644C:
 	movea.l	(MonitorMemAddress-A5_BASE,a5),a1	| C1644C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16450
 	clr.l	(a0)+	| C16454
-	move.l	#0x1F0FF,(a0)+	| C16456
+	move.l	#0x1F0FF,(a0)+	| C16456  inline list: bytes, end $FF; VRAM $7070
 	move.w	#0x2002,(a0)+	| C1645C
 	move.l	#0x37070,(a0)+	| C16460
 	moveq	#0x7,d7	| C16466
 loc_C16468:
-	move.w	#0x7,(a0)+	| C16468
+	move.w	#0x7,(a0)+	| C16468  each line: 4 words in hex
 	moveq	#0x3,d6	| C1646C
 loc_C1646E:
 	jsr	(PutHexByte,pc)	| C1646E
@@ -3701,7 +3701,7 @@ loc_C1646E:
 	move.b	#0x20,(a0)+	| C16476
 	dbra	d6,loc_C1646E	| C1647A
 	move.b	#0xFF,-0x1(a0)	| C1647E
-	move.l	#0x50001,(a0)+	| C16484
+	move.l	#0x50001,(a0)+	| C16484  command 5: next line
 	dbra	d7,loc_C16468	| C1648A
 	subq.l	#0x4,a0	| C1648E
 	clr.w	(a0)+	| C16490
@@ -3710,9 +3710,9 @@ loc_C1646E:
 | MonitorDisplayVram [C] command 1: like MonitorDisplayMemory on video RAM (REG_VRAMADDR / REG_VRAMRW)
 MonitorDisplayVram:
 	lea.l	(MonitorVramAddressBytes-A5_BASE,a5),a1	| C16498
-	jsr	(MonitorPutAddress,pc)	| C1649C
+	jsr	(MonitorPutAddress,pc)	| C1649C  the address as 6 hex digits
 	jsr	(MonitorDrawDigitCursor,pc)	| C164A0
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C164A4
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C164A4  left/right: digits 2-4 only (the VRAM address is 16 bits)
 	andi.b	#0xC,d3	| C164A8
 	beq.w	loc_C164D4	| C164AC
 	moveq	#0x1,d2	| C164B0
@@ -3721,38 +3721,38 @@ MonitorDisplayVram:
 	moveq	#-0x1,d2	| C164B8
 loc_C164BA:
 	add.w	(MonitorDigit-A5_BASE,a5),d2	| C164BA
-	cmpi.w	#0x1,d2	| C164BE
+	cmpi.w	#0x1,d2	| C164BE  below digit 2: digit 4
 	bne.b	loc_C164C6	| C164C2
 	moveq	#0x4,d2	| C164C4
 loc_C164C6:
-	cmpi.w	#0x5,d2	| C164C6
+	cmpi.w	#0x5,d2	| C164C6  past digit 4: digit 2
 	bcs.b	loc_C164CE	| C164CA
 	moveq	#0x2,d2	| C164CC
 loc_C164CE:
 	move.w	d2,(MonitorDigit-A5_BASE,a5)	| C164CE
 	rts	| C164D2
 loc_C164D4:
-	moveq	#0x3,d3	| C164D4
+	moveq	#0x3,d3	| C164D4  up/down: change the address, skipping $73E1-$7FFF and wrapping at $8580
 	and.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C164D6
 	beq.w	loc_C16536	| C164DA
 	move.l	(MonitorVramAddress-A5_BASE,a5),d0	| C164DE
 	move.w	(MonitorDigit-A5_BASE,a5),d2	| C164E2
 	lsl.w	#0x2,d2	| C164E6
-	move.l	(MonitorVramSteps,pc,d2.w),d2	| C164E8
+	move.l	(MonitorVramSteps,pc,d2.w),d2	| C164E8  the step of the selected digit
 	andi.b	#0x1,d3	| C164EC
 	beq.b	loc_C164F4	| C164F0
 	neg.l	d2	| C164F2
 loc_C164F4:
 	add.l	d2,d0	| C164F4
-	bmi.b	loc_C16516	| C164F6
-	cmpi.l	#0x8580,d0	| C164F8
+	bmi.b	loc_C16516	| C164F6  below 0: wrap to $8560
+	cmpi.l	#0x8580,d0	| C164F8  past the end of VRAM: 0
 	bcs.b	loc_C16504	| C164FE
 	moveq	#0x0,d0	| C16500
 	bra.b	loc_C1651C	| C16502
 loc_C16504:
-	cmpi.l	#0x8000,d0	| C16504
+	cmpi.l	#0x8000,d0	| C16504  high VRAM $8000-$857F: kept
 	bcc.b	loc_C1651C	| C1650A
-	cmpi.l	#0x73E1,d0	| C1650C
+	cmpi.l	#0x73E1,d0	| C1650C  the gap after the fix layer is skipped
 	bcc.b	loc_C164F4	| C16512
 	bra.b	loc_C1651C	| C16514
 loc_C16516:
@@ -3765,36 +3765,36 @@ MonitorVramSteps:
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x20
 loc_C16536:
-	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C16536
+	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C16536  C: dump 8 lines of 4 VRAM words
 	bne.b	loc_C16540	| C1653C
 	rts	| C1653E
 loc_C16540:
 	lea.l	(REG_VRAMRW).l,a1	| C16540
 	move.w	(MonitorVramAddressWord-A5_BASE,a5),d3	| C16546
-	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1654A
+	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1654A  MESS_OUT entry: pointer 0, inline commands
 	clr.l	(a0)+	| C1654E
 	move.l	#0x1F0FF,(a0)+	| C16550
 	move.w	#0x2002,(a0)+	| C16556
 	move.l	#0x37070,(a0)+	| C1655A
-	moveq	#0x7,d7	| C16560
+	moveq	#0x7,d7	| C16560  8 lines
 loc_C16562:
 	move.w	#0x7,(a0)+	| C16562
-	moveq	#0x3,d6	| C16566
+	moveq	#0x3,d6	| C16566  4 words per line, a space after each
 loc_C16568:
 	jsr	(MonitorPutVramWord,pc)	| C16568
 	addq.w	#0x1,d3	| C1656C
 	move.b	#0x20,(a0)+	| C1656E
 	dbra	d6,loc_C16568	| C16572
-	move.b	#0xFF,-0x1(a0)	| C16576
-	move.l	#0x50001,(a0)+	| C1657C
+	move.b	#0xFF,-0x1(a0)	| C16576  $FF instead of the last space ends the row
+	move.l	#0x50001,(a0)+	| C1657C  command 5: the next line
 	dbra	d7,loc_C16562	| C16582
-	subq.l	#0x4,a0	| C16586
+	subq.l	#0x4,a0	| C16586  command 0 instead of the last line feed
 	clr.w	(a0)+	| C16588
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C1658A
 	rts	| C1658E
 | MonitorPutVramWord [C] debug monitor DISPLAY V-RAM: reads the VRAM word at d3 and appends it as 4 hex digits
 MonitorPutVramWord:
-	move.w	d3,-0x2(a1)	| C16590
+	move.w	d3,-0x2(a1)	| C16590  VRAM address, then wait for the read
 	nop	| C16594
 	nop	| C16596
 	nop	| C16598
@@ -3806,18 +3806,18 @@ MonitorPutVramWord:
 	move.w	d2,d0	| C165A6
 | MonitorPutHexByte [C] appends the byte d0 as 2 hex digits (ByteToHex)
 MonitorPutHexByte:
-	jsr	(ByteToHex,pc)	| C165A8
+	jsr	(ByteToHex,pc)	| C165A8  two hex characters
 	move.b	d0,(a0)+	| C165AC
 	move.b	d1,(a0)+	| C165AE
 	rts	| C165B0
 | MonitorModifyMemory [C] command 2: address and value digits, C writes the value to memory (ran in MAME, monitor test build)
 MonitorModifyMemory:
 	lea.l	(MonitorEditAddressBytes-A5_BASE,a5),a1	| C165B2
-	jsr	(MonitorPutAddress,pc)	| C165B6
+	jsr	(MonitorPutAddress,pc)	| C165B6  address, then the value (MonitorPutValue)
 	moveq	#0x1,d7	| C165BA
 	jsr	(MonitorPutValue,pc)	| C165BC
 	jsr	(MonitorDrawDigitCursor,pc)	| C165C0
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C165C4
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C165C4  left/right over 10 digits: 6 address, 4 value
 	andi.b	#0xC,d3	| C165C8
 	beq.w	loc_C165F0	| C165CC
 	moveq	#0x1,d2	| C165D0
@@ -3827,33 +3827,33 @@ MonitorModifyMemory:
 loc_C165DA:
 	add.w	(MonitorDigit-A5_BASE,a5),d2	| C165DA
 	bpl.b	loc_C165E2	| C165DE
-	moveq	#0x9,d2	| C165E0
+	moveq	#0x9,d2	| C165E0  below 0: the last digit (9)
 loc_C165E2:
 	cmpi.w	#0xA,d2	| C165E2
 	bcs.b	loc_C165EA	| C165E6
-	moveq	#0x0,d2	| C165E8
+	moveq	#0x0,d2	| C165E8  past the last: digit 0
 loc_C165EA:
 	move.w	d2,(MonitorDigit-A5_BASE,a5)	| C165EA
 	rts	| C165EE
 loc_C165F0:
-	moveq	#0x3,d3	| C165F0
+	moveq	#0x3,d3	| C165F0  up/down: the address digits move the address (and reread the value),
 	and.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C165F2
 	beq.w	loc_C1665C	| C165F6
 	move.w	(MonitorDigit-A5_BASE,a5),d2	| C165FA
 	lsl.w	#0x2,d2	| C165FE
-	move.l	(MonitorMemorySteps,pc,d2.w),d2	| C16600
+	move.l	(MonitorMemorySteps,pc,d2.w),d2	| C16600  the step of the selected digit
 	andi.b	#0x1,d3	| C16604
 	beq.b	loc_C1660C	| C16608
 	neg.l	d2	| C1660A
 loc_C1660C:
-	cmpi.w	#0x6,(MonitorDigit-A5_BASE,a5)	| C1660C
+	cmpi.w	#0x6,(MonitorDigit-A5_BASE,a5)	| C1660C  a value digit: change the value instead
 	bcc.w	loc_C16656	| C16612
 	move.l	(MonitorEditAddress-A5_BASE,a5),d0	| C16616
 	add.l	d2,d0	| C1661A
 	andi.l	#0xFFFFFF,d0	| C1661C
 	move.l	d0,(MonitorEditAddress-A5_BASE,a5)	| C16622
 	movea.l	d0,a1	| C16626
-	move.w	(a1),(MonitorValue-A5_BASE,a5)	| C16628
+	move.w	(a1),(MonitorValue-A5_BASE,a5)	| C16628  read the value at the new address
 	rts	| C1662C
 | MonitorMemorySteps [C] MODIFY MEMORY: value added for each digit (6 address digits, then the value digits)
 MonitorMemorySteps:
@@ -3861,10 +3861,10 @@ MonitorMemorySteps:
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x02,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
 loc_C16656:
-	add.w	d2,(MonitorValue-A5_BASE,a5)	| C16656
+	add.w	d2,(MonitorValue-A5_BASE,a5)	| C16656  the value digits change the value
 	rts	| C1665A
 loc_C1665C:
-	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C1665C
+	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C1665C  C: write the value
 	beq.b	loc_C1666C	| C16662
 	movea.l	(MonitorEditAddress-A5_BASE,a5),a1	| C16664
 	move.w	(MonitorValue-A5_BASE,a5),(a1)	| C16668
@@ -3872,18 +3872,18 @@ loc_C1666C:
 	rts	| C1666C
 | MonitorModifyVram [C] command 3: address and value digits, C writes the value to video RAM (ran in MAME, monitor test build)
 MonitorModifyVram:
-	lea.l	(MonitorEditVramBytes-A5_BASE,a5),a1	| C1666E
+	lea.l	(MonitorEditVramBytes-A5_BASE,a5),a1	| C1666E  the VRAM address, then the value word
 	jsr	(MonitorPutAddress,pc)	| C16672
 	moveq	#0x1,d7	| C16676
 	jsr	(MonitorPutValue,pc)	| C16678
 	jsr	(MonitorDrawDigitCursor,pc)	| C1667C
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16680
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C16680  left/right through MonitorVramDigitMoves
 	andi.b	#0xC,d3	| C16684
 	beq.w	loc_C166B6	| C16688
-	moveq	#0x0,d2	| C1668C
+	moveq	#0x0,d2	| C1668C  right: the table's first half
 	andi.b	#0x8,d3	| C1668E
 	bne.b	loc_C16696	| C16692
-	moveq	#0xA,d2	| C16694
+	moveq	#0xA,d2	| C16694  left: its second half
 loc_C16696:
 	add.w	(MonitorDigit-A5_BASE,a5),d2	| C16696
 	move.b	(MonitorVramDigitMoves,pc,d2.w),(MonitorDigitLo-A5_BASE,a5)	| C1669A
@@ -3898,17 +3898,17 @@ loc_C166B6:
 	beq.w	loc_C16752	| C166BC
 	move.w	(MonitorDigit-A5_BASE,a5),d2	| C166C0
 	lsl.w	#0x2,d2	| C166C4
-	move.l	(MonitorModifyVramSteps,pc,d2.w),d2	| C166C6
+	move.l	(MonitorModifyVramSteps,pc,d2.w),d2	| C166C6  the step of the selected digit
 	andi.b	#0x1,d3	| C166CA
 	beq.b	loc_C166D2	| C166CE
 	neg.l	d2	| C166D0
 loc_C166D2:
-	cmpi.w	#0x6,(MonitorDigit-A5_BASE,a5)	| C166D2
+	cmpi.w	#0x6,(MonitorDigit-A5_BASE,a5)	| C166D2  address digits: the VRAM address, skipping $7400-$7FFF, wrapping at $8580
 	bcc.w	loc_C1674C	| C166D8
 	move.l	(MonitorEditVram-A5_BASE,a5),d0	| C166DC
 loc_C166E0:
 	add.l	d2,d0	| C166E0
-	bmi.b	loc_C16702	| C166E2
+	bmi.b	loc_C16702	| C166E2  below 0: the last word, $857F
 	cmpi.l	#0x8580,d0	| C166E4
 	bcs.b	loc_C166F0	| C166EA
 	moveq	#0x0,d0	| C166EC
@@ -3922,9 +3922,9 @@ loc_C166F0:
 loc_C16702:
 	move.l	#0x857F,d0	| C16702
 loc_C16708:
-	move.l	d0,(MonitorEditVram-A5_BASE,a5)	| C16708
+	move.l	d0,(MonitorEditVram-A5_BASE,a5)	| C16708  and its current value
 	move.w	d0,(REG_VRAMADDR).l	| C1670C
-	nop	| C16712
+	nop	| C16712  waits for the VRAM
 	nop	| C16714
 	nop	| C16716
 	nop	| C16718
@@ -3936,10 +3936,10 @@ MonitorModifyVramSteps:
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00
 	dc.b	0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
 loc_C1674C:
-	add.w	d2,(MonitorValue-A5_BASE,a5)	| C1674C
+	add.w	d2,(MonitorValue-A5_BASE,a5)	| C1674C  value digits: the value
 	rts	| C16750
 loc_C16752:
-	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C16752
+	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C16752  C: write it
 	beq.b	loc_C1676A	| C16758
 	move.w	(MonitorEditVramWord-A5_BASE,a5),(REG_VRAMADDR).l	| C1675A
 	move.w	(MonitorValue-A5_BASE,a5),(REG_VRAMRW).l	| C16762
@@ -3947,31 +3947,31 @@ loc_C1676A:
 	rts	| C1676A
 | MonitorModifyRegister [C] command 4: picks a saved register (d0-a7, SR, PC) and changes it in the save area at $10FD00 (ran in MAME, monitor test build)
 MonitorModifyRegister:
-	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1676C
+	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1676C  MESS_OUT: pointer 0, command 1 (format $F0FF),
 	clr.l	(a0)+	| C16770
 	move.l	#0x1F0FF,(a0)+	| C16772
-	move.l	#0x370CE,(a0)+	| C16778
-	move.w	#0x7,(a0)+	| C1677E
-	move.w	(MonitorRegisterIndex-A5_BASE,a5),d0	| C16782
+	move.l	#0x370CE,(a0)+	| C16778  command 3: VRAM $70CE,
+	move.w	#0x7,(a0)+	| C1677E  command 7: inline text
+	move.w	(MonitorRegisterIndex-A5_BASE,a5),d0	| C16782  the register name, blinking (every 16 frames) while no digit is selected
 	btst.b	#0x4,(MonitorFramesLo-A5_BASE,a5)	| C16786
 	beq.b	loc_C16796	| C1678C
 	tst.w	(MonitorDigit-A5_BASE,a5)	| C1678E
 	bne.b	loc_C16796	| C16792
-	moveq	#0x13,d0	| C16794
+	moveq	#0x13,d0	| C16794  entry 19: blank
 loc_C16796:
 	lsl.w	#0x2,d0	| C16796
 	lea.l	(MonitorRegisterNames,pc),a2	| C16798
 	nop	| C1679C
-	move.l	(a2,d0.w),(a0)+	| C1679E
+	move.l	(a2,d0.w),(a0)+	| C1679E  the name's text
 	clr.w	(a0)+	| C167A2
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C167A4
 	moveq	#0x3,d7	| C167A8
-	jsr	(MonitorPutValue,pc)	| C167AA
+	jsr	(MonitorPutValue,pc)	| C167AA  the 4 bytes of the value
 	tst.w	(MonitorDigit-A5_BASE,a5)	| C167AE
 	beq.b	loc_C167B8	| C167B2
 	jsr	(MonitorDrawDigitCursor,pc)	| C167B4
 loc_C167B8:
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C167B8
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C167B8  left/right through MonitorRegisterDigitMoves
 	andi.b	#0xC,d3	| C167BC
 	beq.w	loc_C167F6	| C167C0
 	moveq	#0x0,d0	| C167C4
@@ -3987,27 +3987,27 @@ MonitorRegisterDigitMoves:
 	dc.b	0x06,0x00,0x00,0x00,0x00,0x00,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x00,0x0D,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C
 loc_C167F6:
-	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C167F6
+	move.b	(BIOS_P1REPEAT-A5_BASE,a5),d3	| C167F6  up/down on the name: the previous or next register (19: d0-a7, SR, PC ...)
 	andi.b	#0x3,d3	| C167FA
 	beq.w	loc_C1686C	| C167FE
 	move.w	(MonitorDigit-A5_BASE,a5),d0	| C16802
 	bne.w	loc_C16856	| C16806
-	moveq	#0x1,d1	| C1680A
+	moveq	#0x1,d1	| C1680A  down: +1, up: -1
 	btst.b	#0x0,d3	| C1680C
 	bne.b	loc_C16814	| C16810
 	moveq	#-0x1,d1	| C16812
 loc_C16814:
 	add.w	(MonitorRegisterIndex-A5_BASE,a5),d1	| C16814
-	bpl.b	loc_C1681C	| C16818
+	bpl.b	loc_C1681C	| C16818  below 0: the last register (18)
 	moveq	#0x12,d1	| C1681A
 loc_C1681C:
-	cmpi.w	#0x13,d1	| C1681C
+	cmpi.w	#0x13,d1	| C1681C  past 18: register 0
 	bcs.b	loc_C16824	| C16820
 	moveq	#0x0,d1	| C16822
 loc_C16824:
 	move.w	d1,(MonitorRegisterIndex-A5_BASE,a5)	| C16824
 	lsl.w	#0x2,d1	| C16828
-	lea.l	(MonitorRegs-A5_BASE,a5),a4	| C1682A
+	lea.l	(MonitorRegs-A5_BASE,a5),a4	| C1682A  the saved value of that register
 	move.l	(a4,d1.w),(MonitorValue-A5_BASE,a5)	| C1682E
 	rts	| C16834
 | MonitorRegisterSteps [C] MODIFY REGISTER: value added for each value digit
@@ -4015,7 +4015,7 @@ MonitorRegisterSteps:
 	dc.b	0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00
 	dc.b	0x00,0x00,0x10,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x01
 loc_C16856:
-	subq.w	#0x6,d0	| C16856
+	subq.w	#0x6,d0	| C16856  on a digit: the value by that digit's step
 	lsl.w	#0x2,d0	| C16858
 	move.l	(MonitorRegisterSteps,pc,d0.w),d1	| C1685A
 	btst.b	#0x0,d3	| C1685E
@@ -4025,7 +4025,7 @@ loc_C16866:
 	add.l	d1,(MonitorValue-A5_BASE,a5)	| C16866
 	rts	| C1686A
 loc_C1686C:
-	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C1686C
+	btst.b	#0x6,(BIOS_P1REPEAT-A5_BASE,a5)	| C1686C  C: the value into the save area, registers shown again
 	beq.b	loc_C16890	| C16872
 	jsr	(MessOut,pc)	| C16874
 	move.w	(MonitorRegisterIndex-A5_BASE,a5),d0	| C16878
@@ -4049,17 +4049,17 @@ MonitorTraceCommand:
 	bne.b	loc_C168EC	| C168E8
 	rts	| C168EA
 loc_C168EC:
-	bset.b	#0x7,(MonitorSavedSr-A5_BASE,a5)	| C168EC
+	bset.b	#0x7,(MonitorSavedSr-A5_BASE,a5)	| C168EC  C: trace bit on in the saved SR, then return
 | MonitorReturn [C] restores the fix layer palette, USP, SP, the exception frame and d0-a6 from the save area, then rte
 MonitorReturn:
-	jsr	(FixClear).l	| C168F2
+	jsr	(FixClear).l	| C168F2  fix layer cleared, colour back, USP and stack,
 	move.l	(MonitorSavedColour-A5_BASE,a5),(0x4001E2).l	| C168F8
 	movea.l	(MonitorSavedUsp-A5_BASE,a5),a3	| C16900
 	move	a3,usp	| C16904
 	movea.l	(MonitorSavedSsp-A5_BASE,a5),a7	| C16906
-	move.l	(MonitorSavedPc-A5_BASE,a5),-(a7)	| C1690A
+	move.l	(MonitorSavedPc-A5_BASE,a5),-(a7)	| C1690A  a new exception frame from the saved PC and SR,
 	move.w	(MonitorSavedSr-A5_BASE,a5),-(a7)	| C1690E
-	movem.l	(MonitorRegs).l,d0-d7/a0-a6	| C16912
+	movem.l	(MonitorRegs).l,d0-d7/a0-a6	| C16912  the registers, and back to the program
 	rte	| C1691A
 | MonitorRun [C] command 6: C returns from the exception (MonitorReturn)
 MonitorRun:
@@ -4068,16 +4068,16 @@ MonitorRun:
 	rts	| C16924
 | MonitorDrawDigitCursor [C] blinks a cursor under the digit being edited (MonitorDigitCursorPositions)
 MonitorDrawDigitCursor:
-	btst.b	#0x4,(MonitorFramesLo-A5_BASE,a5)	| C16926
+	btst.b	#0x4,(MonitorFramesLo-A5_BASE,a5)	| C16926  every 16 frames: a space over the digit (blink)
 	beq.b	loc_C16956	| C1692C
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1692E
-	clr.l	(a0)+	| C16932
+	clr.l	(a0)+	| C16932  MESS_OUT: pointer 0, format,
 	move.l	#0x1F0FF,(a0)+	| C16934
-	move.w	#0x3,(a0)+	| C1693A
+	move.w	#0x3,(a0)+	| C1693A  command 3: VRAM address of the digit,
 	move.w	(MonitorDigit-A5_BASE,a5),d0	| C1693E
 	add.w	d0,d0	| C16942
 	move.w	(MonitorDigitCursorPositions,pc,d0.w),(a0)+	| C16944
-	move.w	#0x7,(a0)+	| C16948
+	move.w	#0x7,(a0)+	| C16948  command 7: a space, $FF, command 0
 	move.l	#0x20FF0000,(a0)+	| C1694C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16952
 loc_C16956:
@@ -4090,29 +4090,29 @@ MonitorDigitCursorPositions:
 	dc.b	0x8E,0x72,0xAE
 | MonitorShowRegisters [C] the register dump: d0-d7, a0-a7, then SR and PC of the exception
 MonitorShowRegisters:
-	clr.l	(a0)+	| C16974
+	clr.l	(a0)+	| C16974  pointer 0, format, autoincrement $20 (one column right),
 	move.l	#0x1F0FF,(a0)+	| C16976
 	move.w	#0x2002,(a0)+	| C1697C
-	move.l	#0x37067,(a0)+	| C16980
+	move.l	#0x37067,(a0)+	| C16980  VRAM $7067, inline text
 	move.w	#0x7,(a0)+	| C16986
-	lea.l	(MonitorRegs).l,a1	| C1698A
+	lea.l	(MonitorRegs).l,a1	| C1698A  first line: d0-d3
 	moveq	#0x3,d7	| C16990
 loc_C16992:
-	jsr	(PutHexByte,pc)	| C16992
+	jsr	(PutHexByte,pc)	| C16992  4 bytes = 8 hex digits per register
 	jsr	(PutHexByte,pc)	| C16996
 	jsr	(PutHexByte,pc)	| C1699A
 	jsr	(PutHexByte,pc)	| C1699E
-	move.b	#0x20,(a0)+	| C169A2
+	move.b	#0x20,(a0)+	| C169A2  a space between registers
 	dbra	d7,loc_C16992	| C169A6
-	move.b	#0xFF,-0x1(a0)	| C169AA
+	move.b	#0xFF,-0x1(a0)	| C169AA  $FF ends the row
 	clr.w	(a0)+	| C169B0
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C169B2
-	jsr	(MessOut,pc)	| C169B6
+	jsr	(MessOut,pc)	| C169B6  draw at once (interrupts may be off)
 	lea.l	(MessBuffer-A5_BASE,a5),a0	| C169BA
 	clr.l	(a0)+	| C169BE
 	move.l	#0x1F0FF,(a0)+	| C169C0
 	move.w	#0x2002,(a0)+	| C169C6
-	move.l	#0x37068,(a0)+	| C169CA
+	move.l	#0x37068,(a0)+	| C169CA  then three lines of 4 registers from d4, then SR and PC
 	lea.l	(MonitorRegsD4-A5_BASE,a5),a1	| C169D0
 	moveq	#0x2,d7	| C169D4
 loc_C169D6:
@@ -4126,9 +4126,9 @@ loc_C169DC:
 	move.b	#0x20,(a0)+	| C169EC
 	dbra	d6,loc_C169DC	| C169F0
 	move.b	#0xFF,-0x1(a0)	| C169F4
-	move.l	#0x50001,(a0)+	| C169FA
+	move.l	#0x50001,(a0)+	| C169FA  command 5: next line
 	dbra	d7,loc_C169D6	| C16A00
-	move.w	#0x7,(a0)+	| C16A04
+	move.w	#0x7,(a0)+	| C16A04  last line: two longs (SR and PC) and a word
 	jsr	(PutHexByte,pc)	| C16A08
 	jsr	(PutHexByte,pc)	| C16A0C
 	jsr	(PutHexByte,pc)	| C16A10
@@ -4141,20 +4141,20 @@ loc_C169DC:
 	move.b	#0x20,(a0)+	| C16A2C
 	jsr	(PutHexByte,pc)	| C16A30
 	jsr	(PutHexByte,pc)	| C16A34
-	move.w	#0xFF00,(a0)+	| C16A38
+	move.w	#0xFF00,(a0)+	| C16A38  $FF ends the row, command 0 ends the list
 	clr.w	(a0)+	| C16A3C
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16A3E
-	jsr	(MessOut,pc)	| C16A42
+	jsr	(MessOut,pc)	| C16A42  draw at once
 	rts	| C16A46
 | MonitorPutAddress [C] three hex bytes of the edited address
 MonitorPutAddress:
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16A48
-	clr.l	(a0)+	| C16A4C
+	clr.l	(a0)+	| C16A4C  pointer 0, format, autoincrement,
 	move.l	#0x1F0FF,(a0)+	| C16A4E
 	move.w	#0x2002,(a0)+	| C16A54
-	move.l	#0x3708E,(a0)+	| C16A58
+	move.l	#0x3708E,(a0)+	| C16A58  VRAM $708E: 3 bytes in hex
 	move.w	#0x7,(a0)+	| C16A5E
-	moveq	#0x2,d2	| C16A62
+	moveq	#0x2,d2	| C16A62  3 bytes
 loc_C16A64:
 	jsr	(PutHexByte,pc)	| C16A64
 	dbra	d2,loc_C16A64	| C16A68
@@ -4164,21 +4164,21 @@ loc_C16A64:
 | MonitorPutValue [C] d7+1 hex bytes of the edited value
 MonitorPutValue:
 	lea.l	(MonitorValue-A5_BASE,a5),a1	| C16A78
-	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16A7C
+	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C16A7C  pointer 0, format, autoincrement,
 	clr.l	(a0)+	| C16A80
 	move.l	#0x1F0FF,(a0)+	| C16A82
 	move.w	#0x2002,(a0)+	| C16A88
-	move.l	#0x371CE,(a0)+	| C16A8C
+	move.l	#0x371CE,(a0)+	| C16A8C  VRAM $71CE: the value in hex
 	move.w	#0x7,(a0)+	| C16A92
 loc_C16A96:
-	jsr	(PutHexByte,pc)	| C16A96
+	jsr	(PutHexByte,pc)	| C16A96  d7+1 bytes
 	dbra	d7,loc_C16A96	| C16A9A
 	move.l	#0xFF000000,(a0)+	| C16A9E
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C16AA4
 	rts	| C16AA8
 | PutHexByte [C] reads a byte at (a1)+ and appends it at (a0)+ as two hex characters
 PutHexByte:
-	move.b	(a1)+,d0	| C16AAA
+	move.b	(a1)+,d0	| C16AAA  next byte
 	jsr	(ByteToHex,pc)	| C16AAC
 	move.b	d0,(a0)+	| C16AB0
 	move.b	d1,(a0)+	| C16AB2

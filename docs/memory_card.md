@@ -43,11 +43,11 @@ addresses per byte):
 
 A 2 KB card is therefore full after 27 one-block saves, as seen in MAME (`card_full_*`) (C).
 
-**Header** (`CardFormat`, 8-bit card, byte offsets): 0-9 zero; 10-11 the card size; 12 the word
-`CardFormatVersion` at `$C11000` in the system ROM (the word `$0000`; the name is a guess); 13 and 14 the
+**Header** (`CardFormat`, 8-bit card, byte offsets): 0-9 zero; 10-11 the card size; 12 the low byte
+of `CardFormatHeaderWord` at `$C11000` in the system ROM (the word `$0000`, at header +`$18`; on a
+16-bit card that word's high byte becomes `$FF` once a user name is saved); 13 and 14 the
 checksums of the two FAT copies; 16-31 the user name (16 characters, spaces when formatted; CARD
-functions 6/7); then the text NEO-GEO and the system ROM's region byte (C for what is written, I for
-the meaning of the version word).
+functions 6/7); then the text NEO-GEO and the system ROM's region byte (C).
 
 **Directory**: one entry per save; on the 8-bit card 4 bytes: file number (`$FF` = free entry), NGH
 high and low byte (the game's number), then the first block (I: from the search and save code).

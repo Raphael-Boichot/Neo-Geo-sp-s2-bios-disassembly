@@ -219,24 +219,24 @@ WaitRtcPulse:
 	rts	| C11DAE
 | PowerOnSetup [C] after the power-on tests: clears the slot-mode fields, reads the calendar (start of the hour clock), on a new date advances the book keeping day (and month) rings, sets the slot count (SlotCount: 2, 4 or 6 from REG_SYSTYPE and REG_STATUS_A), checks the Z80, scans the slots and merges the result into SlotTable; on a new day BookNewDayPerGame
 PowerOnSetup:
-	lea.l	(BramA4Base).l,a4	| C11DB0
+	lea.l	(BramA4Base).l,a4	| C11DB0  a4: backup RAM variables, a5: work RAM
 	lea.l	(BiosWorkRam).l,a5	| C11DB6
-	move.b	#0xFF,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11DBC
+	move.b	#0xFF,(BIOS_FRAME_SKIP-A5_BASE,a5)	| C11DBC  no start checks during the boot
 	move.b	d0,(REG_SRAMUNLOCK).l	| C11DC2
-	move.w	#0xFFFF,(NeoClnSlot-A4_BASE,a4)	| C11DC8
+	move.w	#0xFFFF,(NeoClnSlot-A4_BASE,a4)	| C11DC8  no NEO-CLN cartridge seen yet
 	moveq	#0x0,d0	| C11DCE
-	move.w	d0,(SlotNumberMode-A4_BASE,a4)	| C11DD0
+	move.w	d0,(SlotNumberMode-A4_BASE,a4)	| C11DD0  slot-number mode off, play time 0
 	move.l	d0,(PlayTimeSeconds-A4_BASE,a4)	| C11DD4
 	move.l	d0,(CoinInputsPrevious-A4_BASE,a4)	| C11DD8
-	move.b	#0x3B,(PlayTimeFrames-A4_BASE,a4)	| C11DDC
-	lea.l	(CoinCounts-A4_BASE,a4),a0	| C11DE2
+	move.b	#0x3B,(PlayTimeFrames-A4_BASE,a4)	| C11DDC  60 frames per play-time second
+	lea.l	(CoinCounts-A4_BASE,a4),a0	| C11DE2  coin counters and pending counter pulses cleared
 	move.w	#0x15,d7	| C11DE6
 loc_C11DEA:
 	move.b	d0,(a0)+	| C11DEA
 	dbra	d7,loc_C11DEA	| C11DEC
-	jsr	(ReadCalendar,pc)	| C11DF0
-	move.l	(BIOS_HOUR-A5_BASE,a5),(ClockHour4-A4_BASE,a4)	| C11DF4
-	move.b	#0x1,(NewDateFlag-A5_BASE,a5)	| C11DFA
+	jsr	(ReadCalendar,pc)	| C11DF0  the date and time from the calendar chip
+	move.l	(BIOS_HOUR-A5_BASE,a5),(ClockHour4-A4_BASE,a4)	| C11DF4  hour, minute, second start the software clock
+	move.b	#0x1,(NewDateFlag-A5_BASE,a5)	| C11DFA  a new date unless year, month, day equal the last boot's
 	lea.l	(BIOS_YEAR-A5_BASE,a5),a0	| C11E00
 	lea.l	(LastBootDate-A4_BASE,a4),a1	| C11E04
 	moveq	#0x2,d7	| C11E08
@@ -247,42 +247,42 @@ loc_C11E0A:
 	clr.b	(NewDateFlag-A5_BASE,a5)	| C11E12
 	bra.w	loc_C11E8C	| C11E16
 loc_C11E1A:
-	move.b	(LastBootMonth-A4_BASE,a4),(a5)	| C11E1A
-	move.l	(BIOS_YEAR-A5_BASE,a5),(LastBootDate-A4_BASE,a4)	| C11E1E
-	move.b	(BookDayIndex-A4_BASE,a4),d0	| C11E24
+	move.b	(LastBootMonth-A4_BASE,a4),(a5)	| C11E1A  new date: keep the old month at (a5) for the month test below,
+	move.l	(BIOS_YEAR-A5_BASE,a5),(LastBootDate-A4_BASE,a4)	| C11E1E  store today as the last boot date
+	move.b	(BookDayIndex-A4_BASE,a4),d0	| C11E24  next record of the 36-day rings
 	addq.b	#0x1,d0	| C11E28
 	cmpi.b	#0x24,d0	| C11E2A
 	bcs.b	loc_C11E32	| C11E2E
 	moveq	#0x0,d0	| C11E30
 loc_C11E32:
 	move.b	d0,(BookDayIndex-A4_BASE,a4)	| C11E32
-	lea.l	(BookPlayDays-A4_BASE,a4),a0	| C11E36
+	lea.l	(BookPlayDays-A4_BASE,a4),a0	| C11E36  today's CABINET/PLAY and CABINET/COIN records cleared and dated
 	jsr	(BookClearDatedRecord,pc)	| C11E3A
 	lea.l	(BookCoinDays-A4_BASE,a4),a0	| C11E3E
 	move.b	(BookDayIndex-A4_BASE,a4),d0	| C11E42
 	jsr	(BookClearDatedRecord,pc)	| C11E46
 	lea.l	(a0,d0.w),a0	| C11E4A
-	move.l	a0,(BookTodayPtr-A4_BASE,a4)	| C11E4E
-	move.b	(LastBootMonth-A4_BASE,a4),d0	| C11E52
+	move.l	a0,(BookTodayPtr-A4_BASE,a4)	| C11E4E  today's CABINET/COIN record
+	move.b	(LastBootMonth-A4_BASE,a4),d0	| C11E52  a new month as well?
 	cmp.b	(a5),d0	| C11E56
 	beq.b	loc_C11E8C	| C11E58
-	jsr	(BcdToBinary,pc)	| C11E5A
+	jsr	(BcdToBinary,pc)	| C11E5A  records are by month 1-12: index month - 1
 	subq.b	#0x1,d0	| C11E5E
 	lsl.w	#0x4,d0	| C11E60
-	lea.l	(BookPlayMonths-A4_BASE,a4),a0	| C11E62
+	lea.l	(BookPlayMonths-A4_BASE,a4),a0	| C11E62  this month's CABINET/PLAY and CABINET/COIN records cleared
 	jsr	(BookClearRecord,pc)	| C11E66
 	lea.l	(BookCoinMonths-A4_BASE,a4),a0	| C11E6A
 	jsr	(BookClearRecord,pc)	| C11E6E
 	lea.l	(a0,d0.w),a0	| C11E72
 	move.l	a0,(BookMonthPtr-A4_BASE,a4)	| C11E76
-	lea.l	(BookGameMonths-A4_BASE,a4),a0	| C11E7A
+	lea.l	(BookGameMonths-A4_BASE,a4),a0	| C11E7A  and this month's record of each of the 8 games
 	moveq	#0x7,d7	| C11E7E
 loc_C11E80:
 	jsr	(BookClearRecord,pc)	| C11E80
 	addi.w	#0xC0,d0	| C11E84
 	dbra	d7,loc_C11E80	| C11E88
 loc_C11E8C:
-	lea.l	(ScanSlotTable-A5_BASE,a5),a3	| C11E8C
+	lea.l	(ScanSlotTable-A5_BASE,a5),a3	| C11E8C  the scan table: 8 entries $0000FFFF, and 8 cleared longs after it
 	movea.l	a3,a0	| C11E90
 	move.l	#0xFFFF,d0	| C11E92
 	moveq	#0x7,d7	| C11E98
@@ -290,7 +290,7 @@ loc_C11E9A:
 	clr.l	0x20(a0)	| C11E9A
 	move.l	d0,(a0)+	| C11E9E
 	dbra	d7,loc_C11E9A	| C11EA0
-	moveq	#0x2,d4	| C11EA4
+	moveq	#0x2,d4	| C11EA4  slot count: 2, or 4 / 6 when REG_SYSTYPE bit 6 is set (REG_STATUS_A bit 5 chooses)
 	move.b	(REG_SYSTYPE).l,d0	| C11EA6
 	btst.b	#0x6,d0	| C11EAC
 	beq.b	loc_C11EC2	| C11EB0
@@ -301,40 +301,40 @@ loc_C11E9A:
 	moveq	#0x4,d4	| C11EC0
 loc_C11EC2:
 	move.b	d4,(SlotCount-A4_BASE,a4)	| C11EC2
-	lsl.w	#0x2,d4	| C11EC6
-	jsr	(Z80Check,pc)	| C11EC8
-	move.b	#0x0,(REG_SLOT).l	| C11ECC
+	lsl.w	#0x2,d4	| C11EC6  x 4: the scan table offset limit
+	jsr	(Z80Check,pc)	| C11EC8  the Z80 answers sound command 1 (boot error 8 otherwise)
+	move.b	#0x0,(REG_SLOT).l	| C11ECC  slot 0 and the cartridge fix ROM to start the scan
 	move.b	d0,(REG_CRTFIX).l	| C11ED4
-	jsr	(ScanSlots,pc)	| C11EDA
-	move.b	d0,(REG_BRDFIX).l	| C11EDE
+	jsr	(ScanSlots,pc)	| C11EDA  every slot: NGH and the eyecatcher slot
+	move.b	d0,(REG_BRDFIX).l	| C11EDE  board fix ROM back
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C11EE4
 	moveq	#0x0,d4	| C11EE8
 	move.b	(SlotCount-A4_BASE,a4),d4	| C11EEA
 	add.w	d4,d4	| C11EEE
 	add.w	d4,d4	| C11EF0
-	jsr	(SlotClearDuplicates,pc)	| C11EF2
-	jsr	(SlotListRemoved,pc)	| C11EF6
-	jsr	(SlotKeepOuterEntries,pc)	| C11EFA
-	jsr	(SlotCopyMovedSettings,pc)	| C11EFE
-	jsr	(SlotTableStore,pc)	| C11F02
-	jsr	(SlotDateNewGames,pc)	| C11F06
-	tst.b	(NewDateFlag-A5_BASE,a5)	| C11F0A
+	jsr	(SlotClearDuplicates,pc)	| C11EF2  merge the scan with the stored slot table:
+	jsr	(SlotListRemoved,pc)	| C11EF6  games no longer in a slot,
+	jsr	(SlotKeepOuterEntries,pc)	| C11EFA  entries past the slot count,
+	jsr	(SlotCopyMovedSettings,pc)	| C11EFE  games that moved to another slot,
+	jsr	(SlotTableStore,pc)	| C11F02  the new table,
+	jsr	(SlotDateNewGames,pc)	| C11F06  and the date of each new game
+	tst.b	(NewDateFlag-A5_BASE,a5)	| C11F0A  new date: each game's day ring moves on
 	beq.b	loc_C11F14	| C11F0E
 	jsr	(BookNewDayPerGame,pc)	| C11F10
 loc_C11F14:
-	move.b	(ClockMinute-A4_BASE,a4),d0	| C11F14
+	move.b	(ClockMinute-A4_BASE,a4),d0	| C11F14  the software clock in binary: minute and second,
 	jsr	(BcdToBinary,pc)	| C11F18
 	move.b	d0,(ClockMinute-A4_BASE,a4)	| C11F1C
 	move.b	(ClockSecond-A4_BASE,a4),d0	| C11F20
 	jsr	(BcdToBinary,pc)	| C11F24
 	move.b	d0,(ClockSecond-A4_BASE,a4)	| C11F28
-	move.b	(ClockHour4-A4_BASE,a4),d0	| C11F2C
+	move.b	(ClockHour4-A4_BASE,a4),d0	| C11F2C  and hour x 4 (an index into the per-hour counters)
 	jsr	(BcdToBinary,pc)	| C11F30
 	lsl.b	#0x2,d0	| C11F34
 	move.b	d0,(ClockHour4-A4_BASE,a4)	| C11F36
-	move.b	#0x3C,(ClockFrames-A4_BASE,a4)	| C11F3A
-	move.b	#0x0,(BookSlot-A4_BASE,a4)	| C11F40
-	move.b	d0,(REG_SRAMLOCK).l	| C11F46
+	move.b	#0x3C,(ClockFrames-A4_BASE,a4)	| C11F3A  60 frames to the next second
+	move.b	#0x0,(BookSlot-A4_BASE,a4)	| C11F40  the init pass starts at slot 0
+	move.b	d0,(REG_SRAMLOCK).l	| C11F46  backup RAM locked, board fix and system vectors
 	move.b	d0,(REG_BRDFIX).l	| C11F4C
 	move.b	d0,(REG_SWPBIOS).l	| C11F52
 	rts	| C11F58
@@ -417,17 +417,17 @@ loc_C1203E:
 	rts	| C12042
 | SlotClearDuplicates [C] unless SlotNumberMode: clears the later slots holding the same NGH as an earlier one (NoGoIdText keeps duplicates, scenario nogo_cartridge)
 SlotClearDuplicates:
-	tst.w	(SlotNumberMode-A4_BASE,a4)	| C12044
+	tst.w	(SlotNumberMode-A4_BASE,a4)	| C12044  slot-number mode keeps duplicates
 	bne.w	loc_C12072	| C12048
 	moveq	#0x0,d7	| C1204C
-	move.w	d4,d2	| C1204E
+	move.w	d4,d2	| C1204E  d7: each slot, d1: each later slot
 	subq.w	#0x4,d2	| C12050
 loc_C12052:
-	move.w	(a3,d7.w),d0	| C12052
+	move.w	(a3,d7.w),d0	| C12052  empty slot: next
 	beq.w	loc_C1206C	| C12056
 	move.w	d7,d1	| C1205A
 loc_C1205C:
-	cmp.w	0x4(a3,d1.w),d0	| C1205C
+	cmp.w	0x4(a3,d1.w),d0	| C1205C  the same NGH in a later slot: drop that one
 	bne.b	loc_C12066	| C12060
 	clr.w	0x4(a3,d1.w)	| C12062
 loc_C12066:
@@ -442,49 +442,49 @@ loc_C12072:
 	rts	| C12072
 | SlotListRemoved [C] lists in RemovedGames (8 entries of 8 bytes) the games of the stored SlotTable that are no longer in any slot; ran with the slots_* chain: League Bowling in place of Sengoku 2 lists Sengoku 2 here
 SlotListRemoved:
-	lea.l	(RemovedGames-A4_BASE,a4),a0	| C12074
+	lea.l	(RemovedGames-A4_BASE,a4),a0	| C12074  8 entries: NGH $0000, index $FFFF, date 0
 	moveq	#0x7,d7	| C12078
 loc_C1207A:
-	move.l	#0xFFFF,(a0)+	| C1207A
+	move.l	#0xFFFF,(a0)+	| C1207A  clear all 8 entries first
 	clr.l	(a0)+	| C12080
 	dbra	d7,loc_C1207A	| C12082
 	lea.l	(RemovedGames-A4_BASE,a4),a0	| C12086
 	moveq	#0x0,d7	| C1208A
 loc_C1208C:
-	move.w	(a2,d7.w),d0	| C1208C
+	move.w	(a2,d7.w),d0	| C1208C  each stored game (a2 = SlotTable)
 	beq.w	loc_C120AC	| C12090
 	moveq	#0x0,d6	| C12094
 loc_C12096:
-	cmp.w	(a3,d6.w),d0	| C12096
+	cmp.w	(a3,d6.w),d0	| C12096  still in a slot of the new scan (a3)?
 	beq.w	loc_C120AC	| C1209A
 	addq.w	#0x4,d6	| C1209E
 	cmp.w	d4,d6	| C120A0
 	bne.b	loc_C12096	| C120A2
-	move.l	(a2,d7.w),(a0)+	| C120A4
+	move.l	(a2,d7.w),(a0)+	| C120A4  no: NGH and index, then its date, into RemovedGames
 	move.l	0x20(a2,d7.w),(a0)+	| C120A8
 loc_C120AC:
-	addq.w	#0x4,d7	| C120AC
+	addq.w	#0x4,d7	| C120AC  next stored entry
 	cmp.w	d4,d7	| C120AE
 	bne.b	loc_C1208C	| C120B0
 	rts	| C120B2
 | SlotKeepOuterEntries [C] for the stored SlotTable entries past the slot count: their settings go to the same game if it is now in a slot, else to the removed list; ran with the slots_* chain: Sengoku 2 kept past the slot count with its index, back in slot 0 on the next boot
 SlotKeepOuterEntries:
-	move.w	d4,d6	| C120B4
+	move.w	d4,d6	| C120B4  stored entries from the slot count up to 8
 loc_C120B6:
 	move.w	(a2,d6.w),d0	| C120B6
 	beq.b	loc_C120E2	| C120BA
 	moveq	#0x0,d7	| C120BC
 loc_C120BE:
-	cmp.w	(a3,d7.w),d0	| C120BE
+	cmp.w	(a3,d7.w),d0	| C120BE  in a slot now?
 	beq.b	loc_C120D6	| C120C2
 	addq.w	#0x4,d7	| C120C4
 	cmp.w	d4,d7	| C120C6
 	bne.b	loc_C120BE	| C120C8
-	move.l	(a2,d6.w),(a0)+	| C120CA
+	move.l	(a2,d6.w),(a0)+	| C120CA  no: listed as removed too
 	move.l	0x20(a2,d6.w),(a0)+	| C120CE
 	bra.w	loc_C120E2	| C120D2
 loc_C120D6:
-	move.w	0x2(a2,d6.w),0x2(a3,d7.w)	| C120D6
+	move.w	0x2(a2,d6.w),0x2(a3,d7.w)	| C120D6  yes: that slot gets its settings index and date
 	move.l	0x20(a2,d6.w),0x20(a3,d7.w)	| C120DC
 loc_C120E2:
 	addq.w	#0x4,d6	| C120E2
@@ -495,18 +495,18 @@ loc_C120E2:
 SlotCopyMovedSettings:
 	moveq	#0x0,d6	| C120EC
 loc_C120EE:
-	move.w	(a3,d6.w),d0	| C120EE
+	move.w	(a3,d6.w),d0	| C120EE  each scanned game
 	beq.b	loc_C12110	| C120F2
 	moveq	#0x0,d7	| C120F4
 loc_C120F6:
-	cmp.w	(a2,d7.w),d0	| C120F6
+	cmp.w	(a2,d7.w),d0	| C120F6  where was it before?
 	beq.b	loc_C12104	| C120FA
 	addq.w	#0x4,d7	| C120FC
 	cmp.w	d4,d7	| C120FE
 	bne.b	loc_C120F6	| C12100
-	beq.b	loc_C12110	| C12102
+	beq.b	loc_C12110	| C12102  nowhere: a new game, nothing to copy
 loc_C12104:
-	move.w	0x2(a2,d7.w),0x2(a3,d6.w)	| C12104
+	move.w	0x2(a2,d7.w),0x2(a3,d6.w)	| C12104  keeps its settings index and date
 	move.l	0x20(a2,d7.w),0x20(a3,d6.w)	| C1210A
 loc_C12110:
 	addq.w	#0x4,d6	| C12110
@@ -517,12 +517,12 @@ loc_C12110:
 SlotTableStore:
 	moveq	#0x0,d6	| C12118
 loc_C1211A:
-	move.l	(a3,d6.w),(a2,d6.w)	| C1211A
+	move.l	(a3,d6.w),(a2,d6.w)	| C1211A  the scanned slots into SlotTable (NGH and index, dates 32 bytes on)
 	move.l	0x20(a3,d6.w),0x20(a2,d6.w)	| C12120
 	addq.w	#0x4,d6	| C12126
 	cmp.w	d4,d6	| C12128
 	bne.b	loc_C1211A	| C1212A
-	lea.l	0x40(a2),a0	| C1212C
+	lea.l	0x40(a2),a0	| C1212C  a2+$40 = RemovedGames
 loc_C12130:
 	move.l	(a0)+,(a2,d6.w)	| C12130
 	move.l	(a0)+,0x20(a2,d6.w)	| C12134
@@ -534,9 +534,9 @@ loc_C12130:
 SlotDateNewGames:
 	moveq	#0x0,d6	| C12142
 loc_C12144:
-	move.w	(a2,d6.w),d0	| C12144
+	move.w	(a2,d6.w),d0	| C12144  each slot with a game
 	beq.b	loc_C12158	| C12148
-	cmpi.w	#0xFFFF,0x2(a2,d6.w)	| C1214A
+	cmpi.w	#0xFFFF,0x2(a2,d6.w)	| C1214A  index $FFFF (new game): dated today
 	bne.b	loc_C12158	| C12150
 	move.l	(LastBootDate-A4_BASE,a4),0x20(a2,d6.w)	| C12152
 loc_C12158:
@@ -547,17 +547,17 @@ loc_C12158:
 | BookNewDayPerGame [C] on a new day: for each slot with a game, advances the game's day index (BookGameDayIndex, 36-day ring), clears and dates that day's record in BookGameDays and adds 1 to its long at $D00200
 BookNewDayPerGame:
 	moveq	#0x0,d6	| C12160
-	move.b	d6,(BookSlot-A4_BASE,a4)	| C12162
+	move.b	d6,(BookSlot-A4_BASE,a4)	| C12162  BookSlot used as the slot counter
 loc_C12166:
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C12166
-	tst.w	(a2,d6.w)	| C1216A
+	tst.w	(a2,d6.w)	| C1216A  empty slot
 	beq.w	loc_C121B0	| C1216E
-	tst.w	0x2(a2,d6.w)	| C12172
+	tst.w	0x2(a2,d6.w)	| C12172  an index (0-7), or $80xx: restored from a 1M card (Card1MRestore)
 	bpl.w	loc_C12184	| C12176
 	cmpi.b	#0x80,0x2(a2,d6.w)	| C1217A
 	bne.w	loc_C121B0	| C12180
 loc_C12184:
-	jsr	(GetGameDaysPtr,pc)	| C12184
+	jsr	(GetGameDaysPtr,pc)	| C12184  the game's day ring moves on (36 days)
 	lea.l	(BookGameDayIndex-A4_BASE,a4),a3	| C12188
 	move.w	0x2(a2,d6.w),d1	| C1218C
 	andi.w	#0x7,d1	| C12190
@@ -568,11 +568,11 @@ loc_C12184:
 	moveq	#0x0,d0	| C121A0
 loc_C121A2:
 	move.b	d0,(a3,d1.w)	| C121A2
-	jsr	(BookClearDatedRecord,pc)	| C121A6
-	jsr	(GetGameDayCountPtr,pc)	| C121AA
+	jsr	(BookClearDatedRecord,pc)	| C121A6  that record cleared and dated
+	jsr	(GetGameDayCountPtr,pc)	| C121AA  and the game's day count + 1
 	addq.l	#0x1,(a0)	| C121AE
 loc_C121B0:
-	addq.b	#0x1,(BookSlot-A4_BASE,a4)	| C121B0
+	addq.b	#0x1,(BookSlot-A4_BASE,a4)	| C121B0  next slot, up to the slot count
 	moveq	#0x0,d6	| C121B4
 	move.b	(BookSlot-A4_BASE,a4),d6	| C121B6
 	move.b	d6,d0	| C121BA
@@ -582,14 +582,14 @@ loc_C121B0:
 	rts	| C121C4
 | LockBackupRamUnless [C] locks backup RAM (REG_SRAMLOCK) unless BIOS_BRAM_USED is set
 LockBackupRamUnless:
-	tst.b	(BIOS_BRAM_USED).l	| C121C6
+	tst.b	(BIOS_BRAM_USED).l	| C121C6  a game is using the backup RAM: leave it writable
 	bne.b	loc_C121D4	| C121CC
-	move.b	d0,(REG_SRAMLOCK).l	| C121CE
+	move.b	d0,(REG_SRAMLOCK).l	| C121CE  otherwise write-protect it
 loc_C121D4:
 	rts	| C121D4
 | RegisterNewGame [C] from BookSlot: the next slot whose game has no game index yet ($FFFF) gets the lowest free index (0-7), all its book keeping cleared (days, months, totals, hourly counts, day count) and its name copied from the cartridge soft DIP block (header $116 + region x 4) to GameNames; an entry marked $80 inside the slot count is cleared; called again by the boot for each slot. Ran with slots_lbowling
 RegisterNewGame:
-	lea.l	(BramA4Base).l,a4	| C121D6
+	lea.l	(BramA4Base).l,a4	| C121D6  from BookSlot onwards
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C121DC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C121E0
 	moveq	#0x0,d5	| C121E6
@@ -597,13 +597,13 @@ RegisterNewGame:
 loc_C121EC:
 	move.w	d5,d6	| C121EC
 	lsl.w	#0x2,d6	| C121EE
-	tst.w	(a2,d6.w)	| C121F0
+	tst.w	(a2,d6.w)	| C121F0  empty slot: next
 	beq.w	loc_C122B2	| C121F4
-	tst.w	0x2(a2,d6.w)	| C121F8
+	tst.w	0x2(a2,d6.w)	| C121F8  already has an index: next
 	bpl.w	loc_C122B2	| C121FC
-	cmpi.b	#0x80,0x2(a2,d6.w)	| C12200
+	cmpi.b	#0x80,0x2(a2,d6.w)	| C12200  $80xx (restored from a 1M card): only clear the high byte (below)
 	beq.w	loc_C122C8	| C12206
-	moveq	#0x0,d0	| C1220A
+	moveq	#0x0,d0	| C1220A  the lowest index 0-7 not used by any entry
 loc_C1220C:
 	moveq	#0x0,d7	| C1220C
 loc_C1220E:
@@ -617,32 +617,32 @@ loc_C1221E:
 	addq.w	#0x1,d0	| C1221E
 	bra.b	loc_C1220C	| C12220
 loc_C12222:
-	move.w	d0,0x2(a2,d6.w)	| C12222
-	lea.l	(BookGameDayIndex-A4_BASE,a4),a0	| C12226
+	move.w	d0,0x2(a2,d6.w)	| C12222  the slot's new index
+	lea.l	(BookGameDayIndex-A4_BASE,a4),a0	| C12226  its book keeping: day ring at 0,
 	clr.b	(a0,d0.w)	| C1222A
 	move.w	d0,d4	| C1222E
-	jsr	(GetGameDaysPtr,pc)	| C12230
+	jsr	(GetGameDaysPtr,pc)	| C12230  the 36 day records ($240 bytes) cleared,
 	movea.l	a0,a1	| C12234
 	moveq	#0x0,d0	| C12236
 	move.w	#0x8F,d7	| C12238
 loc_C1223C:
 	move.l	d0,(a1)+	| C1223C
 	dbra	d7,loc_C1223C	| C1223E
-	jsr	(BookClearDatedRecord,pc)	| C12242
-	move.w	d4,d0	| C12246
+	jsr	(BookClearDatedRecord,pc)	| C12242  today's record dated,
+	move.w	d4,d0	| C12246  the totals record,
 	lsl.w	#0x4,d0	| C12248
 	lea.l	(BookGameTotals-A4_BASE,a4),a0	| C1224A
 	jsr	(BookClearRecord,pc)	| C1224E
-	move.w	d4,d0	| C12252
+	move.w	d4,d0	| C12252  the 24 hour counters,
 	jsr	(GetGameHourCountsPtr,pc)	| C12254
 	moveq	#0x17,d7	| C12258
 loc_C1225A:
 	clr.l	(a0)+	| C1225A
 	dbra	d7,loc_C1225A	| C1225C
-	move.w	d4,d0	| C12260
+	move.w	d4,d0	| C12260  the day count,
 	jsr	(GetGameDayCountPtr,pc)	| C12262
 	clr.l	(a0)	| C12266
-	add.w	d4,d4	| C12268
+	add.w	d4,d4	| C12268  and the 12 month records ($C0 bytes)
 	add.w	d4,d4	| C1226A
 	lea.l	(BookGameMonthsTable,pc),a0	| C1226C
 	movea.l	(a0,d4.w),a0	| C12270
@@ -651,15 +651,15 @@ loc_C1225A:
 loc_C1227A:
 	move.l	d0,(a0)+	| C1227A
 	dbra	d7,loc_C1227A	| C1227C
-	jsr	(SwitchSlot,pc)	| C12280
-	moveq	#0x0,d0	| C12284
+	jsr	(SwitchSlot,pc)	| C12280  select the slot to read its header
+	moveq	#0x0,d0	| C12284  the soft DIP block of this ROM's region: CART_SOFTDIP_JP ($116) + 4 x region
 	move.b	(SystemRegion).l,d0	| C12286
 	add.w	d0,d0	| C1228C
 	add.w	d0,d0	| C1228E
 	addi.l	#0x116,d0	| C12290
 	movea.l	d0,a1	| C12296
 	movea.l	(a1),a0	| C12298
-	move.w	0x2(a2,d6.w),d0	| C1229A
+	move.w	0x2(a2,d6.w),d0	| C1229A  its first 16 bytes, the game name, to GameNames
 	lsl.w	#0x4,d0	| C1229E
 	lea.l	(GameNames-A4_BASE,a4),a1	| C122A0
 	lea.l	(a1,d0.w),a1	| C122A4
@@ -667,17 +667,17 @@ loc_C1227A:
 	move.l	(a0)+,(a1)+	| C122AA
 	move.l	(a0)+,(a1)+	| C122AC
 	move.l	(a0)+,(a1)+	| C122AE
-	bra.b	loc_C122C0	| C122B0
+	bra.b	loc_C122C0	| C122B0  one game per call: back to SystemMode0 for its init
 loc_C122B2:
-	addq.b	#0x1,d5	| C122B2
+	addq.b	#0x1,d5	| C122B2  next slot
 	move.b	d5,(BookSlot-A4_BASE,a4)	| C122B4
 	cmpi.b	#0x8,d5	| C122B8
 	bcs.w	loc_C121EC	| C122BC
 loc_C122C0:
-	move.b	d0,(REG_SRAMLOCK).l	| C122C0
+	move.b	d0,(REG_SRAMLOCK).l	| C122C0  backup RAM locked again
 	rts	| C122C6
 loc_C122C8:
-	cmp.b	(SlotCount-A4_BASE,a4),d5	| C122C8
+	cmp.b	(SlotCount-A4_BASE,a4),d5	| C122C8  restored game within the slot count: index high byte cleared, slot selected
 	bcc.b	loc_C122B2	| C122CC
 	clr.b	0x2(a2,d6.w)	| C122CE
 	jsr	(SwitchSlot,pc)	| C122D2
@@ -686,20 +686,20 @@ loc_C122C8:
 SaveGameSoftDips:
 	lea.l	(BramA4Base).l,a4	| C122D8
 	moveq	#0x0,d0	| C122DE
-	move.b	(CurrentSlot-A4_BASE,a4),d0	| C122E0
-	cmpi.b	#0x8,d0	| C122E4
+	move.b	(CurrentSlot-A4_BASE,a4),d0	| C122E0  the slot of the game
+	cmpi.b	#0x8,d0	| C122E4  8: none
 	bcc.w	loc_C12320	| C122E8
 	add.w	d0,d0	| C122EC
 	add.w	d0,d0	| C122EE
 	lea.l	(SlotTable-A4_BASE,a4),a0	| C122F0
-	move.w	0x2(a0,d0.w),d0	| C122F4
+	move.w	0x2(a0,d0.w),d0	| C122F4  its settings index
 	cmpi.w	#0x8,d0	| C122F8
 	bcc.b	loc_C12320	| C122FC
 	move.b	d0,(REG_SRAMUNLOCK).l	| C122FE
-	lsl.w	#0x4,d0	| C12304
+	lsl.w	#0x4,d0	| C12304  16 bytes per game
 	lea.l	(GameSoftDips-A4_BASE,a4),a0	| C12306
 	lea.l	(a0,d0.w),a0	| C1230A
-	lea.l	(BIOS_GAME_DIP-A5_BASE,a5),a1	| C1230E
+	lea.l	(BIOS_GAME_DIP-A5_BASE,a5),a1	| C1230E  BIOS_GAME_DIP back to the game's copy
 	move.l	(a1)+,(a0)+	| C12312
 	move.l	(a1)+,(a0)+	| C12314
 	move.l	(a1)+,(a0)+	| C12316
@@ -711,29 +711,29 @@ loc_C12320:
 SaveGameBackupData:
 	lea.l	(BramA4Base).l,a4	| C12322
 	moveq	#0x0,d0	| C12328
-	move.b	(CurrentSlot).l,d0	| C1232A
+	move.b	(CurrentSlot).l,d0	| C1232A  no game: nothing to save
 	cmpi.b	#0x8,d0	| C12330
 	bcc.b	loc_C12320	| C12334
-	move.b	d0,(REG_SRAMUNLOCK).l	| C12336
+	move.b	d0,(REG_SRAMUNLOCK).l	| C12336  backup RAM writable for the copy
 	lsl.w	#0x2,d0	| C1233C
 	lea.l	(SlotTable-A4_BASE,a4),a0	| C1233E
-	move.w	0x2(a0,d0.w),d0	| C12342
-	ror.w	#0x4,d0	| C12346
+	move.w	0x2(a0,d0.w),d0	| C12342  the game's index
+	ror.w	#0x4,d0	| C12346  x $1000: its 4 KB block
 	addi.l	#GameBackupData,d0	| C12348
 	movea.l	d0,a0	| C1234E
-	movea.l	(CART_BACKUP_PTR).w,a1	| C12350
+	movea.l	(CART_BACKUP_PTR).w,a1	| C12350  copy the game's backup area into it
 	moveq	#0x0,d0	| C12354
 	move.w	(CART_BACKUP_SIZE).w,d0	| C12356
 	movea.l	a1,a2	| C1235A
 	adda.l	d0,a2	| C1235C
 loc_C1235E:
-	move.b	d0,(REG_DIPSW).l	| C1235E
+	move.b	d0,(REG_DIPSW).l	| C1235E  watchdog on every byte
 	move.b	(a1)+,(a0)+	| C12364
 	cmpa.l	a2,a1	| C12366
 	bcs.b	loc_C1235E	| C12368
-	move.b	d0,(REG_SRAMLOCK).l	| C1236A
+	move.b	d0,(REG_SRAMLOCK).l	| C1236A  write-protect again
 	rts	| C12370
-| PreviousSlot [I] selects the previous slot holding a game and loads it (loc_C123F6, as NextSlot); never ran
+| PreviousSlot [C] selects the previous slot holding a game and loads it (loc_C123F6, as NextSlot). MAME, MV-6 board with three cartridges (slots 0-2): a coin, then SELECT P2 on the title, went from slot 0 to slot 2 (NextSlot would go to slot 1)
 PreviousSlot:
 	lea.l	(BramA4Base).l,a4	| C12372
 	move.b	#0xFF,(REG_LEDLATCHES).l	| C12378  LED latches idle
@@ -760,7 +760,7 @@ LoadCurrentSlot:
 	lea.l	(SlotTable-A4_BASE,a4),a2	| C123B4
 	move.b	(CurrentSlot-A4_BASE,a4),d5	| C123B8
 	move.b	d5,(BookSlot-A4_BASE,a4)	| C123BC  the slot whose data is loaded
-	bra.w	loc_C1241E	| C123C0
+	bra.w	loc_C1241E	| C123C0  then as NextSlot: load the game's data
 | NextSlot [C] selects the next slot holding a game: slot number on the LEDs, SwitchSlot, sound command 3; then copies the game's backup data from $D00320 + index x $1000, its soft DIPs to BIOS_GAME_DIP and sets the book keeping pointers (BookGameTodayPtr, BookGameMonthPtr, BookGameHoursPtr, BookGameTotalPtr)
 NextSlot:
 	lea.l	(BramA4Base).l,a4	| C123C4  a4 = BramA4Base: backup RAM variables a4-relative
@@ -861,12 +861,12 @@ BookGameMonthsTable:
 | GetGameDaysPtr [C] a0 = the BookGameDays area of the game in slot BookSlot (BookGameDaysTable)
 GetGameDaysPtr:
 	moveq	#0x0,d0	| C12506
-	move.b	(BookSlot-A4_BASE,a4),d0	| C12508
+	move.b	(BookSlot-A4_BASE,a4),d0	| C12508  the game in slot BookSlot: its settings index from SlotTable
 	lsl.w	#0x2,d0	| C1250C
 	lea.l	(SlotTable-A4_BASE,a4),a0	| C1250E
 	move.w	0x2(a0,d0.w),d0	| C12512
 	lsl.w	#0x2,d0	| C12516
-	movea.l	(BookGameDaysTable,pc,d0.w),a0	| C12518
+	movea.l	(BookGameDaysTable,pc,d0.w),a0	| C12518  that game's day records
 	rts	| C1251C
 | BookGameDaysTable [C] BookGameDays + game index x $240, 8 entries
 BookGameDaysTable:
@@ -875,22 +875,22 @@ BookGameDaysTable:
 | GetGameDayCountPtr [C] a0 = $D00200 + game index x 4 (a long incremented by BookNewDayPerGame)
 GetGameDayCountPtr:
 	moveq	#0x0,d0	| C1253E
-	move.b	(BookSlot-A4_BASE,a4),d0	| C12540
+	move.b	(BookSlot-A4_BASE,a4),d0	| C12540  its index x 4 into BookGameDayCount
 	lsl.w	#0x2,d0	| C12544
 	lea.l	(SlotTable-A4_BASE,a4),a0	| C12546
 	move.w	0x2(a0,d0.w),d0	| C1254A
-	lsl.w	#0x2,d0	| C1254E
+	lsl.w	#0x2,d0	| C1254E  x 4: one long per game
 	lea.l	(BookGameDayCount-A4_BASE,a4),a0	| C12550
 	lea.l	(a0,d0.w),a0	| C12554
 	rts	| C12558
 | GetGameHourCountsPtr [C] a0 = $D0A1A0 + game index x $60 (BookGameHoursTable): 24 longs, one per hour, incremented by DeductPlayerCredit at index ClockHour4 (the hour clock)
 GetGameHourCountsPtr:
 	moveq	#0x0,d0	| C1255A
-	move.b	(BookSlot-A4_BASE,a4),d0	| C1255C
+	move.b	(BookSlot-A4_BASE,a4),d0	| C1255C  its index into the hour counter table
 	lsl.w	#0x2,d0	| C12560
 	lea.l	(SlotTable-A4_BASE,a4),a0	| C12562
 	move.w	0x2(a0,d0.w),d0	| C12566
-	lsl.w	#0x2,d0	| C1256A
+	lsl.w	#0x2,d0	| C1256A  x 4: one pointer per game
 	movea.l	(BookGameHoursTable,pc,d0.w),a0	| C1256C
 	rts	| C12570
 | BookGameHoursTable [C] $D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)
@@ -900,13 +900,13 @@ BookGameHoursTable:
 | BookClearDatedRecord [C] clears the 16-byte record d0 of the ring at a0 and stores LastBootDate in it
 BookClearDatedRecord:
 	andi.w	#0xFF,d0	| C12592
-	lsl.w	#0x4,d0	| C12596
+	lsl.w	#0x4,d0	| C12596  16 bytes per record
 	jsr	(BookClearRecord,pc)	| C12598
-	move.l	(LastBootDate-A4_BASE,a4),(a0,d0.w)	| C1259C
+	move.l	(LastBootDate-A4_BASE,a4),(a0,d0.w)	| C1259C  date in the first long
 	rts	| C125A2
 | BookClearRecord [C] clears the 16-byte record at a0 + d0
 BookClearRecord:
-	moveq	#0x0,d1	| C125A4
+	moveq	#0x0,d1	| C125A4  one 16-byte record at a0 + d0 set to 0
 	move.l	d1,(a0,d0.w)	| C125A6
 	move.l	d1,0x4(a0,d0.w)	| C125AA
 	move.l	d1,0x8(a0,d0.w)	| C125AE
@@ -918,9 +918,9 @@ BackupRamOkText:
 	dc.b	0x80
 | BackupRamTest [C] power-on test of backup RAM (test number in d6). Hard DIPs not all on: when BackupRamSignature equals BackupRamOkText, returns at once and the contents are kept; otherwise MemTestBlock on backup RAM, then ClearBackupRam. All hard DIPs on (REG_DIPSW = 0): MemTestBlock only, every time (WorkRamTestLoop). MAME: signature found on a second boot with the same nvram, ClearBackupRam on a first boot and on the boot after a NEO-CLN or NoGoIdText cartridge
 BackupRamTest:
-	move.b	(REG_DIPSW).l,d0	| C125C8
+	move.b	(REG_DIPSW).l,d0	| C125C8  every hard DIP on: always test (WorkRamTestLoop)
 	beq.b	loc_C125E6	| C125CE
-	lea.l	(BackupRamSignature).l,a6	| C125D0
+	lea.l	(BackupRamSignature).l,a6	| C125D0  signature still there: the contents are kept, no test
 	lea.l	(BackupRamOkText,pc),a4	| C125D6
 	moveq	#0xF,d7	| C125DA
 loc_C125DC:
@@ -929,15 +929,15 @@ loc_C125DC:
 	dbra	d7,loc_C125DC	| C125E0
 	rts	| C125E4
 loc_C125E6:
-	jsr	(MemTestBlock,pc)	| C125E6
-	move.b	(REG_DIPSW).l,d0	| C125EA
+	jsr	(MemTestBlock,pc)	| C125E6  missing: test the 64 KB (MemTestBlock with d5 from the caller)
+	move.b	(REG_DIPSW).l,d0	| C125EA  then clear and initialise, unless every DIP is on
 	bne.b	ClearBackupRam	| C125F0
 	rts	| C125F2
 | ClearBackupRam [C] unlocks backup RAM, fills all 64 KB with zeros from $D10000 down, writes BackupRamSignature, copies BackupRamDefaults to $D0003A-$D00046, sets $D00122 = $23, SlotTable all $FFFF, $D001AC = $F0F0F0F0, $D001B0 = $FFFF, locks it. Book keeping and settings are lost
 ClearBackupRam:
-	move.b	#0x1,(BIOS_BRAM_USED).l	| C125F4
+	move.b	#0x1,(BIOS_BRAM_USED).l	| C125F4  backup RAM in use by the system ROM
 	move.b	d0,(REG_SRAMUNLOCK).l	| C125FC
-	lea.l	(0xD10000).l,a0	| C12602
+	lea.l	(0xD10000).l,a0	| C12602  64 KB cleared from the top
 	moveq	#0x0,d0	| C12608
 	move.l	d0,d1	| C1260A
 	move.l	d0,d2	| C1260C
@@ -950,27 +950,27 @@ loc_C12614:
 	movem.l	d0-d3,-(a0)	| C12622
 	movem.l	d0-d3,-(a0)	| C12626
 	dbra	d7,loc_C12614	| C1262A
-	lea.l	(BackupRamSignature).l,a6	| C1262E
+	lea.l	(BackupRamSignature).l,a6	| C1262E  the signature BACKUP RAM OK !
 	lea.l	(BackupRamOkText,pc),a4	| C12634
 	moveq	#0xF,d7	| C12638
 loc_C1263A:
 	move.b	(a4)+,(a6)+	| C1263A
 	dbra	d7,loc_C1263A	| C1263C
-	lea.l	(BackupRamDefaults).l,a4	| C12640
+	lea.l	(BackupRamDefaults).l,a4	| C12640  cabinet defaults: coin rates, game select, compulsion, demo sound
 	lea.l	(Coin1Coins).l,a6	| C12646
 	moveq	#0xC,d7	| C1264C
 loc_C1264E:
 	move.b	(a4)+,(a6)+	| C1264E
 	dbra	d7,loc_C1264E	| C12650
-	move.b	#0x23,(BookDayIndex).l	| C12654
-	lea.l	(SlotTable).l,a0	| C1265C
+	move.b	#0x23,(BookDayIndex).l	| C12654  the day ring at its last record: the first boot moves to record 0
+	lea.l	(SlotTable).l,a0	| C1265C  no game in any slot entry ($0000FFFF)
 	move.l	#0xFFFF,d0	| C12662
 	moveq	#0x7,d7	| C12668
 loc_C1266A:
 	move.l	d0,(a0)+	| C1266A
 	dbra	d7,loc_C1266A	| C1266C
-	move.l	#0xF0F0F0F0,(CodeNumber).l	| C12670
-	move.w	#0xFFFF,(CabinetNumber).l	| C1267A
+	move.l	#0xF0F0F0F0,(CodeNumber).l	| C12670  code number F F F F (none)
+	move.w	#0xFFFF,(CabinetNumber).l	| C1267A  no cabinet number
 	move.b	d0,(REG_SRAMLOCK).l	| C12682
 	rts	| C12688
 | WriteLedData [C] writes d5 (inverted) to REG_LEDDATA and pulses REG_LEDLATCHES ($F7 between two $FF), with Delay
@@ -1120,23 +1120,23 @@ loc_C1284C:
 	move.b	d1,(REG_LEDLATCHES).l	| C12858
 loc_C1285E:
 	rts	| C1285E
-| HourClockTick [C] software clock started from the calendar at power-on: every 60 VBlanks (ClockFrames) adds a second (D0005C), minute (D0005B) and hour x 4 (D0005A, 0-$5C)
+| HourClockTick [C] software clock started from the calendar at power-on: every 60 VBlanks (ClockFrames) adds a second (ClockSecond), minute (ClockMinute) and hour x 4 (D0005A, 0-$5C)
 HourClockTick:
-	subq.b	#0x1,(ClockFrames-A4_BASE,a4)	| C12860
+	subq.b	#0x1,(ClockFrames-A4_BASE,a4)	| C12860  every 60 VBlanks
 	bne.w	loc_C128A4	| C12864
 	move.b	#0x3C,(ClockFrames-A4_BASE,a4)	| C12868
-	addq.b	#0x1,(ClockSecond-A4_BASE,a4)	| C1286E
+	addq.b	#0x1,(ClockSecond-A4_BASE,a4)	| C1286E  one second
 	cmpi.b	#0x3C,(ClockSecond-A4_BASE,a4)	| C12872
 	bcs.w	loc_C128A4	| C12878
 	clr.b	(ClockSecond-A4_BASE,a4)	| C1287C
-	addq.b	#0x1,(ClockMinute-A4_BASE,a4)	| C12880
+	addq.b	#0x1,(ClockMinute-A4_BASE,a4)	| C12880  60 seconds: one minute
 	cmpi.b	#0x3C,(ClockMinute-A4_BASE,a4)	| C12884
 	bcs.w	loc_C128A4	| C1288A
 	clr.b	(ClockMinute-A4_BASE,a4)	| C1288E
-	addq.b	#0x4,(ClockHour4-A4_BASE,a4)	| C12892
+	addq.b	#0x4,(ClockHour4-A4_BASE,a4)	| C12892  60 minutes: one hour (hour x 4)
 	cmpi.b	#0x60,(ClockHour4-A4_BASE,a4)	| C12896
 	bcs.w	loc_C128A4	| C1289C
-	clr.b	(ClockHour4-A4_BASE,a4)	| C128A0
+	clr.b	(ClockHour4-A4_BASE,a4)	| C128A0  24 hours: back to 0
 loc_C128A4:
 	rts	| C128A4
 | CountCoin [C] a coin on input d3: counts it (CoinCounts + d4), adds it to today's and this month's CABINET/COIN records (offset d5), and when enough coins are in (Coin1Coins/Coin2Coins) gives the credits (Coin1Credits/Coin2Credits) to Credits in BCD, at most 99
@@ -1229,7 +1229,7 @@ loc_C12958:
 	move.b	(ClockHour4-A4_BASE,a4),d4	| C1298E
 	addq.l	#0x1,(a2,d4.w)	| C12992
 loc_C12996:
-	addq.l	#0x4,a0	| C12996  next player
+	addq.l	#0x4,a0	| C12996  a0 + 4: a0 is not used by these callers (a1 already moved on)
 	rts	| C12998
 | CreditDownCount [C] CREDIT_DOWN: for P1 and P2 with BIOS_CREDIT_DEC1/2 set, takes the credit and counts the play like DeductPlayerCredit (CreditDownPlayer)
 CreditDownCount:
@@ -1257,7 +1257,7 @@ loc_C129D2:
 	rts	| C129D2
 | PlayCoinSound [C] once per counted coin (CoinSoundCount), in system mode 2 or more: calls CART_COIN_SOUND, or sends sound command $7F
 PlayCoinSound:
-	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C129D4
+	tst.b	(BIOS_FRAME_SKIP-A5_BASE,a5)	| C129D4  a non-zero BIOS_FRAME_SKIP holds the sound
 	bne.w	loc_C12A16	| C129D8
 	cmpi.b	#0x2,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C129DC  status 0 or 1 (init pass, eyecatcher): no coin sound
 	bcs.w	loc_C12A16	| C129E2
@@ -1278,21 +1278,21 @@ loc_C12A16:
 	rts	| C12A16
 | Card1MSaveCabinet [C] SystemIo in title/demo: SELECT P1 with a 1M card whose code is CodeNumber copies this board's calendar and backup RAM to the card as cabinet CabinetNumber (a new board takes the next number, up to 10), DATA HAS BEEN STORED AT A MEMORY CARD., then SystemReturn. MAME (emulated card, SELECT through a read tap): card1m_save_a, card1m_save_b
 Card1MSaveCabinet:
-	cmpi.b	#0x1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C12A18
+	cmpi.b	#0x1,(BIOS_SYSRET_STATUS-A5_BASE,a5)	| C12A18  only on the eyecatcher (status 1) or the title/demo (user mode 1)
 	beq.b	loc_C12A28	| C12A1E
 	cmpi.b	#0x1,(BIOS_USER_MODE-A5_BASE,a5)	| C12A20
 	bne.b	loc_C12A34	| C12A26
 loc_C12A28:
-	move.b	(REG_STATUS_B).l,d0	| C12A28
+	move.b	(REG_STATUS_B).l,d0	| C12A28  and with a memory card in
 	andi.b	#0x30,d0	| C12A2E
 	beq.b	loc_C12A36	| C12A32
 loc_C12A34:
 	rts	| C12A34
 loc_C12A36:
-	btst.b	#0x1,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C12A36
+	btst.b	#0x1,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C12A36  SELECT P1 pressed
 	beq.b	loc_C12A34	| C12A3C
 	lea.l	(BramA4Base).l,a4	| C12A3E
-	lea.l	(0x800000).l,a6	| C12A44
+	lea.l	(0x800000).l,a6	| C12A44  the card: NEO-GEO at +$40, one letter per 4 bytes
 	lea.l	0x40(a6),a0	| C12A4A
 	lea.l	(Card1MIdTextSave,pc),a1	| C12A4E
 	moveq	#0x7,d7	| C12A52
@@ -1302,54 +1302,54 @@ loc_C12A54:
 	bne.b	loc_C12A34	| C12A58
 	addq.l	#0x4,a0	| C12A5A
 	dbra	d7,loc_C12A54	| C12A5C
-	move.w	0x10(a6),d0	| C12A60
+	move.w	0x10(a6),d0	| C12A60  type byte $2x: a 1M cabinet card
 	andi.b	#0xF0,d0	| C12A64
 	cmpi.b	#0x20,d0	| C12A68
 	bne.b	loc_C12A34	| C12A6C
-	move.l	(CodeNumber-A4_BASE,a4),d0	| C12A6E
+	move.l	(CodeNumber-A4_BASE,a4),d0	| C12A6E  its code number must be this board's
 	cmp.l	0x70(a6),d0	| C12A72
 	bne.b	loc_C12A34	| C12A76
-	move.w	(CabinetNumber-A4_BASE,a4),d0	| C12A78
+	move.w	(CabinetNumber-A4_BASE,a4),d0	| C12A78  this board already has a cabinet number: save over it, if the card knows it
 	bmi.w	loc_C12A8A	| C12A7C
 	cmp.w	0x74(a6),d0	| C12A80
 	bhi.b	loc_C12A34	| C12A84
 	bra.w	loc_C12ACA	| C12A86
 loc_C12A8A:
-	move.w	0x74(a6),d0	| C12A8A
+	move.w	0x74(a6),d0	| C12A8A  no number yet: the card's next free one, up to 10 cabinets
 	cmpi.w	#0xA,d0	| C12A8E
 	bcc.b	loc_C12A34	| C12A92
-	move.w	#0x2700,sr	| C12A94
+	move.w	#0x2700,sr	| C12A94  interrupts off; card writable
 	moveq	#0x0,d7	| C12A98
 	move.b	d7,(REG_CRDNORMAL).l	| C12A9A
 	move.b	d7,(REG_CRDBANK).l	| C12AA0
 	move.b	d7,(REG_CRDUNLOCK1).l	| C12AA6
 	move.b	d7,(REG_CRDUNLOCK2).l	| C12AAC
-	move.b	d7,(REG_SRAMUNLOCK).l	| C12AB2
+	move.b	d7,(REG_SRAMUNLOCK).l	| C12AB2  the number into backup RAM
 	move.w	d0,(CabinetNumber-A4_BASE,a4)	| C12AB8
 	move.b	d7,(REG_SRAMLOCK).l	| C12ABC
-	move.w	d0,d1	| C12AC2
+	move.w	d0,d1	| C12AC2  and the card's count of cabinets + 1
 	addq.w	#0x1,d1	| C12AC4
 	move.w	d1,0x74(a6)	| C12AC6
 loc_C12ACA:
-	move.w	#0x2700,sr	| C12ACA
+	move.w	#0x2700,sr	| C12ACA  interrupts off for the copy; SELECT consumed
 	moveq	#0x0,d7	| C12ACE
 	move.b	d7,(BIOS_STATCHANGE_RAW-A5_BASE,a5)	| C12AD0
 	move.b	d7,(REG_CRDNORMAL).l	| C12AD4
 	move.b	d7,(REG_CRDBANK).l	| C12ADA
 	move.b	d7,(REG_CRDUNLOCK1).l	| C12AE0
 	move.b	d7,(REG_CRDUNLOCK2).l	| C12AE6
-	move.w	#0x2800,d1	| C12AEC
+	move.w	#0x2800,d1	| C12AEC  $2800 bytes per cabinet from card offset $100
 	mulu.w	d0,d1	| C12AF0
 	lea.l	0x100(a6),a0	| C12AF2
 	adda.l	d1,a0	| C12AF6
-	lea.l	(REG_DIPSW).l,a3	| C12AF8
+	lea.l	(REG_DIPSW).l,a3	| C12AF8  a3 = watchdog
 	movem.l	d0/a0-a6,-(a7)	| C12AFE
 	move.b	d0,(a3)	| C12B02
-	jsr	(ReadCalendar,pc)	| C12B04
+	jsr	(ReadCalendar,pc)	| C12B04  date and time first
 	movem.l	(a7)+,d0/a0-a6	| C12B08
 	move.l	(BIOS_YEAR-A5_BASE,a5),(a0)+	| C12B0C
 	move.l	(BIOS_HOUR-A5_BASE,a5),(a0)+	| C12B10
-	dc.w	0x2E3C,0x0000,0x0025	| C12B14: move.l #$25, d7
+	dc.w	0x2E3C,0x0000,0x0025	| C12B14: move.l #$25, d7  then the backup RAM areas, word by word
 	lea.l	(BookGameDayIndex-A4_BASE,a4),a1	| C12B1A
 	jsr	(Card1MSaveWords,pc)	| C12B1E
 	move.l	#0x90,d7	| C12B22
@@ -1358,30 +1358,30 @@ loc_C12ACA:
 	move.l	#0x10F0,d7	| C12B30
 	lea.l	(BookGameDays-A4_BASE,a4),a1	| C12B36
 	jsr	(Card1MSaveWords,pc)	| C12B3A
-	move.b	d7,(REG_CRDLOCK2).l	| C12B3E
+	move.b	d7,(REG_CRDLOCK2).l	| C12B3E  card locked
 	move.b	d7,(REG_CRDLOCK1).l	| C12B44
-	move.l	#0xEEE0000,(0x400002).l	| C12B4A
+	move.l	#0xEEE0000,(0x400002).l	| C12B4A  palette 0 colour 1 $0EEE
 	jsr	(ClearFixLayer,pc)	| C12B54
 	lea.l	(MessBuffer-A5_BASE,a5),a0	| C12B58
 	lea.l	(Card1MSaveOkText,pc),a1	| C12B5C
-	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C12B60
+	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C12B60  Japan: SAVE OK, other countries: DATA HAS BEEN STORED...
 	beq.b	loc_C12B6A	| C12B64
 	lea.l	(Card1MStoredText,pc),a1	| C12B66
 loc_C12B6A:
 	move.l	a1,(a0)+	| C12B6A
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C12B6C
-	clr.b	(BIOS_MESS_POINT-A5_BASE,a5)	| C12B70
-	jsr	(MessOut,pc)	| C12B74
-	move.l	#0xF4240,d7	| C12B78
+	clr.b	(BIOS_MESS_POINT-A5_BASE,a5)	| C12B70  clears the high byte of BIOS_MESS_POINT (already 0): BIOS_MESS_BUSY was probably meant
+	jsr	(MessOut,pc)	| C12B74  drawn at once
+	move.l	#0xF4240,d7	| C12B78  about a second of wait, with the watchdog
 loc_C12B7E:
 	move.b	d0,(REG_DIPSW).l	| C12B7E
 	subq.l	#0x1,d7	| C12B84
 	bne.b	loc_C12B7E	| C12B86
-	jmp	(SystemReturn).l	| C12B88
+	jmp	(SystemReturn).l	| C12B88  back through SYSTEM_RETURN (the game continues its demo)
 | Card1MSaveWords [C] copies d7 words from a1 to the 1M card at a0, writing (a3) each word (Card1MSaveCabinet; Card1MCopyWords is the recover side)
 Card1MSaveWords:
-	move.b	d0,(a3)	| C12B8E
-	move.w	(a1)+,(a0)+	| C12B90
+	move.b	d0,(a3)	| C12B8E  a3: the watchdog
+	move.w	(a1)+,(a0)+	| C12B90  d7 words
 	subq.l	#0x1,d7	| C12B92
 	bne.b	Card1MSaveWords	| C12B94
 	rts	| C12B96
@@ -1406,17 +1406,17 @@ PlayTimeCount:
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12BE6
 	lea.l	(BramA4Base).l,a4	| C12BEC
 	lea.l	(BiosWorkRam).l,a5	| C12BF2
-	cmpi.b	#0x1,(PlayerModPrevious-A5_BASE,a5)	| C12BF8
+	cmpi.b	#0x1,(PlayerModPrevious-A5_BASE,a5)	| C12BF8  P1 or P2 was playing on the previous frame
 	beq.b	loc_C12C08	| C12BFE
 	cmpi.b	#0x1,(PlayerModPrevious2-A5_BASE,a5)	| C12C00
 	bne.b	loc_C12C18	| C12C06
 loc_C12C08:
-	subq.b	#0x1,(PlayTimeFrames-A4_BASE,a4)	| C12C08
+	subq.b	#0x1,(PlayTimeFrames-A4_BASE,a4)	| C12C08  every 60 frames, one second of play time
 	bpl.b	loc_C12C18	| C12C0C
 	move.b	#0x3B,(PlayTimeFrames-A4_BASE,a4)	| C12C0E
 	addq.l	#0x1,(PlayTimeSeconds-A4_BASE,a4)	| C12C14
 loc_C12C18:
-	move.l	(BIOS_PLAYER_MOD1-A5_BASE,a5),(PlayerModPrevious-A5_BASE,a5)	| C12C18
+	move.l	(BIOS_PLAYER_MOD1-A5_BASE,a5),(PlayerModPrevious-A5_BASE,a5)	| C12C18  this frame's player modes for the next frame
 	jsr	(LockBackupRamUnless,pc)	| C12C1E
 	rts	| C12C22
 | BookAddPlayTime [C] adds the counted play time (PlayTimeSeconds) to the PLAY TIME field (+$C) of today's, this month's and the game's records, then clears it
@@ -1424,18 +1424,18 @@ BookAddPlayTime:
 	lea.l	(BramA4Base).l,a4	| C12C24
 	move.b	#0x1,(BIOS_BRAM_USED-A5_BASE,a5)	| C12C2A
 	move.b	d0,(REG_SRAMUNLOCK).l	| C12C30
-	move.l	(PlayTimeSeconds-A4_BASE,a4),d0	| C12C36
-	movea.l	(BookGameTodayPtr-A4_BASE,a4),a2	| C12C3A
+	move.l	(PlayTimeSeconds-A4_BASE,a4),d0	| C12C36  the play time of this game
+	movea.l	(BookGameTodayPtr-A4_BASE,a4),a2	| C12C3A  PLAY TIME (+$C) of the game's today, total and month records
 	add.l	d0,0xC(a2)	| C12C3E
 	movea.l	(BookGameTotalPtr-A4_BASE,a4),a2	| C12C42
 	add.l	d0,0xC(a2)	| C12C46
 	movea.l	(BookGameMonthPtr-A4_BASE,a4),a2	| C12C4A
 	add.l	d0,0xC(a2)	| C12C4E
-	movea.l	(BookTodayPtr-A4_BASE,a4),a2	| C12C52
+	movea.l	(BookTodayPtr-A4_BASE,a4),a2	| C12C52  and of CABINET/PLAY today ($240 + $C) and this month ($C0 + $C)
 	add.l	d0,0x24C(a2)	| C12C56
 	movea.l	(BookMonthPtr-A4_BASE,a4),a2	| C12C5A
 	add.l	d0,0xCC(a2)	| C12C5E
-	clr.l	(PlayTimeSeconds-A4_BASE,a4)	| C12C62
+	clr.l	(PlayTimeSeconds-A4_BASE,a4)	| C12C62  counted, back to 0
 	move.b	#0x3B,(PlayTimeFrames-A4_BASE,a4)	| C12C66
 	clr.b	(BIOS_BRAM_USED-A5_BASE,a5)	| C12C6C
 	move.b	d0,(REG_SRAMLOCK).l	| C12C70

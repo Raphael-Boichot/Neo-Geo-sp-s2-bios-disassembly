@@ -3,56 +3,56 @@
 
 | ReadCalendar [W] target of READ_CALENDAR
 ReadCalendar:
-	moveq	#0x3,d0	| C12C78
+	moveq	#0x3,d0	| C12C78  command 3: time read (the chip latches the time)
 	jsr	(RtcCommand,pc)	| C12C7A
 	bsr.w	DelayShort	| C12C7E
-	moveq	#0x1,d0	| C12C82
+	moveq	#0x1,d0	| C12C82  command 1: shift mode, the time comes out bit by bit
 	jsr	(RtcCommand,pc)	| C12C84
-	lea.l	(BIOS_YEAR).l,a0	| C12C88
-	jsr	(RtcReadByte,pc)	| C12C8E
+	lea.l	(BIOS_YEAR).l,a0	| C12C88  a0 = BIOS_YEAR, then month, day, weekday, hour, minute, second
+	jsr	(RtcReadByte,pc)	| C12C8E  first byte out: seconds (BCD)
 	move.b	d0,0x6(a0)	| C12C92
-	jsr	(RtcReadByte,pc)	| C12C96
+	jsr	(RtcReadByte,pc)	| C12C96  minutes
 	move.b	d0,0x5(a0)	| C12C9A
-	jsr	(RtcReadByte,pc)	| C12C9E
+	jsr	(RtcReadByte,pc)	| C12C9E  hours
 	move.b	d0,0x4(a0)	| C12CA2
-	jsr	(RtcReadByte,pc)	| C12CA6
+	jsr	(RtcReadByte,pc)	| C12CA6  day
 	move.b	d0,0x2(a0)	| C12CAA
-	jsr	(RtcReadByte,pc)	| C12CAE
+	jsr	(RtcReadByte,pc)	| C12CAE  month (high nibble, binary) and weekday (low nibble)
 	move.b	d0,d1	| C12CB2
 	andi.b	#0xF,d1	| C12CB4
 	move.b	d1,0x3(a0)	| C12CB8
 	lsr.b	#0x4,d0	| C12CBC
-	cmpi.b	#0xA,d0	| C12CBE
+	cmpi.b	#0xA,d0	| C12CBE  month 10-12 as BCD $10-$12
 	bcs.b	loc_C12CC6	| C12CC2
 	addq.b	#0x6,d0	| C12CC4
 loc_C12CC6:
 	move.b	d0,0x1(a0)	| C12CC6
-	jsr	(RtcReadByte,pc)	| C12CCA
+	jsr	(RtcReadByte,pc)	| C12CCA  year (BCD)
 	move.b	d0,(a0)	| C12CCE
-	moveq	#0x3,d7	| C12CD0
+	moveq	#0x3,d7	| C12CD0  4 more bits, not stored
 	jsr	(RtcReadBits,pc)	| C12CD2
 	rts	| C12CD6
 | RtcReadByte [C] reads 8 bits from the calendar chip (bit 7 of REG_STATUS_A), LSB first, into d0; runs at every boot in MAME
 RtcReadByte:
-	moveq	#0x7,d7	| C12CD8
+	moveq	#0x7,d7	| C12CD8  8 bits, low bit first
 | RtcReadBits [C] bit loop of RtcReadByte, entered with d7 = bits - 1: ReadCalendar reads the last 4 bits (weekday) this way
 RtcReadBits:
-	move.b	(REG_STATUS_A).l,d2	| C12CDA
+	move.b	(REG_STATUS_A).l,d2	| C12CDA  data out of the chip: bit 7 of REG_STATUS_A
 	jsr	(RtcClockPulse,pc)	| C12CE0
 	andi.b	#0x80,d2	| C12CE4
-	lsr.b	#0x1,d0	| C12CE8
+	lsr.b	#0x1,d0	| C12CE8  LSB first: each bit enters at the top
 	or.b	d2,d0	| C12CEA
 	dbra	d7,RtcReadBits	| C12CEC
 	rts	| C12CF0
 | SetupCalendar [C] target of SETUP_CALENDAR (wiki); MAME: runs when D is pressed on the test-mode calendar screen
 SetupCalendar:
 	lea.l	(BiosWorkRam).l,a5	| C12CF2
-	jsr	(CheckCalendarDate,pc)	| C12CF8
+	jsr	(CheckCalendarDate,pc)	| C12CF8  d7 not 0: invalid date, nothing written
 	tst.b	d7	| C12CFC
 	bne.w	loc_C12D46	| C12CFE
-	moveq	#0x1,d0	| C12D02
+	moveq	#0x1,d0	| C12D02  command 1: shift mode, the new time goes in bit by bit
 	jsr	(RtcCommand,pc)	| C12D04
-	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12D08
+	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12D08  same order as ReadCalendar: second first, year last
 	jsr	(RtcSendByte,pc)	| C12D0C
 	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C12D10
 	jsr	(RtcSendByte,pc)	| C12D14
@@ -60,187 +60,187 @@ SetupCalendar:
 	jsr	(RtcSendByte,pc)	| C12D1C
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12D20
 	jsr	(RtcSendByte,pc)	| C12D24
-	move.b	(CalendarMonthWeekday-A5_BASE,a5),d0	| C12D28
+	move.b	(CalendarMonthWeekday-A5_BASE,a5),d0	| C12D28  month x 16 + weekday, computed by CheckCalendarDate
 	jsr	(RtcSendByte,pc)	| C12D2C
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12D30
 	jsr	(RtcSendByte,pc)	| C12D34
-	moveq	#0x2,d0	| C12D38
+	moveq	#0x2,d0	| C12D38  command 2: time set (load the shifted bits)
 	jsr	(RtcCommand,pc)	| C12D3A
-	moveq	#0x0,d0	| C12D3E
+	moveq	#0x0,d0	| C12D3E  command 0: register hold
 	jsr	(RtcCommand,pc)	| C12D40
-	moveq	#0x0,d7	| C12D44
+	moveq	#0x0,d7	| C12D44  d7 = 0: done
 loc_C12D46:
 	rts	| C12D46
 | RtcSendByte [C] sends the 8 bits of d0 LSB first to the calendar chip through WriteRtcCtrl (data, clock high, clock low)
 RtcSendByte:
 	moveq	#0x7,d7	| C12D48
 loc_C12D4A:
-	move.b	d0,d1	| C12D4A
+	move.b	d0,d1	| C12D4A  data bit (bit 0 of REG_RTCCTRL)
 	andi.b	#0x1,d1	| C12D4C
 	jsr	(WriteRtcCtrl,pc)	| C12D50
-	ori.b	#0x2,d1	| C12D54
+	ori.b	#0x2,d1	| C12D54  clock high (bit 1),
 	jsr	(WriteRtcCtrl,pc)	| C12D58
-	eori.b	#0x2,d1	| C12D5C
+	eori.b	#0x2,d1	| C12D5C  clock low: the chip takes the bit
 	jsr	(WriteRtcCtrl,pc)	| C12D60
 	lsr.b	#0x1,d0	| C12D64
 	dbra	d7,loc_C12D4A	| C12D66
 	rts	| C12D6A
 | RtcCommand [C] sends the 4-bit command in d0 to the calendar chip, low bit first: data bit, clock high, clock low (WriteRtcCtrl), then the strobe ($4)
 RtcCommand:
-	moveq	#0x3,d7	| C12D6C
+	moveq	#0x3,d7	| C12D6C  4 command bits, low bit first
 loc_C12D6E:
-	move.b	d0,d1	| C12D6E
+	move.b	d0,d1	| C12D6E  data line (bit 0) = next command bit
 	andi.b	#0x1,d1	| C12D70
 	jsr	(WriteRtcCtrl,pc)	| C12D74
-	ori.b	#0x2,d1	| C12D78
+	ori.b	#0x2,d1	| C12D78  clock high,
 	jsr	(WriteRtcCtrl,pc)	| C12D7C
-	eori.b	#0x2,d1	| C12D80
+	eori.b	#0x2,d1	| C12D80  clock low: the chip takes the bit
 	jsr	(WriteRtcCtrl,pc)	| C12D84
-	lsr.b	#0x1,d0	| C12D88
+	lsr.b	#0x1,d0	| C12D88  next bit
 	dbra	d7,loc_C12D6E	| C12D8A
-	move.b	#0x4,d1	| C12D8E
+	move.b	#0x4,d1	| C12D8E  strobe (bit 2): the chip runs the command
 	jsr	(WriteRtcCtrl,pc)	| C12D92
-	moveq	#0x0,d1	| C12D96
+	moveq	#0x0,d1	| C12D96  all lines low
 	jsr	(WriteRtcCtrl,pc)	| C12D98
 	rts	| C12D9C
 | RtcClockPulse [C] pulses the calendar clock line: WriteRtcCtrl 2 then 0
 RtcClockPulse:
-	move.b	#0x2,d1	| C12D9E
+	move.b	#0x2,d1	| C12D9E  clock high
 	jsr	(WriteRtcCtrl,pc)	| C12DA2
-	move.b	#0x0,d1	| C12DA6
+	move.b	#0x0,d1	| C12DA6  clock low
 	jsr	(WriteRtcCtrl,pc)	| C12DAA
 	rts	| C12DAE
 | WriteRtcCtrl [C] writes d1 to REG_RTCCTRL (calendar chip data/clock/strobe lines)
 WriteRtcCtrl:
-	move.b	d1,(REG_RTCCTRL).l	| C12DB0
+	move.b	d1,(REG_RTCCTRL).l	| C12DB0  bit 0 data, bit 1 clock, bit 2 strobe
 	rts	| C12DB6
 | ReadCalendarAlt [C] reads the date and time of the NEO-CLN cartridge calendar into BIOS_YEAR..; called only by CheckCartridgeId. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 ReadCalendarAlt:
-	moveq	#0x3,d0	| C12DB8
+	moveq	#0x3,d0	| C12DB8  the same sequence as ReadCalendar, on the cartridge's chip
 	jsr	(RtcCommandAlt,pc)	| C12DBA
-	bsr.w	DelayShort	| C12DBE
-	moveq	#0x1,d0	| C12DC2
+	bsr.w	DelayShort	| C12DBE  give the chip time to latch the time
+	moveq	#0x1,d0	| C12DC2  command 1: shift the latched time out
 	jsr	(RtcCommandAlt,pc)	| C12DC4
-	lea.l	(BIOS_YEAR).l,a0	| C12DC8
-	jsr	(RtcReadByteAlt,pc)	| C12DCE
+	lea.l	(BIOS_YEAR).l,a0	| C12DC8  a0 = BIOS_YEAR: year, month, day, weekday, hour, minute, second
+	jsr	(RtcReadByteAlt,pc)	| C12DCE  seconds (BCD)
 	move.b	d0,0x6(a0)	| C12DD2
-	jsr	(RtcReadByteAlt,pc)	| C12DD6
+	jsr	(RtcReadByteAlt,pc)	| C12DD6  minutes
 	move.b	d0,0x5(a0)	| C12DDA
-	jsr	(RtcReadByteAlt,pc)	| C12DDE
+	jsr	(RtcReadByteAlt,pc)	| C12DDE  hours
 	move.b	d0,0x4(a0)	| C12DE2
-	jsr	(RtcReadByteAlt,pc)	| C12DE6
+	jsr	(RtcReadByteAlt,pc)	| C12DE6  day
 	move.b	d0,0x2(a0)	| C12DEA
-	jsr	(RtcReadByteAlt,pc)	| C12DEE
+	jsr	(RtcReadByteAlt,pc)	| C12DEE  month in the high nibble (hex 1-C), weekday in the low nibble
 	move.b	d0,d1	| C12DF2
 	andi.b	#0xF,d1	| C12DF4
 	move.b	d1,0x3(a0)	| C12DF8
-	lsr.b	#0x4,d0	| C12DFC
+	lsr.b	#0x4,d0	| C12DFC  month: hex 10-12 become BCD $10-$12
 	cmpi.b	#0xA,d0	| C12DFE
 	bcs.b	loc_C12E06	| C12E02
 	addq.b	#0x6,d0	| C12E04
 loc_C12E06:
 	move.b	d0,0x1(a0)	| C12E06
-	jsr	(RtcReadByteAlt,pc)	| C12E0A
+	jsr	(RtcReadByteAlt,pc)	| C12E0A  year (BCD)
 	move.b	d0,(a0)	| C12E0E
-	moveq	#0x3,d7	| C12E10
+	moveq	#0x3,d7	| C12E10  4 more bits, then the chip is left alone
 	jsr	(RtcReadBitsAlt,pc)	| C12E12
 	rts	| C12E16
 | RtcReadByteAlt [C] reads a byte from the NEO-CLN cartridge calendar at $220001 (same protocol as RtcReadByte). MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcReadByteAlt:
-	moveq	#0x7,d7	| C12E18
+	moveq	#0x7,d7	| C12E18  8 bits, low bit first
 | RtcReadBitsAlt [C] bit loop of RtcReadByteAlt, entered with d7 = bits - 1. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcReadBitsAlt:
-	move.b	(0x220001).l,d2	| C12E1A
-	jsr	(RtcClockPulseAlt,pc)	| C12E20
-	andi.b	#0x80,d2	| C12E24
+	move.b	(0x220001).l,d2	| C12E1A  data bit 7 at $220001 (cartridge)
+	jsr	(RtcClockPulseAlt,pc)	| C12E20  next bit on the clock pulse
+	andi.b	#0x80,d2	| C12E24  the bit comes in at bit 7, then shifts down
 	lsr.b	#0x1,d0	| C12E28
 	or.b	d2,d0	| C12E2A
 	dbra	d7,RtcReadBitsAlt	| C12E2C
 	rts	| C12E30
 | SetupCalendarAlt [C] after CheckCalendarDate, writes BIOS_SECOND.. to the NEO-CLN cartridge calendar; called by HwTestCalendar when D is pressed and NeoClnSlot is set ($C17CBE), before SetupCalendar writes the board calendar. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus (D pressed)
 SetupCalendarAlt:
-	lea.l	(BiosWorkRam).l,a5	| C12E32
-	jsr	(CheckCalendarDate,pc)	| C12E38
+	lea.l	(BiosWorkRam).l,a5	| C12E32  the same sequence as SetupCalendar, on the cartridge's chip
+	jsr	(CheckCalendarDate,pc)	| C12E38  d7 not 0: the date in BIOS_YEAR.. is invalid
 	tst.b	d7	| C12E3C
 	bne.w	loc_C12E86	| C12E3E
-	moveq	#0x1,d0	| C12E42
+	moveq	#0x1,d0	| C12E42  command 1: shift mode
 	jsr	(RtcCommandAlt,pc)	| C12E44
-	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12E48
+	move.b	(BIOS_SECOND-A5_BASE,a5),d0	| C12E48  the bytes go out in the chip's order: second,
 	jsr	(RtcSendByteAlt,pc)	| C12E4C
-	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C12E50
+	move.b	(BIOS_MINUTE-A5_BASE,a5),d0	| C12E50  minute,
 	jsr	(RtcSendByteAlt,pc)	| C12E54
-	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C12E58
+	move.b	(BIOS_HOUR-A5_BASE,a5),d0	| C12E58  hour,
 	jsr	(RtcSendByteAlt,pc)	| C12E5C
-	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12E60
+	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12E60  day,
 	jsr	(RtcSendByteAlt,pc)	| C12E64
-	move.b	(CalendarMonthWeekday-A5_BASE,a5),d0	| C12E68
+	move.b	(CalendarMonthWeekday-A5_BASE,a5),d0	| C12E68  month and weekday,
 	jsr	(RtcSendByteAlt,pc)	| C12E6C
-	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12E70
+	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12E70  year
 	jsr	(RtcSendByteAlt,pc)	| C12E74
-	moveq	#0x2,d0	| C12E78
+	moveq	#0x2,d0	| C12E78  command 2: set the time from the shifted bytes
 	jsr	(RtcCommandAlt,pc)	| C12E7A
-	moveq	#0x0,d0	| C12E7E
+	moveq	#0x0,d0	| C12E7E  command 0: register hold
 	jsr	(RtcCommandAlt,pc)	| C12E80
-	moveq	#0x0,d7	| C12E84
+	moveq	#0x0,d7	| C12E84  d7 = 0: done
 loc_C12E86:
 	rts	| C12E86
 | RtcSendByteAlt [C] writes a byte to the NEO-CLN cartridge calendar through $280051 (same protocol as RtcSendByte). MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcSendByteAlt:
-	moveq	#0x7,d7	| C12E88
+	moveq	#0x7,d7	| C12E88  8 bits, low bit first
 loc_C12E8A:
-	move.b	d0,d1	| C12E8A
+	move.b	d0,d1	| C12E8A  data line = next bit
 	andi.b	#0x1,d1	| C12E8C
 	jsr	(WriteRtcCtrlAlt,pc)	| C12E90
-	ori.b	#0x2,d1	| C12E94
+	ori.b	#0x2,d1	| C12E94  clock high,
 	jsr	(WriteRtcCtrlAlt,pc)	| C12E98
-	eori.b	#0x2,d1	| C12E9C
+	eori.b	#0x2,d1	| C12E9C  clock low
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EA0
-	lsr.b	#0x1,d0	| C12EA4
+	lsr.b	#0x1,d0	| C12EA4  next bit
 	dbra	d7,loc_C12E8A	| C12EA6
 	rts	| C12EAA
 | RtcCommandAlt [C] 4-bit command to the NEO-CLN cartridge calendar, like RtcCommand. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcCommandAlt:
-	moveq	#0x3,d7	| C12EAC
+	moveq	#0x3,d7	| C12EAC  4 command bits, low bit first
 loc_C12EAE:
-	move.b	d0,d1	| C12EAE
+	move.b	d0,d1	| C12EAE  data line = next command bit
 	andi.b	#0x1,d1	| C12EB0
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EB4
-	ori.b	#0x2,d1	| C12EB8
+	ori.b	#0x2,d1	| C12EB8  clock high,
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EBC
-	eori.b	#0x2,d1	| C12EC0
+	eori.b	#0x2,d1	| C12EC0  clock low
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EC4
-	lsr.b	#0x1,d0	| C12EC8
+	lsr.b	#0x1,d0	| C12EC8  next bit
 	dbra	d7,loc_C12EAE	| C12ECA
-	move.b	#0x4,d1	| C12ECE
+	move.b	#0x4,d1	| C12ECE  strobe: the chip runs the command
 	jsr	(WriteRtcCtrlAlt,pc)	| C12ED2
-	moveq	#0x0,d1	| C12ED6
+	moveq	#0x0,d1	| C12ED6  all lines low
 	jsr	(WriteRtcCtrlAlt,pc)	| C12ED8
 	rts	| C12EDC
 | RtcClockPulseAlt [C] pulses the clock line of the NEO-CLN cartridge calendar: WriteRtcCtrlAlt 2 then 0. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 RtcClockPulseAlt:
-	move.b	#0x2,d1	| C12EDE
+	move.b	#0x2,d1	| C12EDE  clock high
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EE2
-	move.b	#0x0,d1	| C12EE6
+	move.b	#0x0,d1	| C12EE6  clock low
 	jsr	(WriteRtcCtrlAlt,pc)	| C12EEA
 	rts	| C12EEE
 | WriteRtcCtrlAlt [C] writes d1 to $280051, the control of the NEO-CLN cartridge calendar. MAME: ran with a NEO-CLN header (patched Sengoku 2, scenario neo_cln_cartridge); MAME has no chip there, so the values read are open bus
 WriteRtcCtrlAlt:
-	move.b	d1,(0x280051).l	| C12EF0
+	move.b	d1,(0x280051).l	| C12EF0  control lines at $280051 (cartridge)
 	rts	| C12EF6
 | CheckCalendarDate [C] checks the date set in test mode (day against MonthDaysTable, February 29 days when year mod 4 = 0; d7 non-zero when invalid) and computes its weekday for the calendar chip: (days of the months before + day - 1 + YearWeekdayTable[year]) mod 7, 0 = Sunday; right for every date 1990-2089 (tools/check_weekday.py); runs before SetupCalendar
 CheckCalendarDate:
-	lea.l	(MonthDaysTable,pc),a1	| C12EF8
+	lea.l	(MonthDaysTable,pc),a1	| C12EF8  days per month, index 0 = leap February
 	move.b	(BIOS_YEAR-A5_BASE,a5),d0	| C12EFC
 	jsr	(BcdToBinary,pc)	| C12F00
-	move.b	d0,(CalendarYearBin-A5_BASE,a5)	| C12F04
+	move.b	d0,(CalendarYearBin-A5_BASE,a5)	| C12F04  binary year 0-99
 	move.w	d0,d1	| C12F08
 	move.b	(BIOS_MONTH-A5_BASE,a5),d0	| C12F0A
 	jsr	(BcdToBinary,pc)	| C12F0E
 	move.w	d0,d2	| C12F12
 	move.w	d2,d3	| C12F14
-	lsl.b	#0x4,d0	| C12F16
+	lsl.b	#0x4,d0	| C12F16  month x 16, the weekday is added below
 	move.b	d0,(CalendarMonthWeekday-A5_BASE,a5)	| C12F18
-	cmpi.b	#0x2,d3	| C12F1C
+	cmpi.b	#0x2,d3	| C12F1C  February of a year divisible by 4: index 0 (29 days)
 	bne.b	loc_C12F2C	| C12F20
 	move.b	d1,d0	| C12F22
 	andi.b	#0x3,d0	| C12F24
@@ -250,21 +250,21 @@ loc_C12F2C:
 	move.b	(BIOS_DAY-A5_BASE,a5),d0	| C12F2C
 	jsr	(BcdToBinary,pc)	| C12F30
 	move.b	d0,(CalendarDayBin-A5_BASE,a5)	| C12F34
-	cmp.b	(a1,d3.w),d0	| C12F38
+	cmp.b	(a1,d3.w),d0	| C12F38  day beyond the month: invalid
 	bhi.w	loc_C12F84	| C12F3C
-	moveq	#0x0,d6	| C12F40
+	moveq	#0x0,d6	| C12F40  d7 = days since January 1st
 	move.l	d6,d7	| C12F42
 	moveq	#0x1,d5	| C12F44
-	andi.b	#0x3,d1	| C12F46
+	andi.b	#0x3,d1	| C12F46  d3 = 0 in a leap year
 	bne.b	loc_C12F4E	| C12F4A
 	moveq	#0x0,d3	| C12F4C
 loc_C12F4E:
-	cmp.b	d5,d2	| C12F4E
+	cmp.b	d5,d2	| C12F4E  add the days of every month before this one
 	beq.b	loc_C12F68	| C12F50
 	move.b	(a1,d5.w),d6	| C12F52
 	cmpi.b	#0x2,d5	| C12F56
 	bne.b	loc_C12F62	| C12F5A
-	tst.b	d3	| C12F5C
+	tst.b	d3	| C12F5C  leap year: February has 29
 	bne.b	loc_C12F62	| C12F5E
 	moveq	#0x1D,d6	| C12F60
 loc_C12F62:
@@ -272,18 +272,18 @@ loc_C12F62:
 	addq.b	#0x1,d5	| C12F64
 	bra.b	loc_C12F4E	| C12F66
 loc_C12F68:
-	add.w	d0,d7	| C12F68
+	add.w	d0,d7	| C12F68  + day - 1
 	subq.w	#0x1,d7	| C12F6A
 	move.b	(CalendarYearBin-A5_BASE,a5),d0	| C12F6C
-	move.b	(YearWeekdayTable,pc,d0.w),d0	| C12F70
+	move.b	(YearWeekdayTable,pc,d0.w),d0	| C12F70  + weekday of January 1st of this year
 	add.w	d0,d7	| C12F74
-	divu.w	#0x7,d7	| C12F76
+	divu.w	#0x7,d7	| C12F76  mod 7: the weekday (0 = Sunday)
 	swap	d7	| C12F7A
 	add.b	d7,(CalendarMonthWeekday-A5_BASE,a5)	| C12F7C
-	moveq	#0x0,d7	| C12F80
+	moveq	#0x0,d7	| C12F80  d7 = 0: valid
 	rts	| C12F82
 loc_C12F84:
-	moveq	#0x1,d7	| C12F84
+	moveq	#0x1,d7	| C12F84  d7 = 1: invalid date
 	rts	| C12F86
 | YearWeekdayTable [C] weekday of January 1st (0 = Sunday) for each two-digit year: 90-99 are 1990-1999, 00-89 are 2000-2089 (checked against the real calendar, tools/check_weekday.py)
 YearWeekdayTable:
@@ -299,25 +299,25 @@ MonthDaysTable:
 	dc.b	0x1D,0x1F,0x1C,0x1F,0x1E,0x1F,0x1E,0x1F,0x1F,0x1E,0x1F,0x1E,0x1F,0x00
 | CheckCartridgeId [C] slot scan, per slot: Z set (d7 = 0) for a game: CART_NEOGEO_ID = NEO-GEO and the code at CART_SECURITY_PTR (even address) equal to the 122 bytes at $C146A2-$C1471B of the system ROM's card code. CART_NEOGEO_ID = NEO-CLN: a cartridge with its own calendar chip (I: a service cartridge for setting the time): stores the slot in NeoClnSlot, clears the first long of BackupRamSignature, copies the cartridge calendar to the board calendar (ReadCalendarAlt, SetupCalendar) and jumps to HardwareTest, which opens on its calendar screen. NoGoIdText: sets SlotNumberMode, clears the first long of BackupRamSignature and SlotTable, returns Z set (a game). MAME: both special IDs ran (scenarios neo_cln_cartridge, nogo_cartridge)
 CheckCartridgeId:
-	lea.l	(CART_NEOGEO_ID).w,a0	| C12FFA
+	lea.l	(CART_NEOGEO_ID).w,a0	| C12FFA  the cartridge header: NEO-GEO?
 	lea.l	(NeoGeoIdText,pc),a1	| C12FFE
 	moveq	#0x6,d7	| C13002
 loc_C13004:
 	cmpm.b	(a0)+,(a1)+	| C13004
 	bne.b	loc_C13034	| C13006
 	dbra	d7,loc_C13004	| C13008
-	movea.l	(CART_SECURITY_PTR).w,a0	| C1300C
+	movea.l	(CART_SECURITY_PTR).w,a0	| C1300C  the security code: CART_SECURITY_PTR must be even,
 	move.w	a0,d0	| C13010
 	btst.b	#0x0,d0	| C13012
 	bne.b	loc_C1302A	| C13016
-	lea.l	(CardFindEntry,pc),a1	| C13018
+	lea.l	(CardFindEntry,pc),a1	| C13018  and the words there must equal the system ROM's own code from CardFindEntry to CardFindEntrySparse
 	lea.l	(CardFindEntrySparse,pc),a2	| C1301C
 loc_C13020:
 	cmpm.w	(a0)+,(a1)+	| C13020
 	bne.b	loc_C1302A	| C13022
 	cmpa.l	a1,a2	| C13024
 	bne.b	loc_C13020	| C13026
-	moveq	#0x0,d7	| C13028
+	moveq	#0x0,d7	| C13028  d7 = 0 and Z set: a game
 loc_C1302A:
 	rts	| C1302A
 | NeoGeoIdText [C] NEO-GEO, compared with CART_NEOGEO_ID by CheckCartridgeId
@@ -325,7 +325,7 @@ NeoGeoIdText:
 	.ascii	"NEO-GEO"
 	dc.b	0x00
 loc_C13034:
-	lea.l	(CART_NEOGEO_ID).w,a0	| C13034
+	lea.l	(CART_NEOGEO_ID).w,a0	| C13034  not NEO-GEO: NEO-CLN?
 	lea.l	(NeoClnIdText,pc),a1	| C13038
 	moveq	#0x6,d7	| C1303C
 loc_C1303E:
@@ -333,27 +333,27 @@ loc_C1303E:
 	bne.b	loc_C13064	| C13040
 	dbra	d7,loc_C1303E	| C13042
 	moveq	#0x0,d0	| C13046
-	move.b	(CurrentSlot).l,(NeoClnSlot).l	| C13048
-	clr.l	(BackupRamSignature).l	| C13052
-	jsr	(ReadCalendarAlt,pc)	| C13058
+	move.b	(CurrentSlot).l,(NeoClnSlot).l	| C13048  remember the NEO-CLN slot
+	clr.l	(BackupRamSignature).l	| C13052  the backup RAM is cleared at the next boot
+	jsr	(ReadCalendarAlt,pc)	| C13058  its calendar to BIOS_YEAR..., then to the board's calendar,
 	jsr	(SetupCalendar,pc)	| C1305C
-	jmp	(HardwareTest,pc)	| C13060
+	jmp	(HardwareTest,pc)	| C13060  and the hardware test (its calendar screen)
 loc_C13064:
-	lea.l	(CART_NEOGEO_ID).w,a0	| C13064
+	lea.l	(CART_NEOGEO_ID).w,a0	| C13064  not NEO-CLN: the slot-number ID?
 	lea.l	(NoGoIdText,pc),a1	| C13068
 	moveq	#0x6,d7	| C1306C
 loc_C1306E:
 	cmpm.b	(a0)+,(a1)+	| C1306E
 	bne.b	loc_C1302A	| C13070
 	dbra	d7,loc_C1306E	| C13072
-	move.w	#0x1,(SlotNumberMode).l	| C13076
-	clr.l	(BackupRamSignature).l	| C1307E
+	move.w	#0x1,(SlotNumberMode).l	| C13076  slot-number mode: SLOT n before each game, duplicates kept
+	clr.l	(BackupRamSignature).l	| C1307E  backup RAM cleared at the next boot
 	lea.l	(SlotTable).l,a0	| C13084
 	moveq	#0x7,d7	| C1308A
 loc_C1308C:
-	move.l	#0xFFFF,(a0)+	| C1308C
+	move.l	#0xFFFF,(a0)+	| C1308C  every slot table entry back to none ($FFFF)
 	dbra	d7,loc_C1308C	| C13092
-	moveq	#0x0,d7	| C13096
+	moveq	#0x0,d7	| C13096  counted as a game
 	rts	| C13098
 | NeoClnIdText [C] NEO-CLN, compared with CART_NEOGEO_ID by CheckCartridgeId: the cartridge calendar path
 NeoClnIdText:
@@ -364,26 +364,26 @@ NoGoIdText:
 	dc.b	0x4E,0x00,0x4F,0x00,0x47,0x00,0x4F,0x00
 | VramTest [C] VRAM test through REG_VRAMRW, d4 start address, d5 count
 VramTest:
-	move.w	d4,-0x2(a1)	| C130AA
-	move.w	#0x5555,d0	| C130AE
+	move.w	d4,-0x2(a1)	| C130AA  VRAM address = d4
+	move.w	#0x5555,d0	| C130AE  pass 1: $5555 everywhere
 	move.w	d5,d7	| C130B2
 loc_C130B4:
 	move.w	d0,(a1)	| C130B4
-	move.b	d0,(a2)	| C130B6
+	move.b	d0,(a2)	| C130B6  a2 = REG_DIPSW: watchdog
 	dbra	d7,loc_C130B4	| C130B8
-	move.w	d4,-0x2(a1)	| C130BC
+	move.w	d4,-0x2(a1)	| C130BC  read back and compare
 	movea.l	d4,a0	| C130C0
 	move.w	d5,d7	| C130C2
 loc_C130C4:
 	move.b	d0,(a2)	| C130C4
 	move.w	(a1),d1	| C130C6
-	move.w	d1,(a1)	| C130C8
+	move.w	d1,(a1)	| C130C8  write back: the read does not advance the address, the write does
 	cmp.w	d0,d1	| C130CA
-	bne.w	BootError	| C130CC
+	bne.w	BootError	| C130CC  mismatch: BootError shows a0 (the address) and the values
 	addq.l	#0x1,a0	| C130D0
 	dbra	d7,loc_C130C4	| C130D2
 	move.w	d4,-0x2(a1)	| C130D6
-	move.w	#0xAAAA,d0	| C130DA
+	move.w	#0xAAAA,d0	| C130DA  pass 2: $AAAA
 	move.w	d5,d7	| C130DE
 loc_C130E0:
 	move.w	d0,(a1)	| C130E0
@@ -400,7 +400,7 @@ loc_C130F0:
 	bne.w	BootError	| C130F8
 	addq.l	#0x1,a0	| C130FC
 	dbra	d7,loc_C130F0	| C130FE
-	move.w	d4,-0x2(a1)	| C13102
+	move.w	d4,-0x2(a1)	| C13102  pass 3: an increasing count, which catches address faults
 	moveq	#0x0,d0	| C13106
 	move.w	d5,d7	| C13108
 loc_C1310A:
@@ -424,10 +424,10 @@ loc_C1311E:
 	rts	| C13132
 | MemTestBlock [C] memory test of d5+1 words from a0 (test number in d6), used for work RAM and palette banks
 MemTestBlock:
-	lea.l	(REG_DIPSW).l,a2	| C13134
-	movea.l	(a7)+,a6	| C1313A
+	lea.l	(REG_DIPSW).l,a2	| C13134  a2 = REG_DIPSW: watchdog on every word
+	movea.l	(a7)+,a6	| C1313A  return address in a6: the stack may be in the RAM under test
 	movea.l	a0,a1	| C1313C
-	move.w	#0x5555,d0	| C1313E
+	move.w	#0x5555,d0	| C1313E  pass 1: $5555
 	move.w	d5,d7	| C13142
 loc_C13144:
 	move.b	d0,(a2)	| C13144
@@ -436,14 +436,14 @@ loc_C13144:
 	movea.l	a1,a0	| C1314C
 	move.w	d5,d7	| C1314E
 loc_C13150:
-	move.b	d0,(a2)	| C13150
+	move.b	d0,(a2)	| C13150  read back
 	move.w	(a0),d1	| C13152
 	cmp.w	d0,d1	| C13154
 	bne.w	BootError	| C13156
 	addq.l	#0x2,a0	| C1315A
 	dbra	d7,loc_C13150	| C1315C
 	movea.l	a1,a0	| C13160
-	move.w	#0xAAAA,d0	| C13162
+	move.w	#0xAAAA,d0	| C13162  pass 2: $AAAA
 	move.w	d5,d7	| C13166
 loc_C13168:
 	move.b	d0,(a2)	| C13168
@@ -459,7 +459,7 @@ loc_C13174:
 	addq.l	#0x2,a0	| C1317E
 	dbra	d7,loc_C13174	| C13180
 	movea.l	a1,a0	| C13184
-	move.w	d5,d7	| C13186
+	move.w	d5,d7	| C13186  pass 3: each word holds its own address
 loc_C13188:
 	move.b	d0,(a2)	| C13188
 	move.w	a0,d0	| C1318A
@@ -475,10 +475,10 @@ loc_C13196:
 	bne.w	BootError	| C1319E
 	addq.l	#0x2,a0	| C131A2
 	dbra	d7,loc_C13196	| C131A4
-	jmp	(a6)	| C131A8
+	jmp	(a6)	| C131A8  back to the caller
 | BcdToBinary [C] d0 BCD byte (00-99) -> binary through BcdToBinaryTable
 BcdToBinary:
-	andi.w	#0xFF,d0	| C131AA
+	andi.w	#0xFF,d0	| C131AA  index: the BCD byte
 	move.b	(BcdToBinaryTable,pc,d0.w),d0	| C131AE
 	rts	| C131B2
 | BcdToBinaryTable [C] 256 bytes: binary value of each BCD byte, 0 for invalid digits
@@ -490,14 +490,12 @@ BcdToBinaryTable:
 	dc.b	0x28,0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F,0x30,0x31,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0x3A,0x3B,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x3C,0x3D,0x3E,0x3F,0x40,0x41,0x42,0x43,0x44,0x45,0x00,0x00,0x00,0x00,0x00,0x00
-	.ascii	"FGHIJKLMNO"
-	dc.b	0x00,0x00,0x00,0x00,0x00,0x00
-	.ascii	"PQRSTUVWXY"
-	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x5A,0x5B,0x5C,0x5D,0x5E,0x5F,0x60,0x61,0x62,0x63
+	dc.b	0x46,0x47,0x48,0x49,0x4A,0x4B,0x4C,0x4D,0x4E,0x4F,0x00,0x00,0x00,0x00,0x00,0x00
+	dc.b	0x50,0x51,0x52,0x53,0x54,0x55,0x56,0x57,0x58,0x59,0x00,0x00,0x00,0x00,0x00,0x00
+	dc.b	0x5A,0x5B,0x5C,0x5D,0x5E,0x5F,0x60,0x61,0x62,0x63,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 	dc.b	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-	dc.b	0x00,0x00,0x00,0x00,0x00,0x00

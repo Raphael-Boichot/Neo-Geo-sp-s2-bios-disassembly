@@ -62,7 +62,8 @@ clear the bits it refuses. For each bit still set, `DeductStartCredits` takes on
 ### Start compulsion
 
 On the title with credits in and GAME START COMPULSION set (cabinet settings), the BCD
-`BIOS_SELECT_TIMER` counts the seconds down (`BIOS_COMPULSION_FRAME_TIMER`: 59 frames a second).
+`BIOS_SELECT_TIMER` counts the seconds down (`BIOS_COMPULSION_FRAME_TIMER`, reloaded with 59 and run to -1:
+60 frames a second).
 At 0 the system ROM presses START itself: P1, or P2 when only the second credit byte is non-zero,
 and sets `CompulsionStart` until the start is taken (C for the code; I for the P2 case).
 

@@ -1,4 +1,13 @@
 addr,comment
+C00402,vector 1 (reset)
+C00408,"vector 2, bus error: still jmp Reset, so PowerOnTest runs the checksum test"
+C0040E,"vector 3, address error"
+C00414,"vector 4, illegal instruction"
+C0041A,"vector 8, privilege violation"
+C00420,"vector 9, trace"
+C00426,"vectors 5-7, 10-14, 16-23, 27-63: every other exception"
+C0042C,"vector 15, uninitialised interrupt"
+C00432,"vector 24, spurious interrupt"
 C00480,"11 unused call slots up to $C004BC, each jmp to an rts; the same in all 19 SNK system ROMs"
 C11002,"interrupts off (level 7 mask, supervisor)"
 C11006,any write to REG_DIPSW kicks the watchdog
@@ -192,6 +201,28 @@ C118B6,"SELECT P2: code 5, previous game"
 C118C0,the game stops its demo
 C118CA,acknowledge the timer interrupt
 C118D2,and turn it off
+C118DC,the AES power-on test (no cartridge): error numbers one above BootErrorMessages
+C118DE,test 1: the 64 KB of work RAM
+C118EC,"test 2: palette RAM, bank 1 then bank 0"
+C118F8,4K words per bank
+C11912,bank 1 again
+C11918,test 3: VRAM
+C11920,VRAM auto-increment 1
+C11926,low VRAM: words $0000-$7FFF
+C11930,high VRAM from $8000: $600 words
+C1193E,"the checksum test, as in PowerOnTest"
+C1194C,checksum of the 128 vector bytes
+C11960,then $C00082-$C1FFFF
+C11978,test 4: the system ROM checksum
+C11984,"the card test, as in PowerOnTest"
+C119A0,"$81: a card is inserted but not formatted, so it can be overwritten"
+C119AC,"card writable, normal access"
+C119BE,"card memory at $800000, 2K words: $55,"
+C119F8,"then $AA,"
+C11A20,"then the address test: high byte, then low byte of each word's address"
+C11A60,every test passed
+C11A62,card error
+C11A68,"everything passed: BootError 0 anyway (on an AES, the colour of error 0)"
 C11A84,all latches high
 C11A90,LED data $FF: every segment off
 C11A98,"pulse latch $F7 (slot LED), then back to $FF"
@@ -250,6 +281,43 @@ C11D84,otherwise the hardware test
 C11D88,a game: on to ClearRamAndVideo and the system modes
 C11D9A,d2 = previous value of the status byte
 C11DA4,bits that changed and are now 1: rising edges
+C11DB0,"a4: backup RAM variables, a5: work RAM"
+C11DBC,no start checks during the boot
+C11DC8,no NEO-CLN cartridge seen yet
+C11DD0,"slot-number mode off, play time 0"
+C11DDC,60 frames per play-time second
+C11DE2,coin counters and pending counter pulses cleared
+C11DF0,the date and time from the calendar chip
+C11DF4,"hour, minute, second start the software clock"
+C11DFA,"a new date unless year, month, day equal the last boot's"
+C11E1A,"new date: keep the old month at (a5) for the month test below,"
+C11E1E,store today as the last boot date
+C11E24,next record of the 36-day rings
+C11E36,today's CABINET/PLAY and CABINET/COIN records cleared and dated
+C11E4E,today's CABINET/COIN record
+C11E52,a new month as well?
+C11E5A,records are by month 1-12: index month - 1
+C11E62,this month's CABINET/PLAY and CABINET/COIN records cleared
+C11E7A,and this month's record of each of the 8 games
+C11E8C,"the scan table: 8 entries $0000FFFF, and 8 cleared longs after it"
+C11EA4,"slot count: 2, or 4 / 6 when REG_SYSTYPE bit 6 is set (REG_STATUS_A bit 5 chooses)"
+C11EC6,x 4: the scan table offset limit
+C11EC8,the Z80 answers sound command 1 (boot error 8 otherwise)
+C11ECC,slot 0 and the cartridge fix ROM to start the scan
+C11EDA,every slot: NGH and the eyecatcher slot
+C11EDE,board fix ROM back
+C11EF2,merge the scan with the stored slot table:
+C11EF6,"games no longer in a slot,"
+C11EFA,"entries past the slot count,"
+C11EFE,"games that moved to another slot,"
+C11F02,"the new table,"
+C11F06,and the date of each new game
+C11F0A,new date: each game's day ring moves on
+C11F14,"the software clock in binary: minute and second,"
+C11F2C,and hour x 4 (an index into the per-hour counters)
+C11F3A,60 frames to the next second
+C11F40,the init pass starts at slot 0
+C11F46,"backup RAM locked, board fix and system vectors"
 C11F5A,$FF: no eyecatcher slot found yet
 C11F60,"d6 = slot x 4, the offset in the table at a3"
 C11F6A,select the slot: its header appears at $000100
@@ -273,11 +341,75 @@ C12006,a short delay before the caller switches
 C12012,sound command 1 at power-on: the Z80 runs sm1.sm1
 C1201E,"50,000 reads at most"
 C12036,"no reply: boot error 8, Z80 ERROR"
+C12044,slot-number mode keeps duplicates
+C1204E,"d7: each slot, d1: each later slot"
+C12052,empty slot: next
+C1205C,the same NGH in a later slot: drop that one
+C12074,"8 entries: NGH $0000, index $FFFF, date 0"
+C1207A,clear all 8 entries first
+C1208C,each stored game (a2 = SlotTable)
+C12096,still in a slot of the new scan (a3)?
+C120A4,"no: NGH and index, then its date, into RemovedGames"
+C120AC,next stored entry
+C120B4,stored entries from the slot count up to 8
+C120BE,in a slot now?
+C120CA,no: listed as removed too
+C120D6,yes: that slot gets its settings index and date
+C120EE,each scanned game
+C120F6,where was it before?
+C12102,"nowhere: a new game, nothing to copy"
+C12104,keeps its settings index and date
+C1211A,"the scanned slots into SlotTable (NGH and index, dates 32 bytes on)"
+C1212C,a2+$40 = RemovedGames
+C12144,each slot with a game
+C1214A,index $FFFF (new game): dated today
+C12162,BookSlot used as the slot counter
+C1216A,empty slot
+C12172,"an index (0-7), or $80xx: restored from a 1M card (Card1MRestore)"
+C12184,the game's day ring moves on (36 days)
+C121A6,that record cleared and dated
+C121AA,and the game's day count + 1
+C121B0,"next slot, up to the slot count"
+C121C6,a game is using the backup RAM: leave it writable
+C121CE,otherwise write-protect it
+C121D6,from BookSlot onwards
+C121F0,empty slot: next
+C121F8,already has an index: next
+C12200,$80xx (restored from a 1M card): only clear the high byte (below)
+C1220A,the lowest index 0-7 not used by any entry
+C12222,the slot's new index
+C12226,"its book keeping: day ring at 0,"
+C12230,"the 36 day records ($240 bytes) cleared,"
+C12242,"today's record dated,"
+C12246,"the totals record,"
+C12252,"the 24 hour counters,"
+C12260,"the day count,"
+C12268,and the 12 month records ($C0 bytes)
+C12280,select the slot to read its header
+C12284,the soft DIP block of this ROM's region: CART_SOFTDIP_JP ($116) + 4 x region
+C1229A,"its first 16 bytes, the game name, to GameNames"
+C122B0,one game per call: back to SystemMode0 for its init
+C122B2,next slot
+C122C0,backup RAM locked again
+C122C8,"restored game within the slot count: index high byte cleared, slot selected"
+C122E0,the slot of the game
+C122E4,8: none
+C122F4,its settings index
+C12304,16 bytes per game
+C1230E,BIOS_GAME_DIP back to the game's copy
+C1232A,no game: nothing to save
+C12336,backup RAM writable for the copy
+C12342,the game's index
+C12346,x $1000: its 4 KB block
+C12350,copy the game's backup area into it
+C1235E,watchdog on every byte
+C1236A,write-protect again
 C12378,LED latches idle
 C1238C,"slot before, wrapping to the last one"
 C1239E,entry 0: no game in that slot
 C123A4,then as NextSlot
 C123BC,the slot whose data is loaded
+C123C0,then as NextSlot: load the game's data
 C123C4,a4 = BramA4Base: backup RAM variables a4-relative
 C123CA,LED latches idle
 C123D6,"4 bytes per slot: NGH, settings index"
@@ -302,6 +434,27 @@ C124B4,months are 1-12: record month - 1
 C124BE,"the hour counts,"
 C124CA,and its totals record
 C124D6,LED latches idle
+C12508,the game in slot BookSlot: its settings index from SlotTable
+C12518,that game's day records
+C12540,its index x 4 into BookGameDayCount
+C1254E,x 4: one long per game
+C1255C,its index into the hour counter table
+C1256A,x 4: one pointer per game
+C12596,16 bytes per record
+C1259C,date in the first long
+C125A4,one 16-byte record at a0 + d0 set to 0
+C125C8,every hard DIP on: always test (WorkRamTestLoop)
+C125D0,"signature still there: the contents are kept, no test"
+C125E6,missing: test the 64 KB (MemTestBlock with d5 from the caller)
+C125EA,"then clear and initialise, unless every DIP is on"
+C125F4,backup RAM in use by the system ROM
+C12602,64 KB cleared from the top
+C1262E,the signature BACKUP RAM OK !
+C12640,"cabinet defaults: coin rates, game select, compulsion, demo sound"
+C12654,the day ring at its last record: the first boot moves to record 0
+C1265C,no game in any slot entry ($0000FFFF)
+C12670,code number F F F F (none)
+C1267A,no cabinet number
 C12692,"latches idle, then the data"
 C12696,segments are active low
 C1269E,latch $F7: the slot LED
@@ -340,6 +493,11 @@ C1282A,software clock
 C12834,"LED counter 1 shows Credits on even frames,"
 C12844,LED counter 2 shows Credits2 on odd frames
 C1284C,segments active low
+C12860,every 60 VBlanks
+C1286E,one second
+C12880,60 seconds: one minute
+C12892,60 minutes: one hour (hour x 4)
+C128A0,24 hours: back to 0
 C128A6,d2 = coin inputs that just went active
 C128AA,a coin: d7 = 1 for the caller
 C128AC,coins toward the next credit
@@ -370,19 +528,1091 @@ C12968,"and month records,"
 C12970,"CABINET/PLAY today,"
 C1297C,and CABINET/PLAY this month
 C12988,and the game's counter for this hour
-C12996,next player
+C12996,a0 + 4: a0 is not used by these callers (a1 already moved on)
 C129A6,a1: previous player modes (for CONT.)
 C129AA,"a3: BIOS_CREDIT_DEC1 and DEC2, credits to take per player"
 C129BE,0: nothing for this player
 C129C6,PLAY
 C129CE,CONT.: the player was already in the game
+C129D4,a non-zero BIOS_FRAME_SKIP holds the sound
 C129DC,"status 0 or 1 (init pass, eyecatcher): no coin sound"
 C129E6,not while the ROMs are being switched
 C129F6,on a system ROM screen: the board's coin sound
 C12A06,during the game or its demo: the game's own coin sound
 C12A0A,the game may have changed a4 and a5
+C12A18,only on the eyecatcher (status 1) or the title/demo (user mode 1)
+C12A28,and with a memory card in
+C12A36,SELECT P1 pressed
+C12A44,"the card: NEO-GEO at +$40, one letter per 4 bytes"
+C12A60,type byte $2x: a 1M cabinet card
+C12A6E,its code number must be this board's
+C12A78,"this board already has a cabinet number: save over it, if the card knows it"
+C12A8A,"no number yet: the card's next free one, up to 10 cabinets"
+C12A94,interrupts off; card writable
+C12AB2,the number into backup RAM
+C12AC2,and the card's count of cabinets + 1
+C12ACA,interrupts off for the copy; SELECT consumed
+C12AEC,$2800 bytes per cabinet from card offset $100
+C12AF8,a3 = watchdog
+C12B04,date and time first
+C12B14,"then the backup RAM areas, word by word"
+C12B3E,card locked
+C12B4A,palette 0 colour 1 $0EEE
+C12B60,"Japan: SAVE OK, other countries: DATA HAS BEEN STORED..."
+C12B70,clears the high byte of BIOS_MESS_POINT (already 0): BIOS_MESS_BUSY was probably meant
+C12B74,drawn at once
+C12B78,"about a second of wait, with the watchdog"
+C12B88,back through SYSTEM_RETURN (the game continues its demo)
+C12B8E,a3: the watchdog
+C12B90,d7 words
+C12BF8,P1 or P2 was playing on the previous frame
+C12C08,"every 60 frames, one second of play time"
+C12C18,this frame's player modes for the next frame
+C12C36,the play time of this game
+C12C3A,"PLAY TIME (+$C) of the game's today, total and month records"
+C12C52,and of CABINET/PLAY today ($240 + $C) and this month ($C0 + $C)
+C12C62,"counted, back to 0"
+C12C78,command 3: time read (the chip latches the time)
+C12C82,"command 1: shift mode, the time comes out bit by bit"
+C12C88,"a0 = BIOS_YEAR, then month, day, weekday, hour, minute, second"
+C12C8E,first byte out: seconds (BCD)
+C12C96,minutes
+C12C9E,hours
+C12CA6,day
+C12CAE,"month (high nibble, binary) and weekday (low nibble)"
+C12CBE,month 10-12 as BCD $10-$12
+C12CCA,year (BCD)
+C12CD0,"4 more bits, not stored"
+C12CD8,"8 bits, low bit first"
+C12CDA,data out of the chip: bit 7 of REG_STATUS_A
+C12CE8,LSB first: each bit enters at the top
+C12CF8,"d7 not 0: invalid date, nothing written"
+C12D02,"command 1: shift mode, the new time goes in bit by bit"
+C12D08,"same order as ReadCalendar: second first, year last"
+C12D28,"month x 16 + weekday, computed by CheckCalendarDate"
+C12D38,command 2: time set (load the shifted bits)
+C12D3E,command 0: register hold
+C12D44,d7 = 0: done
+C12D4A,data bit (bit 0 of REG_RTCCTRL)
+C12D54,"clock high (bit 1),"
+C12D5C,clock low: the chip takes the bit
+C12D6C,"4 command bits, low bit first"
+C12D6E,data line (bit 0) = next command bit
+C12D78,"clock high,"
+C12D80,clock low: the chip takes the bit
+C12D88,next bit
+C12D8E,strobe (bit 2): the chip runs the command
+C12D96,all lines low
+C12D9E,clock high
+C12DA6,clock low
+C12DB0,"bit 0 data, bit 1 clock, bit 2 strobe"
+C12DB8,"the same sequence as ReadCalendar, on the cartridge's chip"
+C12DBE,give the chip time to latch the time
+C12DC2,command 1: shift the latched time out
+C12DC8,"a0 = BIOS_YEAR: year, month, day, weekday, hour, minute, second"
+C12DCE,seconds (BCD)
+C12DD6,minutes
+C12DDE,hours
+C12DE6,day
+C12DEE,"month in the high nibble (hex 1-C), weekday in the low nibble"
+C12DFC,month: hex 10-12 become BCD $10-$12
+C12E0A,year (BCD)
+C12E10,"4 more bits, then the chip is left alone"
+C12E18,"8 bits, low bit first"
+C12E1A,data bit 7 at $220001 (cartridge)
+C12E20,next bit on the clock pulse
+C12E24,"the bit comes in at bit 7, then shifts down"
+C12E32,"the same sequence as SetupCalendar, on the cartridge's chip"
+C12E38,d7 not 0: the date in BIOS_YEAR.. is invalid
+C12E42,command 1: shift mode
+C12E48,"the bytes go out in the chip's order: second,"
+C12E50,"minute,"
+C12E58,"hour,"
+C12E60,"day,"
+C12E68,"month and weekday,"
+C12E70,year
+C12E78,command 2: set the time from the shifted bytes
+C12E7E,command 0: register hold
+C12E84,d7 = 0: done
+C12E88,"8 bits, low bit first"
+C12E8A,data line = next bit
+C12E94,"clock high,"
+C12E9C,clock low
+C12EA4,next bit
+C12EAC,"4 command bits, low bit first"
+C12EAE,data line = next command bit
+C12EB8,"clock high,"
+C12EC0,clock low
+C12EC8,next bit
+C12ECE,strobe: the chip runs the command
+C12ED6,all lines low
+C12EDE,clock high
+C12EE6,clock low
+C12EF0,control lines at $280051 (cartridge)
+C12EF8,"days per month, index 0 = leap February"
+C12F04,binary year 0-99
+C12F16,"month x 16, the weekday is added below"
+C12F1C,February of a year divisible by 4: index 0 (29 days)
+C12F38,day beyond the month: invalid
+C12F40,d7 = days since January 1st
+C12F46,d3 = 0 in a leap year
+C12F4E,add the days of every month before this one
+C12F5C,leap year: February has 29
+C12F68,+ day - 1
+C12F70,+ weekday of January 1st of this year
+C12F76,mod 7: the weekday (0 = Sunday)
+C12F80,d7 = 0: valid
+C12F84,d7 = 1: invalid date
+C12FFA,the cartridge header: NEO-GEO?
+C1300C,"the security code: CART_SECURITY_PTR must be even,"
+C13018,and the words there must equal the system ROM's own code from CardFindEntry to CardFindEntrySparse
+C13028,d7 = 0 and Z set: a game
+C13034,not NEO-GEO: NEO-CLN?
+C13048,remember the NEO-CLN slot
+C13052,the backup RAM is cleared at the next boot
+C13058,"its calendar to BIOS_YEAR..., then to the board's calendar,"
+C13060,and the hardware test (its calendar screen)
+C13064,not NEO-CLN: the slot-number ID?
+C13076,"slot-number mode: SLOT n before each game, duplicates kept"
+C1307E,backup RAM cleared at the next boot
+C1308C,every slot table entry back to none ($FFFF)
+C13096,counted as a game
+C130AA,VRAM address = d4
+C130AE,pass 1: $5555 everywhere
+C130B6,a2 = REG_DIPSW: watchdog
+C130BC,read back and compare
+C130C8,"write back: the read does not advance the address, the write does"
+C130CC,mismatch: BootError shows a0 (the address) and the values
+C130DA,pass 2: $AAAA
+C13102,"pass 3: an increasing count, which catches address faults"
+C13134,a2 = REG_DIPSW: watchdog on every word
+C1313A,return address in a6: the stack may be in the RAM under test
+C1313E,pass 1: $5555
+C13150,read back
+C13162,pass 2: $AAAA
+C13186,pass 3: each word holds its own address
+C131A8,back to the caller
+C131AA,index: the BCD byte
+C132B4,never reached: test builds only (docs/memory_card.md)
+C132BA,file 0 first
+C132C2,NGH $1234
+C132CE,the 20-byte title as the data
+C132DA,"CARD 3: save,"
+C132E8,64 bytes (one block)
+C132F6,"jsr Card, then a nop for a patch"
+C13304,"an error (the card is full): CardError, then stop"
+C1330E,next title character
+C1331C,"16 files per NGH,"
+C13322,then the next NGH
+C13326,and another first title byte
+C1334C,every CARD function returns through CardLock
+C13356,the stack at entry: CardExit returns from any depth
+C1335A,no card header type read yet
+C13360,REG_STATUS_B bits 4-5: 0 when a card is in
+C1336C,$80: no card
+C13374,result 0 by default
+C1337A,a6 = card memory
+C13382,"normal access, bank 0"
+C1338E,the function number BIOS_CRDF
+C133BA,lock the card on the way out
+C133C6,"the stack at entry, for the exits of the handlers"
+C133D4,results $81-$85 only
+C1340A,table index: (result - $81) x 8 + function
+C1341A,$FF: nothing to show
+C1341C,a fresh MESS_OUT queue
+C1342C,every handler returns here
+C13430,"keep BIOS_SYSTEM_MODE, the system ROM in control meanwhile"
+C1343C,interrupts on: the handlers wait for frames
+C1345A,"card locked, screen given back, mode restored"
+C1346A,result $81 on a load: NO DATA FOR THIS GAME.
+C13472,result $83: ERROR ON MEMORY CARD.
+C1347A,result $85: MEMORY CARD WRITE PROTECTED.
+C13500,"keep the game's screen, then the message and PUSH ANY BUTTON."
+C13520,900 frames (15 s) on an MVS
+C13526,A-D on P1 or P2 ends it
+C13530,AES: wait for a button only
+C1353E,MVS: format without asking
+C13560,"A: yes, B: no"
+C13572,"keep the game's request, then CARD 0: format"
+C13588,failed: THIS MEMORY CARD CANNOT BE FORMATTED.
+C13590,formatted: the game's request again
+C1363E,keep the game's whole request
+C13660,count the titles on the card: CARD 5 until it fails
+C13678,the last index (BIOS_CRDSIZE ends at the count)
+C1368A,900 frames on an MVS
+C13690,a page: MEMORY CARD FULL (and PREVIOUS PAGE after the first)
+C136BC,CARD 5: the title at index DataListPageFirst
+C136E4,"an inline list: title at fix $716F + 2 x line, page 1 palette 1"
+C136FA,the 20-byte title as 10 words
+C1371A,next index; past the last: done
+C13732,"6 lines per page, then NEXT PAGE"
+C1374C,the cursor
+C13750,"each frame: MVS time-out, B gives up, A deletes"
+C13772,up / down
+C13794,still on this page: just move the cursor
+C1379E,off the bottom: the next page starts at the new index
+C137A4,off the top: the page holding it (index rounded down to a multiple of 6)
+C137BC,"give up: the game's request back, with the full result"
+C137C8,"A: read the title of the cursor line (sets the NGH and file), delete it (CARD 4),"
+C137EA,the game's request back and run again
+C137F8,still full: the list again
+C13804,"the CARD request saved at entry, back in place for a retry:"
+C1380A,"the pointer,"
+C13810,"the size,"
+C13816,"the NGH,"
+C1381C,and the file number
+C1382C,pointer 0: the commands follow inline
+C13830,"erase: a space, palette 2"
+C13840,"draw: tile $11 (arrow), palette 1"
+C13848,command 0: end
+C13858,line on this page: index mod 6
+C13866,fix $712F + 2 x line
+C1394E,d0 high word: P1 or P2 repeat bits
+C13958,low byte: P1 or P2 newly pressed
+C13960,P1 is a mahjong panel: its keys as joystick bits (as CopyControllerState)
+C13968,"the mahjong row byte,"
+C1397C,nibbles swapped: the keys in the joystick bits
+C13980,both halves of d0 get them
+C13986,only once per message
+C1399C,"copy the fix layer to $10F300 (a5), 1,280 words"
+C139B6,the read does not advance the address: write the word back
+C139C2,"keep colour 1 of palettes 0 and 1, then white and red text"
+C139E6,the screen is cleared for the message
+C139EC,nothing saved: nothing to restore
+C139F6,empty the MESS_OUT list
+C13A04,VRAM auto-increment 1
+C13A0A,copy the saved fix layer back
+C13A0C,"from fix address $7000, $500 words"
+C13A22,and the two colours
+C13A36,one restore per save
+C13A40,empty the MESS_OUT list
+C13A4E,VRAM auto-increment 1
+C13A54,"tile $20 (space) on all 1,280 fix words"
+C13A74,bit 6 of REG_STATUS_B: write-protected: $85
+C13A88,"CardDetect: d6 = size, CardType"
+C13A90,size 0: not a card that can be written
+C13A92,0: 8-bit card; negative: type $80; else 16-bit
+C13A9E,"the header, directory, FAT and data addresses for this type"
+C13AA8,"header: 10 words 0,"
+C13AB4,"the size high and low,"
+C13AC0,"the word CardFormatHeaderWord, three more words 0,"
+C13ACA,"16 spaces: the user name,"
+C13AD6,"NEO-GEO one letter per 4 bytes,"
+C13AE6,and the region byte
+C13AF6,8-bit card: every directory entry free ($FF)
+C13B10,blocks before the data area: (start - card) / 128
+C13B1A,"first FAT copy: those blocks used, the rest free"
+C13B22,the second copy
+C13B32,"the checksum of each copy into the header (+$1A, +$1C)"
+C13B5C,one byte of each word (8-bit card: the low byte)
+C13B66,keep the FAT address
+C13B6A,FAT size in bytes / 2 - 1: the loop count over its words
+C13B74,clear the FAT
+C13B7E,2: used block
+C13B80,"the first d6+1 blocks hold the header, directory and FATs"
+C13B8A,16-bit card: header word +$12 = 1
+C13B90,"a0 = the directory, one entry every 4 bytes"
+C13B98,directory entries free ($FF in the high byte)
+C13BAA,blocks before the data area: (start - card) / 64
+C13BB6,"first FAT copy,"
+C13BC6,"then the second, CardFatSize bytes further"
+C13BCA,checksums as on the 8-bit card
+C13BE0,"checksum of the first copy at header +$1A,"
+C13BEE,of the second at +$1C
+C13BF4,both bytes of each word
+C13C02,keep the FAT address
+C13C10,clear the FAT
+C13C1A,"two entries per word, both 2 (used)"
+C13C20,an odd count: the last word half used
+C13C2A,one word: two used blocks
+C13C32,"type $80: the byte layout, the header on every second word"
+C13C36,header: 5 longs of zero first
+C13C42,"word +$C = 1, then size, CardFormatHeaderByte, 0,"
+C13C5C,"8 words of two spaces: the user name,"
+C13C6A,"NEO-GEO and the region, as on the other cards"
+C13C82,the directory: one entry every 8 bytes
+C13C8A,directory entries free
+C13CA8,"first FAT copy, then the second"
+C13CCC,"checksums: the first in the high byte of +$1C, the second in its low byte"
+C13CEE,every second word (4-byte step)
+C13D0C,clear every second word
+C13D28,used blocks for the header area
+C13D32,BIOS_CRDFILE: a bit per file found
+C13D38,header check: not formatted ($81) or ROM card returns
+C13D4E,"8-bit, 16-bit or type $80 directory"
+C13D5A,"8-bit: entry = file, NGH high, NGH low, one per byte (8 bytes)"
+C13D62,$FF: free entry
+C13D68,this game's NGH?
+C13D7C,bit (file number) set in the result
+C13D8E,"16-bit: file in the high byte, NGH in the next bytes (4 bytes per entry)"
+C13DC4,"type $80: as 16-bit, on every second word (8 bytes per entry)"
+C13DFA,"header check ($81 not formatted, $85 ROM card ...)"
+C13E06,the two FAT copies (checksums; a bad one is rebuilt)
+C13E10,file numbers 0-15
+C13E1E,the directory entry of this NGH and file
+C13E26,$82: no such data
+C13E2E,"load into BIOS_CRDPTR, BIOS_CRDSIZE bytes"
+C13E42,8-bit card: first block from the entry
+C13E4A,"64 bytes per block, one per word"
+C13E58,then the next block of the chain (FAT)
+C13E5C,0-2: end of the chain
+C13E6E,BIOS_CRDPTR left at the end of the data
+C13E74,"16-bit card: first block, 32 words"
+C13E7E,"two bytes per word, high byte first"
+C13E94,next block of the chain
+C13EB0,"type $80: as 16-bit, on every second word"
+C13F0A,write-protected: $85
+C13F1E,header check: not formatted or not a data card returns
+C13F2A,both FAT copies must match their checksums
+C13F34,file numbers 0-15
+C13F3A,card writable
+C13F56,8-bit card: a free directory entry
+C13F5E,"none, or no free block: $84, card full"
+C13F66,"the first free block, marked 1 (end of chain)"
+C13F78,the block number into the new entry
+C13F80,64 data bytes per block
+C13F8A,each data byte into one card word
+C13F8E,all bytes written
+C13F96,block full: the next free block
+C13F9E,"none: free what was written, $84"
+C13FA4,chained from the previous block
+C13FB8,watchdog
+C13FC2,an older save of the same NGH and file?
+C13FCC,"no: fill in the new entry (NGH, file)"
+C13FE6,yes: free its chain and point it at the new data
+C13FF8,16-bit card: two FAT entries per word
+C1400C,the first block into the entry
+C14018,"even block: the high byte of its FAT word, odd: the low byte"
+C1404A,two bytes per word
+C1404E,32 words per block
+C14060,"no free block: free what was written, $84"
+C14068,"mark the new block, chain the previous one to it"
+C140C0,an older save of the same NGH and file?
+C140CA,"no: fill in the new entry (file and NGH high byte, NGH low byte)"
+C140E6,then store the FAT copies and their checksums
+C140EA,"yes: free the old chain, the old entry takes the new first block"
+C14104,"type $80: as 16-bit, every second word"
+C1410E,first free block
+C14118,"its number into the entry (+4, low byte)"
+C14124,x 2: FAT offset on every second word
+C14126,high or low byte of the FAT word
+C1414C,a3 = the block's address
+C14150,"32 words per block, every second card word"
+C1415A,two bytes per word
+C1416A,block full: the next free block
+C14172,"none: free what was written, then $84"
+C1417A,"mark the new block used, chain the previous block to it"
+C141CE,address of the new block
+C141DC,an older save of the same NGH and file?
+C141E6,no: fill in the new entry
+C14202,then store the FAT copies and their checksums
+C14206,an older save of the same data: free it and reuse its entry
+C14220,write-protected: $85
+C14252,"the entry of this NGH and file, else $82"
+C14262,card writable
+C14270,"8-bit: entry free ($FF), its chain freed, FAT copies and checksums rewritten"
+C14280,16-bit: the same with $FF in the high byte
+C14290,type $80: the same on every second word
+C142B8,header check: not formatted or not a data card returns
+C142C4,both FAT copies checked
+C142CE,BIOS_CRDSIZE = index of the title wanted (0 = first)
+C142DC,"8-bit, 16-bit or type $80 directory"
+C142EC,8-bit directory: count the used entries up to that index
+C142FA,a used entry: one less to skip
+C14304,not that many: $82
+C1430C,the title: the first 20 bytes of the data
+C14318,"20 bytes, one per card word"
+C1431A,$FF read as 0
+C1432A,and the entry's NGH and file
+C14340,"16-bit directory, 4-byte entries"
+C1436E,10 words: 20 bytes
+C14370,10 words of title
+C14372,"low byte $FF read as 0,"
+C1437A,high byte $FF read as 0
+C1439E,file number into BIOS_CRDFILE; BIOS_CRDSIZE moves to the next index
+C143AC,"type $80 directory, as 16-bit on every second word"
+C143DC,every second card word
+C1440E,header check first
+C14418,write-protected: $85
+C14438,"8-bit/16-bit: header +$1E = $FF (name present), then 16 bytes of name"
+C14450,"type $80: high byte of header +$18 = $FF, then 8 words of name"
+C14484,"8-bit/16-bit: header +$1E 0: no name, $82"
+C1449C,"16 bytes, $FF read as 0"
+C144AE,"type $80: no flag in header +$18, $82"
+C144CA,"$FF read as 0, in both halves"
+C144F8,FAT entry of the block (2 bytes per entry)
+C14502,freed (0)
+C1450A,0-2: end of the chain
+C14516,even block: the high byte of the FAT word
+C14536,odd block: the low byte
+C1454C,block number d3 (low byte)
+C14550,x 2: every second word
+C14552,bit 1: high or low byte of the FAT word
+C14558,"high byte entry: the next block, then clear it"
+C1456A,next block 3 or more: follow the chain; 1 ends it
+C14572,"low byte entry: clear it, the next block in d4"
+C14588,keep d7's low word
+C1458C,at most CardDirEntries+1 entries
+C14590,the first FAT entry that is 0
+C1459E,next entry (one per word)
+C145A4,"d0 = 0 when found, d3 = its offset"
+C145B0,watchdog
+C145B6,"two entries per word: high byte, then low byte"
+C145BC,high byte free?
+C145CA,low byte free?
+C145E0,watchdog
+C145E6,"type $80: as 16-bit, every second word"
+C1460E,the first entry whose first byte is $FF
+C1461A,"file byte (high byte) $FF: a free entry, d0 = 0"
+C14622,"next entry, 4 bytes on"
+C1462A,file byte $FF: free entry
+C14632,"next entry, 8 bytes on"
+C1463E,2 bytes per FAT entry
+C1464C,x 128: a 64-byte block on one byte per word
+C14658,"even block: FAT high byte, odd: low byte"
+C14672,x 64: 32 words of two bytes
+C1467E,type $80: FAT on every second word
+C1469A,x 128: 32 words on every second word
+C146A4,0: 8-bit card
+C146BA,free entry ($FF)?
+C146C2,"NGH high byte, then low byte, then the file"
+C146E2,not found: d3 = -1
+C146E6,16-bit directory: file in the high byte of the first word
+C14718,not found: d3 = -1
+C1471C,"type $80 directory: as 16-bit, 8-byte step"
+C14726,the file byte
+C14730,NGH high byte
+C14744,"and the file number: found, d3 = 0"
+C14750,not found: d3 = d7 ($FFFF)
+C14760,"d5 bit 0: first copy bad, bit 1: second copy bad"
+C14766,first copy against header +$1A
+C14774,second copy (a0 runs on) against +$1C
+C14788,only the second bad: rewrite it from the first
+C1478E,only the first bad: copy the second over it
+C14792,both bad: $83
+C1479A,"rewrite the second copy from the first, and both checksums"
+C147CE,"first copy from the second, its checksum from +$1C"
+C147FA,watchdog
+C14800,"sum of the low bytes, one per word"
+C14814,16-bit card: the same with both bytes of each word
+C1481A,first copy against header +$1A
+C14826,d5 bit 0: the first copy is bad
+C14828,"a0 runs on into the second copy, against +$1C"
+C14834,d5 bit 1: the second copy is bad
+C1483C,"2: rewrite the second; 1: the first; 3: both bad, $83"
+C14846,both bad: $83
+C1484E,"second copy from the first, both checksums"
+C1486E,copy and sum both bytes
+C1487C,both checksums the same
+C14886,first copy from the second
+C148A4,copy
+C148AA,the good checksum in both places
+C148B2,watchdog
+C148C4,both bytes of each word
+C148D0,type $80: the checksums in the two bytes of header +$1C
+C148D6,first copy against the high byte of +$1C
+C148E6,second copy against the low byte
+C148FA,"2: rewrite the second; 1: the first; 3: both bad, $83"
+C1490C,second copy from the first; the sum in both bytes of +$1A and +$1C
+C1493E,the sum in both bytes
+C1494E,first copy from the second; +$1C's low byte copied to its high byte
+C14976,the good (low) byte into both bytes
+C14986,watchdog
+C14996,"every second word, both bytes"
+C149A6,"""SNK ROM "" at the start of the card?"
+C149B8,followed by 0: $85 (read-only)
+C149C4,"no NEO-GEO text: $81, not formatted"
+C149CC,"""SNK ROM "" with an offset: the real header is further on"
+C149D4,"NEO-GEO at +$40, one letter per 4 bytes"
+C149EA,the header type byte at +$10
+C149F2,$10 or more: $85 (a 1M cabinet card has $20)
+C149F8,"word +$C: 0 for the 8-bit and 16-bit headers, 1 for type $80"
+C14A02,the size from the header
+C14A12,"the type from +$12: 0 8-bit, 1 16-bit; then its layout"
+C14A26,"type $80: size from +$14, the byte layout on every second word"
+C14A3A,"""SNK ROM "" at the start?"
+C14A3E,card type 0 until found otherwise
+C14A50,the size word after it; 0: d6 = 0
+C14A56,"an offset to the real card, and its type"
+C14A60,card writable
+C14A66,"$AAAA at +0, $5555 at +4"
+C14A70,read back $AAAA: a 16-bit card
+C14A7A,"only the low byte: an 8-bit card, else nothing writable"
+C14A82,confirm the low byte with $55
+C14A90,size: try every 4 KB ($1000 addresses = 2 KB of bytes) up to 32 KB
+C14A9E,32 KB of addresses: the largest size
+C14AA6,"$AA at the next 4 KB, 0 at the start: a mirror would show 0"
+C14AC2,none: d6 = 0
+C14AC8,"then the RAM test ($55, $AA, addresses) over the size found"
+C14AE6,check the $55s
+C14B10,check the $AAs
+C14B2C,"address test: high byte, then low byte of each word's address"
+C14B44,check the address bytes
+C14B64,d6 = size in addresses
+C14B6A,16-bit: $5555 at +2 also changes +0: a card answering on every second word (type $80)
+C14B78,a real 16-bit card: confirm with $5555
+C14B86,type 1: size in steps of 2 KB up to 16 KB of addresses
+C14B9A,16 KB of addresses: the largest
+C14BC4,"then the RAM test, all 16 bits"
+C14BD2,$5555 in every word
+C14BE2,check
+C14BFC,$AAAA
+C14C0C,check
+C14C22,each word holds its address
+C14C34,check
+C14C4A,failed: d6 = 0
+C14C4E,type $80: confirm with $5555
+C14C5C,type $80: size in steps of 4 KB of addresses up to 32 KB
+C14C70,32 KB of addresses: the largest
+C14C9A,then the RAM test on every second word
+C14CA8,$5555 in every second word
+C14CBA,check
+C14CD6,$AAAA
+C14CE8,check
+C14D00,each word its address
+C14D14,check
+C14D30,one 16-byte row per 4 KB of addresses
+C14D3A,"from the card base: directory and its entry count,"
+C14D46,"FAT and its size,"
+C14D50,and the data area
+C14DE8,one row per 2 KB of addresses
+C14EA2,"timer off, auto-animation speed $FF"
+C14EBE,"flush the MESS_OUT queue, then the title screen"
+C14EE0,"every frame, an inline list:"
+C14EFC,P1: 8 input bits and the START/SELECT pair at fix $722A
+C14F12,P2 at fix $72CA
+C14F2E,forever (an AES boot menu: no way back)
+C14F38,"'0', or '1' for a set bit, low bit first"
+C1500A,"timer off; palette 0 colour 1 white, palette 1 colour 1 red"
+C1503A,interrupts on
+C1503E,the menu screen
+C15064,A: run the item under the cursor
+C1506E,up / down over the 6 items
+C1509E,the items return to the menu
+C150C0,"1. FORMAT: confirm with A, B gives up"
+C150DA,a card must be in
+C150E0,CARD 5: is it formatted?
+C150FC,yes: a second confirmation
+C1511A,CARD 0: format
+C15130,write-protected: the message
+C1513E,2. DISPLAY DATA NAME: a card must be in
+C15162,"every title, then pages of 6"
+C1517A,up / down: previous or next page
+C1518A,"previous: 7 back, rounded to the page start"
+C151B0,3. COPY: a card must be in
+C151D4,the titles; cursor over them
+C151F0,C: copy everything
+C151F8,A: copy the data under the cursor
+C15200,up / down move the cursor (pages as in the full-card list)
+C15246,COPIED: the data's name
+C1526A,"load it: NGH and file from its title entry, up to 16 KB at $100000"
+C15292,BIOS_CRDPTR ends after the data: its low word is the size read
+C15298,A once the target card is in
+C152B6,CARD 1: what this game already has on the target
+C152C4,not formatted or write-protected: the error message
+C152E2,the file exists there: ALREADY ... (A overwrites)
+C1531E,CARD 3: save it
+C15334,done: back to the title list
+C15344,"C: every data: each one loaded behind the previous, its size in the word before it"
+C153AA,then the user name after them
+C153C2,A once the target card is in
+C153DA,"formatted? if so, confirm the format"
+C15414,the target is formatted (CARD 0)
+C15426,"user name (CARD 6), if there was one"
+C1543C,then every data saved again (CARD 3)
+C15490,4. DELETE: a card must be in
+C15498,no card: PLUG IN THE MEMORY CARD
+C154A0,B (bit 5): back to the menu
+C154AA,wait for a card
+C154B4,"the titles on the card, then the first page"
+C154D0,A: delete the data under the cursor
+C154D8,up or down: the next or previous title
+C154F0,past the last title: no move
+C154FA,the cursor line on the page
+C15502,still on this page: just move the cursor
+C15504,below the page: the next page
+C15508,above it: the page of the new title (index - index mod 6)
+C1551E,confirmation screen with the data name
+C1552C,the title's record: 24 bytes each
+C15542,the NGH and file of the data
+C1554A,"A again (card still in): CARD 4, delete"
+C1554E,B: back
+C15562,CARD 4: delete
+C1556C,an error: its message
+C15574,deleted: back to the menu
+C15578,5. FILE USER'S NAME: a card must be in
+C1559C,"CARD 7: the name on the card, or 16 spaces"
+C155C4,cursor on the first character and on the first letter key
+C155D4,the keyboard screen
+C155FC,A on a key
+C15604,"keys 0-4: END, arrows and two mode keys"
+C15610,"a letter: into the name, cursor one right"
+C15638,the special keys
+C15656,"END: CARD 6, save the name"
+C15672,"left arrow: cursor one left (16 columns, wrapping)"
+C1567A,right arrow
+C15690,the two mode keys (NameKeyMode has no other reader)
+C156D8,joystick: the key reached in that direction (CardUtilKeyMoves)
+C156DA,no direction pressed
+C156EA,"4 moves per key (up, down, left, right)"
+C15712,"old key in palette 0, new key in palette 1"
+C1571C,the key's first character on the fix layer
+C15722,VRAM address of the key's first character
+C15728,waits for the VRAM between accesses
+C1572E,each character of the key up to a space: palette bits d3
+C1574E,and the character below it (8x16 tiles)
+C15780,"inline list: VRAM $71A6, 8x16 tiles page 1"
+C1578A,the 16 name characters
+C157B2,erase the old cursor (space)
+C157BE,draw the new one (tile $12)
+C157D4,fix $71A8 + 32 x column (one column per character)
+C157F0,"a MESS_OUT entry: VRAM address, page, then the text"
+C157F6,"VRAM $710C, page 1: 20 characters"
+C15802,20 characters
+C15808,"$FF ends the row, command 0 ends the list"
+C1582C,a CARD result $81-$85: its message; anything else: nothing
+C1583E,"the message, PUSH ANY BUTTON., wait for A-D"
+C1584A,"the message, then PUSH ANY BUTTON."
+C1585E,"A, B, C or D: done"
+C15866,"from index 0, into the table at $10C000"
+C15872,CARD 5 until it fails
+C15886,after the 20-byte title: NGH and file (24 bytes per entry)
+C1589A,"$82: the end of the list; any other error: its message, back to the menu"
+C158A4,none at all: the NO DATA message
+C158DE,the first title of this page
+C158F0,one line per title at fix $716F + 2 x line
+C15904,the 20-byte title
+C15910,skip the NGH and file
+C1591C,after the last title: stop
+C15930,6 lines: NEXT PAGE
+C1594A,d0 high word: P1 repeat bits
+C15954,a mahjong panel on P1: its keys as joystick bits
+C1598E,"the text, then the RETURN line"
+C159AC,erase the old cursor (space)
+C159BC,draw the new one (tile $11)
+C159D4,fix $70C9 + 3 x line
+C16198,cause code 0: the monitor called directly
+C161A8,"interrupts off, every register saved"
+C161B4,address/bus error: the extra frame words on the first line
+C161C6,"VRAM $7085, inline text"
+C161D0,"the access type word and the access address,"
+C161F2,then the instruction word
+C16200,drop those 8 bytes: the stack now holds SR and PC
+C1623E,"interrupts off, registers saved"
+C16256,"USP, SR, PC and the stack after the exception frame"
+C1626C,palette 15 colour 1 white (saved first)
+C16288,"the cause text, then every register"
+C1629E,"command 0 and the default addresses ($100000, VRAM 0)"
+C162BE,trace bit set in the saved SR: start on the TRACE command
+C162CE,commands 2-4 (modify) read the current value first
+C16310,"cursor on the first digit, the digit count of this command"
+C1631C,the command line and the command's name
+C16354,"each pass: watchdog, interrupts acknowledged,"
+C16362,wait for the raster line counter (REG_LSPCMODE read) to reach the top
+C1636E,"draw, then read the controllers itself"
+C16384,A: the next command (7 in a loop)
+C163A0,the other keys go to the current command
+C163C8,the address as 6 hex digits
+C163D0,the cursor under the selected digit
+C163D4,left/right: the digit (5 digits)
+C163E0,right: +1
+C163E8,left: -1
+C163EE,below 0: the last digit
+C163F2,past the last: digit 0
+C16400,up/down: the address by that digit's step
+C1640E,the step of the selected digit
+C16418,down: subtract
+C16422,24-bit address
+C16442,C: dump 8 lines of 8 bytes from the address
+C16456,"inline list: bytes, end $FF; VRAM $7070"
+C16468,each line: 4 words in hex
+C16484,command 5: next line
+C1649C,the address as 6 hex digits
+C164A4,left/right: digits 2-4 only (the VRAM address is 16 bits)
+C164BE,below digit 2: digit 4
+C164C6,past digit 4: digit 2
+C164D4,"up/down: change the address, skipping $73E1-$7FFF and wrapping at $8580"
+C164E8,the step of the selected digit
+C164F6,below 0: wrap to $8560
+C164F8,past the end of VRAM: 0
+C16504,high VRAM $8000-$857F: kept
+C1650C,the gap after the fix layer is skipped
+C16536,C: dump 8 lines of 4 VRAM words
+C1654A,"MESS_OUT entry: pointer 0, inline commands"
+C16560,8 lines
+C16566,"4 words per line, a space after each"
+C16576,$FF instead of the last space ends the row
+C1657C,command 5: the next line
+C16586,command 0 instead of the last line feed
+C16590,"VRAM address, then wait for the read"
+C165A8,two hex characters
+C165B6,"address, then the value (MonitorPutValue)"
+C165C4,"left/right over 10 digits: 6 address, 4 value"
+C165E0,below 0: the last digit (9)
+C165E8,past the last: digit 0
+C165F0,"up/down: the address digits move the address (and reread the value),"
+C16600,the step of the selected digit
+C1660C,a value digit: change the value instead
+C16628,read the value at the new address
+C16656,the value digits change the value
+C1665C,C: write the value
+C1666E,"the VRAM address, then the value word"
+C16680,left/right through MonitorVramDigitMoves
+C1668C,right: the table's first half
+C16694,left: its second half
+C166C6,the step of the selected digit
+C166D2,"address digits: the VRAM address, skipping $7400-$7FFF, wrapping at $8580"
+C166E2,"below 0: the last word, $857F"
+C16708,and its current value
+C16712,waits for the VRAM
+C1674C,value digits: the value
+C16752,C: write it
+C1676C,"MESS_OUT: pointer 0, command 1 (format $F0FF),"
+C16778,"command 3: VRAM $70CE,"
+C1677E,command 7: inline text
+C16782,"the register name, blinking (every 16 frames) while no digit is selected"
+C16794,entry 19: blank
+C1679E,the name's text
+C167AA,the 4 bytes of the value
+C167B8,left/right through MonitorRegisterDigitMoves
+C167F6,"up/down on the name: the previous or next register (19: d0-a7, SR, PC ...)"
+C1680A,"down: +1, up: -1"
+C16818,below 0: the last register (18)
+C1681C,past 18: register 0
+C1682A,the saved value of that register
+C16856,on a digit: the value by that digit's step
+C1686C,"C: the value into the save area, registers shown again"
+C168EC,"C: trace bit on in the saved SR, then return"
+C168F2,"fix layer cleared, colour back, USP and stack,"
+C1690A,"a new exception frame from the saved PC and SR,"
+C16912,"the registers, and back to the program"
+C16926,every 16 frames: a space over the digit (blink)
+C16932,"MESS_OUT: pointer 0, format,"
+C1693A,"command 3: VRAM address of the digit,"
+C16948,"command 7: a space, $FF, command 0"
+C16974,"pointer 0, format, autoincrement $20 (one column right),"
+C16980,"VRAM $7067, inline text"
+C1698A,first line: d0-d3
+C16992,4 bytes = 8 hex digits per register
+C169A2,a space between registers
+C169AA,$FF ends the row
+C169B6,draw at once (interrupts may be off)
+C169CA,"then three lines of 4 registers from d4, then SR and PC"
+C169FA,command 5: next line
+C16A04,last line: two longs (SR and PC) and a word
+C16A38,"$FF ends the row, command 0 ends the list"
+C16A42,draw at once
+C16A4C,"pointer 0, format, autoincrement,"
+C16A58,VRAM $708E: 3 bytes in hex
+C16A62,3 bytes
+C16A7C,"pointer 0, format, autoincrement,"
+C16A8C,VRAM $71CE: the value in hex
+C16A96,d7+1 bytes
+C16AAA,next byte
+C16AE0,acknowledge all interrupts (they stay masked)
+C16AE8,AES: colours instead of text
+C16AF2,"keep the failing address, written and read values and the test number"
+C16B02,"fix layer from $7000, all of it"
+C16B18,"tile $20 (space), palette $F"
+C16B1C,$500 words
+C16B2A,palette $F: colour 1 $0EEE (text)
+C16B34,MESS_OUT queue: the error text first
+C16B46,errors 0-4 (memory tests) also show address and values:
+C16B52,"an inline list: pointer 0,"
+C16B54,"format: bytes, end code $FF ..."
+C16B5E,"VRAM address $708D, command 7: inline text"
+C16B68,the 4 address bytes in hex
+C16B78,"two spaces, the written word"
+C16B84,"two spaces, the read word"
+C16B90,"end code, then command 0"
+C16B9E,drawn at once (interrupts are off)
+C16BAA,"forever, kicking the watchdog"
+C16BCA,4 bytes per error: two colours
+C16BD2,bank 0: the whole palette RAM
+C16BF0,then bank 1
+C16C06,colour 0 of palette 0 (the backdrop) black
+C16C0E,cartridge vectors at 0: the P ROM from address 0
+C16C1E,up to CART_PROM_SIZE
+C16C24,8-bit sum
+C16C30,"minus the byte at $186, which is in the sum"
+C16C34,"stored at $186 (a ROM: no effect), and at $100000"
+C16C3E,then wait for the watchdog reset
+C16C42,interrupts off
+C16C46,"cartridge vectors, so the P ROM is seen from $000000"
+C16C52,sum up to the P ROM size of the header
+C16C58,kick the watchdog on every byte
+C16C64,the header checksum byte is part of the sum: take it out
+C16C68,Z set when the sum matches
+C17062,interrupts off while the RAM is cleared
+C17066,system ROM vectors and board fix ROM
+C17072,d0-d3 = 0: four longs per movem
+C1707A,"work RAM cleared from the top, 64 KB (as ClearRamAndVideo)"
+C17080,512 x 8 x 16 bytes
+C170AE,then both palette banks
+C170B4,"from the top of the bank, 8 KB"
+C17102,system ROM screen: board coin sound
+C17108,coins count as credits but not in the book keeping
+C1710E,"the header's region as country code, MVS"
+C17126,shadow off
+C1712C,"acknowledge every interrupt, then interrupts on"
+C17138,a NEO-CLN cartridge: start at the calendar screen (step $C)
+C17146,every frame: the routine of the current step
+C17154,x 4: one long pointer per step
+C1715C,"even steps draw a screen, odd steps run it every frame"
+C17198,"palette 0: colour 1 $0EEE, colour 2 black; palette 1: colour 1 $000E"
+C171B0,"VRAM data, auto-increment 1"
+C171BC,the four crosshatch tiles 1-4 of the board fix ROM
+C171C4,fix layer from $7000:
+C171CA,"20 pairs of columns: tiles 1/3 down one column, 2/4 down the next"
+C171EE,first and last columns in palette 1 (the border)
+C1720A,top and bottom rows: auto-increment $20 (along a row)
+C1722C,next: the per-frame step
+C17238,a short wait for the VRAM between accesses
+C1723E,fix tile at the current address: set palette 1
+C1724C,START: next screen
+C1725C,"palette 1, 2, 3, 4: colour 2 red, green, blue, white"
+C17280,MESS_OUT list busy while it is written
+C17288,the colour bar texts
+C17292,the version tile at the top right
+C172A6,step 3: the colour bars' frame routine
+C172AE,START (bit 0 of the raw changes): next screen
+C17394,HwTestIoCheck drives the LEDs (SystemIoMvs leaves them alone)
+C173A0,the slot LED starts at slot 0
+C173A4,"slot count: 2 unless REG_SYSTYPE bit 6 (then 6, or 4 with REG_STATUS_A bit 5)"
+C173C6,the I/O check text
+C173E2,slot LED and both LED counters at their first values
+C173EE,step 5: the I/O check's frame routine
+C173F6,"START: next screen, LEDs back to the game's"
+C1740A,each frame an inline MESS_OUT list:
+C17414,"P1: joystick and buttons, START and SELECT"
+C17426,P2: the next two bits
+C1743A,the 8 hard DIPs
+C17448,test button and coin inputs
+C17460,every 64 frames
+C1746A,next slot
+C17470,wrap after the last slot
+C17482,every 64 frames
+C1748C,clears X for the abcd
+C17494,"00, 11, 22 .. 99, then 00"
+C174A8,"format 1 byte, end code 4 ... (list words)"
+C174B2,"command 3: VRAM address $73AB, command 7: inline text"
+C174C2,1 = pressed
+C174C4,test button
+C174CC,"coin 1, coin 2, service"
+C174F4,'0'
+C174FA,'1'
+C17500,1 = on
+C17502,format: 8 bytes ...
+C17510,VRAM address in d1
+C17518,"'0' or '1' per switch, switch 1 first"
+C1752A,"d0 high byte: START/SELECT bits, low byte: joystick and buttons"
+C1752E,"MESS_OUT: format, autoincrement, address d2, then inline text"
+C17542,"10 characters, bit 0 first"
+C17544,'0' or '1' for each bit
+C17548,next bit into carry
+C1754E,one character per bit
+C17556,the slot number to the slot LED
+C17566,pointer 0: the commands follow inline
+C17568,"inline list: format, then VRAM address $72B4 and inline text"
+C1757E,the digit 1-6
+C17584,command 0: end
+C17590,"first counter: latch $EF, screen position $7314"
+C175A4,"second counter: the BCD count's digits swapped,"
+C175B0,"latch $DF, screen position $73B4"
+C175B8,"latches idle, then the data, then the counter's latch"
+C175C6,segments active low
+C175DE,inline list: two characters at d2
+C175F2,"tens digit, blank when 0 ($F0 + $30 = $20, a space)"
+C17602,units digit
+C1771C,palette 1: colour 2 $0E00 (red text of the selected line)
+C17726,silence (sound commands 3 then 7)
+C17744,"cursor on the first line, nothing playing"
+C17754,next step: the per-frame routine
+C1775A,"START: silence (command 3), next screen"
+C17770,A: play the line under the cursor
+C1778A,line 0 is SOUND OFF: commands 3 and 7
+C17792,"lines 1-3: commands $5D, $5C, $5E"
+C177A0,bits 0-1: up and down
+C177A8,down: +1
+C177B0,up: -1
+C177B6,outside 0-3: no move
+C177C8,pointer 0: the commands follow inline
+C177CA,"erase the old cursor (space, palette 2)"
+C177D8,"draw the new one (tile $FF, palette 1)"
+C177E0,command 0: end
+C177EC,command 3: set the VRAM address
+C177F2,fix address $718A + 3 x line
+C17802,"command 8, page 1 (8x16 tiles)"
+C17814,"from fix $720A, one line per item"
+C17822,d1 = the playing text
+C1782A,or the normal one
+C1782E,command 10: call the item's text list
+C17834,command 5: + 2 to the VRAM address (next line)
+C1783C,next item (two pointers per item)
+C17846,command 0: end
+C178CE,command 3: the Z80 resets (Init sets SoundLock)
+C178D6,wait 5 frames
+C178E0,"command 7: unlock, ready for the test sounds"
+C17902,the MEMORY CARD TEST text
+C17918,"next: the per-frame routine, test not done yet"
+C17926,already tested: wait for START
+C1792E,"REG_STATUS_B bits 4-6: no card, or write-protected:"
+C1793A,"START: next screen, no test"
+C17952,"card writable, normal access"
+C17964,"the same tests as the power-on card test: $55, $AA, addresses"
+C17986,check the $55s
+C179B4,check the $AAs
+C179C6,"address test: high byte, then low byte of each word's address"
+C179E6,check the address bytes
+C17A06,all passed: TEST OK
+C17A0C,a mismatch: TEST ERROR
+C17A10,lock the card again
+C17A1C,TEST OK or TEST ERROR on the screen
+C17A2E,tested: WorkIndexNew 1
+C17A36,START: next screen
+C17ABA,the BACKUP CLEAR text
+C17AD0,step $B: the backup clear's frame routine
+C17AD8,START: next screen
+C17AE0,"A, B and C held together on P1:"
+C17AEE,clear the backup RAM with interrupts off
+C17AFA,then wait until they are released
+C17B08,next screen: the calendar
+C17B62,"palette 0 colour 1 $0EEE; palette 1 colour 1 $0E00 (red, the edited field)"
+C17B76,the current date and time from the chip
+C17B7A,d6 = 7: no field highlighted in this first block
+C17B8C,"the time read at entry: year, month, day on one row,"
+C17BB0,"hour, minute, second on the next"
+C17BD4,then the weekday at $728A
+C17BEA,the editable fields
+C17BEE,field 0 (month) selected
+C17C06,START: back to the first screen (crosshatch)
+C17C16,D: set the chip
+C17C24,"left or right: the previous or next field (0-5, wrapping)"
+C17C3E,skip values past 5 (the byte wraps)
+C17C52,A or B (with repeat): add 1 or 99 (BCD -1) to the field
+C17C6E,the field's offset in BIOS_YEAR..
+C17C7A,clears X for the abcd
+C17C7E,the year (offset 0) takes any value 00-99
+C17C82,out of range: keep stepping until it is in range
+C17CA4,NEO-CLN slot: set its calendar too
+C17CB0,"its ROMs, then the system ROM vectors back"
+C17CC2,board fix ROM again
+C17CC8,the board's calendar
+C17CCC,valid: redraw the screen with the new time
+C17CD4,d6 counts the fields for the highlight
+C17CE0,"one line per field, in HwCalendarFieldOrder's order"
+C17CE4,"month,"
+C17CF0,"day,"
+C17CFC,"year,"
+C17D08,"hour,"
+C17D14,"minute,"
+C17D20,second
+C17D28,command 0: end
+C17D3A,"attribute $0108: palette 0,"
+C17D44,or $1108 (palette 1) for the selected field
+C17D4A,"a space, then two digits; a leading 0 stays a space"
+C17D6A,"end code, end of this line's commands"
+C17E26,"sound command 3: the Z80 restarts (the cartridge M1 ROM, selected by SwitchSlot)"
+C17E36,step 0 first
+C17E3E,shadow off
+C17E44,interrupts on
+C17E4C,"every frame: queue the sprite list (MESS_OUT), then the step"
+C17E6C,MVS: credits end the eyecatcher at once
+C17E84,AES: A-D or START end it
+C17E96,colours queued by EyecatchSetColours: copy them now (after VBlank)
+C17EA0,"palette 15, colours 1-5"
+C17EAE,and the backdrop colour
+C17EBA,run the step in WorkIndex
+C17F0E,step 0: both palette banks cleared
+C17F62,fix layer and sprites cleared
+C17F6A,"palette 0: colour 1 $0DDD, colour 2 black"
+C17F74,"the NEO-GEO letters: 18 columns of sprites from SCB1 $0040,"
+C17F7E,tiles from the cartridge's C ROM bank (CART_EYECATCH_BANK)
+C17F84,"attribute $F01: palette 15, flipped"
+C17F8C,"the mirror image from SCB1 $04C0, not flipped"
+C17F9E,then d2 into 32 tile words from VRAM 0 (sprite 0)
+C17FB2,the fix layer texts (EyecatchFixMess)
+C17FC0,the sprite positions and sizes that the list writes every frame:
+C17FC4,"first sprite: Y and height, the rest chained ($44 per word: sticky bit)"
+C17FD6,X position
+C17FDC,"horizontal shrink, first half: starts at $00FF (almost nothing)"
+C17FEC,second half: full size
+C17FF8,colours: set 0 (dark)
+C18006,next step: 1
+C18012,step 1: the letters grow
+C1801A,frame 5: the jingle
+C18020,MVS with DEMO SOUND WITHOUT: no jingle
+C1802E,sound command 2: the eyecatcher jingle (cartridge M1)
+C18036,every second frame:
+C18040,move left by 9 pixels
+C1804C,wider by one step
+C1805A,"full width: pause 10 frames, then step 2"
+C18074,"step 2: wait, then step 3"
+C18082,"step 3: every second frame, colours one step brighter,"
+C18094,and the letters rise and flatten (vertical shrink)
+C180A2,"flat: the second sprite set (EyecatchShrink2, EyecatchYPos2) takes over"
+C180CC,the text below starts at fix $71B0
+C180DC,step 4: the mirror image grows down while the colours fade in
+C1810C,full height: step 5
+C1811A,step 5: every 4 frames one more text character on the fix layer
+C18132,an inline MESS_OUT list:
+C18138,format and auto-increment words of the list
+C18146,command 3: VRAM address of this character
+C1814A,command 4: the two tile words at EyecatchCharPointer
+C18152,command 0: end
+C1815E,"next character: 4 bytes on, one column right"
+C18170,after 15 characters: the second line at fix $7192
+C18180,32 characters: wait 20 frames (step 6)
+C18194,"step 6: wait, then step 7"
+C181AE,step 7: every second frame the next colour set (EyecatchFadeIndex2)
+C181DA,16 sets: done
+C181E6,"tile $7B at fix $7469, near the bottom right corner"
+C181F6,hold for 180 frames (step 8)
+C18208,step 8: wait
+C1820E,MVS with country code USA: the FBI screen
+C1821C,country code Japan: the JAPAN ONLY screen; other countries: back to the game
+C1822C,FBI screen: system ROM vectors and board fix
+C1824C,palette 1 from FbiScreenPalette (16 colours)
+C1827A,"both screens: 300 frames, step 9"
+C18288,JAPAN ONLY: text colour $0EEE
+C182A6,step 9: wait
+C182AE,"end: from step 9 with the FBI screen, give the ROMs back to the cartridge"
+C182CA,"park the Z80, then restart it on the cartridge M1"
+C182DA,cartridge fix and vectors
+C182EA,SYSTEM_RETURN code 1 (set by SystemMode1)
+C182F0,next set of the fade table
+C1830A,"VRAM data register, auto-increment 1"
+C18316,18 columns
+C18318,SCB1 address of this column
+C1831E,"4 tiles: tile number from the table, then the attribute"
+C1832A,then 28 empty tiles (tile $FF)
+C1833C,next sprite: 64 words further
+C18346,12 bytes per set
+C18352,the main loop copies it after the next WaitFrame
+C1835E,"a0 = VRAM data, -2(a0) address, 2(a0) modulo"
+C18364,auto-increment 1
+C1836A,fix layer from column 1 ($7020)
+C18370,"tile $FF (blank), palette 0"
+C18374,$4C0 words: columns 1-38
+C1837C,then column 39: tile $20 (space)
+C18388,"and column 0, also tile $20"
+C1839A,"sprite control blocks, auto-increment 1"
+C183A6,SCB2 at $8000: shrink of the 512 sprites
+C183AC,$0FFF: full size
+C183B8,SCB3 at $8200: Y position and height 0
+C183C2,SCB4 at $8400: X position
+C183C6,"$BE00: X = $17C, off the screen"
+C183CE,SCB1 from $0000: the first tile word of each sprite
+C183D4,tile $FF
+C183D8,auto-increment 2: every second word (the tile words)
+C183E4,high nibble first
+C183EA,"d0 = high digit, d1 = low nibble"
+C183F6,'0'-'9'
+C183FC,'A'-'F' (+$37)
 C18468,"a4: only ControllerTypeScan reads it, and nothing calls that here"
+C18474,no controller on any port yet
 C18484,hard DIP 3 on: a mahjong panel on P1
+C18496,REG_POUTPUT back to 0
 C1849C,never reached in SP-S2; the AES ControllerSetup calls it after each REG_POUTPUT pattern
 C184AE,P1 and P2 ID bits 6-7
 C184B6,low nibble of REG_STATUS_B: start and select bits
@@ -391,4 +1621,545 @@ C184C2,d2: the ID bit to sample this pass
 C184D0,"BIOS_P1STATUS, then P2-P4 every 6 bytes"
 C184D6,a port already identified keeps its type
 C184E6,next row of ControllerTypeTable for the next pass
+C18500,a short wait for the input lines (DelayShort lands here)
+C18514,"a0: the four player blocks, 6 bytes apart"
+C18520,output $12: select the first input set
+C18526,START/SELECT bits of P1 and P2
+C1852C,d5 = P2 (high word) and P1 (low word) of this set
+C1853A,first set into the high nibble
+C1853C,output $1B: select the second input set
+C18542,then the second set
+C18556,d2 = both nibbles: STATCURNT (inverted below)
+C1855C,1 = pressed
+C1855E,d3 = newly pressed
+C18568,a mahjong controller on P1 or P2: read its extra rows
+C1857C,P1: keep START/SELECT of P1 and P2 only (mask $CF)
+C18584,then P2 from the high words
+C1858E,mask $3F for P2's pass
+C18596,"a held mahjong key cancels P1 START (bit 1), P2 (bit 3)"
+C185AA,BIOS_STATCURNT_RAW / CHANGE_RAW: every bit
+C185B2,STATCURNT / STATCHANGE: START bits only ($55)
+C185C2,outputs off
+C185CA,the system ROM's own copies of P1 and P2 (joystick form)
+C185DE,not mahjong: copy the 6 bytes as they are
+C185EE,mahjong: shown as a joystick (status 1)
+C185F2,previous/current key rows to joystick bits
+C18606,and the change/repeat bytes of the second block
+C1861C,"bit 7 from bit 0 of d1,"
+C1862A,then the two nibbles swapped
+C1862E,only for a mahjong controller (status 3)
+C18634,START/SELECT bit d0 not pressed: nothing to do
+C18638,d5 = the key mask (low 5 bits of byte 3)
+C18640,"a key of row 1 held,"
+C18648,or of row 2:
+C18650,the START/SELECT press is dropped (current and change)
+C18656,status 3: mahjong rows instead
+C1865C,joystick: block at a0
+C18662,"then the expanded block at +$C, if connected"
+C1866C,1 = pressed
+C1866E,the previous state
+C18672,unchanged: count down the repeat delay
+C1867C,repeat every 8 frames
+C18684,changed: 16 frames before the first repeat
+C1868A,repeat byte = current state
+C18690,no repeat this frame
+C18694,"+1 previous, +2 current"
+C1869C,+3 newly pressed
+C186A6,no expanded controller: its block cleared
+C186B4,mahjong: three key rows
+C186CA,1 = pressed
+C186CC,previous state
+C186D0,newly pressed = now and not before
+C186D4,change byte 12 bytes further
+C186DA,output $24: third row
+C186E2,P2 and P1 bytes of the third row in d6
+C186F0,moved up a byte
+C186F2,output $09: fourth row
+C186FA,then the fourth row
+C1870C,VBlank clears it (SystemInt1)
+C1871E,already running (a game called it from its VBlank): do nothing
+C1872C,MESS_OUT's own stack for command 10 (call)
+C18736,a0: the list of entries queued by BIOS_MESS_POINT
+C1873C,"a6 = VRAM address, a4 = VRAM data"
+C18746,every entry done?
+C1874E,empty the queue and release it
+C18760,"an entry: a pointer to a command list,"
+C18764,or 0: the commands follow inline
+C18768,"d1 = parameter byte, d0 = command number"
+C1876E,14 commands; anything else ends the queue
+C1877A,each handler returns to the next command
+C187B6,inline list: carry on after it
+C187BC,back to the queue loop
+C187C4,"d5 high word = format byte, low word = the end code or count that follows"
+C187CC,"parameter byte, sign extended"
+C187D4,"VRAM address; d6 keeps it for commands 5, 8, 9"
+C187DC,push the return point
+C187EA,and run the called list
+C187EE,pop the return point
+C187FE,"the word, written d1 times"
+C18808,"first word, then +1 for each of d1 words"
+C1880A,"write the tile word, then the next tile number"
+C18810,d1 words in all
+C18814,the data follows the command
+C1881A,the data is at a long pointer
+C18822,"inline data: the list continues after it, word aligned"
+C18832,d6 = current VRAM address
+C18838,format bit 17 set: words
+C1883E,d5 low byte: end code or count; d2 high byte keeps the format's high byte
+C18842,bit 16 set: a count
+C18848,"bytes until the end code, each written as one word (high byte from the format)"
+C18852,"bytes, d7 of them"
+C1885C,words: until the end code or for a count
+C18864,words until the end code
+C1886E,d7 words
+C18876,"auto-increment $20: down the column, one fix row per character"
+C1887C,d2 high byte: parameter = tile page / palette
+C18882,upper halves
+C18886,next row for the lower halves
+C1888C,lower halves: next tile page
+C18894,"list pointer after the text, word aligned"
+C188A8,below $20: a page-0 tile from $80
+C188AE,$20-$5F: the character's own tile number
+C188B4,$80 and above: own tile number
+C188BA,"$60-$7F (lower case): $20-$3F, then the page-0 tiles from $A0"
+C188BE,+ $80
+C188C4,"page bits cleared: page 0, palette kept"
+C188C8,bit 8 set (lower halves): $80-$BF
+C188CE,upper halves: $C0-$FF
+C188DC,one fix row per tile
+C188E2,d2 high byte: tile page and palette
+C188EC,"next row: the lower halves, page + 1"
+C188FA,"list pointer after the row, word aligned"
+C18906,next byte of the row
+C18908,$FF ends the row
+C1890E,one tile word per byte (d2 high byte: the page and palette)
+C18914,AES: nothing (an MVS-only service)
+C18924,MESS_OUT held while the screen is set up
+C1892A,bit 7 clear: the system ROM in control
+C1893C,"park the Z80, restart it on the board's sm1.sm1"
+C18956,system ROM vectors and board fix ROM
+C18962,interrupts on (the timer is left as the game set it: SystemInt2 catches it)
+C18966,14 palettes of the screen
+C1897C,then colour 1 of the next palette $0EEE
+C18984,backdrop black
+C18994,"the frame, the stick and the four buttons"
+C189C4,the script: the game has copied it to $10F300 (a5)
+C189CC,each frame: A-D on P1 or P2 ends the screen
+C189E0,wait for the current entry's frame count
+C189EA,next script entry; 0 ends
+C189F0,below $100: repeat count or repeat
+C189FA,$1xx: the stick
+C18A04,$2xx: the buttons
+C18A0E,"otherwise a MESS_OUT list, then its frame count"
+C18A2A,$1xx: 8 direction bits set colours 5-12 of palette 0
+C18A30,bit set: palette 1 colour 5 (lit); clear: palette 1 colour 6
+C18A4C,then the frame count
+C18A58,$2xx: 4 button bits pick the pressed or released picture
+C18A82,"below $FF: repeat count, and the repeat starts after it"
+C18A94,"$FF: one repeat less, back to the start until done"
+C18AA4,"end: black text, fix cleared, Z80 parked"
+C18AB6,and restarted on the cartridge M1
+C18AC2,cartridge fix and vectors
+C18AD2,bit 7: the game in control again
+C18F7A,interrupts off
+C18F7E,"system ROM in control, mode 0"
+C18F82,"park the Z80, then system vectors and board fix ROM"
+C18F9A,work RAM cleared from the top (a running game is not resumed)
+C18FCE,both palette banks cleared
+C1901C,"palette 0 colour 1 white, palette 1 colour 1 red (cursor)"
+C19036,coins count as credits but not in the book keeping
+C19042,"the header's region as the country code, MVS"
+C19052,"empty MESS_OUT queue, shadow off, interrupts on"
+C1906C,cursor on the first line
+C19076,the date from the calendar chip
+C19088,"year, month, day, then the weekday"
+C190C0,the version tile at the top right
+C190DE,each frame: A selects
+C190EE,up / down over the 7 lines
+C1911E,erase the old cursor (space)
+C1912C,draw the new one (tile $11)
+C1914E,fix $70E5 + 3 x line
+C19154,"attribute $1108: page 1, palette 1"
+C19166,"a space, then two digits; a leading 0 stays a space"
+C19186,end code
+C1924E,"attribute $0108, then the day name"
+C1927E,the item returns to the menu
+C192B0,palette 1 colour 1 red
+C192C2,Japanese texts for a Japanese ROM
+C192DC,edit a copy of this board's code
+C192EC,each frame: C returns
+C192FC,D: set the code (and the card)
+C19308,"A / B: the digit under the cursor + 1 / - 1 (BCD, kept 0-9)"
+C19338,"left / right: the digit (4, wrapping)"
+C19360,pointer 0: the commands follow inline
+C19362,"4 digits at fix $720A, one column apart"
+C1936C,"command 3: the digit's VRAM address,"
+C19372,"command 8, page 1 (8x16 tiles),"
+C1937C,the selected digit in palette 1
+C19382,the digit as '0'-'9'
+C19390,$FF ends the row
+C19394,next column
+C193A0,command 0: end
+C193AC,no card: just this board's code
+C193BA,CARD 5 on the card
+C193D4,a normal data card (result 0): THIS CARD IS INVALID.
+C193D8,"the header type byte: $0x invalid,"
+C193E4,"$2x: already a 1M cabinet card, only the code is written"
+C193EC,otherwise: is it a 1M RAM card? card writable
+C1940E,16 bits wide ($5555 / $AAAA on adjacent words)?
+C19420,"then $5555, $AAAA and address tests over 64K words"
+C19494,"format it: NEO-GEO at +$40, the region,"
+C194B2,"type $20, user name flag 0"
+C194DE,"the code at +$70, no cabinet stored (+$74 = 0)"
+C194F2,"this board: the code, and no cabinet number yet"
+C19516,CODE NUMBER HAS BEEN SET. (Japanese for a Japanese ROM)
+C19538,3 seconds
+C19546,THIS CARD IS INVALID.
+C196A8,hard DIP 1 still on: DIP-SW 1 OFF !! until it is turned off
+C196DC,then a reset: the board boots afresh
+C19714,"the switches, 1 = on"
+C19724,"each frame: C returns, a changed switch redraws"
+C19756,"row positions from fix $700C (+$240 the bits, +$380 the value)"
+C1975E,each row: its mask (0 ends the table)
+C19764,d1: the switches of this row
+C19774,"the 8 columns: the switch's state where the mask has a bit, '.' elsewhere"
+C197A8,command 10: call the value text
+C197AC,"the (value, text) pairs of the row: the one equal to d1"
+C197B4,next row 2 rows down
+C1991E,"palette 1: colour 1 = $0E00 (red), colour 2 = 0"
+C19928,the current time from the chip
+C1992C,d6 = 7: no field highlighted in the current time
+C19936,the screen text first
+C1993C,then pointer 0: inline commands
+C1993E,"the current time: year, month, day; hour, minute, second"
+C1998A,then the weekday at $728A
+C19992,command 0: end
+C1999C,"the time to set, field 0 selected"
 C199A8,"CalendarFixAddresses: data jumped over by the bra.w, read by nothing"
+C199B4,"each frame: C returns, D sets the chip"
+C199C0,C: back to the menu
+C199CC,the routine returns to the frame loop
+C199D4,"left / right: the field (6, wrapping)"
+C199EE,skip values past 5 (the byte wraps)
+C19A02,A / B (with repeat): + 1 / - 1 in BCD
+C19A0C,A: +1
+C19A14,"B: + $99, -1 in BCD"
+C19A1E,the byte of BIOS_YEAR.. for the selected field
+C19A2A,repeat until within the field's range (the year takes any value)
+C19A2C,clears X for the abcd
+C19A3E,store the new value
+C19A54,"D: set the chip, redraw when the date was valid"
+C19A6C,pointer 0: inline commands
+C19A6E,"month, day, year, hour, minute, second, one per line"
+C19AB6,command 0: end
+C19B76,the soft DIP pages may switch slots: park the Z80 first
+C19B7A,backup RAM in use
+C19B80,the list at $10F300 (a5): 120 bytes cleared
+C19B98,"one line per slot with a game: slot, index and the 16-byte name"
+C19BCC,game count; plus the cabinet line
+C19BDA,the list screen
+C19BF4,"each game line: command 5 (two rows down), then SLOT n and its name"
+C19C42,"each frame: C returns, A opens the line"
+C19C5E,up / down over the lines
+C19C88,erase the old cursor (space)
+C19C96,draw the new one (tile $11)
+C19CB8,fix $7085 + 3 x line
+C19CE6,the page returns to the list
+C19CEA,line 0: the cabinet page; a game: its soft DIPs
+C19CF6,never reached: an older version of CabinetSettings with 4 rows and one coin rate
+C19CFA,the page text
+C19D14,draw the 4 rows once
+C19D1E,"drawn at once, row by row"
+C19D3C,cursor and coin rate redrawn after a move
+C19D44,"each frame: C returns, up / down over 4 rows, other keys to the row's handler"
+C19D52,C: back
+C19D5C,"down: +1, up: -1"
+C19D6E,outside 0-3: no move
+C19D7A,x 4: one pointer per row
+C19D98,"coin row: as on the current page, a single COIN rate"
+C19DA4,left / right: the coins or the credits number
+C19DBA,backup RAM writable
+C19DC0,"A: +1, B: -1"
+C19DD6,bit 0: the credits number (second byte)
+C19DE4,"0 wraps to 9,"
+C19DE8,10 wraps to 1
+C19DF2,"COIN1 only, fix column $7008"
+C19E04,pointer 0: inline commands
+C19E0E,"coins number, then credits number"
+C19E22,command 0: end
+C19E2E,"command 3: VRAM address, command 8 page 1"
+C19E3A,the selected number in palette 1
+C19E4C,the digit
+C19E58,then 'S' (a space after 1)
+C19E7A,GAME SELECT: A or B toggles ONLY WHEN CREDITED / ANYTIME
+C19E86,backup RAM writable
+C19EA4,the text of the new value
+C19EF6,"GAME START COMPULSION: A / B change the seconds (BCD, 00-59)"
+C19F08,"A: +1, B: + $99 (-1 in BCD)"
+C19F18,clears X; values of 60 or more skipped
+C19F26,frame counter restarts
+C19F30,00: WITHOUT
+C19F4A,'nn sec' at fix $738E
+C19FA2,DEMO SOUND: A or B toggles
+C19FAE,backup RAM writable
+C19FCC,the text of the new value
+C1A022,x 4: one pointer per row
+C1A044,pointer 0: inline commands
+C1A046,"erase the old cursor (space),"
+C1A054,"draw the new one (tile $11, palette 1)"
+C1A05C,command 0: end
+C1A076,fix $7068 + 3 x row
+C1A106,"park the Z80 (the slot changes), backup RAM writable, interrupts off"
+C1A120,the list entry of this line (20 bytes each)
+C1A134,select that slot and its fix ROM
+C1A142,its soft DIP block for this ROM's region (CART_SOFTDIP_JP + 4 x region)
+C1A158,skip the 16-byte game name
+C1A166,"the 16-byte definition (times, counts, option counts) to SoftDipDefinition,"
+C1A170,then a row for each item present: type and BIOS_GAME_DIP offset in SoftDipRows
+C1A174,"time 1 ($FFFF: none): type 0, offset 0, its 12-character name"
+C1A186,"time 2: type 1, offset 2"
+C1A19C,"count 1 ($FF: none): type 2, offset 4"
+C1A1B2,"count 2: type 3, offset 5"
+C1A1C8,"options (low nibble = number of choices, 0 ends): types 4.., offsets 6.."
+C1A1D6,"the option name, then the name of each choice"
+C1A1F6,"board fix ROM back, interrupts on"
+C1A20A,the game's current settings to BIOS_GAME_DIP
+C1A228,first row
+C1A230,a page of 8 rows:
+C1A23E,the game name at fix $7144
+C1A262,the row names from fix $70C7
+C1A270,each row from SoftDipFirstRow:
+C1A27C,find its name: skip the names of the items before it
+C1A2C2,"the 12-character name, then two rows down"
+C1A2E8,drawn
+C1A2F8,then the value of each row
+C1A31A,the cursor
+C1A324,each frame: C saves and returns
+C1A336,up / down: the row; a move to another group of 8 redraws the page
+C1A36E,time rows (0-1) redraw their value (the edited column follows the cursor)
+C1A3A4,left / right on a time row: minutes or seconds
+C1A3D6,A / B (with repeat) change the value:
+C1A3F6,"a list: the next / previous choice, wrapping"
+C1A42C,"a time: + 1 / - 1 in BCD,"
+C1A444,minutes 00-29
+C1A45A,"seconds 00-59, not 00:00"
+C1A47C,"count 1: 1-99, 100 shown as INFINITE (stored $64)"
+C1A4A0,"count 2: 0-100 (0 WITHOUT, 100 INFINITE)"
+C1A4CA,pointer 0: inline commands; command 3: the value's VRAM address
+C1A4D0,the row's type and offset
+C1A4DE,"d5 = the row's type, d6 = its byte in BIOS_GAME_DIP"
+C1A4E6,value column: fix $7287 + 3 x (row mod 8)
+C1A4F4,"command 8, page 3"
+C1A4FA,find the row's name in the definition (as above)
+C1A502,skip the definition entries before this row's type:
+C1A508,"types 0-1: a time word ($FFFF: unused, no text)"
+C1A51A,types 2-3: a count byte ($FF: unused)
+C1A52C,"types 4 and up: a list, its name and n value names of 12 characters"
+C1A544,a list: the name of the chosen value (12 characters after the option name)
+C1A558,12 characters
+C1A55E,"$FF ends the row, command 0 ends the list"
+C1A56E,"counts: 0 WITHOUT, 100 INFINITE, else 'n times'"
+C1A57E,0: WITHOUT
+C1A582,100: INFINITE
+C1A58A,"two digits, a leading 0 as a space"
+C1A5A2,units digit
+C1A5AE,'times'
+C1A5C2,1: 'time'
+C1A5D0,$FF ends the row
+C1A5D4,command 0 ends the list
+C1A5E0,WITHOUT
+C1A606,INFINITE
+C1A62C,count 1: two digits (1-99)
+C1A654,"a time: minutes, then 'min', seconds, 'sec'"
+C1A65E,"command 5: + $3F to the VRAM address, then command 8"
+C1A668,'min '
+C1A686,the seconds byte
+C1A69A,'sec'
+C1A6B8,the edited column in palette 1
+C1A6C4,BCD as two hex digits
+C1A6DC,erase the old cursor (space)
+C1A6EA,draw the new one (tile $11)
+C1A710,fix $7067 + 3 x (row mod 8)
+C1A716,"command 8 page 1, then the cursor character d1"
+C1A71E,backup RAM writable
+C1A72A,the game's 16 bytes in GameSoftDips
+C1A72E,the game's index x 16
+C1A740,16 bytes back
+C1A74E,the list at $10F300 (a5): 160 bytes cleared
+C1A76C,"one entry per slot table entry with a game (8 entries): slot, index, name"
+C1A776,NGH 0: no game in that slot
+C1A77C,"slot number,"
+C1A782,"game index,"
+C1A784,x 16: the game's name in GameNames (16 characters)
+C1A7A0,"games, plus the two cabinet lines"
+C1A7BA,the list's fixed lines first
+C1A7C0,then pointer 0: inline commands
+C1A7C4,"each game line: SLOT n and its name, one row down"
+C1A7CE,"'SLOT', then the slot digit"
+C1A7EC,"skip slot and index, then the 16-character name"
+C1A7F6,$FF ends the row
+C1A7FE,command 0: end
+C1A808,drawn at once
+C1A816,"each frame: C returns, A opens the line"
+C1A824,"C: back, the backup RAM free again"
+C1A82A,A: the page of the line under the cursor
+C1A832,up / down
+C1A838,"down: +1, up: -1"
+C1A846,past the last line: no move
+C1A85C,erase the old cursor (space)
+C1A86A,draw the new one (tile $11)
+C1A888,fix $7085 + 2 x line
+C1A8C0,the page returns to the list
+C1A8C4,"line 0 CABINET/COIN, 1 CABINET/PLAY, then the games"
+C1A8DE,"the 36-day ring in date order, then the 12 months"
+C1A8F6,page 0: the last 7 days
+C1A906,the grid and the COIN1 / COIN2 / SERVICE headings
+C1A930,page 1: January-June; page 2: July-December
+C1A944,"each frame: C returns, A the next page (3, wrapping)"
+C1A972,"7 rows from fix $7009, 3 columns apart"
+C1A978,an undated record (month 0): stop
+C1A98A,"date, then the three counters"
+C1A9A8,drawn now: the queue holds only one row
+C1A9BC,6 rows of months
+C1A9CA,pointer 0: inline commands
+C1A9E6,drawn at once; MessOut changes the registers
+C1A9F2,"next record (16 bytes), next month, next row (3 lines down)"
+C1AA06,"as CABINET/COIN, from the PLAY rings"
+C1AA1E,page 0: the last 7 days
+C1AA2E,"the grid, then the PLAY column titles"
+C1AA4E,page 0: days
+C1AA58,page 1: January-June
+C1AA62,page 2: July-December and TOTAL
+C1AA6C,"each frame: C returns, A the next page"
+C1AA7A,C: back
+C1AA82,"A: next page, after page 2 page 0"
+C1AAA0,a record with no date: no more days
+C1AAB0,pointer 0: inline commands
+C1AABE,the last column: average play time (time / plays)
+C1AAD8,"next record, next row"
+C1AAE8,after December (d7 = 13): the TOTAL row
+C1AAF8,pointer 0: inline commands
+C1AB30,pointer 0: inline commands
+C1AB58,"next record, next month, next row"
+C1AB6C,the list entry of this line (2 cabinet lines first)
+C1AB7E,the game's settings index
+C1AB8E,its 36 day records and its day index
+C1ABAC,its 12 months
+C1ABBC,and its totals record after the months
+C1ABDE,"the grid, the PLAY / CONT. / AV.TIME headings and the game name"
+C1AC28,"pages 1 and 2: the months, the second with the TOTAL row"
+C1AC3C,"each frame: C returns, A the next page"
+C1AC6C,column 4 of the row (+$80)
+C1AC78,"weekday 0 (Sunday): palette 1, red"
+C1AC84,"month name, '/', day"
+C1ACA8,column 6 of the row (+$C0)
+C1ACB6,d7 = month number
+C1ACB8,x 4: one 4-byte name per month
+C1ACFA,tens digit 0: a space
+C1AD1A,"'TOTA', then 'L' and the end code"
+C1AD2A,"columns at +$180, +$280, +$380 of the row"
+C1AD42,column 4 at +$380 from the row's address
+C1AD4A,"command 3: the VRAM address, command 8 page 1"
+C1AD56,"at most 9,999,999"
+C1AD64,"leading zeros as spaces, then 7 decimal digits"
+C1AD68,"millions, hundred thousands, ... tens: one digit each"
+C1ADB4,the last digit always shown
+C1ADBA,$FF ends the row
+C1ADC4,play time in seconds / plays
+C1ADD8,no play: 0:00
+C1ADE4,"at most 59,999 seconds"
+C1ADF4,minutes and seconds
+C1ADFC,"minutes: three digits, leading zeros as spaces"
+C1AE20,then ':' and the two-digit seconds at +$3E0
+C1AE54,"16 bytes per record, 7 records going back"
+C1AE6E,before record 0: the last record of the ring ($230)
+C1AE7A,12 records x 16 bytes
+C1AE88,"shift and subtract, 32 times"
+C1AE98,"d0 = quotient, d4 = remainder"
+C1AE9E,a non-zero digit ends the leading spaces
+C1B0A8,the page text
+C1B0BE,draw the 5 rows once (flags 2: no highlight)
+C1B0CC,"drawn at once, row by row"
+C1B0D0,a4 for the backup RAM variables
+C1B0E2,"row 0, coins half selected"
+C1B0EA,cursor and both coin rates redrawn after a move
+C1B0F6,each frame: C returns
+C1B104,C: back (TestSoftDip saves)
+C1B106,up / down over the 5 rows
+C1B10E,"down: +1, up: -1"
+C1B120,outside 0-4: no move
+C1B128,the other keys: the row's handler
+C1B12C,x 4: one pointer per row
+C1B14E,coin rows: A / B change the selected number
+C1B15A,left / right: the other number (coins or credits)
+C1B180,Coin1Coins / Coin1Credits / Coin2Coins / Coin2Credits
+C1B196,"1-9, wrapping"
+C1B1A8,redraw the row's rate
+C1B1AE,"COIN2: its two numbers, row 1, fix column $700B"
+C1B1BA,"COIN1: row 0, fix column $7008"
+C1B1C4,"the coins at +$1E0 and its 'S' at +$280, the credits at +$2C0 and its 'S' at +$3A0"
+C1B1CC,pointer 0: inline commands
+C1B1D6,d7 0: the coins number
+C1B1E4,d7 1: the credits number
+C1B1EA,command 0: end
+C1B1F6,"command 3: the VRAM address,"
+C1B1FE,"command 8, page 1"
+C1B202,the selected number of the selected row in palette 1
+C1B214,the number as a digit (1-9)
+C1B21C,$FF ends the row
+C1B220,then the 'S' after it
+C1B22C,"'S', or a space for 1"
+C1B242,GAME SELECT: A or B toggles ONLY WHEN CREDITED / FREE
+C1B24E,backup RAM writable
+C1B254,toggle 0 / 1
+C1B26C,the text of the new value
+C1B2BE,"GAME START COMPULSION: A / B change the seconds (BCD, 00-59)"
+C1B2CA,backup RAM writable
+C1B2D0,A: +1
+C1B2D8,"B: + $99, -1 in BCD"
+C1B2E0,clears X for the abcd; values of 60 or more skipped
+C1B2EE,the frame counter restarts
+C1B2F8,00: WITHOUT
+C1B312,'nn sec' at fix $7391
+C1B32C,' sec'
+C1B340,"$FF ends the row, command 0 ends the list"
+C1B36A,DEMO SOUND: A or B toggles SET UP IN EACH GAME / WITHOUT
+C1B376,backup RAM writable
+C1B37C,toggle 0 / 1
+C1B394,the text of the new value
+C1B3EA,x 4: one pointer per row
+C1B412,erase the old cursor (space)
+C1B420,draw the new one (tile $11)
+C1B434,"command 3: the cursor's VRAM address,"
+C1B442,fix $7068 + 3 x row
+C1B448,"command 8, page 1, then the cursor character d1"
+C1B4F0,system vectors and board fix; work RAM and palettes cleared as in TestModeEntry
+C1B586,"palette 0 colour 1 white, palette 1 colour 1 red"
+C1B5A0,controllers set up (this runs before the normal boot)
+C1B5AC,"system screen, test-mode coins, region as country, MVS"
+C1B5E8,INSERT 1M MEMORY CARD until one with cabinets is in
+C1B61C,each frame: the selected cabinet and its slots
+C1B626,card removed: ask again
+C1B62E,A+B+C+D held: restore
+C1B63E,up / down: the cabinet (0 to the card's count - 1)
+C1B678,"CABINET No. text,"
+C1B67E,then pointer 0: inline commands
+C1B68C,the cabinet number digit at fix $72C6
+C1B694,"$FF ends the row, command 0 ends the list"
+C1B6A4,drawn at once
+C1B6B2,the slot lines of that cabinet record
+C1B70E,"NEO-GEO at +$40, one letter per 4 bytes"
+C1B72A,type $2x: a 1M cabinet card
+C1B738,at least one cabinet stored
+C1B742,the cabinet's block: $800100 + $2800 x number
+C1B75C,each slot entry of the saved slot table with a game
+C1B76E,'SLOT' n
+C1B782,the game's name from the saved names (+$F2 + 16 x index)
+C1B7B0,"interrupts off, backup RAM writable"
+C1B7BA,the cabinet's block on the card
+C1B7D2,the card's code and this cabinet number
+C1B7E0,"date and slot data first, then the backup RAM areas word by word"
+C1B812,every game of the restored slot table flagged $80xx (re-registered at the next boot)
+C1B834,"RECOVER OK, then wait for the power to be turned off"
+C1B850,a3: the watchdog
+C1B852,d7 words

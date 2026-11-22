@@ -130,6 +130,18 @@ SCENARIOS = {
         'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0', 'CARD1M': 'c16:card_sparse',
         'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
                 + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 A'}),
+    # Saves of more than one 64-byte block on the two 16-bit card types: the same runs with BIOS_CRDSIZE set to
+    # $100 (four blocks) before each CARD 3 of CardFillTest, then a run with BIOS_CRDF set to 2 (and the same size),
+    # which loads file 0 again and again: the load follows its block chain (CardNextBlockWord, CardNextBlockSparse)
+    **{f'card_{t}_multi_{step}': ('sengoku2', last, cmds, {'ROMS': 'MONITOR_ROMS/cardfill', 'MODE': 'dip',
+        **({'CARD1M_SPARSE': '1', 'CARD1M_AT': '400'} if t == 'sparse' else {}),
+        'MEMCARD': 'card:FORMATTED_CARD', 'MEMCARD_AT': '0', 'CARD1M': f'{tag}:card_{t}_multi',
+        'KEYS': '420:P1 Down,440:P1 Down,460:P1 Down,480:P1 Down,500:P1 A,'
+                + ','.join(f'{700 + 30 * i}:P1 Down' for i in range(7)) + ',960:P1 Up,990:P1 Up,1100:P1 A'})
+       for t in ('word', 'sparse')
+       for step, last, tag, cmds in (('format', 900, 'c16new', ''),
+                                     ('fill', 1300, 'c16', 'bpset c132ee,1,{w@10fdcc=100; g}'),
+                                     ('load', 1000, 'c16', 'bpset c132ee,1,{w@10fdc4=200; w@10fdcc=100; g}'))},
     # League Bowling offers MEMORY CARD SAVE before the first frame; YES (A) calls CARD 3 then CARD_ERROR.
     # Blank card: result $81, CardError formats it (MVS) and saves again. Write-protected (MEMCARD_WP):
     # $85, MEMORY CARD WRITE PROTECTED. PUSH ANY BUTTON. Not forced (the switch is emulated).

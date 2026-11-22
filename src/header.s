@@ -48,23 +48,23 @@ SystemRegion:
 	dc.b	0x02
 | ENTRY_RESET [W] reset vector and first slot (wiki: entry point)
 ENTRY_RESET:
-	jmp	(Reset).l	| C00402
+	jmp	(Reset).l	| C00402  vector 1 (reset)
 loc_C00408:
-	jmp	(Reset).l	| C00408
+	jmp	(Reset).l	| C00408  vector 2, bus error: still jmp Reset, so PowerOnTest runs the checksum test
 loc_C0040E:
-	jmp	(Reset).l	| C0040E
+	jmp	(Reset).l	| C0040E  vector 3, address error
 loc_C00414:
-	jmp	(Reset).l	| C00414
+	jmp	(Reset).l	| C00414  vector 4, illegal instruction
 loc_C0041A:
-	jmp	(Reset).l	| C0041A
+	jmp	(Reset).l	| C0041A  vector 8, privilege violation
 loc_C00420:
-	jmp	(Reset).l	| C00420
+	jmp	(Reset).l	| C00420  vector 9, trace
 loc_C00426:
-	jmp	(Reset).l	| C00426
+	jmp	(Reset).l	| C00426  vectors 5-7, 10-14, 16-23, 27-63: every other exception
 loc_C0042C:
-	jmp	(Reset).l	| C0042C
+	jmp	(Reset).l	| C0042C  vector 15, uninitialised interrupt
 loc_C00432:
-	jmp	(Reset).l	| C00432
+	jmp	(Reset).l	| C00432  vector 24, spurious interrupt
 | SYSTEM_INT1 [W] BIOS call table slot (NeoGeoDev wiki BIOS calls)
 SYSTEM_INT1:
 	jmp	(SystemInt1).l	| C00438

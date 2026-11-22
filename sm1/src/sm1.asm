@@ -122,35 +122,35 @@ RamLoop:	equ 0fffdh	; [C] jp $FFFD, written by PrepareSwitch: the Z80 loops here
 	org 00000h
 ; Reset [C] di, jp Init
 Reset:
-	di	; 0000
+	di	; 0000  interrupts off, then the start-up code
 	jp Init	; 0001
 	defb 000h,000h,000h,000h	; 0004
 ; RstDelayShort [C] rst 08h: jp DelayShort
 RstDelayShort:
-	jp DelayShort	; 0008
+	jp DelayShort	; 0008  rst 08h: short wait
 	defb 000h,000h,000h,000h,000h	; 000B
 ; RstDelay [C] rst 10h: jp Delay
 RstDelay:
-	jp Delay	; 0010
+	jp Delay	; 0010  rst 10h: longer wait
 	defb 000h	; 0013
 ; RomChecksum [C] checksum byte: the sum of $0000-$EFFF (this byte included) is $D4 (Command10SelfTest; checked here: $D4)
 RomChecksum:
 	defb 0d4h,02ch,000h,000h	; 0014
 ; RstYmWriteA [C] rst 18h: jp YmWriteA
 RstYmWriteA:
-	jp YmWriteA	; 0018
+	jp YmWriteA	; 0018  rst 18h: YM2610 port A write, d = register, e = value
 	defb 0c9h,000h,000h,000h,000h	; 001B
 ; RstYmWriteB [C] rst 20h: jp YmWriteB
 RstYmWriteB:
-	jp YmWriteB	; 0020
+	jp YmWriteB	; 0020  rst 20h: YM2610 port B write
 	defb 000h,000h,000h,000h,000h	; 0023
 ; RstSystemCommand [C] rst 28h: jp SystemCommand
 RstSystemCommand:
-	jp SystemCommand	; 0028
+	jp SystemCommand	; 0028  rst 28h: system command a through SystemCommandTable
 	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h	; 002B
 ; IrqVector [C] mode 1 interrupt (the YM2610 timers, wiki): di, jp TimerIrq
 IrqVector:
-	di	; 0038
+	di	; 0038  IM 1 interrupt: the YM2610 timer, which runs the sound engine
 	jp TimerIrq	; 0039
 	defb 000h,000h	; 003C
 ; VersionText [C] Ver 1.5b by Mr.Pac h Ber.02/01/08 (the signature on the wiki SM1 page)
@@ -160,26 +160,26 @@ VersionText:
 	defb 038h,000h,000h,000h,000h,000h,000h,000h	; 005E
 ; Nmi [C] command from the 68k: 1, 3 and $10 are handled at once (NmiPrepareSwitch, NmiReset, NmiCommand10); 0 is ignored; any other is queued in CommandQueue (or put straight in SoundCommand while CommandWait is set); then the reply (ReplyValue with bit 7) and the port $00 clear. MAME: every command of the hardware test and the boot
 Nmi:
-	push af	; 0066
+	push af	; 0066  NMI: a command byte from the 68000
 	push bc	; 0067
 	push de	; 0068
 	push hl	; 0069
-	in a,(PORT_SOUND_CODE)	; 006A
+	in a,(PORT_SOUND_CODE)	; 006A  read the command (port 00h)
 	ld b,a	; 006C
-	cp 001h	; 006D
+	cp 001h	; 006D  1: prepare for a ROM switch, handled at once
 	jp z,NmiPrepareSwitch	; 006F
-	cp 003h	; 0072
+	cp 003h	; 0072  3: reset, handled at once
 	jp z,NmiReset	; 0074
-	cp 010h	; 0077
+	cp 010h	; 0077  10h: self test, handled at once
 	jp z,NmiCommand10	; 0079
-	or a	; 007C
+	or a	; 007C  0: nothing
 	jp z,NmiExit	; 007D
-	ld a,(CommandWait)	; 0080
+	ld a,(CommandWait)	; 0080  a command is being waited for (CommandWait): take it directly
 	or a	; 0083
 	jr nz,loc_00A8	; 0084
-	ld a,080h	; 0086
+	ld a,080h	; 0086  otherwise queue it
 	call QueueCheckFull	; 0088
-	ld a,(QueueWrite)	; 008B
+	ld a,(QueueWrite)	; 008B  8 entries of 2 bytes: a flag ($FF) and the command
 	and 007h	; 008E
 	ld e,a	; 0090
 	ld d,000h	; 0091
@@ -189,57 +189,57 @@ Nmi:
 	ld (hl),0ffh	; 0098
 	inc hl	; 009A
 	ld (hl),b	; 009B
-	inc a	; 009C
+	inc a	; 009C  next write position, 0-7
 	and 007h	; 009D
 	ld (QueueWrite),a	; 009F
 	xor a	; 00A2
 	ld (NoNewCommand),a	; 00A3
 	jr loc_00B0	; 00A6
 loc_00A8:
-	ld a,b	; 00A8
+	ld a,b	; 00A8  the command straight into SoundCommand
 	ld (SoundCommand),a	; 00A9
 	xor a	; 00AC
 	ld (NoNewCommand),a	; 00AD
 loc_00B0:
-	ld a,(ReplyValue)	; 00B0
+	ld a,(ReplyValue)	; 00B0  reply: a byte with bit 7 set
 	or 080h	; 00B3
 	out (PORT_REPLY),a	; 00B5
-	out (PORT_SOUND_CODE),a	; 00B7
+	out (PORT_SOUND_CODE),a	; 00B7  acknowledge the command latch
 ; NmiExit [C] restores the registers and retn
 NmiExit:
 	pop hl	; 00B9
 	pop de	; 00BA
 	pop bc	; 00BB
 	pop af	; 00BC
-	retn	; 00BD
+	retn	; 00BD  return from NMI
 	defs 00011h,000h	; 00BF
 ; Init [C] stack $FFFC, interrupt mode 1, clears the 2 KB of RAM, sets SoundLock, writes 1 to port $C0 and YM2610 registers $27, $10, $1C, enables the NMI (port $08) and enters MainLoop. Run at every reset (MAME)
 Init:
-	ld sp,StackTop	; 00D0
-	im 1	; 00D3
+	ld sp,StackTop	; 00D0  stack at the top of RAM
+	im 1	; 00D3  interrupt mode 1 (rst 38h)
 	xor a	; 00D5
 	ld (InRamLoop),a	; 00D6
-	ld (SsgPeriodA),a	; 00D9
+	ld (SsgPeriodA),a	; 00D9  clear the 2 KB of work RAM from SsgPeriodA
 	ld hl,SsgPeriodA	; 00DC
 	ld de,SsgPeriodA+1	; 00DF
 	ld bc,007ffh	; 00E2
 	ldir	; 00E5
-	ld a,0ffh	; 00E7
+	ld a,0ffh	; 00E7  no command yet, music and effects locked until command 7
 	ld (NoNewCommand),a	; 00E9
 	ld (SoundLock),a	; 00EC
 	ld (EffectLock),a	; 00EF
-	ld a,003h	; 00F2
+	ld a,003h	; 00F2  command mode 3
 	ld (CommandMode),a	; 00F4
-	call FmKeyOffAll	; 00F7
+	call FmKeyOffAll	; 00F7  everything silent
 	call AdpcmKeyOff	; 00FA
 	call SsgSilence	; 00FD
-	ld a,001h	; 0100
+	ld a,001h	; 0100  port C0h = 1
 	out (PORT_C0),a	; 0102
-	ld de,02730h	; 0104
+	ld de,02730h	; 0104  YM2610 register 27h = 30h: timers reset
 	call YmWriteA	; 0107
-	ld de,01001h	; 010A
+	ld de,01001h	; 010A  register 10h = 01h
 	call YmWriteA	; 010D
-	ld de,01c00h	; 0110
+	ld de,01c00h	; 0110  register 1Ch = 00h
 	call YmWriteA	; 0113
 	xor a	; 0116
 	ld (RandomReplyOn),a	; 0117
@@ -247,87 +247,87 @@ Init:
 	ld (AdpcmBEffectMode),a	; 011D
 	ld (SongRunning),a	; 0120
 	ld (SongStarting),a	; 0123
-	ld a,003h	; 0126
+	ld a,003h	; 0126  timer A from TimerATable entry 3
 	call SetTimerA	; 0128
 	ld a,00ah	; 012B
 	ld (AdpcmBFadeStep),a	; 012D
-	call SilenceAll	; 0130
-	out (PORT_NMI_ENABLE),a	; 0133
+	call SilenceAll	; 0130  every channel off
+	out (PORT_NMI_ENABLE),a	; 0133  enable the NMI: commands may come in
 ; MainLoop [C] takes the next queued command (CommandQueue, QueueRead) and runs it (TakeCommand); while RandomReplyOn is set, sends a random reply (ld a,r | $80) to port $0C
 MainLoop:
-	xor a	; 0135
+	xor a	; 0135  main loop: no command awaited, not in the RAM loop
 	ld (CommandWait),a	; 0136
 	ld (InRamLoop),a	; 0139
-	ei	; 013C
-	ld a,(QueueRead)	; 013D
+	ei	; 013C  interrupts on (the timer runs the engine)
+	ld a,(QueueRead)	; 013D  the next queue entry
 	and 007h	; 0140
 	ld (QueueLimit),a	; 0142
-	ld e,a	; 0145
+	ld e,a	; 0145  2 bytes per entry
 	ld d,000h	; 0146
 	ld hl,CommandQueue	; 0148
 	add hl,de	; 014B
 	add hl,de	; 014C
 	inc a	; 014D
 	ld (QueueRead),a	; 014E
-	ld a,(hl)	; 0151
+	ld a,(hl)	; 0151  flag set: a command is waiting
 	or a	; 0152
 	call nz,TakeCommand	; 0153
 	ei	; 0156
-	ld a,(RandomReplyOn)	; 0157
+	ld a,(RandomReplyOn)	; 0157  random reply on: a new random reply byte each pass
 	or a	; 015A
 	jr z,MainLoop	; 015B
-	ld a,r	; 015D
+	ld a,r	; 015D  the refresh register as the random value
 	ld (ReplyValue),a	; 015F
 	or 080h	; 0162
-	out (PORT_REPLY),a	; 0164
+	out (PORT_REPLY),a	; 0164  reply with bit 7 set
 	jp MainLoop	; 0166
 ; TakeCommand [C] marks the queue entry free, SoundCommand = the command, then DispatchCommand
 TakeCommand:
-	ld a,0ffh	; 0169
+	ld a,0ffh	; 0169  take the command out of the queue
 	ld (NoNewCommand),a	; 016B
 	ld (hl),000h	; 016E
 	inc hl	; 0170
-	ld a,(hl)	; 0171
+	ld a,(hl)	; 0171  the command byte
 	ld (SoundCommand),a	; 0172
 ; DispatchCommand [C] CommandTypeTable[SoundCommand]: 1 system command (rst 28h), 2 a sound or tune (PlaySoundCommand), 5 the coin sound (CoinSound); types 3 and 4 ($01C4, $048E) are handled but no command has them; 0 ignored
 DispatchCommand:
-	ld e,a	; 0175
+	ld e,a	; 0175  look up its type in CommandTypeTable
 	ld d,000h	; 0176
 	ld hl,CommandTypeTable	; 0178
 	add hl,de	; 017B
 	ld a,(hl)	; 017C
 	ld (SoundCommandType),a	; 017D
 	ld a,(SoundCommandType)	; 0180
-	or a	; 0183
+	or a	; 0183  type 0: ignored
 	ret z	; 0184
-	cp 001h	; 0185
+	cp 001h	; 0185  1: system command
 	jp z,SystemCommand	; 0187
-	cp 002h	; 018A
+	cp 002h	; 018A  2: sound or tune
 	jp z,PlaySoundCommand	; 018C
-	cp 003h	; 018F
+	cp 003h	; 018F  3: ADPCM-A sound (no command of this ROM)
 	jp z,loc_01C4	; 0191
-	cp 004h	; 0194
+	cp 004h	; 0194  4: ADPCM-B sound (no command of this ROM)
 	jp z,loc_048E	; 0196
-	cp 005h	; 0199
+	cp 005h	; 0199  5: coin sound
 	jp z,CoinSound	; 019B
-	xor a	; 019E
+	xor a	; 019E  anything else: dropped
 	ld (SoundCommandType),a	; 019F
 	ld (SoundCommand),a	; 01A2
 	ret	; 01A5
 ; PlaySoundCommand [C] command type 2 ($5C-$5F): jp PlaySound with the command
 PlaySoundCommand:
-	xor a	; 01A6
+	xor a	; 01A6  sound from the start
 	ld (CurrentSound),a	; 01A7
 	jp PlaySound	; 01AA
 ; ClearCommandQueue [C] clears QueueRead / QueueWrite and the 16 bytes of CommandQueue
 ClearCommandQueue:
-	push hl	; 01AD
+	push hl	; 01AD  empty the queue: both positions 0
 	ld hl,QueueWrite	; 01AE
 	ld (hl),000h	; 01B1
 	ld hl,QueueRead	; 01B3
 	ld (hl),000h	; 01B6
 	ld hl,CommandQueue	; 01B8
-	ld b,010h	; 01BB
+	ld b,010h	; 01BB  16 bytes
 loc_01BD:
 	ld (hl),000h	; 01BD
 	inc hl	; 01BF
@@ -1252,12 +1252,12 @@ CompareFc36:
 ; CoinSound [C] command type 5 ($7F): the coin sound (MAME: a short sound, about a second)
 CoinSound:
 	di	; 087A
-	ld a,(SoundCommand)	; 087B
+	ld a,(SoundCommand)	; 087B  the coin sound (7Fh), started as an effect
 	ld (EffectCommand),a	; 087E
 ; StartEffect [C] starts effect SoundCommand - $60 from EffectTable on channels 5, 6, 7 and 0, unless a higher-priority effect plays (CoinSound)
 StartEffect:
-	call ClearSsgSlides	; 0881
-	sub 060h	; 0884
+	call ClearSsgSlides	; 0881  any SSG slide stops
+	sub 060h	; 0884  effect 60h-7Fh: its pointer in EffectTable
 	ld e,a	; 0886
 	ld d,000h	; 0887
 	ld hl,EffectTable	; 0889
@@ -1268,10 +1268,10 @@ StartEffect:
 	ld h,(hl)	; 0890
 	ld l,e	; 0891
 	push hl	; 0892
-	pop ix	; 0893
-	ld iy,EffectChannel5	; 0895
+	pop ix	; 0893  ix = the effect's 14-byte header
+	ld iy,EffectChannel5	; 0895  iy = effect channel 5
 	push bc	; 0899
-	ld a,(SpecialEffect)	; 089A
+	ld a,(SpecialEffect)	; 089A  the special effect plays even while effects are locked
 	ld b,a	; 089D
 	ld a,(EffectCommand)	; 089E
 	cp b	; 08A1
@@ -1282,23 +1282,23 @@ StartEffect:
 	ret nz	; 08A9
 	jr loc_08B1	; 08AA
 loc_08AC:
-	ld a,004h	; 08AC
+	ld a,004h	; 08AC  special effect: kind 4
 	ld (SpecialEffectKind),a	; 08AE
 loc_08B1:
-	ld b,(ix+0)	; 08B1
+	ld b,(ix+0)	; 08B1  header byte 0: the priority
 	ld a,(EffectPlaying)	; 08B4
 	or a	; 08B7
 	jr z,loc_08BF	; 08B8
-	ld a,(EffectPriority)	; 08BA
+	ld a,(EffectPriority)	; 08BA  an effect of higher priority plays: refused
 	cp b	; 08BD
 	ret c	; 08BE
 loc_08BF:
-	ld a,b	; 08BF
+	ld a,b	; 08BF  this one plays now
 	ld (EffectPriority),a	; 08C0
 	ld a,0ffh	; 08C3
 	ld (EffectPlaying),a	; 08C5
-	call SsgSilence	; 08C8
-	ld de,00010h	; 08CB
+	call SsgSilence	; 08C8  SSG silent first
+	ld de,00010h	; 08CB  clear the loop and call stacks of channels 0, 5, 6, 7
 	ld hl,LoopStacks	; 08CE
 	ld (hl),000h	; 08D1
 	ld hl,LoopStacks+80	; 08D3
@@ -1315,7 +1315,7 @@ loc_08BF:
 	ld (hl),000h	; 08E9
 	add hl,de	; 08EB
 	ld (hl),000h	; 08EC
-	ld a,005h	; 08EE
+	ld a,005h	; 08EE  channel 5 (SSG A): byte 9 the flags, pointer 1-2
 	ld b,007h	; 08F0
 	call SetChannelOwner	; 08F2
 	ld (iy+0),000h	; 08F5
@@ -1329,7 +1329,7 @@ loc_08BF:
 	ld (iy+12),h	; 090E
 	ld de,00010h	; 0911
 	add iy,de	; 0914
-	ld a,006h	; 0916
+	ld a,006h	; 0916  channel 6 (SSG B): byte 10, pointer 3-4
 	ld b,007h	; 0918
 	call SetChannelOwner	; 091A
 	ld (iy+0),000h	; 091D
@@ -1343,7 +1343,7 @@ loc_08BF:
 	ld (iy+12),h	; 0936
 	ld de,00010h	; 0939
 	add iy,de	; 093C
-	ld a,007h	; 093E
+	ld a,007h	; 093E  channel 7 (SSG C): byte 11, pointer 5-6
 	ld b,007h	; 0940
 	call SetChannelOwner	; 0942
 	ld (iy+0),000h	; 0945
@@ -1355,7 +1355,7 @@ loc_08BF:
 	ld (iy+10),h	; 0958
 	ld (iy+11),l	; 095B
 	ld (iy+12),h	; 095E
-	ld iy,EffectChannel0	; 0961
+	ld iy,EffectChannel0	; 0961  channel 0 (noise): byte 12, pointer 7-8
 	ld a,000h	; 0965
 	ld b,007h	; 0967
 	call SetChannelOwner	; 0969
@@ -1368,14 +1368,14 @@ loc_08BF:
 	ld (iy+10),h	; 097F
 	ld (iy+11),l	; 0982
 	ld (iy+12),h	; 0985
-	ld a,(ix+13)	; 0988
+	ld a,(ix+13)	; 0988  byte 13: the effect parameter
 	ld (EffectParam),a	; 098B
 	ret	; 098E
 ; ClearSsgSlides [C] clears the first byte of SsgSlideA/B/C
 ClearSsgSlides:
 	push af	; 098F
 	push hl	; 0990
-	ld hl,SsgSlideA	; 0991
+	ld hl,SsgSlideA	; 0991  slide blocks A, B, C idle
 	ld (hl),000h	; 0994
 	ld hl,SsgSlideB	; 0996
 	ld (hl),000h	; 0999
@@ -1386,7 +1386,7 @@ ClearSsgSlides:
 	ret	; 09A2
 ; FmKeyOffAll [C] YM2610 register $28 (key on/off) = $01, $02, $05, $06: the four FM channels off
 FmKeyOffAll:
-	ld de,02801h	; 09A3
+	ld de,02801h	; 09A3  register 28h: key off FM channels 1, 2 (port A) and 5, 6 (port B: FM 3, 4)
 	call YmWriteA	; 09A6
 	ld de,02802h	; 09A9
 	call YmWriteA	; 09AC
@@ -1397,10 +1397,10 @@ FmKeyOffAll:
 	ret	; 09BB
 ; SsgSilence [C] SSG volumes (YM $08, $09, $0A) = 0, unless $FE40 = 4
 SsgSilence:
-	ld a,(SpecialEffectKind)	; 09BC
+	ld a,(SpecialEffectKind)	; 09BC  special effect kind 4 keeps its SSG sound
 	cp 004h	; 09BF
 	ret z	; 09C1
-	ld de,00800h	; 09C2
+	ld de,00800h	; 09C2  registers 08h-0Ah = 0: the three SSG volumes off
 	call YmWriteA	; 09C5
 	ld de,00900h	; 09C8
 	call YmWriteA	; 09CB
@@ -1410,17 +1410,17 @@ SsgSilence:
 ; AdpcmKeyOff [I] YM2610 port B register $00 (ADPCM-A key) dumps and SSG mixer writes
 AdpcmKeyOff:
 	push ix	; 09D5
-	ld d,000h	; 09D7
+	ld d,000h	; 09D7  d = 00h (port B dump register), d' = 1Ch (port A flag register)
 	exx	; 09D9
 	ld d,01ch	; 09DA
 	exx	; 09DC
-	ld e,087h	; 09DD
+	ld e,087h	; 09DD  dump ADPCM-A channels 1-3, reset their end flags
 	call YmWriteB	; 09DF
 	exx	; 09E2
 	ld e,007h	; 09E3
 	call YmWriteA	; 09E5
 	exx	; 09E8
-	ld a,(AdpcmHold1)	; 09E9
+	ld a,(AdpcmHold1)	; 09E9  channel 4 unless held,
 	or a	; 09EC
 	jr nz,loc_09FB	; 09ED
 	ld e,088h	; 09EF
@@ -1430,7 +1430,7 @@ AdpcmKeyOff:
 	call YmWriteA	; 09F7
 	exx	; 09FA
 loc_09FB:
-	ld a,(AdpcmHold2)	; 09FB
+	ld a,(AdpcmHold2)	; 09FB  channel 5 unless held,
 	or a	; 09FE
 	jr nz,loc_0A0D	; 09FF
 	ld e,090h	; 0A01
@@ -1440,7 +1440,7 @@ loc_09FB:
 	call YmWriteA	; 0A09
 	exx	; 0A0C
 loc_0A0D:
-	ld a,(AdpcmHold3)	; 0A0D
+	ld a,(AdpcmHold3)	; 0A0D  channel 6 unless held
 	or a	; 0A10
 	jr nz,loc_0A1F	; 0A11
 	ld e,0a0h	; 0A13
@@ -1450,7 +1450,7 @@ loc_0A0D:
 	call YmWriteA	; 0A1B
 	exx	; 0A1E
 loc_0A1F:
-	ld a,(SpecialEffectKind)	; 0A1F
+	ld a,(SpecialEffectKind)	; 0A1F  unless special effect 3: ADPCM-B reset and its flag
 	cp 003h	; 0A22
 	jr z,loc_0A38	; 0A24
 	ld de,01001h	; 0A26
@@ -1460,15 +1460,15 @@ loc_0A1F:
 	ld de,01c80h	; 0A32
 	call YmWriteA	; 0A35
 loc_0A38:
-	ld de,01c00h	; 0A38
+	ld de,01c00h	; 0A38  flags cleared
 	call YmWriteA	; 0A3B
-	ld de,0013fh	; 0A3E
+	ld de,0013fh	; 0A3E  port B register 01h = 3Fh: ADPCM-A master volume up
 	call YmWriteB	; 0A41
 	pop ix	; 0A44
 	ret	; 0A46
 ; AdpcmBStop [I] if an ADPCM-B sound plays: YM2610 $10 reset and $1C flag writes, clears its flags
 AdpcmBStop:
-	ld a,(AdpcmBEffectMode)	; 0A47
+	ld a,(AdpcmBEffectMode)	; 0A47  an ADPCM-B sound or effect plays:
 	or a	; 0A4A
 	jr nz,loc_0A55	; 0A4B
 	ld a,(AdpcmBSoundOn)	; 0A4D
@@ -1479,7 +1479,7 @@ loc_0A55:
 	ld a,(SpecialEffectKind)	; 0A55
 	cp 003h	; 0A58
 	jr z,loc_0A82	; 0A5A
-	ld de,01001h	; 0A5C
+	ld de,01001h	; 0A5C  register 10h: reset, then its end flag
 	call YmWriteA	; 0A5F
 	ld de,01000h	; 0A62
 	call YmWriteA	; 0A65
@@ -1487,7 +1487,7 @@ loc_0A55:
 	call YmWriteA	; 0A6B
 	ld de,01c00h	; 0A6E
 	call YmWriteA	; 0A71
-	xor a	; 0A74
+	xor a	; 0A74  no ADPCM-B sound any more
 	ld (AdpcmBSoundOn),a	; 0A75
 	ld (AdpcmBEffectMode),a	; 0A78
 	push hl	; 0A7B
@@ -1496,7 +1496,7 @@ loc_0A55:
 	pop hl	; 0A81
 loc_0A82:
 	push ix	; 0A82
-	ld ix,AdpcmVoices	; 0A84
+	ld ix,AdpcmVoices	; 0A84  then the three effect voices (channels 4-6), each unless held
 	ld a,(AdpcmHold1)	; 0A88
 	or a	; 0A8B
 	jr nz,loc_0AB0	; 0A8C
@@ -1508,7 +1508,7 @@ loc_0A82:
 	jr nz,loc_0A9C	; 0A98
 	jr loc_0AB0	; 0A9A
 loc_0A9C:
-	ld (ix+0),000h	; 0A9C
+	ld (ix+0),000h	; 0A9C  free the voice and dump its channel
 	ld (ix+7),000h	; 0AA0
 	ld e,088h	; 0AA4
 	call YmWriteB	; 0AA6
@@ -1563,7 +1563,7 @@ loc_0B08:
 	ret	; 0B0A
 ; SystemCommand [C] SoundCommand x 3 into SystemCommandTable, jp (hl)
 SystemCommand:
-	ld a,(SoundCommand)	; 0B0B
+	ld a,(SoundCommand)	; 0B0B  command number x 3: a jp per command
 	ld e,a	; 0B0E
 	ld d,000h	; 0B0F
 	ld hl,SystemCommandTable	; 0B11
@@ -1573,7 +1573,7 @@ SystemCommand:
 	jp (hl)	; 0B17
 ; SystemCommandTable [C] 26 jp, one per system command 0-25 (CommandTypeTable gives type 1 to 1-9 and $10 only)
 SystemCommandTable:
-	jp CommandNone	; 0B18
+	jp CommandNone	; 0B18  0: nothing
 loc_0B1B:
 	jp PrepareSwitch	; 0B1B
 loc_0B1E:
@@ -1626,28 +1626,28 @@ loc_0B63:
 	jp loc_0C7D	; 0B63
 ; QueueCheckFull [I] steps QueueWrite on when it has reached $FE5C
 QueueCheckFull:
-	ld a,(QueueLimit)	; 0B66
+	ld a,(QueueLimit)	; 0B66  the queue full (write position at the read position)?
 	ld c,a	; 0B69
 	ld a,(QueueWrite)	; 0B6A
 	and 007h	; 0B6D
 	cp c	; 0B6F
 	ret nz	; 0B70
-	ld a,(QueueWrite)	; 0B71
+	ld a,(QueueWrite)	; 0B71  then the oldest entry is overwritten
 	inc a	; 0B74
 	ld (QueueWrite),a	; 0B75
 	ret	; 0B78
 ; NmiPrepareSwitch [C] command 1, from the NMI: clears the reply and the code, resets the stack and returns (retn) into PrepareSwitch
 NmiPrepareSwitch:
-	ld a,000h	; 0B79
+	ld a,000h	; 0B79  command 1 from the NMI: reply 0, acknowledge,
 	out (PORT_REPLY),a	; 0B7B
 	out (PORT_SOUND_CODE),a	; 0B7D
-	ld sp,StackTop	; 0B7F
+	ld sp,StackTop	; 0B7F  fresh stack, then return into PrepareSwitch
 	ld hl,PrepareSwitch	; 0B82
 	push hl	; 0B85
 	retn	; 0B86
 ; NmiReset [C] command 3, from the NMI: same, into SoftReset
 NmiReset:
-	ld a,000h	; 0B88
+	ld a,000h	; 0B88  command 3: reply 0, fresh stack, return into SoftReset
 	out (PORT_REPLY),a	; 0B8A
 	out (PORT_SOUND_CODE),a	; 0B8C
 	ld sp,StackTop	; 0B8E
@@ -1656,7 +1656,7 @@ NmiReset:
 	retn	; 0B95
 ; NmiCommand10 [C] command $10, from the NMI: resets the stack and returns into Command10
 NmiCommand10:
-	ld sp,StackTop	; 0B97
+	ld sp,StackTop	; 0B97  command 10h: fresh stack, return into the self test
 	ld hl,Command10SelfTest	; 0B9A
 	push hl	; 0B9D
 	retn	; 0B9E
@@ -1666,17 +1666,17 @@ CommandNone:
 ; Command2Eyecatcher [C] command 2: plays sound $5F through PlaySound (the eyecatcher jingle: MAME, recorded and compared with the jingle of Sengoku 2's own M1: same envelope, correlation 0.9996)
 Command2Eyecatcher:
 	di	; 0BA1
-	xor a	; 0BA2
+	xor a	; 0BA2  no random reply, sound from the start
 	ld (RandomReplyOn),a	; 0BA3
 	ld (CurrentSound),a	; 0BA6
-	ld a,05fh	; 0BA9
+	ld a,05fh	; 0BA9  sound 5Fh: the eyecatcher jingle
 	push af	; 0BAB
 	jp loc_0F07	; 0BAC
 ; PrepareSwitch [C] command 1: keys off and silences every YM2610 channel, writes jp $FFFD at $FFFD in RAM, replies 1 and jumps there: the Z80 waits in RAM while the 68k changes the Z80 ROM (MAME: Z80 at $FFFD after command 1)
 PrepareSwitch:
 	di	; 0BAF
 	xor a	; 0BB0
-	out (PORT_REPLY),a	; 0BB1
+	out (PORT_REPLY),a	; 0BB1  reply 0, a short wait, again 0
 	ld b,030h	; 0BB3
 loc_0BB5:
 	djnz loc_0BB5	; 0BB5
@@ -1686,31 +1686,31 @@ loc_0BB5:
 	ld (SongRunning),a	; 0BBD
 	ld (SongStarting),a	; 0BC0
 	di	; 0BC3
-	ld de,0b500h	; 0BC4
+	ld de,0b500h	; 0BC4  registers B5h and B6h = 0 on both ports: pan and LFO of every FM channel off
 	call YmWriteA	; 0BC7
 	call YmWriteB	; 0BCA
 	ld de,0b600h	; 0BCD
 	call YmWriteA	; 0BD0
 	call YmWriteB	; 0BD3
-	ld de,000bfh	; 0BD6
+	ld de,000bfh	; 0BD6  port B register 00h = BFh
 	call YmWriteB	; 0BD9
-	ld de,01001h	; 0BDC
+	ld de,01001h	; 0BDC  register 10h = 01h: ADPCM-B reset
 	call YmWriteA	; 0BDF
-	ld de,01cbfh	; 0BE2
+	ld de,01cbfh	; 0BE2  register 1Ch = BFh, then 00h: ADPCM flags reset
 	call YmWriteA	; 0BE5
 	ld de,01c00h	; 0BE8
 	call YmWriteA	; 0BEB
-	ld b,00dh	; 0BEE
+	ld b,00dh	; 0BEE  13 registers 41h-4Dh = 7Fh on both ports: FM operators silent
 	ld de,0417fh	; 0BF0
 loc_0BF3:
 	call YmWriteA	; 0BF3
 	call YmWriteB	; 0BF6
-	ex de,hl	; 0BF9
+	ex de,hl	; 0BF9  next register
 	ld de,00100h	; 0BFA
 	add hl,de	; 0BFD
 	ex de,hl	; 0BFE
 	djnz loc_0BF3	; 0BFF
-	ld de,02801h	; 0C01
+	ld de,02801h	; 0C01  register 28h: key off FM channels 1, 2, 5, 6
 	call YmWriteA	; 0C04
 	ld de,02802h	; 0C07
 	call YmWriteA	; 0C0A
@@ -1718,31 +1718,31 @@ loc_0BF3:
 	call YmWriteA	; 0C10
 	ld de,02806h	; 0C13
 	call YmWriteA	; 0C16
-	ld de,00800h	; 0C19
+	ld de,00800h	; 0C19  registers 08h-0Ah = 0: SSG volumes off
 	call YmWriteA	; 0C1C
 	ld de,00900h	; 0C1F
 	call YmWriteA	; 0C22
 	ld de,00a00h	; 0C25
 	call YmWriteA	; 0C28
-	ld hl,RamLoop	; 0C2B
+	ld hl,RamLoop	; 0C2B  write jp RamLoop (C3h FDh FFh) at RamLoop, $FFFD
 	ld (hl),0c3h	; 0C2E
 	ld (StackTop+2),hl	; 0C30
-	ld a,001h	; 0C33
+	ld a,001h	; 0C33  InRamLoop = 1, reply 1: the 68000 may switch the ROM
 	ld (InRamLoop),a	; 0C35
 	out (PORT_REPLY),a	; 0C38
-	jp RamLoop	; 0C3A
+	jp RamLoop	; 0C3A  wait there, in RAM, until command 3 resets
 loc_0C3D:
-	ld a,0ffh	; 0C3D
+	ld a,0ffh	; 0C3D  wait for the next command (the NMI clears NoNewCommand)
 	ld (CommandWait),a	; 0C3F
 	ld a,(NoNewCommand)	; 0C42
 	or a	; 0C45
 	jr nz,loc_0C3D	; 0C46
 	ld a,0ffh	; 0C48
 	ld (NoNewCommand),a	; 0C4A
-	ld a,(SoundCommand)	; 0C4D
+	ld a,(SoundCommand)	; 0C4D  below 10h: an ordinary command
 	cp 010h	; 0C50
 	jp c,DispatchCommand	; 0C52
-	ld hl,CommandBitsA	; 0C55
+	ld hl,CommandBitsA	; 0C55  otherwise allowed by CommandBitsA?
 	push bc	; 0C58
 	call CommandBitTest	; 0C59
 	pop bc	; 0C5C
@@ -1750,10 +1750,10 @@ loc_0C3D:
 	ret z	; 0C5E
 	ld a,(SoundCommand)	; 0C5F
 	di	; 0C62
-	jp StartAdpcmASound	; 0C63
+	jp StartAdpcmASound	; 0C63  then an ADPCM-A sound
 ; CommandBitTest [C] tests bit a (high bit first) of the 256-bit table at hl (the tables at $4499 and $47D6, both empty)
 CommandBitTest:
-	ld c,a	; 0C66
+	ld c,a	; 0C66  byte (command / 8) of the table at hl,
 	and 007h	; 0C67
 	ld b,003h	; 0C69
 loc_0C6B:
@@ -1761,18 +1761,18 @@ loc_0C6B:
 	djnz loc_0C6B	; 0C6D
 	add hl,bc	; 0C6F
 	ld b,a	; 0C70
-	ld c,080h	; 0C71
+	ld c,080h	; 0C71  bit 7 - (command and 7)
 	or a	; 0C73
 	jr z,loc_0C7A	; 0C74
 loc_0C76:
 	srl c	; 0C76
 	djnz loc_0C76	; 0C78
 loc_0C7A:
-	ld a,c	; 0C7A
+	ld a,c	; 0C7A  a = the bit, zero if not allowed
 	and (hl)	; 0C7B
 	ret	; 0C7C
 loc_0C7D:
-	ld a,0ffh	; 0C7D
+	ld a,0ffh	; 0C7D  the same with CommandBitsB, then an ADPCM-B sound
 	ld (CommandWait),a	; 0C7F
 	ld a,(NoNewCommand)	; 0C82
 	or a	; 0C85
@@ -1792,22 +1792,22 @@ loc_0C7D:
 	di	; 0CA2
 	jp StartAdpcmBSound	; 0CA3
 loc_0CA6:
-	ld a,(SsgSlideMode)	; 0CA6
+	ld a,(SsgSlideMode)	; 0CA6  toggle the SSG slide mode
 	xor 0ffh	; 0CA9
 	ld (SsgSlideMode),a	; 0CAB
 	xor a	; 0CAE
 	ld (SsgSlideClamped),a	; 0CAF
 	ret	; 0CB2
 loc_0CB3:
-	ld a,0ffh	; 0CB3
+	ld a,0ffh	; 0CB3  random reply bytes on
 	ld (RandomReplyOn),a	; 0CB5
 	ret	; 0CB8
 loc_0CB9:
-	xor a	; 0CB9
+	xor a	; 0CB9  random reply bytes off
 	ld (RandomReplyOn),a	; 0CBA
 	ret	; 0CBD
 loc_0CBE:
-	ld a,0ffh	; 0CBE
+	ld a,0ffh	; 0CBE  wait for the next command
 	ld (CommandWait),a	; 0CC0
 	ld a,(NoNewCommand)	; 0CC3
 	or a	; 0CC6
@@ -1817,7 +1817,7 @@ loc_0CBE:
 	ld a,(SoundCommand)	; 0CCE
 	call LookupTable5314	; 0CD1
 	ld (BitTestCommand),a	; 0CD4
-	ld iy,AdpcmVoices	; 0CD7
+	ld iy,AdpcmVoices	; 0CD7  the 3 ADPCM-A voices, 9 bytes each, channels 3-5
 	ld bc,00303h	; 0CDB
 loc_0CDE:
 	ld a,(iy+0)	; 0CDE
@@ -1830,7 +1830,7 @@ loc_0CDE:
 	ret	; 0CED
 ; ClearRepeatIfOwner [I] clears the ADPCM-A repeat record of channel c when the voice belongs to sound $FE22
 ClearRepeatIfOwner:
-	ld a,(BitTestCommand)	; 0CEE
+	ld a,(BitTestCommand)	; 0CEE  the voice plays this sound: clear its repeat record
 	cp (iy+1)	; 0CF1
 	ret nz	; 0CF4
 	ld a,c	; 0CF5
@@ -1840,10 +1840,10 @@ ClearRepeatIfOwner:
 ; SoftReset [C] command 3: SoftResetFlag = 1, clears the reply and the code, jp Reset (MAME: the next instruction traced is $0000, in the newly selected ROM)
 SoftReset:
 	di	; 0CFC
-	ld a,001h	; 0CFD
+	ld a,001h	; 0CFD  SoftResetFlag = 1: Init knows it was a soft reset
 	ld (SoftResetFlag),a	; 0CFF
 	xor a	; 0D02
-	out (PORT_REPLY),a	; 0D03
+	out (PORT_REPLY),a	; 0D03  reply 0, acknowledge, restart the program
 	out (PORT_SOUND_CODE),a	; 0D05
 	jp Reset	; 0D07
 ; Command4StopAll [C] command 4: clears the queue, keys off the FM channels, silences SSG and ADPCM, then locks both music (SoundLock) and effects (EffectLock). Run in MAME
@@ -1862,7 +1862,7 @@ Command4StopAll:
 	call AdpcmKeyOff	; 0D25
 	call SsgSilence	; 0D28
 	call YmTimerControl35	; 0D2B
-	ld a,0ffh	; 0D2E
+	ld a,0ffh	; 0D2E  both locked: only command 7, 8 or 9 unlocks
 	ld (EffectLock),a	; 0D30
 	ld (SoundLock),a	; 0D33
 	ret	; 0D36
@@ -1874,7 +1874,7 @@ Command5StopMusic:
 	call ClearCommandQueue	; 0D3C
 	call FmKeyOffAll	; 0D3F
 	ld a,0ffh	; 0D42
-	ld (SoundLock),a	; 0D44
+	ld (SoundLock),a	; 0D44  the music locked
 	call YmTimerControl35	; 0D47
 	xor a	; 0D4A
 	ld (SongRunning),a	; 0D4B
@@ -1888,14 +1888,14 @@ Command6StopEffects:
 	call AdpcmBStop	; 0D57
 	call SsgSilence	; 0D5A
 	ld a,0ffh	; 0D5D
-	ld (EffectLock),a	; 0D5F
+	ld (EffectLock),a	; 0D5F  the effects locked
 	ret	; 0D62
 ; Command7Enable [C] command 7: clears the queue, silences the YM2610 (SilenceAll) and clears SoundLock and $FE31: after a reset, $5C-$5F play only once 7 has been sent (MAME). The hardware test sends 3 then 7 for SOUND OFF and on entering the sound test
 Command7Enable:
 	di	; 0D63
 	call ClearCommandQueue	; 0D64
 	call SilenceAll	; 0D67
-	xor a	; 0D6A
+	xor a	; 0D6A  music and effects unlocked
 	ld (SoundLock),a	; 0D6B
 	ld (EffectLock),a	; 0D6E
 	ret	; 0D71
@@ -1907,7 +1907,7 @@ Command8EnableMusic:
 	ld (SoundLock),a	; 0D77
 	call SilenceAll	; 0D7A
 	xor a	; 0D7D
-	ret	; 0D7E
+	ret	; 0D7E  a = 0
 ; Command9EnableEffects [C] command 9: clears EffectLock. Run in MAME
 Command9EnableEffects:
 	di	; 0D7F
@@ -1917,7 +1917,7 @@ Command9EnableEffects:
 	call SilenceAll	; 0D87
 	ret	; 0D8A
 loc_0D8B:
-	ld a,0ffh	; 0D8B
+	ld a,0ffh	; 0D8B  wait for the next command: the ADPCM-A master parameter
 	ld (CommandWait),a	; 0D8D
 	ld a,(NoNewCommand)	; 0D90
 	or a	; 0D93
@@ -1929,7 +1929,7 @@ loc_0D8B:
 	ld (iy+2),a	; 0DA2
 	ld a,001h	; 0DA5
 	ld (CurrentSound),a	; 0DA7
-	ld a,002h	; 0DAA
+	ld a,002h	; 0DAA  both system flags = 2
 	ld (SysFlagFE36),a	; 0DAC
 	ld (SysFlagFE37),a	; 0DAF
 	ret	; 0DB2
@@ -1937,24 +1937,24 @@ loc_0DB3:
 	xor a	; 0DB3
 	ld (CurrentSound),a	; 0DB4
 	ld iy,AdpcmAMaster	; 0DB7
-	ld a,(iy+0)	; 0DBB
+	ld a,(iy+0)	; 0DBB  clear bits 3-5 of the ADPCM-A master flags
 	and 0c7h	; 0DBE
 	ld (iy+0),a	; 0DC0
 	ret	; 0DC3
 loc_0DC4:
-	ld a,001h	; 0DC4
+	ld a,001h	; 0DC4  pitch envelope on
 	ld (PitchEnvelopeOn),a	; 0DC6
 	ret	; 0DC9
 loc_0DCA:
-	ld a,001h	; 0DCA
+	ld a,001h	; 0DCA  second pitch envelope on
 	ld (PitchEnvelopeOn2),a	; 0DCC
 	ret	; 0DCF
 loc_0DD0:
-	xor a	; 0DD0
+	xor a	; 0DD0  pitch envelope off
 	ld (PitchEnvelopeOn),a	; 0DD1
 	ret	; 0DD4
 loc_0DD5:
-	xor a	; 0DD5
+	xor a	; 0DD5  second pitch envelope off
 	ld (PitchEnvelopeOn2),a	; 0DD6
 	ret	; 0DD9
 ; WaitCommandMode [?] waits for the next command and keeps its low 2 bits in $FE25; nothing calls it
@@ -1978,22 +1978,22 @@ SetMode3:
 	ret	; 0DF9
 loc_0DFA:
 	di	; 0DFA
-	ld hl,AdpcmARepeatRecords	; 0DFB
+	ld hl,AdpcmARepeatRecords	; 0DFB  clear the 42 bytes of the ADPCM-A repeat records
 	ld (hl),000h	; 0DFE
 	ld de,AdpcmARepeatRecords+1	; 0E00
 	ld bc,00029h	; 0E03
 	ldir	; 0E06
 	ret	; 0E08
 loc_0E09:
-	xor a	; 0E09
+	xor a	; 0E09  no ADPCM-B repeat
 	ld (AdpcmBRepeatCount),a	; 0E0A
 	ret	; 0E0D
 loc_0E0E:
 	di	; 0E0E
-	ld a,(SpecialEffectKind)	; 0E0F
+	ld a,(SpecialEffectKind)	; 0E0F  special effect kind 4 keeps playing
 	cp 004h	; 0E12
 	ret z	; 0E14
-	xor a	; 0E15
+	xor a	; 0E15  otherwise the effect stops, SSG silent
 	ld (EffectPlaying),a	; 0E16
 	call SsgSilence	; 0E19
 	ret	; 0E1C
@@ -2013,14 +2013,14 @@ WaitCommandTempo:
 ; Command10SelfTest [C] command $10: self test, flags in the shadow a' starting at $80: bit 0 ROM sum of $0000-$EFFF against RomChecksum, bit 1 RAM $55/$AA, bit 2 RAM address test; then Command10Reply. SP-S2 never sends it; MAME: reply 1 (all passed)
 Command10SelfTest:
 	di	; 0E35
-	ld a,(InRamLoop)	; 0E36
+	ld a,(InRamLoop)	; 0E36  keep InRamLoop in b'
 	exx	; 0E39
 	ld b,a	; 0E3A
 	exx	; 0E3B
-	ex af,af'	; 0E3C
+	ex af,af'	; 0E3C  a' = 80h: the result flags (bit 0 ROM, 1 RAM values, 2 RAM addresses)
 	ld a,080h	; 0E3D
 	ex af,af'	; 0E3F
-	ld hl,00000h	; 0E40
+	ld hl,00000h	; 0E40  add every byte of $0000-$EFFF
 	xor a	; 0E43
 	ld (RandomReplyOn),a	; 0E44
 loc_0E47:
@@ -2033,13 +2033,13 @@ loc_0E47:
 	pop af	; 0E4F
 	jr loc_0E47	; 0E50
 loc_0E52:
-	pop af	; 0E52
+	pop af	; 0E52  against the checksum byte at $0014
 	ld b,a	; 0E53
 	ld a,(RomChecksum)	; 0E54
 	cp b	; 0E57
 	jr z,loc_0E60	; 0E58
 	ex af,af'	; 0E5A
-	set 0,a	; 0E5B
+	set 0,a	; 0E5B  bit 0 set: ROM error
 	ex af,af'	; 0E5D
 	jr loc_0E64	; 0E5E
 loc_0E60:
@@ -2047,21 +2047,21 @@ loc_0E60:
 	res 0,a	; 0E61
 	ex af,af'	; 0E63
 loc_0E64:
-	ld ix,Command10Reply	; 0E64
+	ld ix,Command10Reply	; 0E64  ix = where the RAM test returns
 	jr loc_0E79	; 0E68
 ; Command10Reply [C] end of Command10SelfTest: replies 1 when every test passed (flags still $80), else 0, then jp Reset. MAME: command $10 replied 1 about 64 frames later
 Command10Reply:
 	ex af,af'	; 0E6A
-	cp 080h	; 0E6B
-	ld a,001h	; 0E6D
+	cp 080h	; 0E6B  every test passed (flags still 80h):
+	ld a,001h	; 0E6D  reply 1,
 	jr z,loc_0E73	; 0E6F
-	ld a,000h	; 0E71
+	ld a,000h	; 0E71  else 0
 loc_0E73:
 	out (PORT_REPLY),a	; 0E73
 	exx	; 0E75
-	jp Reset	; 0E76
+	jp Reset	; 0E76  then restart the program
 loc_0E79:
-	ld hl,SsgPeriodA	; 0E79
+	ld hl,SsgPeriodA	; 0E79  the 2 KB of RAM filled with 55h,
 	ld de,SsgPeriodA+1	; 0E7C
 	ld bc,007ffh	; 0E7F
 	ld a,055h	; 0E82
@@ -2070,13 +2070,13 @@ loc_0E79:
 	ld hl,SsgPeriodA	; 0E87
 	ld bc,007ffh	; 0E8A
 loc_0E8D:
-	cpi	; 0E8D
+	cpi	; 0E8D  and compared
 	jp nz,loc_0EB7	; 0E8F
 	jp pe,loc_0E8D	; 0E92
 	ld hl,SsgPeriodA	; 0E95
 	ld de,SsgPeriodA+1	; 0E98
 	ld bc,007ffh	; 0E9B
-	ld a,0aah	; 0E9E
+	ld a,0aah	; 0E9E  then with AAh
 	ld (hl),a	; 0EA0
 	ldir	; 0EA1
 	ld hl,SsgPeriodA	; 0EA3
@@ -2086,15 +2086,15 @@ loc_0EA9:
 	jp nz,loc_0EB7	; 0EAB
 	jp pe,loc_0EA9	; 0EAE
 	ex af,af'	; 0EB1
-	res 1,a	; 0EB2
+	res 1,a	; 0EB2  bit 1 clear: RAM values good
 	ex af,af'	; 0EB4
 	jr loc_0EBB	; 0EB5
 loc_0EB7:
 	ex af,af'	; 0EB7
-	set 1,a	; 0EB8
+	set 1,a	; 0EB8  bit 1 set: RAM error
 	ex af,af'	; 0EBA
 loc_0EBB:
-	ld hl,SsgPeriodA	; 0EBB
+	ld hl,SsgPeriodA	; 0EBB  each word holds its own address,
 	ld bc,003ffh	; 0EBE
 loc_0EC1:
 	ld e,l	; 0EC1
@@ -2110,7 +2110,7 @@ loc_0EC1:
 	ld hl,SsgPeriodA	; 0ECC
 	ld bc,003ffh	; 0ECF
 loc_0ED2:
-	ld e,l	; 0ED2
+	ld e,l	; 0ED2  compared
 	ld d,h	; 0ED3
 	ld a,(hl)	; 0ED4
 	cp e	; 0ED5
@@ -2125,12 +2125,12 @@ loc_0ED2:
 	or c	; 0EE0
 	jr nz,loc_0ED2	; 0EE1
 	ex af,af'	; 0EE3
-	res 2,a	; 0EE4
+	res 2,a	; 0EE4  bit 2 clear: addresses good
 	ex af,af'	; 0EE6
-	jp (ix)	; 0EE7
+	jp (ix)	; 0EE7  back through ix
 loc_0EE9:
 	ex af,af'	; 0EE9
-	set 2,a	; 0EEA
+	set 2,a	; 0EEA  bit 2 set: address error
 	ex af,af'	; 0EEC
 	jp (ix)	; 0EED
 ; PlaySound [C] starts sound SoundCommand: resets ADPCM-B (YM2610 register $10) and sets up the channels from SoundTable entry SoundCommand - $20. While SoundLock is set it goes to $118A and nothing is heard. MAME, no cartridge: $5D right channel only, $5C left only, $5E both (the RIGHT / LEFT / CENTER of the sound test), $5F the eyecatcher jingle
@@ -2140,10 +2140,10 @@ PlaySound:
 ; PlaySoundA [C] plays sound a ($20-$5F), refused while SoundLock is set (PlaySound and SeqStartSound enter here)
 PlaySoundA:
 	push af	; 0EF3
-	ld a,(SoundLock)	; 0EF4
+	ld a,(SoundLock)	; 0EF4  music locked: nothing
 	or a	; 0EF7
 	jp nz,loc_118A	; 0EF8
-	ld a,(AdpcmBEffectMode)	; 0EFB
+	ld a,(AdpcmBEffectMode)	; 0EFB  no ADPCM-B effect or sound playing: reset ADPCM-B
 	or a	; 0EFE
 	jr nz,loc_0F17	; 0EFF
 	ld a,(AdpcmBSoundOn)	; 0F01
@@ -2152,16 +2152,16 @@ PlaySoundA:
 loc_0F07:
 	xor a	; 0F07
 	ld (AdpcmBRepeatCount),a	; 0F08
-	ld de,01001h	; 0F0B
+	ld de,01001h	; 0F0B  register 10h = 01h then 00h: ADPCM-B reset
 	call YmWriteA	; 0F0E
 	ld de,01000h	; 0F11
 	call YmWriteA	; 0F14
 loc_0F17:
-	ld a,0ffh	; 0F17
+	ld a,0ffh	; 0F17  a song runs
 	ld (SongRunning),a	; 0F19
 	ld (SongStarting),a	; 0F1C
 	pop af	; 0F1F
-	sub 020h	; 0F20
+	sub 020h	; 0F20  sound 20h-5Fh: its pointer in SoundTable
 	ld e,a	; 0F22
 	ld d,000h	; 0F23
 	ld hl,SoundTable	; 0F25
@@ -2172,10 +2172,10 @@ loc_0F17:
 	ld h,(hl)	; 0F2C
 	ld l,e	; 0F2D
 	push hl	; 0F2E
-	pop ix	; 0F2F
-	ld iy,Channel1	; 0F31
+	pop ix	; 0F2F  ix = the sound's 49-byte header
+	ld iy,Channel1	; 0F31  iy = channel 1 block (16 bytes per channel)
 	call FmKeyOffAll	; 0F35
-	ld hl,LoopStacks+16	; 0F38
+	ld hl,LoopStacks+16	; 0F38  clear the loop stacks of FM channels 1-4,
 	ld de,00010h	; 0F3B
 	ld (hl),000h	; 0F3E
 	add hl,de	; 0F40
@@ -2184,7 +2184,7 @@ loc_0F17:
 	ld (hl),000h	; 0F44
 	add hl,de	; 0F46
 	ld (hl),000h	; 0F47
-	ld de,00040h	; 0F49
+	ld de,00040h	; 0F49  and of channels 8-14
 	add hl,de	; 0F4C
 	ld b,007h	; 0F4D
 	ld de,00010h	; 0F4F
@@ -2192,7 +2192,7 @@ loc_0F52:
 	ld (hl),000h	; 0F52
 	add hl,de	; 0F54
 	djnz loc_0F52	; 0F55
-	ld hl,CallStacks+16	; 0F57
+	ld hl,CallStacks+16	; 0F57  the same for the call stacks
 	ld de,00010h	; 0F5A
 	ld (hl),000h	; 0F5D
 	add hl,de	; 0F5F
@@ -2209,27 +2209,27 @@ loc_0F71:
 	ld (hl),000h	; 0F71
 	add hl,de	; 0F73
 	djnz loc_0F71	; 0F74
-	ld a,(ix+23)	; 0F76
+	ld a,(ix+23)	; 0F76  header byte 23: the tempo
 	ld (Tempo),a	; 0F79
 	call SetTempo	; 0F7C
-	ld a,001h	; 0F7F
+	ld a,001h	; 0F7F  channel 1 (FM 1) belongs to this sound
 	ld b,007h	; 0F81
 	call SetChannelOwner	; 0F83
-	ld (iy+0),000h	; 0F86
-	ld a,(ix+27)	; 0F8A
+	ld (iy+0),000h	; 0F86  not running yet
+	ld a,(ix+27)	; 0F8A  header byte 27: pan bits, with C0h (both sides)
 	or 0c0h	; 0F8D
 	ld (iy+1),a	; 0F8F
-	ld a,0c0h	; 0F92
+	ld a,0c0h	; 0F92  shadow of register B5h: both sides
 	ld (FmShadowA+133),a	; 0F94
-	ld l,(ix+1)	; 0F97
+	ld l,(ix+1)	; 0F97  header words 1-2: the channel's sequence, start and current position
 	ld h,(ix+2)	; 0F9A
 	ld (iy+9),l	; 0F9D
 	ld (iy+10),h	; 0FA0
 	ld (iy+11),l	; 0FA3
 	ld (iy+12),h	; 0FA6
-	ld de,00010h	; 0FA9
+	ld de,00010h	; 0FA9  next channel block
 	add iy,de	; 0FAC
-	ld a,002h	; 0FAE
+	ld a,002h	; 0FAE  channel 2 (FM 2), header byte 29 and pointer 3-4
 	ld b,007h	; 0FB0
 	call SetChannelOwner	; 0FB2
 	ld (iy+0),000h	; 0FB5
@@ -2246,7 +2246,7 @@ loc_0F71:
 	ld (iy+12),h	; 0FD5
 	ld de,00010h	; 0FD8
 	add iy,de	; 0FDB
-	ld a,003h	; 0FDD
+	ld a,003h	; 0FDD  channel 3 (FM 3, port B), byte 31 and pointer 5-6
 	ld b,007h	; 0FDF
 	call SetChannelOwner	; 0FE1
 	ld (iy+0),000h	; 0FE4
@@ -2263,7 +2263,7 @@ loc_0F71:
 	ld (iy+12),h	; 1004
 	ld de,00010h	; 1007
 	add iy,de	; 100A
-	ld a,004h	; 100C
+	ld a,004h	; 100C  channel 4 (FM 4, port B), byte 33 and pointer 7-8
 	ld b,007h	; 100E
 	call SetChannelOwner	; 1010
 	ld (iy+0),000h	; 1013
@@ -2280,7 +2280,7 @@ loc_0F71:
 	ld (iy+12),h	; 1033
 	ld de,00010h	; 1036
 	add iy,de	; 1039
-	ld a,008h	; 103B
+	ld a,008h	; 103B  channel 8 (ADPCM-A 1), byte 35 and pointer 9-10
 	ld b,007h	; 103D
 	call SetChannelOwner	; 103F
 	ld (iy+0),000h	; 1042
@@ -2295,7 +2295,7 @@ loc_0F71:
 	ld (iy+12),h	; 105D
 	ld de,00010h	; 1060
 	add iy,de	; 1063
-	ld a,009h	; 1065
+	ld a,009h	; 1065  channel 9 (ADPCM-A 2)
 	ld b,007h	; 1067
 	call SetChannelOwner	; 1069
 	ld (iy+0),000h	; 106C
@@ -2310,7 +2310,7 @@ loc_0F71:
 	ld (iy+12),h	; 1087
 	ld de,00010h	; 108A
 	add iy,de	; 108D
-	ld a,00ah	; 108F
+	ld a,00ah	; 108F  channel 10 (ADPCM-A 3)
 	ld b,007h	; 1091
 	call SetChannelOwner	; 1093
 	ld (iy+0),000h	; 1096
@@ -2325,7 +2325,7 @@ loc_0F71:
 	ld (iy+12),h	; 10B1
 	ld de,00010h	; 10B4
 	add iy,de	; 10B7
-	ld a,00bh	; 10B9
+	ld a,00bh	; 10B9  channel 11 (ADPCM-A 4)
 	ld b,007h	; 10BB
 	call SetChannelOwner	; 10BD
 	ld (iy+0),000h	; 10C0
@@ -2340,7 +2340,7 @@ loc_0F71:
 	ld (iy+12),h	; 10DB
 	ld de,00010h	; 10DE
 	add iy,de	; 10E1
-	ld a,00ch	; 10E3
+	ld a,00ch	; 10E3  channel 12 (ADPCM-A 5)
 	ld b,007h	; 10E5
 	call SetChannelOwner	; 10E7
 	ld (iy+0),000h	; 10EA
@@ -2355,7 +2355,7 @@ loc_0F71:
 	ld (iy+12),h	; 1105
 	ld de,00010h	; 1108
 	add iy,de	; 110B
-	ld a,00dh	; 110D
+	ld a,00dh	; 110D  channel 13 (ADPCM-A 6)
 	ld b,007h	; 110F
 	call SetChannelOwner	; 1111
 	ld (iy+0),000h	; 1114
@@ -2370,7 +2370,7 @@ loc_0F71:
 	ld (iy+12),h	; 112F
 	ld de,00010h	; 1132
 	add iy,de	; 1135
-	ld a,00eh	; 1137
+	ld a,00eh	; 1137  channel 14 (ADPCM-B)
 	ld b,007h	; 1139
 	call SetChannelOwner	; 113B
 	ld (iy+0),000h	; 113E
@@ -2384,38 +2384,38 @@ loc_0F71:
 	ld (iy+11),l	; 1156
 	ld (iy+12),h	; 1159
 	ld de,00010h	; 115C
-	ld a,(CurrentSound)	; 115F
+	ld a,(CurrentSound)	; 115F  a sound started from the start: the ADPCM-A master settings
 	or a	; 1162
 	jr nz,loc_1186	; 1163
 	ld iy,AdpcmAMaster	; 1165
-	ld b,(ix+24)	; 1169
+	ld b,(ix+24)	; 1169  header bytes 24-26
 	ld (iy+1),b	; 116C
 	ld b,(ix+26)	; 116F
 	ld (iy+7),b	; 1172
 	ld e,(ix+25)	; 1175
 	ld (iy+6),e	; 1178
-	ld d,001h	; 117B
+	ld d,001h	; 117B  port B register: ADPCM-A master volume
 	call YmWriteB	; 117D
-	ld hl,00000h	; 1180
+	ld hl,00000h	; 1180  fade accumulator cleared
 	ld (FadeAccumulator),hl	; 1183
 loc_1186:
-	call YmTimerControl2F	; 1186
+	call YmTimerControl2F	; 1186  timer A on: the engine runs
 	ret	; 1189
 loc_118A:
-	pop af	; 118A
+	pop af	; 118A  refused: drop the sound number
 	ret	; 118B
 ; UpdateSsgSlides [I] per frame, for the three SsgSlide blocks in use (none while EffectLock is set)
 UpdateSsgSlides:
-	ld a,(EffectLock)	; 118C
+	ld a,(EffectLock)	; 118C  effects locked: silence instead
 	or a	; 118F
 	jp nz,loc_11B3	; 1190
 	push ix	; 1193
-	ld ix,SsgSlideA	; 1195
+	ld ix,SsgSlideA	; 1195  the three slide blocks, 11 bytes each, SSG registers 0-1, 2-3, 4-5
 	ld bc,00300h	; 1199
 loc_119C:
 	push bc	; 119C
 	xor a	; 119D
-	cp (ix+0)	; 119E
+	cp (ix+0)	; 119E  block in use: one step
 	jr z,loc_11A6	; 11A1
 	call SsgSlideStep	; 11A3
 loc_11A6:
@@ -2429,7 +2429,7 @@ loc_11A6:
 	ret	; 11B2
 loc_11B3:
 	call SsgSilence	; 11B3
-	ld a,(SpecialEffectKind)	; 11B6
+	ld a,(SpecialEffectKind)	; 11B6  effects locked: the effect stops, unless special effect 4
 	cp 004h	; 11B9
 	ret z	; 11BB
 	xor a	; 11BC
@@ -2437,16 +2437,16 @@ loc_11B3:
 	ret	; 11C0
 ; SsgSlideStep [I] one step of an SsgSlide block: period - step, written to the SSG tone registers, ends at period $70
 SsgSlideStep:
-	dec (ix+8)	; 11C1
+	dec (ix+8)	; 11C1  step counter: not yet
 	ret nz	; 11C4
-	ld l,(ix+1)	; 11C5
+	ld l,(ix+1)	; 11C5  period - step,
 	ld h,(ix+2)	; 11C8
 	ld e,(ix+3)	; 11CB
 	ld d,(ix+4)	; 11CE
 	or a	; 11D1
 	sbc hl,de	; 11D2
-	call ClampSsgPeriod	; 11D4
-	ld a,c	; 11D7
+	call ClampSsgPeriod	; 11D4  at least 70h
+	ld a,c	; 11D7  to the channel's two tone registers
 	out (PORT_YM_ADDR_A),a	; 11D8
 	rst 008h	; 11DA
 	push af	; 11DB
@@ -2459,22 +2459,22 @@ SsgSlideStep:
 	rst 008h	; 11E4
 	ld a,h	; 11E5
 	out (PORT_YM_DATA_A),a	; 11E6
-	ld a,(ix+7)	; 11E8
+	ld a,(ix+7)	; 11E8  reload the step counter
 	ld (ix+8),a	; 11EB
 	ld e,(ix+5)	; 11EE
 	ld d,000h	; 11F1
-	ld e,003h	; 11F3
+	ld e,003h	; 11F3  the step changes by 3 each time
 	ld d,000h	; 11F5
 	ld l,(ix+3)	; 11F7
 	ld h,(ix+4)	; 11FA
-	ld a,(SsgSlideMode)	; 11FD
+	ld a,(SsgSlideMode)	; 11FD  slide mode on: smaller steps, the slide ends at 0
 	or a	; 1200
 	jr z,loc_120A	; 1201
 	sbc hl,de	; 1203
 	call c,SsgSlideEnd	; 1205
 	jr loc_1211	; 1208
 loc_120A:
-	ld a,(SsgSlideClamped)	; 120A
+	ld a,(SsgSlideClamped)	; 120A  otherwise larger steps, until clamped
 	or a	; 120D
 	jr nz,loc_1217	; 120E
 	add hl,de	; 1210
@@ -2494,7 +2494,7 @@ SsgSlideEnd:
 ClampSsgPeriod:
 	push hl	; 1224
 	push de	; 1225
-	ld de,00070h	; 1226
+	ld de,00070h	; 1226  below 70h:
 	or a	; 1229
 	sbc hl,de	; 122A
 	jr c,loc_1231	; 122C
@@ -2506,7 +2506,7 @@ loc_1231:
 	pop hl	; 1232
 	push af	; 1233
 	ld a,001h	; 1234
-	ld (SsgSlideClamped),a	; 1236
+	ld (SsgSlideClamped),a	; 1236  clamp, and note it
 	ld hl,00070h	; 1239
 	pop af	; 123C
 	ret	; 123D
@@ -2515,7 +2515,7 @@ FmKeyOn:
 	push hl	; 123E
 	push ix	; 123F
 	exx	; 1241
-	ld d,000h	; 1242
+	ld d,000h	; 1242  FM 1-2 on port A (04h/05h), FM 3-4 on port B (06h/07h)
 	cp 003h	; 1244
 	jr c,loc_1258	; 1246
 	ld c,006h	; 1248
@@ -2537,7 +2537,7 @@ loc_1258:
 	ld h,000h	; 1262
 loc_1264:
 	ld b,a	; 1264
-	ld a,028h	; 1265
+	ld a,028h	; 1265  register 28h: key on with the channel's operator mask
 	out (PORT_YM_ADDR_A),a	; 1267
 	rst 008h	; 1269
 	ld a,b	; 126A
@@ -2545,12 +2545,12 @@ loc_1264:
 	or d	; 126C
 	out (PORT_YM_DATA_A),a	; 126D
 	rst 010h	; 126F
-	ld ix,TimerAShadow	; 1270
+	ld ix,TimerAShadow	; 1270  shadow of the key byte
 	ld (ix+8),a	; 1274
-	and 0f0h	; 1277
+	and 0f0h	; 1277  no operator keyed: no frequency to write
 	or a	; 1279
 	jp z,loc_12D0	; 127A
-	ld a,e	; 127D
+	ld a,e	; 127D  the note index into FmFnumTable,
 	push af	; 127E
 	and 01fh	; 127F
 	ld e,a	; 1281
@@ -2562,7 +2562,7 @@ loc_1264:
 	inc hl	; 128A
 	ld d,(hl)	; 128B
 	pop af	; 128C
-	ex (sp),ix	; 128D
+	ex (sp),ix	; 128D  plus the channel's fine tune (+15, signed)
 	push af	; 128F
 	push hl	; 1290
 	ld l,(ix+15)	; 1291
@@ -2576,12 +2576,12 @@ loc_129C:
 	pop hl	; 129E
 	pop af	; 129F
 	ex (sp),ix	; 12A0
-	rrca	; 12A2
+	rrca	; 12A2  the octave (block) into bits 3-5 of the high byte
 	rrca	; 12A3
 	and 038h	; 12A4
 	or d	; 12A6
 	ld d,a	; 12A7
-	ld a,0a4h	; 12A8
+	ld a,0a4h	; 12A8  register A4h + channel: block and F-number high,
 	add a,b	; 12AA
 	exx	; 12AB
 	out (c),a	; 12AC
@@ -2589,7 +2589,7 @@ loc_129C:
 	exx	; 12AF
 	out (c),d	; 12B0
 	rst 010h	; 12B2
-	ld a,0a0h	; 12B3
+	ld a,0a0h	; 12B3  register A0h + channel: F-number low
 	add a,b	; 12B5
 	exx	; 12B6
 	out (c),a	; 12B7
@@ -2597,7 +2597,7 @@ loc_129C:
 	exx	; 12BA
 	out (c),e	; 12BB
 	rst 010h	; 12BD
-	push de	; 12BE
+	push de	; 12BE  kept in the FM register shadow (A0h/A4h copies)
 	exx	; 12BF
 	ld e,070h	; 12C0
 	ld d,000h	; 12C2
@@ -2610,33 +2610,33 @@ loc_129C:
 	inc hl	; 12CA
 	ld (hl),d	; 12CB
 	exx	; 12CC
-	call StartModulation	; 12CD
+	call StartModulation	; 12CD  the channel's modulation from this note
 loc_12D0:
 	pop ix	; 12D0
 	pop hl	; 12D2
 	ret	; 12D3
 ; SsgNoteOn [I] SSG channel a: tone period from SsgPeriodTable, mixer register $07
 SsgNoteOn:
-	call SsgSlideActive	; 12D4
+	call SsgSlideActive	; 12D4  a slide runs on this channel: no new note
 	ret c	; 12D7
 	push hl	; 12D8
-	sub 005h	; 12D9
+	sub 005h	; 12D9  channel 5-7 to 0-2
 	ld c,e	; 12DB
 	ex af,af'	; 12DC
 	ld a,d	; 12DD
 	or a	; 12DE
 	ld e,000h	; 12DF
-	ld (SsgNoiseOn),a	; 12E1
+	ld (SsgNoiseOn),a	; 12E1  d not 0: tone on, else noise only
 	jr z,loc_12F0	; 12E4
 	ex af,af'	; 12E6
-	ld hl,ChannelBitTable	; 12E7
+	ld hl,ChannelBitTable	; 12E7  its tone bit in the mixer
 	ld e,a	; 12EA
 	ld d,000h	; 12EB
 	add hl,de	; 12ED
 	ld e,(hl)	; 12EE
 	ex af,af'	; 12EF
 loc_12F0:
-	ld a,007h	; 12F0
+	ld a,007h	; 12F0  register 07h (mixer): read, set the channel's bit, write back
 	out (PORT_YM_ADDR_A),a	; 12F2
 	rst 008h	; 12F4
 	in a,(PORT_YM_DATA_A)	; 12F5
@@ -2646,7 +2646,7 @@ loc_12F0:
 	ld d,007h	; 12FA
 	ld e,a	; 12FC
 	call YmWriteA	; 12FD
-	ld e,c	; 1300
+	ld e,c	; 1300  the note index into SsgPeriodTable,
 	ld d,000h	; 1301
 	ld a,e	; 1303
 	and 01fh	; 1304
@@ -2657,7 +2657,7 @@ loc_12F0:
 	ld e,(hl)	; 130C
 	inc hl	; 130D
 	ld d,(hl)	; 130E
-	ld a,c	; 130F
+	ld a,c	; 130F  high bits of the pitch byte: the octave, period halved per octave
 	and 0e0h	; 1310
 	jr z,loc_131E	; 1312
 	rlca	; 1314
@@ -2670,7 +2670,7 @@ loc_1318:
 	djnz loc_1318	; 131C
 loc_131E:
 	push af	; 131E
-	ld a,(CurrentChannel)	; 131F
+	ld a,(CurrentChannel)	; 131F  remember the period for a later slide (channels 5, 6, 7)
 	or a	; 1322
 	jr z,loc_134F	; 1323
 	cp 005h	; 1325
@@ -2696,7 +2696,7 @@ loc_1345:
 loc_134F:
 	pop af	; 134F
 	ex af,af'	; 1350
-	add a,a	; 1351
+	add a,a	; 1351  tone registers 2 x channel and 2 x channel + 1
 	ld h,a	; 1352
 	out (PORT_YM_ADDR_A),a	; 1353
 	rst 008h	; 1355
@@ -2714,12 +2714,12 @@ loc_134F:
 	ret	; 1364
 ; SsgSetNoise [C] SSG noise period (YM $06) and mixer bits (YM $07) from EffectParam
 SsgSetNoise:
-	ld a,d	; 1365
+	ld a,d	; 1365  d = 0: the noise off
 	or a	; 1366
 	jr z,loc_1385	; 1367
-	ld d,006h	; 1369
+	ld d,006h	; 1369  register 06h: the noise period
 	call YmWriteA	; 136B
-	ld a,007h	; 136E
+	ld a,007h	; 136E  register 07h: the effect's noise bits into the mixer
 	out (PORT_YM_ADDR_A),a	; 1370
 	rst 008h	; 1372
 	in a,(PORT_YM_DATA_A)	; 1373
@@ -2734,7 +2734,7 @@ SsgSetNoise:
 	call YmWriteA	; 1381
 	ret	; 1384
 loc_1385:
-	ld a,007h	; 1385
+	ld a,007h	; 1385  mixer: the noise bits of the three channels cleared
 	out (PORT_YM_ADDR_A),a	; 1387
 	rst 008h	; 1389
 	in a,(PORT_YM_DATA_A)	; 138A
@@ -2749,7 +2749,7 @@ loc_1385:
 SsgSlideActive:
 	push af	; 1397
 	push hl	; 1398
-	cp 005h	; 1399
+	cp 005h	; 1399  the channel's slide block
 	jr z,loc_13AB	; 139B
 	cp 006h	; 139D
 	jr z,loc_13A6	; 139F
@@ -2761,7 +2761,7 @@ loc_13A6:
 loc_13AB:
 	ld hl,SsgSlideA	; 13AB
 loc_13AE:
-	xor a	; 13AE
+	xor a	; 13AE  in use: carry set
 	or (hl)	; 13AF
 	jr nz,loc_13B6	; 13B0
 	pop hl	; 13B2
@@ -2977,21 +2977,21 @@ loc_152A:
 	jp loc_12D0	; 1530
 ; ChannelKeyOn [C] note on for CurrentChannel by kind: FM (1-4) FmKeyOn, SSG (5-7) SsgNoteOn, ADPCM-A (8-13), ADPCM-B (14)
 ChannelKeyOn:
-	or a	; 1533
+	or a	; 1533  channel 0: noise off
 	jp z,loc_1385	; 1534
-	cp 005h	; 1537
+	cp 005h	; 1537  FM 1-4 (d = operator mask, 0 = key off)
 	jr nc,loc_153E	; 1539
 	jp FmKeyOn	; 153B
 loc_153E:
-	cp 008h	; 153E
+	cp 008h	; 153E  SSG 5-7
 	jr nc,loc_1545	; 1540
 	jp SsgNoteOn	; 1542
 loc_1545:
-	cp 00eh	; 1545
+	cp 00eh	; 1545  ADPCM-B 14
 	jp z,loc_1581	; 1547
 	push hl	; 154A
 	push ix	; 154B
-	sub 008h	; 154D
+	sub 008h	; 154D  ADPCM-A 8-13: unless an effect voice uses the channel,
 	ld c,a	; 154F
 	call AdpcmVoice	; 1550
 	jr c,loc_155C	; 1553
@@ -2999,7 +2999,7 @@ loc_1545:
 	or (ix+0)	; 1556
 	jp nz,loc_157D	; 1559
 loc_155C:
-	ld a,c	; 155C
+	ld a,c	; 155C  dump the channel (port B register 00h, bit 7 + channel bit)
 	ld hl,ChannelBitTable	; 155D
 	ld e,a	; 1560
 	ld d,000h	; 1561
@@ -3013,7 +3013,7 @@ loc_155C:
 	ld e,a	; 156C
 	call YmWriteB	; 156D
 	ex af,af'	; 1570
-	ld e,b	; 1571
+	ld e,b	; 1571  and reset its end flag (register 1Ch)
 	ld d,01ch	; 1572
 	call YmWriteA	; 1574
 	ld de,01c00h	; 1577
@@ -3023,7 +3023,7 @@ loc_157D:
 	pop hl	; 157F
 	ret	; 1580
 loc_1581:
-	ld a,(EnginePass2)	; 1581
+	ld a,(EnginePass2)	; 1581  ADPCM-B: only when its pass owns it
 	or a	; 1584
 	jr nz,loc_158E	; 1585
 	ld a,(AdpcmBEffectMode)	; 1587
@@ -3038,7 +3038,7 @@ loc_1592:
 	push ix	; 1593
 loc_1595:
 	push iy	; 1595
-	ld de,01100h	; 1597
+	ld de,01100h	; 1597  register 11h = 0: ADPCM-B output off
 	call YmWriteA	; 159A
 	pop iy	; 159D
 	pop ix	; 159F
@@ -3049,7 +3049,7 @@ Table5024Entry:
 	push de	; 15A3
 	ld l,a	; 15A4
 	ld h,000h	; 15A5
-	add hl,hl	; 15A7
+	add hl,hl	; 15A7  x 8
 	add hl,hl	; 15A8
 	add hl,hl	; 15A9
 	ld de,05024h	; 15AA
@@ -3124,33 +3124,33 @@ AdpcmBNoteDelta:
 	ret	; 15FB
 ; SilenceAll [I] YM2610 register writes that silence the channels (called by Init and Command7StopAll)
 SilenceAll:
-	ld de,0273fh	; 15FC
-	call YmWriteA	; 15FF
+	ld de,0273fh	; 15FC  register 27h = 3Fh: timers loaded and their flags reset
+	call YmWriteA	; 15FF  register 27h
 	ret	; 1602
 ; YmTimerStop [C] YM2610 register $27 = 0: timers stopped; nothing calls it
 YmTimerStop:
 	ld de,02700h	; 1603
-	call YmWriteA	; 1606
+	call YmWriteA	; 1606  register 27h = 00h
 	ret	; 1609
 ; YmTimerControl3A [C] register $27 = $3A; nothing calls it
 YmTimerControl3A:
 	ld de,0273ah	; 160A
-	call YmWriteA	; 160D
+	call YmWriteA	; 160D  register 27h = 3Ah
 	ret	; 1610
 ; YmTimerControl35 [C] YM2610 register $27 (timer control) = $35
 YmTimerControl35:
 	ld de,02735h	; 1611
-	call YmWriteA	; 1614
+	call YmWriteA	; 1614  register 27h = 35h: timer B stopped, A running
 	ret	; 1617
 ; YmTimerControl1F [C] register $27 = $1F
 YmTimerControl1F:
 	ld de,0271fh	; 1618
-	call YmWriteA	; 161B
+	call YmWriteA	; 161B  register 27h = 1Fh: timer B flag reset
 	ret	; 161E
 ; YmTimerControl2F [C] register $27 = $2F
 YmTimerControl2F:
 	ld de,0272fh	; 161F
-	call YmWriteA	; 1622
+	call YmWriteA	; 1622  register 27h = 2Fh: timer A flag reset, both timers on
 	ret	; 1625
 ; DelayShort [C] ret: the time of the rst itself
 DelayShort:
@@ -3166,7 +3166,7 @@ Delay:
 	ret	; 162D
 ; LoadInstrument [C] writes FM instrument a (52-byte record of FmInstruments, a x 52) to the channel's operators and to the register copies FmShadowA/B
 LoadInstrument:
-	push af	; 162E
+	push af	; 162E  hl = a x 52: the instrument record
 	push ix	; 162F
 	push hl	; 1631
 	ld l,a	; 1632
@@ -3186,12 +3186,12 @@ LoadInstrument:
 	add hl,de	; 1643
 	push hl	; 1644
 	pop ix	; 1645
-	ld a,c	; 1647
+	ld a,c	; 1647  only for FM channels 1-4
 	cp 005h	; 1648
 	jp nc,loc_17AC	; 164A
 	or a	; 164D
 	jp z,loc_17AC	; 164E
-	cp 003h	; 1651
+	cp 003h	; 1651  the channel's column in the FM register shadow (4 bytes per register row)
 	ld hl,FmShadowA	; 1653
 	jr c,loc_165D	; 1656
 	ld hl,FmShadowB	; 1658
@@ -3201,8 +3201,8 @@ loc_165D:
 	ld d,000h	; 165E
 	add hl,de	; 1660
 	push hl	; 1661
-	ld bc,00004h	; 1662
-	ld a,(ix+2)	; 1665
+	ld bc,00004h	; 1662  rows 4 bytes apart: one byte per channel
+	ld a,(ix+2)	; 1665  registers 30h+: detune (negative values to 4-7) and multiple, operators 1, 3, 2, 4
 	cp 004h	; 1668
 	call nc,NegateOr4	; 166A
 	rrca	; 166D
@@ -3242,7 +3242,7 @@ loc_165D:
 	or (ix+9)	; 16A4
 	ld (hl),a	; 16A7
 	add hl,bc	; 16A8
-	push de	; 16A9
+	push de	; 16A9  registers 40h+: total level, only for the operators that are not carriers
 	push hl	; 16AA
 	ld d,000h	; 16AB
 	ld e,(ix+1)	; 16AD
@@ -3275,7 +3275,7 @@ loc_16D0:
 loc_16D9:
 	add hl,bc	; 16D9
 	pop de	; 16DA
-	ld a,(ix+14)	; 16DB
+	ld a,(ix+14)	; 16DB  registers 50h+: key scale and attack rate
 	rrca	; 16DE
 	rrca	; 16DF
 	or (ix+18)	; 16E0
@@ -3299,7 +3299,7 @@ loc_16D9:
 	or (ix+21)	; 16FE
 	ld (hl),a	; 1701
 	add hl,bc	; 1702
-	xor a	; 1703
+	xor a	; 1703  registers 60h+: AM bit (byte 51) and decay rate
 	bit 0,(ix+51)	; 1704
 	jr z,loc_170C	; 1708
 	ld a,080h	; 170A
@@ -3331,7 +3331,7 @@ loc_1736:
 	or (ix+25)	; 1736
 	ld (hl),a	; 1739
 	add hl,bc	; 173A
-	ld a,(ix+26)	; 173B
+	ld a,(ix+26)	; 173B  registers 70h+: sustain rate
 	ld (hl),a	; 173E
 	add hl,bc	; 173F
 	ld a,(ix+28)	; 1740
@@ -3343,7 +3343,7 @@ loc_1736:
 	ld a,(ix+29)	; 174A
 	ld (hl),a	; 174D
 	add hl,bc	; 174E
-	ld a,(ix+30)	; 174F
+	ld a,(ix+30)	; 174F  registers 80h+: sustain level and release rate
 	rrca	; 1752
 	rrca	; 1753
 	rrca	; 1754
@@ -3375,7 +3375,7 @@ loc_1736:
 	or (ix+37)	; 177A
 	ld (hl),a	; 177D
 	add hl,bc	; 177E
-	ld a,(ix+38)	; 177F
+	ld a,(ix+38)	; 177F  registers 90h+: SSG-EG
 	ld (hl),a	; 1782
 	add hl,bc	; 1783
 	ld a,(ix+40)	; 1784
@@ -3386,7 +3386,7 @@ loc_1736:
 	add hl,bc	; 178D
 	ld a,(ix+41)	; 178E
 	ld (hl),a	; 1791
-	pop hl	; 1792
+	pop hl	; 1792  then 80h further: register B0h, feedback x 8 + algorithm
 	ld de,00080h	; 1793
 	add hl,de	; 1796
 	ld a,(ix+0)	; 1797
@@ -3395,12 +3395,12 @@ loc_1736:
 	rlca	; 179C
 	or (ix+1)	; 179D
 	ld (hl),a	; 17A0
-	add hl,bc	; 17A1
+	add hl,bc	; 17A1  register B4h: keep the pan bits, AMS / PMS from byte 50
 	ld a,(hl)	; 17A2
 	and 0c0h	; 17A3
 	or (ix+50)	; 17A5
 	ld (hl),a	; 17A8
-	call LoadModulation	; 17A9
+	call LoadModulation	; 17A9  and the vibrato settings
 loc_17AC:
 	pop hl	; 17AC
 	pop ix	; 17AD
@@ -3416,12 +3416,12 @@ LoadModulation:
 	push iy	; 17B6
 	ld a,(CurrentChannel)	; 17B8
 	ld b,a	; 17BB
-	ld iy,ModulationBlocks	; 17BC
+	ld iy,ModulationBlocks	; 17BC  ModulationBlocks entry of the channel, 16 bytes each
 	ld de,00010h	; 17C0
 loc_17C3:
 	add iy,de	; 17C3
 	djnz loc_17C3	; 17C5
-	ld a,(ix+42)	; 17C7
+	ld a,(ix+42)	; 17C7  instrument bytes 42-45: delay and depth
 	ld (iy+2),a	; 17CA
 	ld a,(ix+43)	; 17CD
 	ld (iy+3),a	; 17D0
@@ -3430,27 +3430,27 @@ loc_17C3:
 	ld a,(ix+45)	; 17D9
 	ld (iy+1),a	; 17DC
 	ld (iy+8),000h	; 17DF
-	ld b,(ix+46)	; 17E3
+	ld b,(ix+46)	; 17E3  depth = byte 47 x byte 46
 	ld e,(ix+47)	; 17E6
 	ld d,000h	; 17E9
 	call Multiply	; 17EB
 	ld (iy+4),e	; 17EE
 	ld (iy+5),d	; 17F1
-	ld a,(ix+48)	; 17F4
+	ld a,(ix+48)	; 17F4  byte 48
 	ld (iy+15),a	; 17F7
 	pop iy	; 17FA
 	ret	; 17FC
 ; Multiply [C] de = e x b (e signed), by repeated addition
 Multiply:
 	ld hl,00000h	; 17FD
-	ld a,b	; 1800
+	ld a,b	; 1800  b = 0: the result is 0
 	or a	; 1801
 	jp z,loc_180F	; 1802
-	ld a,e	; 1805
+	ld a,e	; 1805  e negative: d = FFh
 	or a	; 1806
 	call m,SignExtendE	; 1807
 loc_180A:
-	add hl,de	; 180A
+	add hl,de	; 180A  hl = de added b times
 	djnz loc_180A	; 180B
 	ex de,hl	; 180D
 	ret	; 180E
@@ -3463,7 +3463,7 @@ SignExtendE:
 	ret	; 1815
 ; FmWriteLevels [I] writes the operator levels of FM channel a from the register copies
 FmWriteLevels:
-	cp 005h	; 1816
+	cp 005h	; 1816  FM channels 1-4 only
 	ret nc	; 1818
 	or a	; 1819
 	ret z	; 181A
@@ -3473,7 +3473,7 @@ FmWriteLevels:
 	sub 002h	; 1820
 	jr loc_1839	; 1822
 loc_1824:
-	ld hl,FmShadowA	; 1824
+	ld hl,FmShadowA	; 1824  FM 1-2: the port A shadow column, register ports 04h/05h
 	ld e,a	; 1827
 	ld d,000h	; 1828
 	add hl,de	; 182A
@@ -3488,7 +3488,7 @@ loc_1824:
 	ld c,005h	; 1835
 	jr loc_184C	; 1837
 loc_1839:
-	ld hl,FmShadowB	; 1839
+	ld hl,FmShadowB	; 1839  FM 3-4: port B, channel - 2
 	ld e,a	; 183C
 	ld d,000h	; 183D
 	add hl,de	; 183F
@@ -3502,18 +3502,18 @@ loc_1839:
 	add a,c	; 1849
 	ld c,007h	; 184A
 loc_184C:
-	ld b,007h	; 184C
+	ld b,007h	; 184C  7 register rows (30h-90h), 4 operators each
 loc_184E:
 	push bc	; 184E
 	ld b,004h	; 184F
 loc_1851:
-	exx	; 1851
+	exx	; 1851  register number out, then the shadow byte (outi)
 	out (c),a	; 1852
 	rst 008h	; 1854
 	exx	; 1855
 	outi	; 1856
 	rst 010h	; 1858
-	inc hl	; 1859
+	inc hl	; 1859  next operator: 4 bytes on in the shadow, register + 4
 	inc hl	; 185A
 	inc hl	; 185B
 	add a,004h	; 185C
@@ -3522,7 +3522,7 @@ loc_1851:
 	pop bc	; 1861
 	djnz loc_184E	; 1862
 	exx	; 1864
-	ld de,00080h	; 1865
+	ld de,00080h	; 1865  then B0h + channel (feedback and algorithm)
 	add hl,de	; 1868
 	ld a,0b0h	; 1869
 	add a,b	; 186B
@@ -3537,7 +3537,7 @@ loc_1851:
 	inc hl	; 1876
 	inc hl	; 1877
 	inc hl	; 1878
-	ld a,0b4h	; 1879
+	ld a,0b4h	; 1879  and B4h + channel (pan, AMS, PMS)
 	add a,b	; 187B
 	out (c),a	; 187C
 	rst 008h	; 187E
@@ -3550,35 +3550,35 @@ loc_1851:
 ; FadeTick [I] TimerIrq: adds the fade speed to $FE34, every overflow steps $FE35 by 100 and runs FadeStep
 FadeTick:
 	push af	; 1886
-	ld b,(iy+2)	; 1887
+	ld b,(iy+2)	; 1887  the fade speed
 	ld a,(FadeAccumulator)	; 188A
-	add a,b	; 188D
+	add a,b	; 188D  overflow: the fade counter + 100
 	ld (FadeAccumulator),a	; 188E
 	jr nc,loc_189E	; 1891
 	ld a,(FadeCounter)	; 1893
 	add a,064h	; 1896
 	ld (FadeCounter),a	; 1898
-	call c,FadeStep	; 189B
+	call c,FadeStep	; 189B  overflow again: one fade step
 loc_189E:
 	pop af	; 189E
 	ret	; 189F
 ; FadeStep [I] one step of a fade: raises the attenuation of the song channels and stops the song at the end
 FadeStep:
-	ld a,(iy+0)	; 18A0
+	ld a,(iy+0)	; 18A0  bits 3 and 5 both set: the fade is complete
 	and 028h	; 18A3
 	cp 028h	; 18A5
 	jp z,loc_1A09	; 18A7
-	ld a,001h	; 18AA
+	ld a,001h	; 18AA  one more step of attenuation
 	add a,(iy+1)	; 18AC
 	ld (iy+1),a	; 18AF
-	ld a,03ch	; 18B2
+	ld a,03ch	; 18B2  past 3Ch: ADPCM-A channels stop fading in
 	cp (iy+1)	; 18B4
 	call c,ClearAdpcmAFadeStarts	; 18B7
-	ld a,05ah	; 18BA
+	ld a,05ah	; 18BA  past 5Ah: the limit
 	cp (iy+1)	; 18BC
 	call c,FadeSetLimit	; 18BF
 	push ix	; 18C2
-	ld ix,Channel8	; 18C4
+	ld ix,Channel8	; 18C4  ADPCM-A channels 8-13: level one lower, cleared at 0 or below
 	dec (ix+2)	; 18C8
 	call z,ClearFade	; 18CB
 	call m,ClearFade	; 18CE
@@ -3604,14 +3604,14 @@ FadeStep:
 	call m,ClearFade	; 190F
 	pop ix	; 1912
 	push ix	; 1914
-	ld ix,Channel14	; 1916
+	ld ix,Channel14	; 1916  ADPCM-B: 5 lower, not below 0
 	ld a,(ix+2)	; 191A
 	sub 005h	; 191D
 	bit 7,a	; 191F
 	call nz,ReturnZero	; 1921
 	ld (ix+2),a	; 1924
 	pop ix	; 1927
-	ld a,(iy+7)	; 1929
+	ld a,(iy+7)	; 1929  the master volume 6 lower, bit 5 set at 0
 	sub 006h	; 192C
 	call c,FadeSetBit5	; 192E
 	ld (iy+7),a	; 1931
@@ -3654,16 +3654,16 @@ ClearAdpcmAFadeStarts:
 	ret	; 196E
 ; FmFadeLevel [I] FM channel: total level from the fade and the channel level (FmSetTotalLevel), at most $78
 FmFadeLevel:
-	bit 0,(ix+1)	; 196F
+	bit 0,(ix+1)	; 196F  channel not in use
 	ret z	; 1973
-	ld a,(iy+1)	; 1974
+	ld a,(iy+1)	; 1974  fade + channel level + note level, at most 7Fh
 	add a,(ix+2)	; 1977
 	add a,(ix+3)	; 197A
 	jr c,loc_1983	; 197D
 	cp 07fh	; 197F
 	jr c,loc_1989	; 1981
 loc_1983:
-	ld (ix+1),000h	; 1983
+	ld (ix+1),000h	; 1983  overflow: the channel stops at 78h
 	ld a,078h	; 1987
 loc_1989:
 	ld b,a	; 1989
@@ -3674,7 +3674,7 @@ loc_1989:
 AdpcmAFadeLevel:
 	bit 0,(ix+1)	; 1991
 	ret z	; 1995
-	ld a,(ix+2)	; 1996
+	ld a,(ix+2)	; 1996  level - note level, at least 1
 	sub (ix+3)	; 1999
 	jr nc,loc_19A0	; 199C
 	ld a,001h	; 199E
@@ -3683,7 +3683,7 @@ loc_19A0:
 	push ix	; 19A1
 	ld a,(CurrentChannel)	; 19A3
 	sub 008h	; 19A6
-	call AdpcmVoice	; 19A8
+	call AdpcmVoice	; 19A8  not while an effect voice uses the channel
 	jr c,loc_19B8	; 19AB
 	xor a	; 19AD
 	or (ix+7)	; 19AE
@@ -3694,7 +3694,7 @@ loc_19B8:
 	pop ix	; 19B8
 	pop af	; 19BA
 	ld b,a	; 19BB
-	ld a,(ix+1)	; 19BC
+	ld a,(ix+1)	; 19BC  with the pan bits
 	and 0c0h	; 19BF
 	or b	; 19C1
 	ld b,a	; 19C2
@@ -3710,7 +3710,7 @@ loc_19CC:
 AdpcmBFadeLevel:
 	bit 0,(ix+1)	; 19D0
 	ret z	; 19D4
-	ld a,(iy+7)	; 19D5
+	ld a,(iy+7)	; 19D5  master volume + channel level (signed)
 	bit 7,(ix+2)	; 19D8
 	jr nz,loc_19E5	; 19DC
 	add a,(ix+2)	; 19DE
@@ -3720,24 +3720,24 @@ loc_19E5:
 	add a,(ix+2)	; 19E5
 	jp m,loc_19FA	; 19E8
 loc_19EB:
-	sub (ix+3)	; 19EB
+	sub (ix+3)	; 19EB  - 3 x note level
 	jr c,loc_19FA	; 19EE
 	sub (ix+3)	; 19F0
 	jr c,loc_19FA	; 19F3
 	sub (ix+3)	; 19F5
 	jr nc,loc_19FF	; 19F8
 loc_19FA:
-	ld (ix+1),000h	; 19FA
+	ld (ix+1),000h	; 19FA  below 0: the channel stops
 	xor a	; 19FE
 loc_19FF:
 	ld b,a	; 19FF
-	ld a,(AdpcmBEffectMode)	; 1A00
+	ld a,(AdpcmBEffectMode)	; 1A00  not while an ADPCM-B effect plays
 	or a	; 1A03
 	ret nz	; 1A04
 	call AdpcmBWriteVolume	; 1A05
 	ret	; 1A08
 loc_1A09:
-	ld a,(iy+0)	; 1A09
+	ld a,(iy+0)	; 1A09  fade complete: the flags cleared, the song ends (SeqEnd)
 	and 0c7h	; 1A0C
 	ld (iy+0),a	; 1A0E
 	xor a	; 1A11
@@ -3745,13 +3745,13 @@ loc_1A09:
 	jp loc_2781	; 1A15
 ; UpdateModulation [I] per tick for FM channels 1-4: steps the ModulationBlocks entry
 UpdateModulation:
-	cp 005h	; 1A18
+	cp 005h	; 1A18  FM channels 1-4 only
 	ret nc	; 1A1A
 	ld b,a	; 1A1B
 	dec a	; 1A1C
 	ld e,a	; 1A1D
 	ld d,000h	; 1A1E
-	ld hl,ModulationOff	; 1A20
+	ld hl,ModulationOff	; 1A20  modulation switched off for this channel (command 4Fh)
 	add hl,de	; 1A23
 	ld a,(hl)	; 1A24
 	or a	; 1A25
@@ -3759,35 +3759,35 @@ UpdateModulation:
 	ex af,af'	; 1A27
 	ld a,b	; 1A28
 	ex af,af'	; 1A29
-	call ModulationBlock	; 1A2A
-	ld e,(iy+4)	; 1A2D
+	call ModulationBlock	; 1A2A  iy = its ModulationBlocks entry
+	ld e,(iy+4)	; 1A2D  depth (+4/+5) 0: no modulation
 	ld d,(iy+5)	; 1A30
 	ld hl,00000h	; 1A33
 	or a	; 1A36
 	sbc hl,de	; 1A37
 	ret z	; 1A39
-	bit 2,(iy+8)	; 1A3A
+	bit 2,(iy+8)	; 1A3A  bit 2: finished
 	ret nz	; 1A3E
-	bit 4,(iy+8)	; 1A3F
+	bit 4,(iy+8)	; 1A3F  bits 3-4: the delay is over
 	jr nz,loc_1A55	; 1A43
 	bit 3,(iy+8)	; 1A45
 	jr nz,loc_1A55	; 1A49
-	dec (iy+14)	; 1A4B
+	dec (iy+14)	; 1A4B  otherwise count the delay down
 	ret nz	; 1A4E
 	ld a,(iy+3)	; 1A4F
 	ld (iy+14),a	; 1A52
 loc_1A55:
-	set 4,(iy+8)	; 1A55
+	set 4,(iy+8)	; 1A55  running
 	res 0,(iy+8)	; 1A59
-	dec (iy+10)	; 1A5D
+	dec (iy+10)	; 1A5D  speed counter: one step every +15 ticks
 	ret nz	; 1A60
 	ld a,(iy+15)	; 1A61
 	ld (iy+10),a	; 1A64
-	ld hl,FmWriteFnumOffset	; 1A67
+	ld hl,FmWriteFnumOffset	; 1A67  the step result goes to FmWriteFnumOffset
 	push hl	; 1A6A
-	ld c,(iy+0)	; 1A6B
+	ld c,(iy+0)	; 1A6B  bc = the step (+0/+1)
 	ld b,(iy+1)	; 1A6E
-	ld a,d	; 1A71
+	ld a,d	; 1A71  negative depth: the step negated
 	or a	; 1A72
 	jp p,loc_1A82	; 1A73
 	ld hl,00000h	; 1A76
@@ -3797,20 +3797,20 @@ loc_1A55:
 	ld b,h	; 1A7D
 	set 0,(iy+8)	; 1A7E
 loc_1A82:
-	ld l,(iy+6)	; 1A82
+	ld l,(iy+6)	; 1A82  hl = the current offset, +2 = the shape:
 	ld h,(iy+7)	; 1A85
 	ld a,(iy+2)	; 1A88
 	or a	; 1A8B
-	jp z,loc_1AA8	; 1A8C
-	cp 001h	; 1A8F
+	jp z,loc_1AA8	; 1A8C  0: up to the depth, then from 0 again
+	cp 001h	; 1A8F  1: up then down, the value only at the turns
 	jp z,loc_1ABF	; 1A91
-	cp 002h	; 1A94
+	cp 002h	; 1A94  2: up and down (triangle)
 	jp z,loc_1AE2	; 1A96
-	cp 003h	; 1A99
+	cp 003h	; 1A99  3: from a pattern of bits
 	jp z,loc_1B19	; 1A9B
-	cp 004h	; 1A9E
+	cp 004h	; 1A9E  4: to the top at once, then down once
 	jp z,loc_1B35	; 1AA0
-	jp loc_1B52	; 1AA3
+	jp loc_1B52	; 1AA3  5: up, then down once
 ; SwapDeHl [C] ex de
 SwapDeHl:
 	ex de,hl	; 1AA6
@@ -3842,7 +3842,7 @@ loc_1AD5:
 	bit 1,(iy+8)	; 1AD8
 	jr z,loc_1ACE	; 1ADC
 loc_1ADE:
-	ld bc,00000h	; 1ADE
+	ld bc,00000h	; 1ADE  between the turns: no offset
 	ret	; 1AE1
 loc_1AE2:
 	bit 1,(iy+8)	; 1AE2
@@ -3852,7 +3852,7 @@ ModulationUp:
 	add hl,bc	; 1AE8
 	ld c,l	; 1AE9
 	ld b,h	; 1AEA
-	or a	; 1AEB
+	or a	; 1AEB  beyond the depth: turn
 	bit 0,(iy+8)	; 1AEC
 	call nz,SwapDeHl	; 1AF0
 	sbc hl,de	; 1AF3
@@ -3865,7 +3865,7 @@ ModulationDown:
 	sbc hl,bc	; 1AFF
 	ld c,l	; 1B01
 	ld b,h	; 1B02
-	ld de,00000h	; 1B03
+	ld de,00000h	; 1B03  below 0: turn
 	bit 0,(iy+8)	; 1B06
 	call nz,SwapDeHl	; 1B0A
 	sbc hl,de	; 1B0D
@@ -3874,14 +3874,14 @@ ModulationDown:
 	ld (iy+7),b	; 1B15
 	ret	; 1B18
 loc_1B19:
-	push de	; 1B19
+	push de	; 1B19  the next pattern byte (+9 the position)
 	ld e,(iy+9)	; 1B1A
 	ld d,000h	; 1B1D
 	ld a,(de)	; 1B1F
 	inc e	; 1B20
 	ld (iy+9),e	; 1B21
 	pop de	; 1B24
-	bit 1,a	; 1B25
+	bit 1,a	; 1B25  bit 1: no offset this step
 	jr nz,loc_1B31	; 1B27
 	bit 1,(iy+8)	; 1B29
 	jr z,ModulationUp	; 1B2D
@@ -3929,12 +3929,12 @@ FmWriteFnumOffset:
 	ld d,a	; 1B7C
 	ex af,af'	; 1B7D
 	ld a,d	; 1B7E
-	call FmShadowFnum	; 1B7F
-	add hl,bc	; 1B82
+	call FmShadowFnum	; 1B7F  the note's F-number from the shadow,
+	add hl,bc	; 1B82  plus the offset
 	ex af,af'	; 1B83
 	cp 003h	; 1B84
 	jr nc,loc_1B98	; 1B86
-	ld e,0a4h	; 1B88
+	ld e,0a4h	; 1B88  FM 1-2: registers A4h+ch (high), then A0h+ch (low) on port A
 	add a,e	; 1B8A
 	ld d,a	; 1B8B
 	ld e,h	; 1B8C
@@ -3945,7 +3945,7 @@ FmWriteFnumOffset:
 	call YmWriteA	; 1B94
 	ret	; 1B97
 loc_1B98:
-	sub 002h	; 1B98
+	sub 002h	; 1B98  FM 3-4: on port B
 	ld e,0a4h	; 1B9A
 	add a,e	; 1B9C
 	ld d,a	; 1B9D
@@ -3967,7 +3967,7 @@ loc_1BB6:
 	ld e,a	; 1BB6
 	ld d,000h	; 1BB7
 	add hl,de	; 1BB9
-	ld e,070h	; 1BBA
+	ld e,070h	; 1BBA  +70h: the A0h row (low byte), +74h: the A4h row
 	ld d,000h	; 1BBC
 	add hl,de	; 1BBE
 	ld e,(hl)	; 1BBF
@@ -3984,17 +3984,17 @@ StartModulation:
 	ld a,(CurrentChannel)	; 1BC9
 	ld b,a	; 1BCC
 	call ModulationBlock	; 1BCD
-	ld a,(iy+3)	; 1BD0
+	ld a,(iy+3)	; 1BD0  +3 0: no delay, start at once
 	or a	; 1BD3
 	jr z,loc_1BE6	; 1BD4
-	ld (iy+14),a	; 1BD6
+	ld (iy+14),a	; 1BD6  the delay counter,
 	ld (iy+8),000h	; 1BD9
-	ld a,(iy+15)	; 1BDD
+	ld a,(iy+15)	; 1BDD  the speed counter
 	ld (iy+10),a	; 1BE0
 	pop iy	; 1BE3
 	ret	; 1BE5
 loc_1BE6:
-	set 3,(iy+8)	; 1BE6
+	set 3,(iy+8)	; 1BE6  no delay: bit 3, running from the start
 	pop iy	; 1BEA
 	ret	; 1BEC
 ; ModulationBlock [C] iy = ModulationBlocks + b x 16
@@ -4002,7 +4002,7 @@ ModulationBlock:
 	ld iy,ModulationBlocks	; 1BED
 	ld de,00010h	; 1BF1
 loc_1BF4:
-	add iy,de	; 1BF4
+	add iy,de	; 1BF4  b x 16
 	djnz loc_1BF4	; 1BF6
 	ret	; 1BF8
 ; TickParamsA [?] per-tick routine on the block $FA88-$FAA3 (counters $FA9C, $FAA3): runs in MAME, purpose not found
@@ -4325,7 +4325,7 @@ AdpcmBFade:
 	call YmWriteA	; 1E44
 	ret	; 1E47
 loc_1E48:
-	ld de,01b00h	; 1E48
+	ld de,01b00h	; 1E48  register 1Bh = 0: ADPCM-B volume off
 	call YmWriteA	; 1E4B
 	xor a	; 1E4E
 	ld (AdpcmBFadeVolume),a	; 1E4F
@@ -4336,15 +4336,15 @@ loc_1E48:
 	ret	; 1E58
 ; TransposeNote [C] pitch nibble a plus b semitones: NoteSemitoneTable turns the nibble into a semitone, SemitoneNoteTable back into a nibble with the octave carry ($20)
 TransposeNote:
-	ld e,a	; 1E59
+	ld e,a	; 1E59  the note nibble's semitone,
 	ld d,000h	; 1E5A
 	ld hl,NoteSemitoneTable	; 1E5C
 	add hl,de	; 1E5F
 	ld c,(hl)	; 1E60
-	ld a,b	; 1E61
+	ld a,b	; 1E61  plus the transposition
 	add a,c	; 1E62
 	or a	; 1E63
-	jp m,loc_1E6C	; 1E64
+	jp m,loc_1E6C	; 1E64  negative: sign-extended index
 	ld e,a	; 1E67
 	ld d,000h	; 1E68
 	jr loc_1E6F	; 1E6A
@@ -4352,7 +4352,7 @@ loc_1E6C:
 	ld e,a	; 1E6C
 	ld d,0ffh	; 1E6D
 loc_1E6F:
-	ld hl,SemitoneNoteTable	; 1E6F
+	ld hl,SemitoneNoteTable	; 1E6F  back to a pitch byte (octave and note)
 	add hl,de	; 1E72
 	ld e,(hl)	; 1E73
 	ret	; 1E74
@@ -4370,7 +4370,7 @@ SemitoneNoteTable:
 	defb 02eh,02fh,024h,020h,025h,02ah,026h,02bh	; 1EAD
 ; TimerIrq [C] YM2610 timer interrupt: saves the registers and runs the sound engine
 TimerIrq:
-	push af	; 1EB5
+	push af	; 1EB5  save every register used by the engine
 	push bc	; 1EB6
 	push de	; 1EB7
 	push hl	; 1EB8
@@ -4379,12 +4379,12 @@ TimerIrq:
 	ld a,0ffh	; 1EBD
 	ld (TimerTickA),a	; 1EBF
 	ld (TimerTickB),a	; 1EC2
-	ld (EngineStack),sp	; 1EC5
-	in a,(PORT_YM_ADDR_B)	; 1EC9
+	ld (EngineStack),sp	; 1EC5  the stack at entry
+	in a,(PORT_YM_ADDR_B)	; 1EC9  port B status: ADPCM end flags
 	ld (TimerIrqPhase),a	; 1ECB
-	bit 7,a	; 1ECE
+	bit 7,a	; 1ECE  bit 7: ADPCM-B sample ended
 	call nz,AdpcmBTick	; 1ED0
-	ld b,005h	; 1ED3
+	ld b,005h	; 1ED3  bits 5-0: ADPCM-A channels 6-1 ended, repeat them if asked
 	ld a,(TimerIrqPhase)	; 1ED5
 	bit 5,a	; 1ED8
 	call nz,AdpcmARepeat	; 1EDA
@@ -4408,22 +4408,22 @@ TimerIrq:
 	ld a,(TimerIrqPhase)	; 1F07
 	bit 0,a	; 1F0A
 	call nz,AdpcmARepeat	; 1F0C
-	in a,(PORT_YM_ADDR_A)	; 1F0F
+	in a,(PORT_YM_ADDR_A)	; 1F0F  port A status: the timer flags
 	ld (TimerIrqFlag),a	; 1F11
-	bit 1,a	; 1F14
+	bit 1,a	; 1F14  bit 1, timer B: the music pass
 	jp nz,loc_1FCD	; 1F16
-	bit 0,a	; 1F19
+	bit 0,a	; 1F19  otherwise timer A: the effect pass
 	jr nz,loc_1F1D	; 1F1B
 loc_1F1D:
-	xor a	; 1F1D
+	xor a	; 1F1D  effect pass (timer A)
 	ld (TimerTickA),a	; 1F1E
 	ld a,001h	; 1F21
 	ld (EnginePass2),a	; 1F23
-	call UpdateSsgSlides	; 1F26
+	call UpdateSsgSlides	; 1F26  SSG slides, parameter ticks, ADPCM-B fade
 	call TickParamsB	; 1F29
 	call TickParamsA	; 1F2C
 	call AdpcmBFade	; 1F2F
-	ld a,001h	; 1F32
+	ld a,001h	; 1F32  modulation of FM channels 1-4
 	call UpdateModulation	; 1F34
 	ld a,002h	; 1F37
 	call UpdateModulation	; 1F39
@@ -4431,7 +4431,7 @@ loc_1F1D:
 	call UpdateModulation	; 1F3E
 	ld a,004h	; 1F41
 	call UpdateModulation	; 1F43
-	ld a,(EffectPlaying)	; 1F46
+	ld a,(EffectPlaying)	; 1F46  an effect plays: tick its SSG channels 5-7 and channel 0
 	or a	; 1F49
 	jp z,loc_1F7D	; 1F4A
 	ld a,005h	; 1F4D
@@ -4451,7 +4451,7 @@ loc_1F1D:
 	ld ix,EffectChannel0	; 1F76
 	call ChannelTick	; 1F7A
 loc_1F7D:
-	ld a,(AdpcmVoices+7)	; 1F7D
+	ld a,(AdpcmVoices+7)	; 1F7D  ADPCM-A voices in use by effects: their channels 11-13
 	or a	; 1F80
 	jr z,loc_1F8F	; 1F81
 	ld a,00bh	; 1F83
@@ -4475,7 +4475,7 @@ loc_1FA1:
 	ld ix,ExtraChannel7	; 1FAC
 	call ChannelTick	; 1FB0
 loc_1FB3:
-	ld a,(AdpcmBSoundOn)	; 1FB3
+	ld a,(AdpcmBSoundOn)	; 1FB3  an ADPCM-B sound: its channel 14
 	or a	; 1FB6
 	jp z,loc_2253	; 1FB7
 	ld iy,AdpcmBState	; 1FBA
@@ -4485,18 +4485,18 @@ loc_1FB3:
 	call ChannelTick	; 1FC7
 	jp loc_2253	; 1FCA
 loc_1FCD:
-	xor a	; 1FCD
+	xor a	; 1FCD  music pass (timer B)
 	ld (TimerTickB),a	; 1FCE
 	ld (EnginePass2),a	; 1FD1
-	ld a,(SongRunning)	; 1FD4
+	ld a,(SongRunning)	; 1FD4  no song: nothing
 	or a	; 1FD7
 	jp z,loc_2253	; 1FD8
 	ld ix,Channel1	; 1FDB
 	ld iy,AdpcmAMaster	; 1FDF
-	ld a,(CurrentSound)	; 1FE3
+	ld a,(CurrentSound)	; 1FE3  a fade in progress: one step
 	or a	; 1FE6
 	call nz,FadeTick	; 1FE7
-	ld a,001h	; 1FEA
+	ld a,001h	; 1FEA  FM channels 1-4, each then faded if a fade runs
 	ld (CurrentChannel),a	; 1FEC
 	ld ix,Channel1	; 1FEF
 	call ChannelTick	; 1FF3
@@ -4524,7 +4524,7 @@ loc_1FCD:
 	ld a,(CurrentSound)	; 202F
 	or a	; 2032
 	call nz,FmFadeLevel	; 2033
-	ld a,008h	; 2036
+	ld a,008h	; 2036  ADPCM-A channels 8-13
 	ld (CurrentChannel),a	; 2038
 	ld ix,Channel8	; 203B
 	call ChannelTick	; 203F
@@ -4566,7 +4566,7 @@ loc_1FCD:
 	ld a,(CurrentSound)	; 20A1
 	or a	; 20A4
 	call nz,AdpcmAFadeLevel	; 20A5
-	ld a,00eh	; 20A8
+	ld a,00eh	; 20A8  ADPCM-B channel 14
 	ld (CurrentChannel),a	; 20AA
 	ld ix,Channel14	; 20AD
 	call ChannelTick	; 20B1
@@ -4576,38 +4576,38 @@ loc_1FCD:
 	jp loc_2253	; 20BB
 ; ChannelTick [I] counts the channel's note times down (+4 then +5) and keys the note off
 ChannelTick:
-	bit 0,(ix+1)	; 20BE
+	bit 0,(ix+1)	; 20BE  channel not in use: nothing
 	ret z	; 20C2
-	bit 0,(ix+0)	; 20C3
+	bit 0,(ix+0)	; 20C3  bit 0 clear: the note is over, read the next event
 	jp z,loc_20D6	; 20C7
 	nop	; 20CA
-	bit 1,(ix+0)	; 20CB
+	bit 1,(ix+0)	; 20CB  bit 1: gate time running, else note time
 	jp nz,loc_21FB	; 20CF
 	jp loc_2217	; 20D2
 ; DeadRet20D5 [C] a ret nothing calls
 DeadRet20D5:
 	ret	; 20D5
 loc_20D6:
-	ld a,(ix+0)	; 20D6
+	ld a,(ix+0)	; 20D6  keep bit 3, set the busy bits
 	and 008h	; 20D9
 	ld b,0f3h	; 20DB
 	or b	; 20DD
 	ld (ix+0),a	; 20DE
-	ld l,(ix+9)	; 20E1
+	ld l,(ix+9)	; 20E1  next event of the sequence (hl = position)
 	ld h,(ix+10)	; 20E4
 	call SequenceStep	; 20E7
-	ld (ix+9),l	; 20EA
+	ld (ix+9),l	; 20EA  position after the event
 	ld (ix+10),h	; 20ED
-	ld a,(CurrentChannel)	; 20F0
+	ld a,(CurrentChannel)	; 20F0  channel 0 and channels 8 and up: no pitch here
 	or a	; 20F3
 	jp z,loc_2141	; 20F4
 	cp 008h	; 20F7
 	jp nc,loc_214E	; 20F9
-	call ChannelPitch	; 20FC
+	call ChannelPitch	; 20FC  FM or SSG pitch for the note
 	ld a,(CurrentChannel)	; 20FF
 	cp 005h	; 2102
 	jr nc,loc_2133	; 2104
-	ld a,(iy+1)	; 2106
+	ld a,(iy+1)	; 2106  level = master + channel level + note level, at most 7Fh
 	add a,(ix+2)	; 2109
 	add a,(ix+3)	; 210C
 	jr c,loc_2115	; 210F
@@ -4617,11 +4617,11 @@ loc_2115:
 	ld a,07fh	; 2115
 loc_2117:
 	ld b,a	; 2117
-	ld a,(CurrentChannel)	; 2118
+	ld a,(CurrentChannel)	; 2118  FM: the total level of the carriers
 	call FmSetTotalLevel	; 211B
 	bit 3,(ix+0)	; 211E
 	jr nz,loc_212F	; 2122
-	push af	; 2124
+	push af	; 2124  key on unless the tie bit (3) is set
 	push bc	; 2125
 	push de	; 2126
 	ld d,000h	; 2127
@@ -4630,26 +4630,26 @@ loc_2117:
 	pop bc	; 212D
 	pop af	; 212E
 loc_212F:
-	call FmKeyOn	; 212F
+	call FmKeyOn	; 212F  then the FM key-on register
 	ret	; 2132
 loc_2133:
-	ld a,(ix+3)	; 2133
+	ld a,(ix+3)	; 2133  SSG: level, then the note
 	ld b,a	; 2136
 	ld a,(CurrentChannel)	; 2137
 	call SsgWriteLevel	; 213A
 	call SsgNoteOn	; 213D
 	ret	; 2140
 loc_2141:
-	ld a,(ix+0)	; 2141
+	ld a,(ix+0)	; 2141  channel 0: the SSG noise period
 	and 0f0h	; 2144
 	ld d,a	; 2146
 	ld e,(ix+13)	; 2147
 	call SsgSetNoise	; 214A
 	ret	; 214D
 loc_214E:
-	cp 00eh	; 214E
+	cp 00eh	; 214E  channel 14: ADPCM-B
 	jp z,loc_2174	; 2150
-	ld a,(ix+0)	; 2153
+	ld a,(ix+0)	; 2153  ADPCM-A: level = channel level - note level, not below 0,
 	and 0f0h	; 2156
 	ld d,a	; 2158
 	ld e,(ix+13)	; 2159
@@ -4659,15 +4659,15 @@ loc_214E:
 	xor a	; 2164
 loc_2165:
 	ld b,a	; 2165
-	ld a,(ix+1)	; 2166
+	ld a,(ix+1)	; 2166  with the pan bits
 	and 0c0h	; 2169
 	or b	; 216B
 	ld b,a	; 216C
 	ld a,(CurrentChannel)	; 216D
-	call AdpcmAChannelNote	; 2170
+	call AdpcmAChannelNote	; 2170  then the sample of the note
 	ret	; 2173
 loc_2174:
-	ld a,(ix+8)	; 2174
+	ld a,(ix+8)	; 2174  ADPCM-B: a sample number (+8 = 1) or a pitch
 	cp 001h	; 2177
 	jr nz,loc_218B	; 2179
 	ld a,(ix+0)	; 217B
@@ -4681,7 +4681,7 @@ loc_2174:
 loc_218B:
 	call ChannelPitch	; 218B
 loc_218E:
-	ld a,(iy+7)	; 218E
+	ld a,(iy+7)	; 218E  volume = master + level - 3 x note level, not below 0
 	add a,(ix+2)	; 2191
 	sub (ix+3)	; 2194
 	jr c,loc_21A3	; 2197
@@ -4693,7 +4693,7 @@ loc_21A3:
 	xor a	; 21A3
 loc_21A4:
 	ld b,a	; 21A4
-	ld a,(AdpcmBFadeOn)	; 21A5
+	ld a,(AdpcmBFadeOn)	; 21A5  a fade running: it starts from this volume
 	or a	; 21A8
 	jr z,loc_21AF	; 21A9
 	ld a,b	; 21AB
@@ -4705,17 +4705,17 @@ loc_21AF:
 	bit 3,(ix+0)	; 21B8
 	jr nz,loc_21D2	; 21BC
 loc_21BE:
-	call AdpcmBChannelNote	; 21BE
+	call AdpcmBChannelNote	; 21BE  start the ADPCM-B sample, unless bit 2 (held)
 	bit 2,(ix+0)	; 21C1
 	ret nz	; 21C5
-	ld d,011h	; 21C6
+	ld d,011h	; 21C6  register 11h: pan bits
 	ld a,(ix+1)	; 21C8
 	and 0c0h	; 21CB
 	ld e,a	; 21CD
 	call YmWriteA	; 21CE
 	ret	; 21D1
 loc_21D2:
-	ld d,005h	; 21D2
+	ld d,005h	; 21D2  bit 3 (tie): key on with d = 5
 	call AdpcmBChannelNote	; 21D4
 	ld d,011h	; 21D7
 	ld a,(ix+1)	; 21D9
@@ -4725,38 +4725,38 @@ loc_21D2:
 	ret	; 21E2
 ; ChannelPitch [C] pitch of the channel: TransposeNote of +6 by +7, plus +13, +14 and the octave bits of +0
 ChannelPitch:
-	ld a,(ix+6)	; 21E3
+	ld a,(ix+6)	; 21E3  note +6 transposed by +7,
 	ld b,(ix+7)	; 21E6
 	call TransposeNote	; 21E9
-	ld a,(ix+0)	; 21EC
+	ld a,(ix+0)	; 21EC  octave bits from +0,
 	and 0f0h	; 21EF
 	ld d,a	; 21F1
-	ld a,(ix+14)	; 21F2
+	ld a,(ix+14)	; 21F2  plus fine tune +13 and +14
 	add a,(ix+13)	; 21F5
 	add a,e	; 21F8
 	ld e,a	; 21F9
 	ret	; 21FA
 loc_21FB:
-	dec (ix+4)	; 21FB
+	dec (ix+4)	; 21FB  gate time over:
 	ret nz	; 21FE
-	res 1,(ix+0)	; 21FF
+	res 1,(ix+0)	; 21FF  the note is released (bit 1 clear)
 	ld a,(ix+5)	; 2203
 	or a	; 2206
 	jr z,loc_221B	; 2207
-	bit 3,(ix+0)	; 2209
+	bit 3,(ix+0)	; 2209  tied: no key off
 	ret nz	; 220D
-	ld a,(CurrentChannel)	; 220E
+	ld a,(CurrentChannel)	; 220E  key off
 	ld d,000h	; 2211
 	call ChannelKeyOn	; 2213
 	ret	; 2216
 loc_2217:
-	dec (ix+5)	; 2217
+	dec (ix+5)	; 2217  note time over: the next event
 	ret nz	; 221A
 loc_221B:
 	res 0,(ix+0)	; 221B
 	bit 3,(ix+0)	; 221F
 	jp nz,loc_20D6	; 2223
-	ld a,(CurrentChannel)	; 2226
+	ld a,(CurrentChannel)	; 2226  then key off the channel unless tied, the next event
 	cp 005h	; 2229
 	jp c,loc_224C	; 222B
 loc_222E:
@@ -4778,7 +4778,7 @@ loc_224C:
 	jr c,loc_222E	; 224E
 	jp loc_20D6	; 2250
 loc_2253:
-	ld a,(TimerTickB)	; 2253
+	ld a,(TimerTickB)	; 2253  end of the interrupt: restart the timer that fired
 	or a	; 2256
 	jp nz,loc_2260	; 2257
 	call YmTimerControl2F	; 225A
@@ -4786,7 +4786,7 @@ loc_2253:
 loc_2260:
 	call YmTimerControl1F	; 2260
 loc_2263:
-	pop iy	; 2263
+	pop iy	; 2263  restore the registers
 	pop ix	; 2265
 	pop hl	; 2267
 	pop de	; 2268
@@ -4796,49 +4796,49 @@ loc_2263:
 	ret	; 226C
 ; SequenceStep [C] reads the channel's sequence at hl: notes ($01-$30, $00 escape), commands ($31-$5F through SequenceCommandTable), instruments ($80-$FF); format in tools/sm1_data.py
 SequenceStep:
-	ld a,(CurrentChannel)	; 226D
+	ld a,(CurrentChannel)	; 226D  a' = the current channel
 	ld b,a	; 2270
 	ex af,af'	; 2271
 	ld a,b	; 2272
 	ex af,af'	; 2273
-	ld a,(hl)	; 2274
-	or a	; 2275
+	ld a,(hl)	; 2274  the next byte:
+	or a	; 2275  00h: a long note length follows
 	jp z,loc_22F6	; 2276
-	cp 031h	; 2279
+	cp 031h	; 2279  01h-30h: a note length
 	jp c,loc_22FA	; 227B
-	cp 060h	; 227E
+	cp 060h	; 227E  31h-5Fh: a command
 	jp c,loc_2371	; 2280
-	bit 7,a	; 2283
+	bit 7,a	; 2283  80h-FFh: an instrument
 	jp nz,loc_228B	; 2285
-	jp SequenceStep	; 2288
+	jp SequenceStep	; 2288  60h-7Fh: not used (this would loop for ever)
 loc_228B:
-	sub 080h	; 228B
+	sub 080h	; 228B  instrument number = byte - 80h
 	ex af,af'	; 228D
 	ld c,a	; 228E
 	ex af,af'	; 228F
-	call LoadInstrument	; 2290
+	call LoadInstrument	; 2290  its 52 bytes into the channel
 	ld a,(CurrentChannel)	; 2293
-	call FmWriteLevels	; 2296
-	inc hl	; 2299
+	call FmWriteLevels	; 2296  the FM levels written
+	inc hl	; 2299  up to three more bytes with bit 7 set:
 	bit 7,(hl)	; 229A
-	call nz,SeqSetLevel	; 229C
+	call nz,SeqSetLevel	; 229C  level,
 	bit 7,(hl)	; 229F
-	call nz,SeqSetDetune	; 22A1
+	call nz,SeqSetDetune	; 22A1  detune,
 	bit 7,(hl)	; 22A4
-	call nz,SeqSetParam15	; 22A6
+	call nz,SeqSetParam15	; 22A6  and parameter 15
 	jp SequenceStep	; 22A9
 ; SeqSetLevel [C] first optional instrument byte: level (- $88 on FM and SSG, - $80 on ADPCM-A unless $FE23, - $B8 on ADPCM-B) to +2
 SeqSetLevel:
-	ld a,(CurrentChannel)	; 22AC
+	ld a,(CurrentChannel)	; 22AC  FM and SSG channels:
 	cp 008h	; 22AF
 	jr nc,loc_22BB	; 22B1
-	ld a,(hl)	; 22B3
+	ld a,(hl)	; 22B3  level = byte - 88h
 	sub 088h	; 22B4
 	ld (ix+2),a	; 22B6
 	inc hl	; 22B9
 	ret	; 22BA
 loc_22BB:
-	cp 00eh	; 22BB
+	cp 00eh	; 22BB  ADPCM-A channels: byte - 80h, only when the sound started from the start
 	jr z,loc_22CC	; 22BD
 	ld a,(CurrentSound)	; 22BF
 	or a	; 22C2
@@ -4849,21 +4849,21 @@ loc_22BB:
 	inc hl	; 22CA
 	ret	; 22CB
 loc_22CC:
-	ld a,(hl)	; 22CC
+	ld a,(hl)	; 22CC  ADPCM-B: byte - B8h
 	sub 0b8h	; 22CD
 	ld (ix+2),a	; 22CF
 	inc hl	; 22D2
 	ret	; 22D3
 ; SeqSetParam15 [I] third optional instrument byte - $B8 to +15
 SeqSetParam15:
-	ld a,(hl)	; 22D4
+	ld a,(hl)	; 22D4  byte - B8h
 	sub 0b8h	; 22D5
 	ld (ix+15),a	; 22D7
 	inc hl	; 22DA
 	ret	; 22DB
 ; SeqSetDetune [I] second optional instrument byte: a signed step (bit 0 the sign) to +14
 SeqSetDetune:
-	ld a,(hl)	; 22DC
+	ld a,(hl)	; 22DC  low nibble: bit 0 the sign, bits 1-3 the size
 	and 00fh	; 22DD
 	bit 0,a	; 22DF
 	jr z,loc_22E9	; 22E1
@@ -4873,7 +4873,7 @@ SeqSetDetune:
 loc_22E9:
 	and 00eh	; 22E9
 loc_22EB:
-	rrca	; 22EB
+	rrca	; 22EB  to the high nibble
 	rrca	; 22EC
 	rrca	; 22ED
 	rrca	; 22EE
@@ -4882,21 +4882,21 @@ loc_22EB:
 	inc hl	; 22F4
 	ret	; 22F5
 loc_22F6:
-	inc hl	; 22F6
+	inc hl	; 22F6  00h: the length is in the next byte
 	ld a,(hl)	; 22F7
 	jr loc_22FA	; 22F8
 loc_22FA:
 	ex af,af'	; 22FA
 	ld a,(CurrentChannel)	; 22FB
 	ex af,af'	; 22FE
-	call NoteLengthTimes	; 22FF
+	call NoteLengthTimes	; 22FF  note and gate times from the length (and the tempo)
 	ld (ix+4),b	; 2302
 	ld (ix+5),a	; 2305
 	inc hl	; 2308
-	ld a,(hl)	; 2309
-	bit 6,a	; 230A
+	ld a,(hl)	; 2309  then the level byte:
+	bit 6,a	; 230A  bit 6: a rest
 	jr nz,loc_2359	; 230C
-	bit 7,a	; 230E
+	bit 7,a	; 230E  bit 7 clear: tie (no key off before the next note)
 	jr z,loc_2318	; 2310
 	res 3,(ix+0)	; 2312
 	jr loc_231C	; 2316
@@ -4904,7 +4904,7 @@ loc_2318:
 	set 3,(ix+0)	; 2318
 loc_231C:
 	ld a,(CurrentChannel)	; 231C
-	cp 00eh	; 231F
+	cp 00eh	; 231F  ADPCM-B: bit 5 starts a fade
 	jr nz,loc_2330	; 2321
 	xor a	; 2323
 	ld (AdpcmBFadeOn),a	; 2324
@@ -4913,17 +4913,17 @@ loc_231C:
 	ld a,0ffh	; 232B
 	ld (AdpcmBFadeOn),a	; 232D
 loc_2330:
-	ld a,(hl)	; 2330
+	ld a,(hl)	; 2330  bits 0-4: the note's attenuation
 	and 01fh	; 2331
 	ld (ix+3),a	; 2333
 	inc hl	; 2336
-	ld a,(CurrentChannel)	; 2337
+	ld a,(CurrentChannel)	; 2337  then the pitch byte:
 	or a	; 233A
 	jr z,loc_234F	; 233B
 	cp 008h	; 233D
 	jr nc,loc_234F	; 233F
 loc_2341:
-	ld a,(hl)	; 2341
+	ld a,(hl)	; 2341  FM and SSG: low nibble the note, high nibble the octave
 	and 00fh	; 2342
 	ld (ix+6),a	; 2344
 	ld a,(hl)	; 2347
@@ -4932,7 +4932,7 @@ loc_2341:
 	inc hl	; 234D
 	ret	; 234E
 loc_234F:
-	cp 00eh	; 234F
+	cp 00eh	; 234F  channel 0 and ADPCM-A: the whole byte (noise period or sample)
 	jr z,loc_2341	; 2351
 	ld a,(hl)	; 2353
 	ld (ix+13),a	; 2354
@@ -4945,7 +4945,7 @@ loc_2359:
 	xor a	; 2360
 	ld (AdpcmBFadeOn),a	; 2361
 loc_2364:
-	ld a,00fh	; 2364
+	ld a,00fh	; 2364  a rest: busy bit 2, skip the level and pitch bytes
 	and (ix+0)	; 2366
 	or 004h	; 2369
 	ld (ix+0),a	; 236B
@@ -4953,12 +4953,12 @@ loc_2364:
 	inc hl	; 236F
 	ret	; 2370
 loc_2371:
-	sub 030h	; 2371
+	sub 030h	; 2371  a command: index = byte - 30h
 	inc hl	; 2373
-	exx	; 2374
+	exx	; 2374  the handler returns into SequenceStep
 	ld hl,SequenceStep	; 2375
 	push hl	; 2378
-	ld e,a	; 2379
+	ld e,a	; 2379  x 3: one jp per command
 	add a,a	; 237A
 	add a,e	; 237B
 	ld e,a	; 237C
@@ -4968,107 +4968,107 @@ loc_2371:
 	jp (hl)	; 2383
 ; SequenceCommandTable [C] 48 jp: the commands of the music sequence interpreter, by character - '0' (x 3)
 SequenceCommandTable:
-	jp SeqNop	; 2384
+	jp SeqNop	; 2384  command 30h (never reached: 30h is a note length)
 loc_2387:
-	jp SeqLoopStart	; 2387
+	jp SeqLoopStart	; 2387  command 31h
 loc_238A:
-	jp SeqLoopStart	; 238A
+	jp SeqLoopStart	; 238A  command 32h
 loc_238D:
-	jp SeqTempo	; 238D
+	jp SeqTempo	; 238D  command 33h
 loc_2390:
-	jp SeqLoopEnd	; 2390
+	jp SeqLoopEnd	; 2390  command 34h
 loc_2393:
-	jp SeqCall	; 2393
+	jp SeqCall	; 2393  command 35h
 loc_2396:
-	jp SeqReturn	; 2396
+	jp SeqReturn	; 2396  command 36h
 loc_2399:
-	jp SeqTimerA	; 2399
+	jp SeqTimerA	; 2399  command 37h
 loc_239C:
-	jp SeqLoopEnd	; 239C
+	jp SeqLoopEnd	; 239C  command 38h
 loc_239F:
-	jp SeqJump	; 239F
+	jp SeqJump	; 239F  command 39h
 loc_23A2:
-	jp SeqVolume	; 23A2
+	jp SeqVolume	; 23A2  command 3Ah
 loc_23A5:
-	jp loc_2869	; 23A5
+	jp loc_2869	; 23A5  command 3Bh
 loc_23A8:
-	jp SeqNop	; 23A8
+	jp SeqNop	; 23A8  command 3Ch
 loc_23AB:
-	jp loc_288B	; 23AB
+	jp loc_288B	; 23AB  command 3Dh
 loc_23AE:
-	jp SeqNop	; 23AE
+	jp SeqNop	; 23AE  command 3Eh
 loc_23B1:
-	jp loc_2895	; 23B1
+	jp loc_2895	; 23B1  command 3Fh
 loc_23B4:
-	jp SeqEnd	; 23B4
+	jp SeqEnd	; 23B4  command 40h
 loc_23B7:
-	jp SeqHalt	; 23B7
+	jp SeqHalt	; 23B7  command 41h
 loc_23BA:
-	jp SeqRepeat	; 23BA
+	jp SeqRepeat	; 23BA  command 42h
 loc_23BD:
-	jp loc_287A	; 23BD
+	jp loc_287A	; 23BD  command 43h
 loc_23C0:
-	jp loc_26DC	; 23C0
+	jp loc_26DC	; 23C0  command 44h
 loc_23C3:
-	jp loc_26D6	; 23C3
+	jp loc_26D6	; 23C3  command 45h
 loc_23C6:
-	jp loc_268F	; 23C6
+	jp loc_268F	; 23C6  command 46h
 loc_23C9:
-	jp SeqStartSound	; 23C9
+	jp SeqStartSound	; 23C9  command 47h
 loc_23CC:
-	jp SeqNop	; 23CC
+	jp SeqNop	; 23CC  command 48h
 loc_23CF:
-	jp SeqNop	; 23CF
+	jp SeqNop	; 23CF  command 49h
 loc_23D2:
-	jp SeqNop	; 23D2
+	jp SeqNop	; 23D2  command 4Ah
 loc_23D5:
-	jp loc_2624	; 23D5
+	jp loc_2624	; 23D5  command 4Bh
 loc_23D8:
-	jp loc_2616	; 23D8
+	jp loc_2616	; 23D8  command 4Ch
 loc_23DB:
-	jp loc_26C7	; 23DB
+	jp loc_26C7	; 23DB  command 4Dh
 loc_23DE:
-	jp SeqLfo	; 23DE
+	jp SeqLfo	; 23DE  command 4Eh
 loc_23E1:
-	jp loc_25F9	; 23E1
+	jp loc_25F9	; 23E1  command 4Fh
 loc_23E4:
-	jp SeqYmWrite	; 23E4
+	jp SeqYmWrite	; 23E4  command 50h
 loc_23E7:
-	jp loc_25E9	; 23E7
+	jp loc_25E9	; 23E7  command 51h
 loc_23EA:
-	jp loc_261D	; 23EA
+	jp loc_261D	; 23EA  command 52h
 loc_23ED:
-	jp SeqSsgEnvelope	; 23ED
+	jp SeqSsgEnvelope	; 23ED  command 53h
 loc_23F0:
-	jp loc_2599	; 23F0
+	jp loc_2599	; 23F0  command 54h
 loc_23F3:
-	jp SeqEffectEnd	; 23F3
+	jp SeqEffectEnd	; 23F3  command 55h
 loc_23F6:
-	jp loc_2576	; 23F6
+	jp loc_2576	; 23F6  command 56h
 loc_23F9:
-	jp loc_2529	; 23F9
+	jp loc_2529	; 23F9  command 57h
 loc_23FC:
-	jp loc_2516	; 23FC
+	jp loc_2516	; 23FC  command 58h
 loc_23FF:
-	jp loc_24F5	; 23FF
+	jp loc_24F5	; 23FF  command 59h
 loc_2402:
-	jp loc_249F	; 2402
+	jp loc_249F	; 2402  command 5Ah
 loc_2405:
-	jp loc_2495	; 2405
+	jp loc_2495	; 2405  command 5Bh
 loc_2408:
-	jp loc_248E	; 2408
+	jp loc_248E	; 2408  command 5Ch
 loc_240B:
-	jp loc_2487	; 240B
+	jp loc_2487	; 240B  command 5Dh
 loc_240E:
-	jp loc_2480	; 240E
+	jp loc_2480	; 240E  command 5Eh
 loc_2411:
-	jp loc_2416	; 2411
+	jp loc_2416	; 2411  command 5Fh
 ; SeqNop [C] sequence commands 30h, 3Ch, 3Eh, 48h, 49h, 4Ah: nothing
 SeqNop:
 	exx	; 2414
 	ret	; 2415
 loc_2416:
-	exx	; 2416
+	exx	; 2416  command 5Fh: an SSG pitch slide on channel 5, 6 or 7
 	push ix	; 2417
 	ld a,(CurrentChannel)	; 2419
 	cp 005h	; 241C
@@ -5077,7 +5077,7 @@ loc_2416:
 	jr z,loc_243A	; 2422
 	cp 007h	; 2424
 	jp nz,loc_2479	; 2426
-	ld ix,SsgSlideC	; 2429
+	ld ix,SsgSlideC	; 2429  channel 7: its slide block, not already sliding
 	xor a	; 242D
 	cp (ix+0)	; 242E
 	jp nz,loc_247C	; 2431
@@ -5097,52 +5097,52 @@ loc_244A:
 	jr nz,loc_247C	; 2452
 	ld de,(SsgPeriodA)	; 2454
 loc_2458:
-	xor a	; 2458
+	xor a	; 2458  start the slide from the current period
 	ld (SsgSlideMode),a	; 2459
 	ld (SsgSlideClamped),a	; 245C
 	ld (ix+0),0ffh	; 245F
 	ld (ix+1),e	; 2463
 	ld (ix+2),d	; 2466
-	ld a,(hl)	; 2469
+	ld a,(hl)	; 2469  the slide's step count from the sequence
 	ld (ix+7),a	; 246A
 	ld (ix+8),a	; 246D
 	inc hl	; 2470
 	ld (ix+3),000h	; 2471
 	ld (ix+4),000h	; 2475
 loc_2479:
-	pop ix	; 2479
+	pop ix	; 2479  other channels: nothing
 	ret	; 247B
 loc_247C:
-	inc hl	; 247C
+	inc hl	; 247C  already sliding: skip the parameter
 	pop ix	; 247D
 	ret	; 247F
 loc_2480:
-	exx	; 2480
+	exx	; 2480  command 5Eh: ADPCM-B fade step
 	ld a,(hl)	; 2481
 	ld (AdpcmBFadeStep),a	; 2482
 	inc hl	; 2485
 	ret	; 2486
 loc_2487:
-	exx	; 2487
+	exx	; 2487  command 5Dh: second pitch envelope on or off
 	ld a,(hl)	; 2488
 	ld (PitchEnvelopeOn2),a	; 2489
 	inc hl	; 248C
 	ret	; 248D
 loc_248E:
-	exx	; 248E
+	exx	; 248E  command 5Ch: second ADPCM-B envelope flag
 	ld a,(hl)	; 248F
 	ld (AdpcmBEnvelopeOn2),a	; 2490
 	inc hl	; 2493
 	ret	; 2494
 loc_2495:
-	exx	; 2495
+	exx	; 2495  command 5Bh: ADPCM-B envelope flag
 	ld a,(hl)	; 2496
 	ld (SeqFlagFC39),a	; 2497
 	ld (AdpcmBEnvelopeOn),a	; 249A
 	inc hl	; 249D
 	ret	; 249E
 loc_249F:
-	exx	; 249F
+	exx	; 249F  command 5Ah: stop the ADPCM-A voice of effect channel 11, 12 or 13
 	ld a,(CurrentChannel)	; 24A0
 	cp 00bh	; 24A3
 	jr z,loc_24AF	; 24A5
@@ -5153,9 +5153,9 @@ loc_249F:
 loc_24AF:
 	xor a	; 24AF
 	ld (AdpcmVoices+7),a	; 24B0
-	ld de,00088h	; 24B3
+	ld de,00088h	; 24B3  port B register 00h: dump (stop) that channel
 	call YmWriteB	; 24B6
-	ld de,01c08h	; 24B9
+	ld de,01c08h	; 24B9  flag register 1Ch: reset that channel's end flag
 	call YmWriteA	; 24BC
 	ld de,01c00h	; 24BF
 	call YmWriteA	; 24C2
@@ -5184,11 +5184,11 @@ loc_24DE:
 	call YmWriteA	; 24F1
 	ret	; 24F4
 loc_24F5:
-	exx	; 24F5
+	exx	; 24F5  command 59h: stop the ADPCM-B sound
 	xor a	; 24F6
 	ld (AdpcmBSoundOn),a	; 24F7
 	ld (AdpcmBEffectMode),a	; 24FA
-	ld de,01001h	; 24FD
+	ld de,01001h	; 24FD  register 10h: ADPCM-B reset, end flag reset
 	call YmWriteA	; 2500
 	ld de,01c80h	; 2503
 	call YmWriteA	; 2506
@@ -5198,7 +5198,7 @@ loc_24F5:
 	call YmWriteA	; 2512
 	ret	; 2515
 loc_2516:
-	exx	; 2516
+	exx	; 2516  command 58h: an LFO value (first set, or second while ADPCM-B plays)
 	ld a,(AdpcmBSoundOn)	; 2517
 	or a	; 251A
 	jr nz,loc_2523	; 251B
@@ -5212,7 +5212,7 @@ loc_2523:
 	inc hl	; 2527
 	ret	; 2528
 loc_2529:
-	exx	; 2529
+	exx	; 2529  command 57h: five ADPCM-B envelope bytes
 	ld a,(EnginePass2)	; 252A
 	or a	; 252D
 	jr nz,loc_2555	; 252E
@@ -5222,7 +5222,7 @@ loc_2529:
 	or a	; 2538
 	jr nz,loc_255C	; 2539
 loc_253B:
-	ld a,(hl)	; 253B
+	ld a,(hl)	; 253B  into the current parameters,
 	ld (AdpcmBParams+18),a	; 253C
 	inc hl	; 253F
 	ld a,(hl)	; 2540
@@ -5243,7 +5243,7 @@ loc_2555:
 	ld (LfoValue2),a	; 2557
 	jr loc_253B	; 255A
 loc_255C:
-	ld a,(hl)	; 255C
+	ld a,(hl)	; 255C  or the saved ones while an ADPCM-B sound plays
 	ld (AdpcmBSavedParams+18),a	; 255D
 	inc hl	; 2560
 	ld a,(hl)	; 2561
@@ -5260,7 +5260,7 @@ loc_255C:
 	inc hl	; 2574
 	ret	; 2575
 loc_2576:
-	exx	; 2576
+	exx	; 2576  command 56h: the channel level, byte - 80h
 	ld a,(hl)	; 2577
 	sub 080h	; 2578
 	ld (ix+2),a	; 257A
@@ -5269,7 +5269,7 @@ loc_2576:
 ; SeqEffectEnd [C] command 55h: ends the effect channel (EffectPlaying cleared) and leaves it
 SeqEffectEnd:
 	exx	; 257F
-	ld a,(SpecialEffectKind)	; 2580
+	ld a,(SpecialEffectKind)	; 2580  special effect 4 ends too
 	cp 004h	; 2583
 	jr nz,loc_258B	; 2585
 	xor a	; 2587
@@ -5277,11 +5277,11 @@ SeqEffectEnd:
 loc_258B:
 	xor a	; 258B
 	ld (EffectPlaying),a	; 258C
-	call SsgSilence	; 258F
+	call SsgSilence	; 258F  SSG silent, then out of the interrupt directly
 	ld sp,(EngineStack)	; 2592
 	jp loc_2253	; 2596
 loc_2599:
-	exx	; 2599
+	exx	; 2599  command 54h: start effect n
 	ld a,(hl)	; 259A
 	push hl	; 259B
 	push ix	; 259C
@@ -5305,14 +5305,14 @@ SeqTempo:
 SeqTimerA:
 	exx	; 25B3
 	push ix	; 25B4
-	ld ix,TimerAShadow	; 25B6
+	ld ix,TimerAShadow	; 25B6  shadow of the timer A registers
 	ld e,(hl)	; 25BA
-	ld d,025h	; 25BB
+	ld d,025h	; 25BB  register 25h: timer A low bits
 	call YmWriteA	; 25BD
 	ld (ix+5),e	; 25C0
 	inc hl	; 25C3
 	ld e,(hl)	; 25C4
-	ld d,024h	; 25C5
+	ld d,024h	; 25C5  register 24h: timer A high bits
 	call YmWriteA	; 25C7
 	ld (ix+4),e	; 25CA
 	inc hl	; 25CD
@@ -5323,20 +5323,20 @@ SeqSsgEnvelope:
 	exx	; 25D1
 	ld a,(hl)	; 25D2
 	ld e,a	; 25D3
-	ld d,00dh	; 25D4
+	ld d,00dh	; 25D4  register 0Dh: envelope shape
 	call YmWriteA	; 25D6
 	inc hl	; 25D9
 	ld e,(hl)	; 25DA
-	ld d,00bh	; 25DB
+	ld d,00bh	; 25DB  register 0Bh: envelope period low
 	call YmWriteA	; 25DD
 	inc hl	; 25E0
 	ld e,(hl)	; 25E1
-	ld d,00ch	; 25E2
+	ld d,00ch	; 25E2  register 0Ch: envelope period high
 	call YmWriteA	; 25E4
 	inc hl	; 25E7
 	ret	; 25E8
 loc_25E9:
-	exx	; 25E9
+	exx	; 25E9  command 51h: the effect parameter
 	ld a,(hl)	; 25EA
 	ld (EffectParam),a	; 25EB
 	inc hl	; 25EE
@@ -5344,14 +5344,14 @@ loc_25E9:
 ; SeqYmWrite [C] command 50h: register, value to YM2610 port A
 SeqYmWrite:
 	exx	; 25F0
-	ld d,(hl)	; 25F1
+	ld d,(hl)	; 25F1  register, then value
 	inc hl	; 25F2
 	ld e,(hl)	; 25F3
 	inc hl	; 25F4
 	call YmWriteA	; 25F5
 	ret	; 25F8
 loc_25F9:
-	exx	; 25F9
+	exx	; 25F9  command 4Fh: modulation off flag of this FM channel
 	ld a,(hl)	; 25FA
 	push af	; 25FB
 	exx	; 25FC
@@ -5370,24 +5370,24 @@ loc_25F9:
 SeqLfo:
 	exx	; 260D
 	ld e,(hl)	; 260E
-	ld d,022h	; 260F
+	ld d,022h	; 260F  register 22h: LFO
 	call YmWriteA	; 2611
 	inc hl	; 2614
 	ret	; 2615
 loc_2616:
-	exx	; 2616
+	exx	; 2616  command 4Ch: pitch envelope on or off
 	ld a,(hl)	; 2617
 	ld (PitchEnvelopeOn),a	; 2618
 	inc hl	; 261B
 	ret	; 261C
 loc_261D:
-	exx	; 261D
+	exx	; 261D  command 52h: second pitch envelope on or off
 	ld a,(hl)	; 261E
 	ld (PitchEnvelopeOn2),a	; 261F
 	inc hl	; 2622
 	ret	; 2623
 loc_2624:
-	exx	; 2624
+	exx	; 2624  command 4Bh: nine ADPCM-B pitch envelope bytes
 	ld a,(EnginePass2)	; 2625
 	or a	; 2628
 	jr nz,loc_2659	; 2629
@@ -5397,7 +5397,7 @@ loc_2624:
 	or a	; 2633
 	jr nz,loc_2660	; 2634
 loc_2636:
-	ld a,(hl)	; 2636
+	ld a,(hl)	; 2636  into the current parameters,
 	ld (AdpcmBParams+6),a	; 2637
 	inc hl	; 263A
 	ld a,(hl)	; 263B
@@ -5424,7 +5424,7 @@ loc_2659:
 	ld (LfoValue2),a	; 265B
 	jr loc_2636	; 265E
 loc_2660:
-	ld a,(hl)	; 2660
+	ld a,(hl)	; 2660  or the saved ones while an ADPCM-B sound plays
 	ld (AdpcmBSavedParams+6),a	; 2661
 	inc hl	; 2664
 	ld a,(hl)	; 2665
@@ -5449,12 +5449,12 @@ loc_2660:
 ; SeqStartSound [C] command 47h: starts another sound (PlaySound entry sub_0EF3) and leaves the channel
 SeqStartSound:
 	exx	; 2683
-	ld a,(hl)	; 2684
+	ld a,(hl)	; 2684  the sound number
 	call PlaySoundA	; 2685
-	ld sp,(EngineStack)	; 2688
+	ld sp,(EngineStack)	; 2688  then out of the interrupt directly
 	jp loc_2253	; 268C
 loc_268F:
-	exx	; 268F
+	exx	; 268F  command 46h: the channel's pitch source
 	ld a,(hl)	; 2690
 	cp 040h	; 2691
 	jr c,loc_269F	; 2693
@@ -5465,12 +5465,12 @@ loc_268F:
 	inc hl	; 269D
 	ret	; 269E
 loc_269F:
-	ld a,001h	; 269F
+	ld a,001h	; 269F  below 40h: mode 1, a fixed sample
 	ld (ix+8),a	; 26A1
 	inc hl	; 26A4
 	ret	; 26A5
 loc_26A6:
-	sub 040h	; 26A6
+	sub 040h	; 26A6  40h-7Fh: mode 2, a table entry
 	push hl	; 26A8
 	call LookupTable4F64b	; 26A9
 	ld (StartSoundParam),a	; 26AC
@@ -5480,7 +5480,7 @@ loc_26A6:
 	inc hl	; 26B5
 	ret	; 26B6
 loc_26B7:
-	sub 080h	; 26B7
+	sub 080h	; 26B7  80h-BFh: mode 0, a delta from the table at 5024h
 	push hl	; 26B9
 	call Table5024Entry	; 26BA
 	ld (StartSoundParam),hl	; 26BD
@@ -5490,7 +5490,7 @@ loc_26B7:
 	inc hl	; 26C5
 	ret	; 26C6
 loc_26C7:
-	ld hl,AdpcmARepeatRecords	; 26C7
+	ld hl,AdpcmARepeatRecords	; 26C7  command 4Dh: clear the 6 ADPCM-A repeat records
 	ld de,00007h	; 26CA
 	ld b,006h	; 26CD
 loc_26CF:
@@ -5500,12 +5500,12 @@ loc_26CF:
 	exx	; 26D4
 	ret	; 26D5
 loc_26D6:
-	exx	; 26D6
+	exx	; 26D6  command 45h: no ADPCM-B repeat
 	xor a	; 26D7
 	ld (AdpcmBRepeatCount),a	; 26D8
 	ret	; 26DB
 loc_26DC:
-	ld a,(CurrentChannel)	; 26DC
+	ld a,(CurrentChannel)	; 26DC  command 44h: pan of the channel
 	cp 005h	; 26DF
 	jr c,loc_26F0	; 26E1
 	cp 008h	; 26E3
@@ -5516,7 +5516,7 @@ loc_26DC:
 loc_26F0:
 	cp 003h	; 26F0
 	jr nc,loc_2706	; 26F2
-	ld l,0b4h	; 26F4
+	ld l,0b4h	; 26F4  FM 1-2: register B4h + channel on port A
 	add a,l	; 26F6
 	ld c,a	; 26F7
 	ld l,a	; 26F8
@@ -5527,7 +5527,7 @@ loc_26F0:
 	exx	; 2704
 	ret	; 2705
 loc_2706:
-	sub 002h	; 2706
+	sub 002h	; 2706  FM 3-4: register B4h + channel - 2 on port B
 	ld l,0b4h	; 2708
 	add a,l	; 270A
 	ld c,a	; 270B
@@ -5541,11 +5541,11 @@ loc_2706:
 ; SetPanBits [I] command 44h path: the channel's 2 high bits (left/right) into its register copy
 SetPanBits:
 	add hl,de	; 271A
-	ld a,03fh	; 271B
+	ld a,03fh	; 271B  keep the low 6 bits,
 	and (hl)	; 271D
 	ld (hl),a	; 271E
 	exx	; 271F
-	ld a,(hl)	; 2720
+	ld a,(hl)	; 2720  the 2 pan bits of the parameter to bits 6-7
 	and 003h	; 2721
 	rrca	; 2723
 	rrca	; 2724
@@ -5561,7 +5561,7 @@ SetPanBits:
 	ld e,a	; 2732
 	ret	; 2733
 loc_2734:
-	push iy	; 2734
+	push iy	; 2734  ADPCM-A: pan bits into its level register copy
 	sub 008h	; 2736
 	ld d,000h	; 2738
 	ld e,a	; 273A
@@ -5593,7 +5593,7 @@ loc_2734:
 	pop iy	; 2764
 	ret	; 2766
 loc_2767:
-	exx	; 2767
+	exx	; 2767  ADPCM-B: pan bits into +1
 	ld a,(ix+1)	; 2768
 	and 03fh	; 276B
 	ld b,a	; 276D
@@ -5606,68 +5606,68 @@ loc_2767:
 	inc hl	; 2777
 	ret	; 2778
 loc_2779:
-	exx	; 2779
+	exx	; 2779  SSG: no pan, skip the parameter
 	inc hl	; 277A
 	ret	; 277B
 ; SeqHalt [?] command 41h: di / halt: would stop the Z80; no sequence uses it
 SeqHalt:
 	exx	; 277C
-	di	; 277D
+	di	; 277D  stop the Z80
 	halt	; 277E
 	ret	; 277F
 ; SeqEnd [C] command 40h: silences the channel and leaves it (EngineStack)
 SeqEnd:
 	exx	; 2780
 loc_2781:
-	xor a	; 2781
+	xor a	; 2781  the song stops
 	ld (SongRunning),a	; 2782
 	ld (SongStarting),a	; 2785
-	call FmKeyOffAll	; 2788
+	call FmKeyOffAll	; 2788  FM keys off
 	ld a,(AdpcmBEffectMode)	; 278B
 	or a	; 278E
 	jr nz,loc_27A3	; 278F
-	ld de,01001h	; 2791
+	ld de,01001h	; 2791  ADPCM-B reset unless an ADPCM-B effect plays
 	call YmWriteA	; 2794
 	ld de,01000h	; 2797
 	call YmWriteA	; 279A
-	ld de,00087h	; 279D
+	ld de,00087h	; 279D  port B register 00h = 87h: dump ADPCM-A channels 1-3
 	call YmWriteB	; 27A0
 loc_27A3:
-	ld d,001h	; 27A3
+	ld d,001h	; 27A3  port B register 01h = 3Fh: ADPCM-A master volume
 	ld e,03fh	; 27A5
 	call YmWriteB	; 27A7
-	ld sp,(EngineStack)	; 27AA
+	ld sp,(EngineStack)	; 27AA  out of the interrupt directly
 	jp loc_2253	; 27AE
 ; SeqRepeat [C] command 42h: back to the start of the sequence (+11/+12 to +9/+10)
 SeqRepeat:
 	exx	; 27B1
-	ld l,(ix+11)	; 27B2
+	ld l,(ix+11)	; 27B2  the start of the sequence back as the position
 	ld h,(ix+12)	; 27B5
 	ld (ix+9),l	; 27B8
 	ld (ix+10),h	; 27BB
 	ret	; 27BE
 ; SeqJump [?] command 39h: reads a word at hl without the exx the other commands do, so it would read its operand from $226D; no sequence uses it
 SeqJump:
-	ld e,(hl)	; 27BF
+	ld e,(hl)	; 27BF  (the operand would be read from the wrong register set)
 	inc hl	; 27C0
 	ld h,(hl)	; 27C1
 	ld l,e	; 27C2
 	ret	; 27C3
 ; SeqLoopStart [C] commands 31h, 32h: push a loop (count byte) on the channel's LoopStacks entry
 SeqLoopStart:
-	ld hl,LoopStacks	; 27C4
+	ld hl,LoopStacks	; 27C4  this channel's loop stack
 	call ChannelStackEntry	; 27C7
 	exx	; 27CA
-	ld a,(hl)	; 27CB
+	ld a,(hl)	; 27CB  the count byte from the sequence
 	inc hl	; 27CC
 	push hl	; 27CD
 	exx	; 27CE
 	ld c,a	; 27CF
-	inc (hl)	; 27D0
+	inc (hl)	; 27D0  one more level on the stack
 	ld a,(hl)	; 27D1
-	call AddTimes3	; 27D2
+	call AddTimes3	; 27D2  3 bytes per level
 	pop de	; 27D5
-	ld (hl),c	; 27D6
+	ld (hl),c	; 27D6  count, then the position after the count
 	inc hl	; 27D7
 	ld (hl),e	; 27D8
 	inc hl	; 27D9
@@ -5676,12 +5676,12 @@ SeqLoopStart:
 	ret	; 27DC
 ; ChannelStackEntry [C] hl += CurrentChannel x 16 (LoopStacks, CallStacks), with channels 11-13 and 16 remapped while $FC38 is set
 ChannelStackEntry:
-	ld a,(EnginePass2)	; 27DD
+	ld a,(EnginePass2)	; 27DD  second engine pass: effect channels mapped to their own stacks
 	or a	; 27E0
 	jr nz,loc_27EF	; 27E1
 	ld a,(CurrentChannel)	; 27E3
 loc_27E6:
-	add a,a	; 27E6
+	add a,a	; 27E6  x 16
 	add a,a	; 27E7
 	add a,a	; 27E8
 	add a,a	; 27E9
@@ -5690,7 +5690,7 @@ loc_27E6:
 	add hl,de	; 27ED
 	ret	; 27EE
 loc_27EF:
-	ld a,(CurrentChannel)	; 27EF
+	ld a,(CurrentChannel)	; 27EF  channels 11, 12, 13 and 16 use stack entries 18, 17, 15 and 16
 	cp 00dh	; 27F2
 	jr z,loc_2808	; 27F4
 	cp 00ch	; 27F6
@@ -5714,7 +5714,7 @@ loc_2810:
 	jr loc_27E6	; 2812
 ; AddTimes3 [C] hl += a x 3
 AddTimes3:
-	ld e,a	; 2814
+	ld e,a	; 2814  a x 3
 	add a,a	; 2815
 	add a,e	; 2816
 	ld e,a	; 2817
@@ -5725,13 +5725,13 @@ AddTimes3:
 SeqLoopEnd:
 	ld hl,LoopStacks	; 281C
 	call ChannelStackEntry	; 281F
-	ld a,(hl)	; 2822
+	ld a,(hl)	; 2822  the current level
 	ld b,h	; 2823
 	ld c,l	; 2824
 	call AddTimes3	; 2825
-	dec (hl)	; 2828
+	dec (hl)	; 2828  one count less
 	jr z,loc_2833	; 2829
-	inc hl	; 282B
+	inc hl	; 282B  not yet zero: back to the stored position
 	ld e,(hl)	; 282C
 	inc hl	; 282D
 	ld d,(hl)	; 282E
@@ -5740,25 +5740,25 @@ SeqLoopEnd:
 	pop hl	; 2831
 	ret	; 2832
 loc_2833:
-	ld h,b	; 2833
+	ld h,b	; 2833  zero: drop the level, carry on after the end command
 	ld l,c	; 2834
 	dec (hl)	; 2835
 	exx	; 2836
 	ret	; 2837
 ; SeqCall [C] command 35h: call the sub-sequence at the word that follows (CallStacks)
 SeqCall:
-	ld hl,CallStacks	; 2838
+	ld hl,CallStacks	; 2838  this channel's call stack, one level more
 	call ChannelStackEntry	; 283B
 	inc (hl)	; 283E
 	ld a,(hl)	; 283F
 	call AddTimes3	; 2840
 	exx	; 2843
-	ld e,(hl)	; 2844
+	ld e,(hl)	; 2844  the word that follows: the sub-sequence
 	inc hl	; 2845
 	ld d,(hl)	; 2846
 	inc hl	; 2847
 	ex de,hl	; 2848
-	push de	; 2849
+	push de	; 2849  the return position (after the word) onto the stack
 	exx	; 284A
 	pop de	; 284B
 	ld (hl),e	; 284C
@@ -5772,10 +5772,10 @@ SeqReturn:
 	push hl	; 2852
 	ld hl,CallStacks	; 2853
 	call ChannelStackEntry	; 2856
-	ld a,(hl)	; 2859
+	ld a,(hl)	; 2859  no level: carry on
 	or a	; 285A
 	jr z,loc_2867	; 285B
-	dec (hl)	; 285D
+	dec (hl)	; 285D  drop the level, back to its stored position
 	call AddTimes3	; 285E
 	ld e,(hl)	; 2861
 	inc hl	; 2862
@@ -5787,7 +5787,7 @@ loc_2867:
 	pop hl	; 2867
 	ret	; 2868
 loc_2869:
-	exx	; 2869
+	exx	; 2869  command 3Bh: start ADPCM-A sound n
 	push ix	; 286A
 	push iy	; 286C
 	push hl	; 286E
@@ -5799,7 +5799,7 @@ loc_2869:
 	inc hl	; 2878
 	ret	; 2879
 loc_287A:
-	exx	; 287A
+	exx	; 287A  command 43h: start ADPCM-B sound n
 	push ix	; 287B
 	push iy	; 287D
 	push hl	; 287F
@@ -5811,14 +5811,14 @@ loc_287A:
 	inc hl	; 2889
 	ret	; 288A
 loc_288B:
-	exx	; 288B
+	exx	; 288B  command 3Dh: the channel's owner (ChannelOwner)
 	ld b,(hl)	; 288C
 	ld a,(CurrentChannel)	; 288D
 	call SetChannelOwner	; 2890
 	inc hl	; 2893
 	ret	; 2894
 loc_2895:
-	exx	; 2895
+	exx	; 2895  command 3Fh: an ADPCM-A master parameter
 	ld a,001h	; 2896
 	ld (CurrentSound),a	; 2898
 	ld a,(hl)	; 289B
@@ -5836,27 +5836,27 @@ SeqVolume:
 ; NoteLengthTimes [C] turns the length byte into the two counters +4/+5 (gate and note), scaled by the channel's ChannelOwner value
 NoteLengthTimes:
 	push hl	; 28AA
-	ld c,a	; 28AB
+	ld c,a	; 28AB  bits 3-7 of the length: the gate shift
 	rrca	; 28AC
 	rrca	; 28AD
 	rrca	; 28AE
 	and 01fh	; 28AF
 	push af	; 28B1
-	ld hl,ChannelOwner	; 28B2
+	ld hl,ChannelOwner	; 28B2  the channel's owner value
 	ex af,af'	; 28B5
 	ld e,a	; 28B6
 	ld d,000h	; 28B7
 	ex af,af'	; 28B9
 	add hl,de	; 28BA
 	ld b,(hl)	; 28BB
-	ld a,007h	; 28BC
+	ld a,007h	; 28BC  7: the gate time is the whole length
 	cp b	; 28BE
 	jp z,loc_28E6	; 28BF
 	pop af	; 28C2
-	ld d,c	; 28C3
+	ld d,c	; 28C3  0: the gate from GateTimeTable
 	or a	; 28C4
 	jr z,loc_28D3	; 28C5
-	inc b	; 28C7
+	inc b	; 28C7  otherwise gate = value x (owner + 1)
 	ld e,000h	; 28C8
 	ld c,a	; 28CA
 loc_28CB:
@@ -5886,7 +5886,7 @@ loc_28E6:
 	ld a,c	; 28E7
 	ld b,c	; 28E8
 loc_28E9:
-	sub b	; 28E9
+	sub b	; 28E9  a = note time - gate time
 	pop hl	; 28EA
 	ret	; 28EB
 ; SetChannelOwner [C] ChannelOwner[a] = b & 7
@@ -5896,7 +5896,7 @@ SetChannelOwner:
 	push de	; 28EE
 	ld e,a	; 28EF
 	ld d,000h	; 28F0
-	ld hl,ChannelOwner	; 28F2
+	ld hl,ChannelOwner	; 28F2  ChannelOwner[a]
 	add hl,de	; 28F5
 	ld a,b	; 28F6
 	and 007h	; 28F7
@@ -5909,7 +5909,7 @@ SetChannelOwner:
 SetTempo:
 	push ix	; 28FE
 	ld ix,TimerAShadow	; 2900
-	ld e,a	; 2904
+	ld e,a	; 2904  register 26h: timer B, the music tempo
 	ld d,026h	; 2905
 	call YmWriteA	; 2907
 	ld (ix+6),a	; 290A
@@ -5919,18 +5919,18 @@ SetTempo:
 SetTimerA:
 	push ix	; 2910
 	ld ix,TimerAShadow	; 2912
-	and 00fh	; 2916
+	and 00fh	; 2916  TimerATable[a]: two bytes
 	add a,a	; 2918
 	ld e,a	; 2919
 	ld d,000h	; 291A
 	ld hl,TimerATable	; 291C
 	add hl,de	; 291F
-	ld e,(hl)	; 2920
+	ld e,(hl)	; 2920  register 25h: timer A low bits
 	ld d,025h	; 2921
 	call YmWriteA	; 2923
 	ld (ix+5),e	; 2926
 	inc hl	; 2929
-	ld e,(hl)	; 292A
+	ld e,(hl)	; 292A  register 24h: timer A high bits
 	ld d,024h	; 292B
 	call YmWriteA	; 292D
 	ld (ix+4),e	; 2930
@@ -5939,12 +5939,12 @@ SetTimerA:
 ; YmWriteA [C] writes YM2610 register d = e through port A ($04, $05), with rst 08h / 10h waits
 YmWriteA:
 	push af	; 2936
-	ld a,d	; 2937
+	ld a,d	; 2937  register number to port 04h
 	out (PORT_YM_ADDR_A),a	; 2938
-	rst 008h	; 293A
-	ld a,e	; 293B
+	rst 008h	; 293A  short wait
+	ld a,e	; 293B  the value to port 05h
 	out (PORT_YM_DATA_A),a	; 293C
-	rst 010h	; 293E
+	rst 010h	; 293E  longer wait
 	pop af	; 293F
 	ret	; 2940
 ; YmWriteB [C] same through port B ($06, $07)

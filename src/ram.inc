@@ -8,7 +8,7 @@
 	.equ	WorkIndex,0x10FCD8
 	.equ	WorkIndexLo,0x10FCD9
 	.equ	WorkIndexNew,0x10FCDA
-	.equ	CardRomType,0x10FCF4
+	.equ	CardHeaderType,0x10FCF4
 	.equ	BIOS_SYSTEM_MODE,0x10FD80
 	.equ	BIOS_SYSRET_STATUS,0x10FD81
 	.equ	BIOS_MVS_FLAG,0x10FD82
@@ -239,7 +239,7 @@
 	.equ	MonitorSavedUsp,0x10FD40
 	.equ	MonitorSavedPc,0x10FD44
 	.equ	MonitorSavedSr,0x10FD48
-	.equ	MonitorFrameWord,0x10FD4A
+	.equ	MonitorClearedWord,0x10FD4A
 	.equ	MonitorCause,0x10FD4C
 	.equ	CardSavedColour1,0x10FD4E
 	.equ	MonitorSavedColour,0x10FD4E

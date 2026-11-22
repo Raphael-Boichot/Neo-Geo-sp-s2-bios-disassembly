@@ -3,23 +3,23 @@
 
 | Eyecatcher [C] system ROM eyecatcher, reached when CART_EYECATCH_FLAG is 0: the NEO-GEO letters are sprites from the cartridge C ROM (bank CART_EYECATCH_BANK), MAX 330 MEGA / PRO-GEAR SPEC and the SNK logo are board fix ROM tiles (README, Eyecatcher assets); MAME boot sequence
 Eyecatcher:
-	move.b	#0x3,(REG_SOUND).l	| C17E26
+	move.b	#0x3,(REG_SOUND).l	| C17E26  sound command 3: the Z80 restarts (the cartridge M1 ROM, selected by SwitchSlot)
 	lea.l	(BiosWorkRam).l,a5	| C17E2E
 	moveq	#0x0,d0	| C17E34
-	move.w	d0,(WorkIndex-A5_BASE,a5)	| C17E36
+	move.w	d0,(WorkIndex-A5_BASE,a5)	| C17E36  step 0 first
 	move.w	d0,(EyecatchColoursPending-A5_BASE,a5)	| C17E3A
-	move.b	d0,(REG_NOSHADOW).l	| C17E3E
-	andi.w	#0xF0FF,sr	| C17E44
+	move.b	d0,(REG_NOSHADOW).l	| C17E3E  shadow off
+	andi.w	#0xF0FF,sr	| C17E44  interrupts on
 	jsr	(WaitFrame,pc)	| C17E48
 loc_C17E4C:
-	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17E4C
+	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17E4C  every frame: queue the sprite list (MESS_OUT), then the step
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17E50
 	move.l	#EyecatchSpriteInit,(a0)+	| C17E54
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17E5A
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17E5E
 	jsr	(WaitFrame,pc)	| C17E62
 	lea.l	(BiosWorkRam).l,a5	| C17E66
-	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C17E6C
+	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C17E6C  MVS: credits end the eyecatcher at once
 	beq.b	loc_C17E84	| C17E70
 	tst.w	(Credits).l	| C17E72
 	beq.b	loc_C17E96	| C17E78
@@ -27,24 +27,24 @@ loc_C17E4C:
 loc_C17E7E:
 	jmp	(SystemReturn).l	| C17E7E
 loc_C17E84:
-	move.b	(SysP1Change-A5_BASE,a5),d0	| C17E84
+	move.b	(SysP1Change-A5_BASE,a5),d0	| C17E84  AES: A-D or START end it
 	andi.b	#0xF0,d0	| C17E88
 	bne.b	loc_C17E7E	| C17E8C
 	btst.b	#0x0,(BIOS_STATCHANGE-A5_BASE,a5)	| C17E8E
 	bne.b	loc_C17E7E	| C17E94
 loc_C17E96:
-	tst.w	(EyecatchColoursPending-A5_BASE,a5)	| C17E96
+	tst.w	(EyecatchColoursPending-A5_BASE,a5)	| C17E96  colours queued by EyecatchSetColours: copy them now (after VBlank)
 	beq.b	loc_C17EBA	| C17E9A
 	movea.l	(EyecatchColoursPointer-A5_BASE,a5),a0	| C17E9C
-	lea.l	(0x4001E2).l,a1	| C17EA0
+	lea.l	(0x4001E2).l,a1	| C17EA0  palette 15, colours 1-5
 	moveq	#0x4,d6	| C17EA6
 loc_C17EA8:
 	move.w	(a0)+,(a1)+	| C17EA8
 	dbra	d6,loc_C17EA8	| C17EAA
-	move.w	(a0),(0x401FFE).l	| C17EAE
+	move.w	(a0),(0x401FFE).l	| C17EAE  and the backdrop colour
 	clr.w	(EyecatchColoursPending).l	| C17EB4
 loc_C17EBA:
-	move.w	(WorkIndex-A5_BASE,a5),d0	| C17EBA
+	move.w	(WorkIndex-A5_BASE,a5),d0	| C17EBA  run the step in WorkIndex
 	lsl.w	#0x2,d0	| C17EBE
 	movea.l	(EyecatchSteps,pc,d0.w),a0	| C17EC0
 	jsr	(a0)	| C17EC4
@@ -66,7 +66,7 @@ EyecatchSpriteInit:
 	dc.b	0x03,0x01,0x00,0x24,0x01,0x02,0x00,0x03,0x84,0x01,0x00,0x04,0x00,0x10,0xFC,0x00
 	dc.b	0x00,0x03,0x82,0x01,0x00,0x06,0x00,0x03,0x80,0x01,0x00,0x06,0x00,0x00
 loc_C17F0E:
-	moveq	#0x0,d0	| C17F0E
+	moveq	#0x0,d0	| C17F0E  step 0: both palette banks cleared
 	move.l	d0,d1	| C17F10
 	move.l	d0,d2	| C17F12
 	move.l	d0,d3	| C17F14
@@ -89,79 +89,79 @@ loc_C17F4A:
 	movem.l	d0-d3,-(a0)	| C17F56
 	dbra	d7,loc_C17F4A	| C17F5A
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C17F5E
-	jsr	(FixClear,pc)	| C17F62
+	jsr	(FixClear,pc)	| C17F62  fix layer and sprites cleared
 	jsr	(LspFirst,pc)	| C17F66
-	move.l	#0xDDD0000,(0x400002).l	| C17F6A
-	lea.l	(EyecatchLogoTiles1).l,a0	| C17F74
+	move.l	#0xDDD0000,(0x400002).l	| C17F6A  palette 0: colour 1 $0DDD, colour 2 black
+	lea.l	(EyecatchLogoTiles1).l,a0	| C17F74  the NEO-GEO letters: 18 columns of sprites from SCB1 $0040,
 	move.w	#0x40,d0	| C17F7A
-	move.b	(CART_EYECATCH_BANK).w,d2	| C17F7E
+	move.b	(CART_EYECATCH_BANK).w,d2	| C17F7E  tiles from the cartridge's C ROM bank (CART_EYECATCH_BANK)
 	lsl.w	#0x8,d2	| C17F82
-	move.w	#0xF01,d1	| C17F84
+	move.w	#0xF01,d1	| C17F84  attribute $F01: palette 15, flipped
 	jsr	(EyecatchSetSprites,pc)	| C17F88
-	lea.l	(EyecatchLogoTiles2).l,a0	| C17F8C
+	lea.l	(EyecatchLogoTiles2).l,a0	| C17F8C  the mirror image from SCB1 $04C0, not flipped
 	move.w	#0x4C0,d0	| C17F92
 	move.w	#0xF00,d1	| C17F96
 	jsr	(EyecatchSetSprites,pc)	| C17F9A
-	move.w	#0x0,-0x2(a1)	| C17F9E
+	move.w	#0x0,-0x2(a1)	| C17F9E  then d2 into 32 tile words from VRAM 0 (sprite 0)
 	move.w	#0x2,0x2(a1)	| C17FA4
 	moveq	#0x1F,d6	| C17FAA
 loc_C17FAC:
 	move.w	d2,(a1)	| C17FAC
 	dbra	d6,loc_C17FAC	| C17FAE
-	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17FB2
+	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C17FB2  the fix layer texts (EyecatchFixMess)
 	move.l	#EyecatchFixMess,(a0)+	| C17FB6
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C17FBC
-	lea.l	(EyecatchYPos-A5_BASE,a5),a0	| C17FC0
-	move.w	#0xE404,(a0)+	| C17FC4
+	lea.l	(EyecatchYPos-A5_BASE,a5),a0	| C17FC0  the sprite positions and sizes that the list writes every frame:
+	move.w	#0xE404,(a0)+	| C17FC4  first sprite: Y and height, the rest chained ($44 per word: sticky bit)
 	moveq	#0x44,d0	| C17FC8
 	moveq	#0x22,d7	| C17FCA
 loc_C17FCC:
 	move.w	d0,(a0)+	| C17FCC
 	dbra	d7,loc_C17FCC	| C17FCE
 	clr.w	(EyecatchYPos2-A5_BASE,a5)	| C17FD2
-	move.w	#0x4B80,(EyecatchXPos-A5_BASE,a5)	| C17FD6
-	move.w	#0xFF,d0	| C17FDC
+	move.w	#0x4B80,(EyecatchXPos-A5_BASE,a5)	| C17FD6  X position
+	move.w	#0xFF,d0	| C17FDC  horizontal shrink, first half: starts at $00FF (almost nothing)
 	lea.l	(EyecatchShrink-A5_BASE,a5),a0	| C17FE0
 	moveq	#0x11,d7	| C17FE4
 loc_C17FE6:
 	move.w	d0,(a0)+	| C17FE6
 	dbra	d7,loc_C17FE6	| C17FE8
-	move.w	#0xFFF,d0	| C17FEC
+	move.w	#0xFFF,d0	| C17FEC  second half: full size
 	moveq	#0x11,d7	| C17FF0
 loc_C17FF2:
 	move.w	d0,(a0)+	| C17FF2
 	dbra	d7,loc_C17FF2	| C17FF4
-	move.w	#0x0,d0	| C17FF8
+	move.w	#0x0,d0	| C17FF8  colours: set 0 (dark)
 	bsr.w	EyecatchSetColours	| C17FFC
 	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C18000
-	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C18006
+	move.w	#0x1,(WorkIndex-A5_BASE,a5)	| C18006  next step: 1
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1800C
 	rts	| C18010
 loc_C18012:
-	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18012
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18012  step 1: the letters grow
 	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C18016
-	cmpi.w	#0x5,d0	| C1801A
+	cmpi.w	#0x5,d0	| C1801A  frame 5: the jingle
 	bne.b	loc_C18036	| C1801E
-	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C18020
+	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C18020  MVS with DEMO SOUND WITHOUT: no jingle
 	beq.b	loc_C1802E	| C18024
 	tst.b	(DemoSoundOff).l	| C18026
 	bne.b	loc_C18036	| C1802C
 loc_C1802E:
-	move.b	#0x2,(REG_SOUND).l	| C1802E
+	move.b	#0x2,(REG_SOUND).l	| C1802E  sound command 2: the eyecatcher jingle (cartridge M1)
 loc_C18036:
-	andi.w	#0x1,d0	| C18036
+	andi.w	#0x1,d0	| C18036  every second frame:
 	bne.b	loc_C18072	| C1803A
 	lea.l	(EyecatchShrink-A5_BASE,a5),a0	| C1803C
-	move.w	(EyecatchXPos-A5_BASE,a5),d1	| C18040
+	move.w	(EyecatchXPos-A5_BASE,a5),d1	| C18040  move left by 9 pixels
 	subi.w	#0x480,d1	| C18044
 	move.w	d1,(EyecatchXPos-A5_BASE,a5)	| C18048
-	move.w	(a0),d0	| C1804C
+	move.w	(a0),d0	| C1804C  wider by one step
 	addi.w	#0x100,d0	| C1804E
 	moveq	#0x11,d7	| C18052
 loc_C18054:
 	move.w	d0,(a0)+	| C18054
 	dbra	d7,loc_C18054	| C18056
-	cmpi.w	#0xFFF,d0	| C1805A
+	cmpi.w	#0xFFF,d0	| C1805A  full width: pause 10 frames, then step 2
 	bne.b	loc_C18072	| C1805E
 	move.w	#0x0,(WorkIndexNew-A5_BASE,a5)	| C18060
 	move.w	#0xA,(EyecatchTimer-A5_BASE,a5)	| C18066
@@ -169,33 +169,33 @@ loc_C18054:
 loc_C18072:
 	rts	| C18072
 loc_C18074:
-	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18074
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18074  step 2: wait, then step 3
 	bne.b	loc_C18080	| C18078
 	move.w	#0x3,(WorkIndex-A5_BASE,a5)	| C1807A
 loc_C18080:
 	rts	| C18080
 loc_C18082:
-	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18082
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18082  step 3: every second frame, colours one step brighter,
 	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C18086
 	andi.w	#0x1,d0	| C1808A
 	bne.b	loc_C180DA	| C1808E
 	jsr	(EyecatchFadeStep,pc)	| C18090
-	subi.w	#0x100,(EyecatchYPos-A5_BASE,a5)	| C18094
+	subi.w	#0x100,(EyecatchYPos-A5_BASE,a5)	| C18094  and the letters rise and flatten (vertical shrink)
 	subi.b	#0x10,(EyecatchShrinkV-A5_BASE,a5)	| C1809A
 	bcc.b	loc_C180DA	| C180A0
-	move.w	#0xF00,(EyecatchShrink2-A5_BASE,a5)	| C180A2
+	move.w	#0xF00,(EyecatchShrink2-A5_BASE,a5)	| C180A2  flat: the second sprite set (EyecatchShrink2, EyecatchYPos2) takes over
 	move.w	(EyecatchYPos-A5_BASE,a5),(EyecatchYPos2-A5_BASE,a5)	| C180A8
 	move.w	#0x6404,(EyecatchYPos-A5_BASE,a5)	| C180AE
 	move.w	#0x800,(EyecatchXPos2-A5_BASE,a5)	| C180B4
 	move.w	#0x4,(WorkIndex-A5_BASE,a5)	| C180BA
 	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C180C0
 	move.w	#0x0,(EyecatchCharCount-A5_BASE,a5)	| C180C6
-	move.w	#0x71B0,(EyecatchCharAddress-A5_BASE,a5)	| C180CC
+	move.w	#0x71B0,(EyecatchCharAddress-A5_BASE,a5)	| C180CC  the text below starts at fix $71B0
 	move.l	#EyecatchTextTiles,(EyecatchCharPointer-A5_BASE,a5)	| C180D2
 loc_C180DA:
 	rts	| C180DA
 loc_C180DC:
-	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C180DC
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C180DC  step 4: the mirror image grows down while the colours fade in
 	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C180E0
 	andi.w	#0x1,d0	| C180E4
 	bne.b	loc_C18118	| C180E8
@@ -209,44 +209,44 @@ loc_C180FE:
 	move.b	d0,(EyecatchShrink2V-A5_BASE,a5)	| C18102
 	cmpi.b	#0xFF,d0	| C18106
 	bne.b	loc_C18118	| C1810A
-	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C1810C
+	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C1810C  full height: step 5
 	move.w	#0x5,(WorkIndex-A5_BASE,a5)	| C18112
 loc_C18118:
 	rts	| C18118
 loc_C1811A:
-	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C1811A
+	addq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C1811A  step 5: every 4 frames one more text character on the fix layer
 	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C1811E
 	andi.w	#0x3,d0	| C18122
 	bne.w	loc_C18192	| C18126
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1812A
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1812E
-	move.l	#0x0,(a0)+	| C18132
-	move.l	#0x3010002,(a0)+	| C18138
+	move.l	#0x0,(a0)+	| C18132  an inline MESS_OUT list:
+	move.l	#0x3010002,(a0)+	| C18138  format and auto-increment words of the list
 	move.w	#0x102,(a0)+	| C1813E
 	move.w	#0x3,(a0)+	| C18142
-	move.w	(EyecatchCharAddress-A5_BASE,a5),(a0)+	| C18146
-	move.w	#0x4,(a0)+	| C1814A
+	move.w	(EyecatchCharAddress-A5_BASE,a5),(a0)+	| C18146  command 3: VRAM address of this character
+	move.w	#0x4,(a0)+	| C1814A  command 4: the two tile words at EyecatchCharPointer
 	move.l	(EyecatchCharPointer-A5_BASE,a5),(a0)+	| C1814E
-	move.w	#0x0,(a0)+	| C18152
+	move.w	#0x0,(a0)+	| C18152  command 0: end
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C18156
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C1815A
-	addq.l	#0x4,(EyecatchCharPointer-A5_BASE,a5)	| C1815E
+	addq.l	#0x4,(EyecatchCharPointer-A5_BASE,a5)	| C1815E  next character: 4 bytes on, one column right
 	addi.w	#0x20,(EyecatchCharAddress-A5_BASE,a5)	| C18162
 	addq.w	#0x1,(EyecatchCharCount-A5_BASE,a5)	| C18168
 	move.w	(EyecatchCharCount-A5_BASE,a5),d0	| C1816C
-	cmpi.w	#0xF,d0	| C18170
+	cmpi.w	#0xF,d0	| C18170  after 15 characters: the second line at fix $7192
 	bne.b	loc_C1817C	| C18174
 	move.w	#0x7192,(EyecatchCharAddress-A5_BASE,a5)	| C18176
 loc_C1817C:
 	move.w	(EyecatchCharCount-A5_BASE,a5),d0	| C1817C
-	cmpi.w	#0x20,d0	| C18180
+	cmpi.w	#0x20,d0	| C18180  32 characters: wait 20 frames (step 6)
 	bne.b	loc_C18192	| C18184
 	move.w	#0x6,(WorkIndex-A5_BASE,a5)	| C18186
 	move.w	#0x14,(EyecatchTimer-A5_BASE,a5)	| C1818C
 loc_C18192:
 	rts	| C18192
 loc_C18194:
-	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18194
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18194  step 6: wait, then step 7
 	bne.b	loc_C181AC	| C18198
 	move.w	#0x7,(WorkIndex-A5_BASE,a5)	| C1819A
 	move.w	#0x0,(EyecatchTimer-A5_BASE,a5)	| C181A0
@@ -254,7 +254,7 @@ loc_C18194:
 loc_C181AC:
 	rts	| C181AC
 loc_C181AE:
-	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C181AE
+	move.w	(EyecatchTimer-A5_BASE,a5),d0	| C181AE  step 7: every second frame the next colour set (EyecatchFadeIndex2)
 	addq.w	#0x1,d0	| C181B2
 	move.w	d0,(EyecatchTimer-A5_BASE,a5)	| C181B4
 	andi.w	#0x1,d0	| C181B8
@@ -266,37 +266,37 @@ loc_C181AE:
 	bsr.w	EyecatchSetColours	| C181CE
 	addq.w	#0x1,(WorkIndexNew-A5_BASE,a5)	| C181D2
 	move.w	(WorkIndexNew-A5_BASE,a5),d0	| C181D6
-	cmpi.w	#0x10,d0	| C181DA
+	cmpi.w	#0x10,d0	| C181DA  16 sets: done
 	bne.w	loc_C18206	| C181DE
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C181E2
-	move.w	#0x7469,(REG_VRAMADDR).l	| C181E6
+	move.w	#0x7469,(REG_VRAMADDR).l	| C181E6  tile $7B at fix $7469, near the bottom right corner
 	move.w	#0x7B,(REG_VRAMRW).l	| C181EE
-	move.w	#0xB4,(EyecatchTimer-A5_BASE,a5)	| C181F6
+	move.w	#0xB4,(EyecatchTimer-A5_BASE,a5)	| C181F6  hold for 180 frames (step 8)
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C181FC
 	move.w	#0x8,(WorkIndex-A5_BASE,a5)	| C18200
 loc_C18206:
 	rts	| C18206
 loc_C18208:
-	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18208
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C18208  step 8: wait
 	bne.b	loc_C1822A	| C1820C
-	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1820E
+	tst.b	(BIOS_MVS_FLAG-A5_BASE,a5)	| C1820E  MVS with country code USA: the FBI screen
 	beq.b	loc_C1821C	| C18212
 	cmpi.b	#0x1,(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C18214
 	beq.b	loc_C1822C	| C1821A
 loc_C1821C:
-	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1821C
+	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C1821C  country code Japan: the JAPAN ONLY screen; other countries: back to the game
 	beq.w	loc_C18288	| C18220
 	jmp	(SystemReturn).l	| C18224
 loc_C1822A:
 	rts	| C1822A
 loc_C1822C:
-	jsr	(SoundSlotSwitch,pc)	| C1822C
+	jsr	(SoundSlotSwitch,pc)	| C1822C  FBI screen: system ROM vectors and board fix
 	jsr	(WaitFrame,pc)	| C18230
 	move.b	#0xFF,(BiosScreenActive-A5_BASE,a5)	| C18234
 	move.b	d0,(REG_SWPBIOS).l	| C1823A
 	move.b	d0,(REG_BRDFIX).l	| C18240
 	clr.l	(0x400002).l	| C18246
-	lea.l	(0x400020).l,a0	| C1824C
+	lea.l	(0x400020).l,a0	| C1824C  palette 1 from FbiScreenPalette (16 colours)
 	lea.l	(FbiScreenPalette).l,a1	| C18252
 	moveq	#0x7,d7	| C18258
 loc_C1825A:
@@ -309,38 +309,38 @@ loc_C1825A:
 loc_C18272:
 	move.l	a0,(BIOS_MESS_POINT-A5_BASE,a5)	| C18272
 	subq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18276
-	move.w	#0x12C,(EyecatchTimer-A5_BASE,a5)	| C1827A
+	move.w	#0x12C,(EyecatchTimer-A5_BASE,a5)	| C1827A  both screens: 300 frames, step 9
 	move.w	#0x9,(WorkIndex-A5_BASE,a5)	| C18280
 	rts	| C18286
 loc_C18288:
-	move.l	#0xEEE0000,(0x400002).l	| C18288
+	move.l	#0xEEE0000,(0x400002).l	| C18288  JAPAN ONLY: text colour $0EEE
 	jsr	(ClearFixLayer,pc)	| C18292
 	addq.b	#0x1,(BIOS_MESS_BUSY-A5_BASE,a5)	| C18296
 	movea.l	(BIOS_MESS_POINT-A5_BASE,a5),a0	| C1829A
 	move.l	#JapanOnlyWarningText,(a0)+	| C1829E
 	bra.b	loc_C18272	| C182A4
 loc_C182A6:
-	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C182A6
+	subq.w	#0x1,(EyecatchTimer-A5_BASE,a5)	| C182A6  step 9: wait
 	beq.b	loc_C182AE	| C182AA
 	rts	| C182AC
 loc_C182AE:
-	cmpi.w	#0x9,(WorkIndex-A5_BASE,a5)	| C182AE
+	cmpi.w	#0x9,(WorkIndex-A5_BASE,a5)	| C182AE  end: from step 9 with the FBI screen, give the ROMs back to the cartridge
 	bne.w	loc_C182EA	| C182B4
 	tst.b	(BIOS_COUNTRY_CODE-A5_BASE,a5)	| C182B8
 	beq.w	loc_C182EA	| C182BC
 	clr.l	(0x400002).l	| C182C0
 	jsr	(ClearFixLayer,pc)	| C182C6
-	jsr	(SoundSlotSwitch,pc)	| C182CA
+	jsr	(SoundSlotSwitch,pc)	| C182CA  park the Z80, then restart it on the cartridge M1
 	jsr	(WaitFrame,pc)	| C182CE
 	move.b	#0x3,(REG_SOUND).l	| C182D2
-	move.b	d0,(REG_CRTFIX).l	| C182DA
+	move.b	d0,(REG_CRTFIX).l	| C182DA  cartridge fix and vectors
 	move.b	d0,(REG_SWPROM).l	| C182E0
 	clr.b	(BiosScreenActive-A5_BASE,a5)	| C182E6
 loc_C182EA:
-	jmp	(SystemReturn).l	| C182EA
+	jmp	(SystemReturn).l	| C182EA  SYSTEM_RETURN code 1 (set by SystemMode1)
 | EyecatchFadeStep [C] next step of the eyecatcher colour fade: colour set from EyecatchFadeIndex[WorkIndexNew] (EyecatchSetColours)
 EyecatchFadeStep:
-	move.w	(WorkIndexNew-A5_BASE,a5),d1	| C182F0
+	move.w	(WorkIndexNew-A5_BASE,a5),d1	| C182F0  next set of the fade table
 	lea.l	(EyecatchFadeIndex).l,a0	| C182F4
 	moveq	#0x0,d0	| C182FA
 	move.b	(a0,d1.w),d0	| C182FC
@@ -349,33 +349,33 @@ EyecatchFadeStep:
 	rts	| C18308
 | EyecatchSetSprites [C] writes 18 sprite columns from VRAM address d0 (step $40): 4 tiles from a0 with attribute d1, then 28 empty tiles; the tile number is CART_EYECATCH_BANK x 256 + the byte, so the graphics come from the cartridge C ROM
 EyecatchSetSprites:
-	lea.l	(REG_VRAMRW).l,a1	| C1830A
+	lea.l	(REG_VRAMRW).l,a1	| C1830A  VRAM data register, auto-increment 1
 	move.w	#0x1,0x2(a1)	| C18310
-	moveq	#0x11,d7	| C18316
+	moveq	#0x11,d7	| C18316  18 columns
 loc_C18318:
-	move.w	d0,-0x2(a1)	| C18318
+	move.w	d0,-0x2(a1)	| C18318  SCB1 address of this column
 	moveq	#0x3,d6	| C1831C
 loc_C1831E:
-	move.b	(a0)+,d2	| C1831E
+	move.b	(a0)+,d2	| C1831E  4 tiles: tile number from the table, then the attribute
 	move.w	d2,(a1)	| C18320
 	nop	| C18322
 	move.w	d1,(a1)	| C18324
 	dbra	d6,loc_C1831E	| C18326
-	moveq	#0x1B,d6	| C1832A
+	moveq	#0x1B,d6	| C1832A  then 28 empty tiles (tile $FF)
 	move.b	#0xFF,d2	| C1832C
 loc_C18330:
 	move.w	d2,(a1)	| C18330
 	nop	| C18332
 	move.w	#0x0,(a1)	| C18334
 	dbra	d6,loc_C18330	| C18338
-	addi.w	#0x40,d0	| C1833C
+	addi.w	#0x40,d0	| C1833C  next sprite: 64 words further
 	dbra	d7,loc_C18318	| C18340
 	rts	| C18344
 | EyecatchSetColours [C] queues colour set d0 (12 bytes at EyecatchColourSets) for the next VBlank: 5 colours to $4001E2 and the backdrop $401FFE
 EyecatchSetColours:
-	move.w	#0xC,d1	| C18346
+	move.w	#0xC,d1	| C18346  12 bytes per set
 	mulu.w	d1,d0	| C1834A
 	addi.l	#EyecatchColourSets,d0	| C1834C
-	move.l	d0,(EyecatchColoursPointer-A5_BASE,a5)	| C18352
+	move.l	d0,(EyecatchColoursPointer-A5_BASE,a5)	| C18352  the main loop copies it after the next WaitFrame
 	move.w	#0x1,(EyecatchColoursPending-A5_BASE,a5)	| C18356
 	rts	| C1835C

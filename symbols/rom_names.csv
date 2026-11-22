@@ -65,7 +65,7 @@ C12C78,ReadCalendar,W,target of READ_CALENDAR
 C12CF2,SetupCalendar,C,target of SETUP_CALENDAR (wiki); MAME: runs when D is pressed on the test-mode calendar screen
 C1334C,Card,C,"target of CARD: returns $80 (no card) when REG_STATUS_B bits 4-5 are set, else jumps through CardFunctionTable[BIOS_CRDF]"
 C133C0,CardError,C,"target of CARD_ERROR (wiki); MAME with a blank (unformatted) card: runs when the game starts, after CardDataSearch"
-C18914,HowToPlay,C,"target of HOW_TO_PLAY (wiki); MAME: NAM-1975, Mahjong Kyoretsuden and Baseball Stars Professional call it after START (joystick and buttons animated, the game captions); none of the other 15 checked games references it"
+C18914,HowToPlay,C,"target of HOW_TO_PLAY (wiki); MAME: NAM-1975, Mahjong Kyoretsuden and Baseball Stars Professional call it after START (joystick and buttons animated, the game captions); the game first copies its script to $10F300 (BiosWorkRam): longs, 0 = end, below $100 a repeat count ($FF repeats), $1xx joystick directions (colours of palette 0), $2xx buttons pressed, otherwise a MESS_OUT list followed by a frame count; none of the other 15 checked games references it"
 C16C0E,ChecksumLoop,C,"target of the checksum slot at $C0047A (CHECKSUM_LOOP): adds every byte of the cartridge P ROM (CART_PROM_SIZE bytes, kicking the watchdog), subtracts the header byte $186, writes the result to $186 and WorkRamStart, then loops until the watchdog resets the system. Nothing calls the slot; ran in MAME from a test build (scenario checksum_loop: Sengoku 2, 1 MB summed in 207 frames, sum $EF, reset 8 frames later)"
 C1835E,FixClear,W,target of FIX_CLEAR
 C1839A,LspFirst,W,target of LSP_1ST (clear sprites)
@@ -133,7 +133,7 @@ C17D34,PutMenuValueLine,C,"appends a MESS_OUT line at VRAM d2, highlighted when 
 C15946,WaitFrameGetP1,C,"WaitFrame, then returns P1 change bits in d0 (repeat bits in the high word); special handling when BIOS_P1STATUS is 3"
 C15986,CardUtilPutText,C,queues the MESS_OUT text at a2 followed by CardUtilReturnText
 C1597A,ReadCardDetect,C,"d0 = REG_STATUS_B & $30 (memory card detect bits, 0 = card inserted)"
-C1AE82,DivU32,C,"unsigned 32-bit division: d4 / d3 -> quotient in d4, remainder in d0"
+C1AE82,DivU32,C,"unsigned 32-bit division: d4 / d3 -> quotient in d0, remainder in d4 (exchanged at the end)"
 C14E86,CardUnlock,C,unlocks the memory card (REG_CRDUNLOCK1/2); counterpart of CardLock
 C12DB0,WriteRtcCtrl,C,writes d1 to REG_RTCCTRL (calendar chip data/clock/strobe lines)
 C131AA,BcdToBinary,C,d0 BCD byte (00-99) -> binary through BcdToBinaryTable
@@ -426,7 +426,7 @@ C159EE,CardUtilKeyPositions,C,fix-layer address of each key of the FILE USER'S N
 C15A98,CardUtilKeyMoves,C,"FILE USER'S NAME: for each key, the key reached with each of the four directions (4 bytes per key)"
 C15BEC,CardUtilKeyChars,C,"the character of each letter key: A-Z, a-z, 0-9 and symbols, space"
 C156C8,CardUtilDirectionIndex,C,joystick bits (up/down/left/right) to the column of CardUtilKeyMoves
-C15642,CardUtilNameKeyHandlers,I,"FILE USER'S NAME: handlers of the 5 keys before the letters: one saves the name with CARD 6 (END), two move the character cursor left and right (the arrows), two set NameKeyMode (to 1 or 0, to 2 or 1) and redraw the screen (meaning of NameKeyMode not found)"
+C15642,CardUtilNameKeyHandlers,C,"FILE USER'S NAME: handlers of the 5 keys before the letters: END saves the name with CARD 6, the arrows move the character cursor, and two keys set NameKeyMode (1 or 0, 2 or 1) and redraw the screen. Nothing else reads NameKeyMode, so in SP-S2 those two keys change nothing (the character table is the same in every mode)"
 C16590,MonitorPutVramWord,C,debug monitor DISPLAY V-RAM: reads the VRAM word at d3 and appends it as 4 hex digits
 C165A8,MonitorPutHexByte,C,appends the byte d0 as 2 hex digits (ByteToHex)
 C11DB0,PowerOnSetup,C,"after the power-on tests: clears the slot-mode fields, reads the calendar (start of the hour clock), on a new date advances the book keeping day (and month) rings, sets the slot count (SlotCount: 2, 4 or 6 from REG_SYSTYPE and REG_STATUS_A), checks the Z80, scans the slots and merges the result into SlotTable; on a new day BookNewDayPerGame"
@@ -441,7 +441,7 @@ C12142,SlotDateNewGames,C,a game with no settings index yet ($FFFF) gets LastBoo
 C12160,BookNewDayPerGame,C,"on a new day: for each slot with a game, advances the game's day index (BookGameDayIndex, 36-day ring), clears and dates that day's record in BookGameDays and adds 1 to its long at $D00200"
 C122D8,SaveGameSoftDips,C,copies BIOS_GAME_DIP (16 bytes) back to GameSoftDips for the game in CurrentSlot
 C12322,SaveGameBackupData,C,"copies the game's backup area (CART_BACKUP_PTR, CART_BACKUP_SIZE bytes) to backup RAM $D00320 + game index x $1000"
-C12372,PreviousSlot,I,"selects the previous slot holding a game and loads it (loc_C123F6, as NextSlot); never ran"
+C12372,PreviousSlot,C,"selects the previous slot holding a game and loads it (loc_C123F6, as NextSlot). MAME, MV-6 board with three cartridges (slots 0-2): a coin, then SELECT P2 on the title, went from slot 0 to slot 2 (NextSlot would go to slot 1)"
 C123A8,LoadCurrentSlot,C,loads the backup data and soft DIPs of the game in CurrentSlot without switching (loc_C1241E)
 C123C4,NextSlot,C,"selects the next slot holding a game: slot number on the LEDs, SwitchSlot, sound command 3; then copies the game's backup data from $D00320 + index x $1000, its soft DIPs to BIOS_GAME_DIP and sets the book keeping pointers (BookGameTodayPtr, BookGameMonthPtr, BookGameHoursPtr, BookGameTotalPtr)"
 C124E6,BookGameMonthsTable,C,"BookGameMonths + game index x $C0, 8 entries"
@@ -451,7 +451,7 @@ C1253E,GetGameDayCountPtr,C,a0 = $D00200 + game index x 4 (a long incremented by
 C1255A,GetGameHourCountsPtr,C,"a0 = $D0A1A0 + game index x $60 (BookGameHoursTable): 24 longs, one per hour, incremented by DeductPlayerCredit at index ClockHour4 (the hour clock)"
 C12592,BookClearDatedRecord,C,clears the 16-byte record d0 of the ring at a0 and stores LastBootDate in it
 C125A4,BookClearRecord,C,clears the 16-byte record at a0 + d0
-C12860,HourClockTick,C,"software clock started from the calendar at power-on: every 60 VBlanks (ClockFrames) adds a second (D0005C), minute (D0005B) and hour x 4 (D0005A, 0-$5C)"
+C12860,HourClockTick,C,"software clock started from the calendar at power-on: every 60 VBlanks (ClockFrames) adds a second (ClockSecond), minute (ClockMinute) and hour x 4 (D0005A, 0-$5C)"
 C128A6,CountCoin,C,"a coin on input d3: counts it (CoinCounts + d4), adds it to today's and this month's CABINET/COIN records (offset d5), and when enough coins are in (Coin1Coins/Coin2Coins) gives the credits (Coin1Credits/Coin2Credits) to Credits in BCD, at most 99"
 C128E6,CountService,C,the service switch: adds to the SERVICE counters of today's and this month's records and 1 credit
 C1299A,CreditDownCount,C,"CREDIT_DOWN: for P1 and P2 with BIOS_CREDIT_DEC1/2 set, takes the credit and counts the play like DeductPlayerCredit (CreditDownPlayer)"
@@ -483,12 +483,12 @@ C184F4,DelayShort,C,see DelayLonger
 C184F8,DelayShorter,C,see DelayLonger
 C18500,DelayReturn,C,the rts that ends the delay chain
 C185DE,CopyControllerState,C,"copies a player's status block (BIOS_P1STATUS..) to SysP1Status/SysP2Status; a mahjong controller (status 3, wiki) is converted to joystick bits first"
-C1861C,MahjongKeysToJoystick,I,"maps a mahjong controller key byte to joystick bits (bit 7 from bit 0 of d1, nibbles swapped)"
-C1862E,MahjongStartFilter,I,mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held
+C1861C,MahjongKeysToJoystick,C,"maps a mahjong controller key byte to joystick bits (bit 7 from bit 0 of d1, nibbles swapped). MAME: ran with Mahjong Kyoretsuden, the mahjong panel on P1 and hard DIP 3 on"
+C1862E,MahjongStartFilter,C,mahjong controller: drops START/SELECT bit d0 while one of the keys in the mask is held. MAME: ran with the mahjong panel (as MahjongKeysToJoystick)
 C18656,UpdatePlayerInputs,C,"updates a player's input block (and the expanded block at +$C), or the mahjong rows"
 C1866C,UpdateInputBlock,C,"previous, current, change and repeat bytes of one input block; repeat after 16 frames, then every 8"
-C186C8,UpdateMahjongRow,I,current and change bytes of one mahjong key row
-C186DA,ReadMahjongRows,I,reads two more key rows through REG_POUTPUT ($24 and $09) into d6
+C186C8,UpdateMahjongRow,C,current and change bytes of one mahjong key row. MAME: ran with the mahjong panel (as MahjongKeysToJoystick)
+C186DA,ReadMahjongRows,C,reads two more key rows through REG_POUTPUT ($24 and $09) into d6. MAME: ran with the mahjong panel (as MahjongKeysToJoystick)
 C1877E,MessOutCommands,C,"MESS_OUT command handlers 0-13: end, format, auto-increment, VRAM address, data at a pointer, add to address, resume data, inline data, 8x16 tiles, 8x16 text, call a list, return, repeat a word, write increasing words"
 C187B6,MessOutEnd,C,MESS_OUT command 0: end of the list (next list pointer)
 C187C4,MessOutFormat,C,"MESS_OUT command 1: data format in d5 (bytes or words, end code or count)"
@@ -506,15 +506,15 @@ C187DA,MessOutCall,C,MESS_OUT command 10: runs another list (pointer pushed at M
 C187EE,MessOutReturn,C,MESS_OUT command 11: back from MessOutCall
 C187FE,MessOutRepeat,C,MESS_OUT command 12: writes one word d1 times
 C18808,MessOutSequence,C,"MESS_OUT command 13: writes d1 words, adding 1 each time"
-C17BFA,HwCalendarFixAddresses,I,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar; nothing refers to them (leftover) The same words in all 18 other SNK system ROMs, referenced in none; a second copy, CalendarFixAddresses, sits in TestCalendar"
+C17BFA,HwCalendarFixAddresses,C,"6 fix-layer addresses ($7157, $71D7, $7257, $715A, $71DA, $725A) after HwTestCalendar, read by nothing, the same words in all 18 other SNK system ROMs, referenced in none; a second copy, CalendarFixAddresses, sits in TestCalendar. Three fields on row $17 and three on row $1A, 4 columns apart: the arrangement of the calendar screens' six fields (drawn at $714A/$71AA/$720A and $714D/$71AD/$720D, 3 columns apart) on other rows (I: an older layout)"
 C132B4,CardFillTest,C,"unreferenced (no call, jump or pointer; it was typed as data until 2026-11-15): saves $40 bytes from $100000 with CARD 3 again and again, NGH $1234 and file numbers 0-15 (counter at $108000), then the next NGH, until a CARD error, which goes to CardError and stops there (jmp to itself): a development test that fills the memory card. Ran in MAME from a test build (scenarios card_full_*): a formatted 2 KB card is full after 27 saves, in one frame, and the full-card list appears Present and unreferenced in all 18 other SNK system ROMs."
 C13338,CardFillTestTitle,C,20-byte data title copied to $100000 by CardFillTest: tile codes shown as Japanese kana in the full-card list (not ASCII); CardFillTest changes its last byte for each save
 C00080,SystemRomChecksum,W,"checksum byte of the system ROM (NeoGeoDev wiki, SP-E: $4D here; the byte after it is the same); compared by the power-on test"
 C00082,SystemIdText,W,"NEO-GEO SYSTEM PROGRAM VERSION 0 COPYRIGHT BY SNK CORPORATION (ID text, wiki); its bytes start the checksummed area"
-C11000,CardFormatVersion,I,word $0000 just before Reset: CardFormat writes it into the card header (8-bit and 16-bit cards)
-C11001,CardFormatVersionLo,I,low byte of CardFormatVersion (CardFormat for a type $80 card)
+C11000,CardFormatHeaderWord,C,"word $0000 just before Reset: CardFormat writes it at header +$18 (8-bit card: byte 12; 16-bit card: the word whose high byte becomes $FF when a user name is saved, CardSaveUserName / CardLoadUserName); $0000 in every SNK version"
+C11001,CardFormatHeaderByte,C,low byte of CardFormatHeaderWord: CardFormat writes it at header +$18 of a type $80 card
 C1137A,SystemReturnModes,C,SystemReturn: one handler per system mode (BIOS_SYSTEM_MODE low byte 0-6)
-C116C6,SystemIoBuildFlag,I,"word $0001 tested by SystemIo, whose branch goes to the next instruction either way: a leftover build switch Same test in every MVS version, absent from the AES ones (docs/versions.md)"
+C116C6,SystemIoTestWord,C,"word $0001 tested by SystemIo, whose bne goes to the next instruction either way: no effect. The same test in every MVS version, absent from the AES ones (docs/versions.md)"
 C117C2,StartCreditsNeeded,C,"credits needed for the start bits 1-3 (P1, P2, both): 1, 1, 2 (StartCreditCheck)"
 C117C6,StartFlagResult,C,BIOS_START_FLAG for the start bits with enough credits (first 4) or not (last 4: 0)
 C12572,BookGameHoursTable,C,"$D0A1A0 + game index x $60, 8 entries (GetGameHourCountsPtr)"
@@ -551,7 +551,7 @@ C17C9C,HwCalendarMin,C,smallest BCD value of each calendar field (month and day 
 C17D72,HwCalendarText,C,MESS_OUT data of SETTING UP THE CALENDAR (hardware test)
 C17EC8,EyecatchSteps,C,"10 step routines of the eyecatcher, by WorkIndex"
 C17EF0,EyecatchSpriteInit,C,MESS_OUT list sent first by Eyecatcher (writes sprite control data at VRAM $8400 and $8200)
-C18402,ControllerTypeTable,I,"6 rows of 16 bytes: controller status (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values) by ID code; ControllerSetup loads it in a4 but only the unreferenced ControllerTypeScan reads it (in SP-S2 the mahjong DIP alone sets BIOS_P1STATUS)"
+C18402,ControllerTypeTable,C,"6 rows of 16 bytes: controller status by ID code (0 none, 1 joystick, 2 expanded, 3 mahjong, 4 keyboard; wiki values). ControllerSetup loads it in a4 but only the unreferenced ControllerTypeScan reads it (in SP-S2 the mahjong DIP alone sets BIOS_P1STATUS). The same table in the AES ROMs: MAME, AES Asia, gives BIOS_P1STATUS 1 with a joystick and 3 with the mahjong controller"
 C18ADA,HowToPlayButtonTable,C,"for each of the 4 buttons, the MESS_OUT data released and pressed"
 C18AFA,HowToPlayScreen,C,MESS_OUT data of the HOW_TO_PLAY frame
 C18E06,HowToPlayStick,C,the joystick picture of HOW_TO_PLAY (seen in MAME)
@@ -569,11 +569,11 @@ C1F2C6,EyecatchLogoTiles2,C,"low bytes of the sprite tiles of the NEO-GEO letter
 C1F30E,EyecatchFixMess,C,"MESS_OUT list drawing the SNK logo: EyecatchFixTiles as 3 rows of 10 board fix ROM tiles $2xx with palette F, at fix address $71F6"
 C1F32C,EyecatchFixTiles,C,"low bytes of the 30 SNK logo tiles (board fix ROM $200-$20F, $214-$21F, $240, $25E)"
 C1F34A,EyecatchTextTiles,C,"MAX 330 MEGA / PRO-GEAR SPEC: 32 characters of 2 fix words each (palette F, board fix ROM tiles $005-$107), drawn one character every 4 frames from $71B0 (15 columns) and $7192 (17 columns)"
-C1F3CA,HowToPlayPalettes,C,"HowToPlay: 14 palettes copied to $400000, followed by the animation data (pointer kept in HowToPlayPointer)"
+C1F3CA,HowToPlayPalettes,C,"HowToPlay: 14 palettes copied to $400000 (the script itself comes from the game, at $10F300)"
 C1F58A,FbiScreenPalette,C,palette 1 of the FBI screen
 C1F5AA,FbiScreen,C,"MESS_OUT list of board fix ROM tiles ($B01-$B68 in sfix.sfix, palette 1) of the FBI seal screen (WINNERS DON'T USE DRUGS) shown for 300 frames after the eyecatcher on an MVS with country code USA (BIOS_COUNTRY_CODE 1); never with SP-S2 (forced, scenario eyecatcher_us)"
 C1F652,JapanOnlyWarningText,C,"WARNING THIS GAME IS FOR USE IN JAPAN ONLY. .. shown for 300 frames after the eyecatcher with country code 0 (Japan); never with SP-S2 (forced, scenario eyecatcher_japan)"
 C1849C,ControllerTypeScan,C,"unreferenced in SP-S2 and in every MVS version, called 6 times by ControllerSetup in the three AES ROMs after each REG_POUTPUT pattern: reads bits 6-7 of REG_P1CNT and REG_P2CNT and the low nibble of REG_STATUS_B (starts and selects), keeps the bits selected by d2, builds an index in d0 and writes the ControllerTypeTable entry (a4) into each BIOS_P1STATUS-P4STATUS still 0, then a4 += 16. Typed as code since 2026-11-21 (it was data after ControllerSetup's rts)"
 C19884,HardDipCoin2Text,C,"text 2, unreferenced in SP-S2: a value of the COIN SWITCH row (hard DIP 2) that the US versions show on the hard DIP page (Ver. 1, U4, U3 refer to it); SP-S2 has no such row"
 C1988A,HardDipCoin4Text,C,"text 4, the other COIN SWITCH value (see HardDipCoin2Text)"
-C199A8,CalendarFixAddresses,I,"the 6 words of HwCalendarFixAddresses ($7157 .. $725A) again, inside TestCalendar after a bra.w that jumps over them; nothing refers to them. Fix positions of three fields on rows $17 and $1A (I: the date and time fields of the calendar screen)"
+C199A8,CalendarFixAddresses,C,"the 6 words of HwCalendarFixAddresses again, inside TestCalendar after a bra.w that jumps over them; nothing refers to them (both copies in every SNK ROM but the development ROM)"

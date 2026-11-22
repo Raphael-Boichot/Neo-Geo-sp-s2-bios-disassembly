@@ -78,7 +78,8 @@ Then `make source` and `make check`.
   (every RAM address used; unnamed ones as `ram_XXXXXX` / `bram_XXXXXX`) are generated.
 - Everything else keeps an automatic label: `sub_` (called), `loc_` (jumped to), `dat_` (data),
   `tbl_` (pointer table read through `x(pc,dN.w)`), followed by the address.
-- Line comments are in `symbols/comments.csv` (`addr,comment`): `make source` writes each one after the
+- Line comments are in `symbols/comments.csv` (`addr,comment`), and for `sm1.sm1` in `sm1/comments.csv`
+  (`make sm1-source`, the same rules): `make source` writes each one after the
   address comment of the instruction at that address. It stops when an address is not the start of an
   instruction; a comment may not contain `|`. Comments change no byte. They describe the code and use the
   register meanings of the NeoGeoDev wiki; claims about behaviour follow the tags of the names and docs.
@@ -188,6 +189,11 @@ builds a BIOS whose exception slots jump to the debug monitor (`checksum`: test-
 CHECKSUM_LOOP slot instead; `cardfill`: it jumps to CardFillTest, with a formatted card in the slot); put each `sp-s2.sp1` in a copy of `neogeo.zip` in `$MONITOR_ROMS/<name>/`
 (with the game zip) for the `monitor_*` and `checksum_loop` scenarios. The `*_us_credit_down` scenarios
 write 1 (USA) into BIOS_COUNTRY_CODE when the game copies it.
+
+Two runs outside the coverage scripts: `tools/mame_prev_slot.lua` (MAME's `neogeo` MV-6 driver with three
+cartridges, `-cart1 sengoku2 -cart2 lbowling -cart3 ridhero`: SELECT P2 on the title goes to the previous slot,
+`PreviousSlot`) and `tools/mame_mahjong.lua` (`-cart1 mahretsu -ctrl1 mahjong`, hard DIP 3 on: the mahjong
+key code of `ReadControllers` runs); the command lines are at the top of each file.
 
 `DEBUG_CMDS` adds MAME debugger commands to a coverage run (several separated by `||`), for example a
 breakpoint that changes a register to reach a path no game takes (README, SYSTEM_INT2), separated by

@@ -1,3 +1,1 @@
 addr,name,file,tag,doubt,how to settle
-C14654,CardNextBlockWord,rom_names,I,"16-bit card form of CardNextBlockByte: not run, every save in card_word_* fits in one block",a save of more than 64 bytes on the emulated 16-bit card
-C1467A,CardNextBlockSparse,rom_names,I,type $80 card form of CardNextBlockByte: not run (one-block saves),a save of more than 64 bytes on the emulated type $80 card

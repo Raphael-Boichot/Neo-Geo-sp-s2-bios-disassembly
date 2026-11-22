@@ -395,9 +395,9 @@ C1461A,CardFindFreeEntryWord,C,"16-bit card form of CardFindFreeEntryByte (4-byt
 C1462A,CardFindFreeEntrySparse,C,card type $80 form of CardFindFreeEntryByte; ran in MAME on an emulated type $80 card (card_sparse_*)
 C1463A,CardNextBlockByte,C,8-bit card: d3 = FAT entry of block d3 (next block of the chain) then CardBlockAddressByte
 C14644,CardBlockAddressByte,C,8-bit card: a3 = card base (a6) + block d3 x 128 (a 64-byte block takes 128 addresses)
-C14654,CardNextBlockWord,I,16-bit card form of CardNextBlockByte
+C14654,CardNextBlockWord,C,16-bit card form of CardNextBlockByte: two FAT entries per word. MAME: a four-block save loaded back on the emulated 16-bit card (card_word_multi_load)
 C1466A,CardBlockAddressWord,C,16-bit card: a3 = a6 + block d3 x 64; ran in MAME on an emulated 16-bit card (card_word_*)
-C1467A,CardNextBlockSparse,I,card type $80 form of CardNextBlockByte
+C1467A,CardNextBlockSparse,C,card type $80 form of CardNextBlockByte (every second word). MAME: a four-block save loaded back on the emulated type $80 card (card_sparse_multi_load)
 C14692,CardBlockAddressSparse,C,card type $80: a3 = a6 + block d3 x 128; ran in MAME on an emulated type $80 card (card_sparse_*)
 C146A2,CardFindEntry,C,"searches the directory for the entry of BIOS_CRDNGH (two bytes) and BIOS_CRDFILE: d3 = 0 and a0 = entry when found, else d3 = -1; 8-bit card (8-byte entries) or 16-bit card (4-byte entries)"
 C1471C,CardFindEntrySparse,C,card type $80 form of CardFindEntry; ran in MAME on an emulated type $80 card (card_sparse_*)

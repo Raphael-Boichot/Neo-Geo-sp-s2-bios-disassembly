@@ -10,7 +10,7 @@ names and a written reference, steps 1-7) is done; step 8, a custom system ROM, 
 |---|---|
 | L0 rebuild | done: byte-identical, boot checksum `$4D` |
 | L1 every byte typed | done: code 33,046 B, data 21,303 B, free 76,723 B |
-| L2 traced and run | 9,278 instructions traced; 8,134 ran in MAME (87.7 %) over 91 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
+| L2 traced and run | 9,278 instructions traced; 8,191 ran in MAME (88.3 %) over 92 scenarios, 6,563 without the forced ones; nothing ran outside the trace |
 | L3 names | 578 names (C 545, I 2, W 31), the 2 I and 0 RAM I in `symbols/doubts.csv`; 1,043 automatic labels left, all `loc_` |
 | L4 RAM and registers | done: 274 RAM names over 227 addresses, nothing automatic (160 global names on 160 addresses, 128 scoped rows on 67 addresses; 14 rows reuse a name), no raw operand left, every a4 access proven |
 | L5 editable tree | done: 14 modules, all ROM addresses symbolic, relocation proven in MAME; the board fix ROM `sfix.sfix` rebuilt from 16 tile sheets (`gfx/sfix/`) |
